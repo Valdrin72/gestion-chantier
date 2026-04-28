@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run:*)",
+      "Bash(npm install:*)",
+      "Bash(npm start:*)",
+      "Bash(for f:*)",
+      "Bash(do echo:*)",
+      "Read(//c/Users/Salihu/AppData/Local/Temp/claude/C--Users-Salihu-gestion-chantier/8ad5cda0-68d8-40cc-93f9-08b1f76bda94/**)",
+      "Bash(done)",
+      "Bash(npx react-scripts:*)"
+    ]
+  }
+}

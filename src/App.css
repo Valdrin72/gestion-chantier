@@ -1,0 +1,111 @@
+.App {
+  text-align: center;
+}
+
+.App-logo {
+  height: 40vmin;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .App-logo {
+    animation: App-logo-spin infinite 20s linear;
+  }
+}
+
+.App-header {
+  background-color: #282c34;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: calc(10px + 2vmin);
+  color: white;
+}
+
+.App-link {
+  color: #61dafb;
+}
+
+@keyframes App-logo-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes simFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.simulationFade {
+  animation: simFadeIn 0.2s ease-out;
+}
+
+@keyframes simPulse {
+  0%   { box-shadow: 0 0 0px rgba(100, 150, 255, 0); }
+  50%  { box-shadow: 0 0 12px rgba(100, 150, 255, 0.6); }
+  100% { box-shadow: 0 0 0px rgba(100, 150, 255, 0); }
+}
+
+.simulationPulse {
+  animation: simPulse 0.8s ease-out;
+}
+
+.simFeedback {
+  font-size: 11px;
+  font-weight: 600;
+  opacity: 0.7;
+  margin-bottom: 4px;
+  animation: simFadeIn 0.2s ease-out;
+}
+
+.decisionBlock {
+  padding: 7px 10px;
+  border-left: 4px solid;
+  border-radius: 6px;
+  margin-top: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  transition: transform 0.25s ease-in, box-shadow 0.4s ease-in;
+}
+
+.actionApplied {
+  transform: scale(1.02);
+  box-shadow: 0 0 12px rgba(100, 200, 255, 0.4);
+  transition: transform 0.2s ease-out, box-shadow 0.3s ease-out 0.05s;
+}
+
+.simCompare {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 700;
+  font-size: 16px;
+  margin-bottom: 2px;
+}
+
+.simBefore {
+  opacity: 0.45;
+  text-decoration: line-through;
+  color: inherit;
+}
+
+.simAfter {
+  color: #4ade80;
+}
+
+.simArrow {
+  opacity: 0.55;
+  font-size: 14px;
+}

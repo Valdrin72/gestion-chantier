@@ -52,7 +52,10 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
     const heuresRealise = parseFloat(c.heuresRealise) || 0;
     const surface = parseFloat(c.surface) || 0;
     const joursPrevu = parseInt(c.nombreJours) || 0;
-    const joursReel = c.equipe?.reduce((t, m) => t + (parseFloat(m.joursRealises) || parseFloat(m.joursPlannifies) || 0), 0) || 0;
+    const joursReelJournal = new Set((c.journal || []).map(e => e.date).filter(Boolean)).size;
+    const joursReel = joursReelJournal > 0
+      ? joursReelJournal
+      : (c.equipe?.length ? Math.max(...c.equipe.map(m => parseFloat(m.joursRealises) || 0), 0) : 0);
 
     const ecartBudget = couts.totalCoutsReel > 0 && couts.totalCoutsPrevu > 0
       ? (((couts.totalCoutsReel - couts.totalCoutsPrevu) / couts.totalCoutsPrevu) * 100).toFixed(1)

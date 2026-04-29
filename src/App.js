@@ -670,25 +670,13 @@ function Dashboard({ chantiers, clients, factures, devis = [], parametres, navig
     actifs.forEach(c => {
       const j = joursParChantier[c.id];
       if (j !== null && j < 0) {
-        const imprevus = parseInt(c.joursImprevus) || 0;
-        const justifie = estRetardJustifie(c);
-        if (justifie) {
-          list.push({
-            id: `retard-${c.id}`,
-            message: `${c.nom || c.numero} — retard justifié (+${imprevus}j imprévus)`,
-            page: 'chantiers', ctx: { chantierActif: c.id },
-            critique: false,
-          });
-        } else {
-          const joursAjustes = imprevus > 0
-            ? joursOuvrableRestants(c.dateDebut, (parseInt(c.nombreJours) || 0) + imprevus, c.inclusSamedi)
-            : null;
-          const absEffectif = joursAjustes !== null ? Math.abs(joursAjustes) : Math.abs(j);
-          const dateFin = calculerDateFinOuvrables(c.dateDebut, (parseInt(c.nombreJours) || 0) + imprevus, c.inclusSamedi);
+        {
+          const absEffectif = Math.abs(j);
+          const dateFin = calculerDateFinOuvrables(c.dateDebut, parseInt(c.nombreJours) || 0, c.inclusSamedi);
           const dateFinStr = dateFin ? new Date(dateFin).toLocaleDateString('fr-CH', { day: '2-digit', month: '2-digit' }) : null;
           list.push({
             id: `retard-${c.id}`,
-            message: `${c.nom || c.numero} — retard ${imprevus > 0 ? 'réel de' : 'de'} ${absEffectif} jour${absEffectif > 1 ? 's' : ''}${dateFinStr ? ` · fin ${imprevus > 0 ? 'ajustée' : 'prévue'} dépassée (${dateFinStr})` : ''}`,
+            message: `${c.nom || c.numero} — retard de ${absEffectif} jour${absEffectif > 1 ? 's' : ''}${dateFinStr ? ` · fin prévue dépassée (${dateFinStr})` : ''}`,
             page: 'chantiers', ctx: { chantierActif: c.id },
             critique: absEffectif > 7,
           });
@@ -1551,7 +1539,7 @@ function Dashboard({ chantiers, clients, factures, devis = [], parametres, navig
                         <span style={{ fontSize: 15, fontWeight: 900, color: etat, letterSpacing: '-0.3px' }}>{progress}%</span>
                         {(() => {
                           const montant = calculerCA(c, devis);
-                          const dateFin = calculerDateFinOuvrables(c.dateDebut, (parseInt(c.nombreJours) || 0) + (parseInt(c.joursImprevus) || 0), c.inclusSamedi);
+                          const dateFin = calculerDateFinOuvrables(c.dateDebut, parseInt(c.nombreJours) || 0, c.inclusSamedi);
                           const dateFinStr = dateFin ? new Date(dateFin).toLocaleDateString('fr-CH', { day: '2-digit', month: '2-digit', year: '2-digit' }) : null;
                           const couts = calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis);
                           const mPct = parseFloat(couts.margeReelPct);
@@ -2299,7 +2287,7 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
 
   const vide = {
     numero: `CH-${new Date().getFullYear()}-00${chantiers.length + 1}`, nom: '', clientId: '', conducteur: '', directeurTravauxId: '', adresse: '', ville: '', canton: '',
-    dateDebut: '', nombreJours: '', nombrePersonnes: '', joursRealises: '', inclusSamedi: false, joursImprevus: 0, raisonImprevus: '',
+    dateDebut: '', nombreJours: '', nombrePersonnes: '', joursRealises: '', inclusSamedi: false,
     statut: 'En cours', priorite: 'Normale', avancement: 0, typesTravaux: [], surface: '',
     montantDevis: '', avenants: [], montantFacture: 0, equipe: [], employes: [],
     coutMaterielPrevu: '', materielReel: '', coutSousTraitancePrevu: '', sousTraitanceReelle: '',
@@ -2319,7 +2307,6 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
     return liste;
   }, [chantiers, filtre, contexte]);
 
-  const totalJours = (f) => parseInt(f.nombreJours || 0) + parseInt(f.joursImprevus || 0);
 
   // Cache des jours restants pour tous les chantiers filtrés — évite les recalculs dans le render
   const joursParChantier = useMemo(() => {
@@ -2815,7 +2802,6 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
               ['📅 Début', c.dateDebut],
               ['🏁 Fin prévue', c.dateDebut && c.nombreJours ? calculerDateFinOuvrables(c.dateDebut, c.nombreJours, c.inclusSamedi) : '—'],
               ['⏱️ Jours prévus', c.nombreJours ? `${c.nombreJours} jours` : '—'],
-              ['⚠️ Jours imprévus', `${c.joursImprevus || 0} jours`],
               ['📐 Surface', c.surface ? `${c.surface} m²` : '—'],
               ['🔧 Travaux', c.typesTravaux?.join(', ') || '—'],
             ].map(([label, val]) => (
@@ -3160,7 +3146,7 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
           </div>
 
           {/* Calendrier */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '15px', marginBottom: '15px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '15px' }}>
             <div><label style={{ ...labelStyle, display: 'flex', alignItems: 'center', gap: '8px' }}>
               <input type="checkbox" checked={form.inclusSamedi || false} onChange={e => setForm({ ...form, inclusSamedi: e.target.checked })} />
               Inclure le samedi</label></div>
@@ -3171,14 +3157,10 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
                 onChange={e => setForm({ ...form, nombrePersonnes: e.target.value })}
                 style={inputStyle} />
             </div>
-            <div><label style={labelStyle}>⚠️ Jours imprévus</label>
-              <input type="number" placeholder="0" value={form.joursImprevus || 0} onChange={e => setForm({ ...form, joursImprevus: parseInt(e.target.value) || 0 })} style={inputStyle} /></div>
-            <div><label style={labelStyle}>📝 Raison imprévu</label>
-              <input placeholder="Ex: Retard livraison" value={form.raisonImprevus || ''} onChange={e => setForm({ ...form, raisonImprevus: e.target.value })} style={inputStyle} /></div>
           </div>
           {form.dateDebut && form.nombreJours && (
             <div style={{ background: 'rgba(59,130,246,0.07)', border: '1px solid rgba(59,130,246,0.18)', padding: '14px 18px', borderRadius: '12px', marginBottom: '15px' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: form.nombrePersonnes > 0 ? '1fr 1fr 1fr' : '1fr 1fr', gap: '15px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: parseInt(form.nombrePersonnes) > 0 ? '1fr 1fr' : '1fr', gap: '15px' }}>
                 <div><div style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px', color: 'var(--text-muted)', marginBottom: '4px' }}>Date de fin prévue</div>
                   <div style={{ fontWeight: 700, color: C.primaire, fontSize: '15px' }}>{calculerDateFinOuvrables(form.dateDebut, form.nombreJours, form.inclusSamedi)}</div></div>
                 {parseInt(form.nombrePersonnes) > 0 && (
@@ -3192,8 +3174,6 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
                     </div>
                   </div>
                 )}
-                {form.joursImprevus > 0 && <div><div style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px', color: 'var(--text-muted)', marginBottom: '4px' }}>Avec imprévus</div>
-                  <div style={{ fontWeight: 700, color: C.warning, fontSize: '15px' }}>{calculerDateFinOuvrables(form.dateDebut, totalJours(form), form.inclusSamedi)}</div></div>}
               </div>
             </div>
           )}
@@ -3875,7 +3855,7 @@ function Devis({ devis, setDevis, clients, parametres, naviguer, setChantiers, c
       numero: `CH-${new Date().getFullYear()}-00${chantiers.length + 1}`,
       clientId: d.clientId, montantDevis: parseFloat(d.montantHT || d.prixPropose) || 0, surface: 0,
       statut: 'Planifié', priorite: 'Normale', avancement: 0, dateDebut: '', nombreJours: '',
-      inclusSamedi: false, joursImprevus: 0, raisonImprevus: '', avenants: [], montantFacture: 0,
+      inclusSamedi: false, avenants: [], montantFacture: 0,
       typesTravaux: [], ville: '', canton: '', adresse: '',
       conducteur: '', directeurTravauxId: '', equipe: [], employes: [],
       coutMaterielPrevu: '', materielReel: '',

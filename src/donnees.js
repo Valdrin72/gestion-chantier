@@ -69,44 +69,17 @@ export const getAlerte = (jours) => {
   return { texte: `✅ ${jours} jours restants`, couleur: '#2e7d32', niveau: 'ok', banniere: null };
 };
 
-/**
- * Calcule l'alerte de retard d'un chantier en tenant compte des jours imprévus.
- * - joursImprevus === 0 → retard interne (faute) → 🔴 critique
- * - joursImprevus > 0 + encore dans fenêtre ajustée → 🟡 retard justifié (pas critique)
- * - joursImprevus > 0 + dépassement même ajusté → 🔴 retard réel (mais pas critique)
- */
 export const getAlerteChantier = (chantier) => {
-  const { dateDebut, nombreJours, joursImprevus, inclusSamedi = false } = chantier;
-  const imprevus = parseInt(joursImprevus) || 0;
+  const { dateDebut, nombreJours, inclusSamedi = false } = chantier;
   const base = parseInt(nombreJours) || 0;
-
-  const joursBase = joursOuvrableRestants(dateDebut, base, inclusSamedi);
-  if (joursBase === null) return null;
-
-  // Pas encore dépassé la date de fin de base → comportement standard
-  if (joursBase >= 0) return getAlerte(joursBase);
-
-  // Dépassement de la date de fin de base
-  if (imprevus === 0) {
-    const abs = Math.abs(joursBase);
-    return { texte: `🔴 Retard ${abs} jour${abs > 1 ? 's' : ''}`, couleur: '#b71c1c', niveau: 'critique', banniere: 'danger' };
-  }
-
-  // imprevus > 0 : comparer à la date de fin ajustée
-  const joursAjustes = joursOuvrableRestants(dateDebut, base + imprevus, inclusSamedi);
-
-  if (joursAjustes !== null && joursAjustes >= 0) {
-    // Toujours dans la fenêtre ajustée → retard justifié, pas critique
-    return { texte: `🟡 Retard justifié (+${imprevus}j imprévus)`, couleur: '#f59e0b', niveau: 'justifie', banniere: 'warning' };
-  }
-
-  // Dépassement même après ajustement → retard réel
-  const absReel = Math.abs(joursAjustes ?? joursBase);
-  return { texte: `🔴 Retard réel ${absReel}j`, couleur: '#b71c1c', niveau: 'retard_reel', banniere: 'danger' };
+  const jours = joursOuvrableRestants(dateDebut, base, inclusSamedi);
+  if (jours === null) return null;
+  if (jours >= 0) return getAlerte(jours);
+  const abs = Math.abs(jours);
+  return { texte: `🔴 Retard ${abs} jour${abs > 1 ? 's' : ''}`, couleur: '#b71c1c', niveau: 'critique', banniere: 'danger' };
 };
 
-/** Retourne true si le chantier est en retard mais justifié par des imprévus. */
-export const estRetardJustifie = (chantier) => getAlerteChantier(chantier)?.niveau === 'justifie';
+export const estRetardJustifie = (chantier) => false;
 
 /**
  * Retourne le statut planning d'un chantier pour affichage sur les cartes.
@@ -123,39 +96,14 @@ export const estRetardJustifie = (chantier) => getAlerteChantier(chantier)?.nive
  *   <Badge texte={ts.label} couleur={ts.couleur} />
  */
 export const getChantierStatus = (chantier) => {
-  const { dateDebut, nombreJours, joursImprevus, inclusSamedi = false } = chantier;
-  const imprevus = parseInt(joursImprevus) || 0;
+  const { dateDebut, nombreJours, inclusSamedi = false } = chantier;
   const base = parseInt(nombreJours) || 0;
-
   if (!dateDebut || !base) return { status: 'ok', label: '–', delay: 0, couleur: '#6b7280' };
-
-  const joursBase = joursOuvrableRestants(dateDebut, base, inclusSamedi);
-  if (joursBase === null) return { status: 'ok', label: '–', delay: 0, couleur: '#6b7280' };
-
-  // Pas encore dépassé la date de fin de base → à l'heure
-  if (joursBase >= 0) {
-    return { status: 'ok', label: '🟢 À l\'heure', delay: 0, couleur: '#22c55e' };
-  }
-
-  // Dépassement de la date de fin de base
-  const abs = Math.abs(joursBase);
-
-  if (imprevus === 0) {
-    // Retard interne — aucun justificatif
-    return { status: 'danger', label: `🔴 Retard de ${abs}j`, delay: abs, couleur: '#ef4444' };
-  }
-
-  // imprevus > 0 : vérifier par rapport à la date ajustée
-  const joursAjustes = joursOuvrableRestants(dateDebut, base + imprevus, inclusSamedi);
-
-  if (joursAjustes !== null && joursAjustes >= 0) {
-    // Toujours dans la fenêtre ajustée → retard justifié, pas critique
-    return { status: 'warning', label: `🟡 Retard justifié (+${imprevus}j)`, delay: abs, couleur: '#f59e0b' };
-  }
-
-  // Dépassement même après ajustement → retard réel
-  const absReel = Math.abs(joursAjustes ?? joursBase);
-  return { status: 'danger', label: `🔴 Retard de ${absReel}j`, delay: absReel, couleur: '#ef4444' };
+  const jours = joursOuvrableRestants(dateDebut, base, inclusSamedi);
+  if (jours === null) return { status: 'ok', label: '–', delay: 0, couleur: '#6b7280' };
+  if (jours >= 0) return { status: 'ok', label: '🟢 À l\'heure', delay: 0, couleur: '#22c55e' };
+  const abs = Math.abs(jours);
+  return { status: 'danger', label: `🔴 Retard de ${abs}j`, delay: abs, couleur: '#ef4444' };
 };
 
 // ===== CALCULS FINANCIERS =====
@@ -263,12 +211,6 @@ export const calculerCoutsChantier = (chantier, employes, localites, cfg = {}, d
     console.warn('[CYNA] Incohérence coût équipe détectée', { totalLignes, coutEquipeReel });
   }
 
-  // Coût des jours imprévus = jours de dépassement × coût journalier moyen d'équipe
-  const joursImprevus = parseInt(chantier.joursImprevus) || 0;
-  const realDaysWorked = coutEquipeReelDetaille.reduce((t, m) => t + m.joursReels, 0);
-  const coutJoursImprevus = joursImprevus > 0 && realDaysWorked > 0 && coutEquipeReel > 0
-    ? joursImprevus * (coutEquipeReel / realDaysWorked) : 0;
-
   const coutImprevus = chantier.imprevus?.reduce((t, imp) => t + (parseFloat(imp.montant) || 0), 0) || 0;
   const coutMaterielPrevu = parseFloat(chantier.coutMaterielPrevu) || 0;
   const coutSousTraitancePrevu = parseFloat(chantier.coutSousTraitancePrevu) || 0;
@@ -299,7 +241,7 @@ export const calculerCoutsChantier = (chantier, employes, localites, cfg = {}, d
   const caDisponible = montantTotal !== null;
 
   const totalCoutsPrevu = coutEquipePrevu + coutMaterielPrevu + coutSousTraitancePrevu + coutDeplacement + autresCoutsPrevu;
-  const totalCoutsReel = coutEquipeReel + coutMaterielReel + coutSousTraitanceReel + coutDeplacement + coutImprevus + autresCoutsReel + coutJoursImprevus;
+  const totalCoutsReel = coutEquipeReel + coutMaterielReel + coutSousTraitanceReel + coutDeplacement + coutImprevus + autresCoutsReel;
 
   const margePrevu = caDisponible ? montantTotal - totalCoutsPrevu : null;
   const margeReel = caDisponible ? montantTotal - totalCoutsReel : null;
@@ -392,7 +334,7 @@ export const calculerCoutsChantier = (chantier, employes, localites, cfg = {}, d
     coutMaterielPrevu, coutMaterielReel, coutMaterielReelRaw,
     coutSousTraitancePrevu, coutSousTraitanceReel, coutSousTraitanceReelRaw,
     autresCoutsPrevu, autresCoutsReel, autresCoutsReelRaw,
-    coutImprevus, coutJoursImprevus, joursImprevus, totalCoutsPrevu, totalCoutsReel,
+    coutImprevus, totalCoutsPrevu, totalCoutsReel,
     montantTotal, margePrevu, margeReel,
     margePrevuPct, margeReelPct,
     coutParM2Prevu, coutParM2Reel, prixParM2Devis,

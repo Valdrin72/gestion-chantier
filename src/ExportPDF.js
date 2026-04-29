@@ -238,11 +238,8 @@ export const exportFicheChantier = async (chantier, clients, parametres, devis =
     head: [['Paramètre', 'Valeur']],
     body: [
       ['Durée prévue', `${chantier.nombreJours} jours ouvrables`],
-      ['Jours imprévus', `${chantier.joursImprevus || 0} jours`],
-      ['Durée totale', `${parseInt(chantier.nombreJours || 0) + parseInt(chantier.joursImprevus || 0)} jours`],
       ['Jours ouvrables', chantier.inclusSamedi ? 'Lundi - Samedi' : 'Lundi - Vendredi'],
       ['Avancement', `${chantier.avancement || 0}%`],
-      ['Raison imprévus', chantier.raisonImprevus || '-'],
     ],
     headStyles: { fillColor: BLEU, fontSize: 9 },
     bodyStyles: { fontSize: 9 },

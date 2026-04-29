@@ -2576,6 +2576,89 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
           </div>
         )}
 
+        {/* ═══════════════════════════════════════════════════════
+            COCKPIT — 4 indicateurs clés, lisibles en 5 secondes
+            Données sources : etat (moteur unique), couts, perf
+            ═══════════════════════════════════════════════════════ */}
+        {(() => {
+          // ── Tuile 1 : Rentabilité ───────────────────────────
+          const margeTile = (() => {
+            if (etat.projectionDisponible && etat.margeEstimeePct !== null) {
+              const v = etat.margeEstimeePct;
+              return { val: `${v >= 0 ? '+' : ''}${v.toFixed(1)}%`, label: 'Marge estimée finale', couleur: v >= 15 ? C.secondaire : v >= 5 ? C.warning : C.danger };
+            }
+            if (couts.margeReelPct !== null && etat.coutTotalReel > 0) {
+              const v = parseFloat(couts.margeReelPct);
+              return { val: `${v >= 0 ? '+' : ''}${v.toFixed(1)}%`, label: 'Marge actuelle', couleur: v >= 15 ? C.secondaire : v >= 5 ? C.warning : C.danger };
+            }
+            return devisTotal !== null
+              ? { val: '—', label: 'Saisir des heures', couleur: '#78909c' }
+              : { val: 'N/A', label: 'Aucun devis lié', couleur: '#78909c' };
+          })();
+
+          // ── Tuile 2 : Avancement ────────────────────────────
+          const avTile = {
+            val: `${etat.avancementPct}%`,
+            label: etat.totalJoursPrevus > 0
+              ? `${etat.totalJoursReels}j réalisés / ${etat.totalJoursPrevus}j prévus`
+              : 'Jours prévus non définis',
+            couleur: etat.avancementPct === 0 ? '#78909c' : perfConfig ? perfConfig.couleur : C.secondaire,
+          };
+
+          // ── Tuile 3 : Planning ──────────────────────────────
+          const joursRestants = Math.max(0, etat.totalJoursPrevus - etat.totalJoursReels);
+          const planTile = etat.totalJoursReels === 0
+            ? { val: `${etat.totalJoursPrevus}j`, label: 'Durée prévue — non démarré', couleur: '#78909c' }
+            : etat.deriveJours > 0
+              ? { val: `+${etat.deriveJours}j retard`, label: `${joursRestants}j restants estimés`, couleur: etat.deriveJours > 5 ? C.danger : C.warning }
+              : etat.deriveJours < 0
+                ? { val: `${Math.abs(etat.deriveJours)}j d'avance`, label: `${joursRestants}j restants`, couleur: C.secondaire }
+                : { val: 'Dans les temps', label: `${joursRestants}j restants`, couleur: C.secondaire };
+
+          // ── Tuile 4 : Action recommandée ────────────────────
+          const critAlert = alertesChantier.find(a => a.gravite === 'critique');
+          const actionTile = (() => {
+            if (modeChantier === 'FINAL') return { icone: '📋', val: 'Facturer', label: 'Chantier quasi terminé', couleur: C.secondaire };
+            if (critAlert)                return { icone: '🚨', val: 'Action urgente', label: critAlert.texte.length > 50 ? critAlert.texte.slice(0, 48) + '…' : critAlert.texte, couleur: C.danger };
+            if (perfReco === 'renforcer') return { icone: '🔴', val: 'Renforcer l\'équipe', label: 'Retard important — revoir planning', couleur: C.danger };
+            if (perfReco === 'ajouter')  return { icone: '🟠', val: '+1 ouvrier', label: 'Réduire le retard en cours', couleur: C.warning };
+            if (perfReco === 'surveiller') return { icone: '👁', val: 'Surveiller', label: 'Possible rattrapage sans action', couleur: C.warning };
+            if (modeChantier === 'INIT') return { icone: '▶', val: 'Saisir les heures', label: 'Aucune donnée terrain', couleur: '#78909c' };
+            return { icone: '✓', val: 'RAS', label: 'Aucune action requise', couleur: C.secondaire };
+          })();
+
+          const tiles = [
+            { id: 'renta', icone: '💰', titre: 'RENTABILITÉ', ...margeTile },
+            { id: 'av',    icone: '📊', titre: 'AVANCEMENT',  ...avTile },
+            { id: 'plan',  icone: '📅', titre: 'PLANNING',    ...planTile },
+            { id: 'act',   icone: actionTile.icone, titre: 'ACTION', val: actionTile.val, label: actionTile.label, couleur: actionTile.couleur },
+          ];
+
+          return (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 20 }}>
+              {tiles.map(t => (
+                <div key={t.id} style={{
+                  background: `linear-gradient(145deg, ${t.couleur}12 0%, rgba(255,255,255,0.02) 100%)`,
+                  border: `1px solid ${t.couleur}30`,
+                  borderTop: `3px solid ${t.couleur}`,
+                  borderRadius: 12, padding: '16px 18px',
+                  boxShadow: `0 2px 12px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.06)`,
+                }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', color: 'var(--text-muted)', marginBottom: 8 }}>
+                    {t.icone} {t.titre}
+                  </div>
+                  <div style={{ fontSize: 22, fontWeight: 900, color: t.couleur, letterSpacing: '-0.5px', lineHeight: 1.1, marginBottom: 6 }}>
+                    {t.val}
+                  </div>
+                  <div style={{ fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.35 }}>
+                    {t.label}
+                  </div>
+                </div>
+              ))}
+            </div>
+          );
+        })()}
+
         {/* ── Criticité globale ── */}
         {criticiteConfig && (
           <div style={{

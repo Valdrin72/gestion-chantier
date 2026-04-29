@@ -2816,7 +2816,7 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
             <div style={{ marginBottom: 20 }}>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 14 }}>
                 {[
-                  { label: '📄 CA signé', val: `CHF ${fmtK(devisTotal)}`, sub: sommeAvenants(c) > 0 ? `dont avenants CHF ${fmtK(sommeAvenants(c))}` : null, couleur: C.primaire },
+                  { label: '📄 CA signé', val: `CHF ${fmtK(devisTotal)}`, sub: (() => { const av = sommeAvenants(c); const rg = Array.isArray(devisSource?.heuresRegie) ? devisSource.heuresRegie.reduce((s,r) => s+(parseFloat(r.heures)||0)*(parseFloat(r.tarifHeure)||0),0) : 0; if (av > 0 && rg > 0) return `avenants ${fmtK(av)} + régie ${fmtK(rg)}`; if (av > 0) return `dont avenants CHF ${fmtK(av)}`; if (rg > 0) return `dont régie CHF ${fmtK(rg)}`; return null; })(), couleur: C.primaire },
                   { label: '🧾 Facturé', val: `CHF ${fmtK(montantFactureLie)}`, sub: `${pctFacture}% du devis`, couleur: pctFacture >= 100 ? C.secondaire : pctFacture > 0 ? C.info : '#78909c' },
                   { label: '✅ Encaissé', val: `CHF ${fmtK(montantPayeLie)}`, sub: `${pctEncaisse}% du devis`, couleur: pctEncaisse >= 100 ? C.secondaire : pctEncaisse > 0 ? C.warning : '#78909c' },
                 ].map(s => (
@@ -3830,7 +3830,7 @@ function Devis({ devis, setDevis, clients, parametres, naviguer, setChantiers, c
   const vide = {
     numero: `DEV-${new Date().getFullYear()}-00${devis.length + 1}`,
     clientId: '', date: new Date().toISOString().split('T')[0], statut: 'brouillon',
-    montantHT: '', notes: '',
+    montantHT: '', heuresRegie: [], notes: '',
   };
   const [form, setForm] = useState(vide);
 
@@ -3936,6 +3936,59 @@ function Devis({ devis, setDevis, clients, parametres, naviguer, setChantiers, c
               </div>
             )}
           </div>
+          {/* ── Heures en régie ── */}
+          <div style={{ background: 'rgba(245,158,11,0.04)', border: '1px solid rgba(245,158,11,0.2)', borderRadius: 12, padding: '20px', marginBottom: 20 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: '#f59e0b' }}>⏱ Heures en régie (CA supplémentaire)</div>
+                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>Heures facturées au temps passé — s'ajoutent au CA du devis</div>
+              </div>
+              <button
+                onClick={() => setForm({ ...form, heuresRegie: [...(form.heuresRegie || []), { id: Date.now(), description: '', heures: '', tarifHeure: '' }] })}
+                style={{ ...DS.btnGhost, fontSize: 12, padding: '5px 12px' }}
+              >+ Ajouter une ligne</button>
+            </div>
+            {(form.heuresRegie || []).length === 0 && (
+              <div style={{ fontSize: 12, color: 'var(--text-muted)', fontStyle: 'italic' }}>Aucune heure en régie — cliquez sur "Ajouter une ligne" pour en saisir.</div>
+            )}
+            {(form.heuresRegie || []).map((r, i) => (
+              <div key={r.id} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr auto', gap: 8, marginBottom: 8, alignItems: 'center' }}>
+                <input
+                  placeholder="Description (ex: Travaux imprévus toiture)"
+                  value={r.description}
+                  onChange={e => { const l = [...form.heuresRegie]; l[i] = { ...r, description: e.target.value }; setForm({ ...form, heuresRegie: l }); }}
+                  style={inputStyle}
+                />
+                <input
+                  type="number" min="0" placeholder="Heures"
+                  value={r.heures}
+                  onChange={e => { const l = [...form.heuresRegie]; l[i] = { ...r, heures: e.target.value }; setForm({ ...form, heuresRegie: l }); }}
+                  style={inputStyle}
+                />
+                <input
+                  type="number" min="0" placeholder="CHF/h"
+                  value={r.tarifHeure}
+                  onChange={e => { const l = [...form.heuresRegie]; l[i] = { ...r, tarifHeure: e.target.value }; setForm({ ...form, heuresRegie: l }); }}
+                  style={inputStyle}
+                />
+                <button
+                  onClick={() => setForm({ ...form, heuresRegie: form.heuresRegie.filter((_, j) => j !== i) })}
+                  style={{ ...DS.btnDanger, padding: '6px 10px', fontSize: 12 }}
+                >✕</button>
+              </div>
+            ))}
+            {(form.heuresRegie || []).length > 0 && (() => {
+              const totalRegie = (form.heuresRegie || []).reduce((s, r) => s + (parseFloat(r.heures) || 0) * (parseFloat(r.tarifHeure) || 0), 0);
+              const totalCA = (parseFloat(form.montantHT) || 0) + totalRegie;
+              return (
+                <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid rgba(245,158,11,0.2)', display: 'flex', gap: 24, flexWrap: 'wrap' }}>
+                  <div><span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Régie total : </span><span style={{ fontWeight: 700, color: '#f59e0b' }}>CHF {fmtN(Math.round(totalRegie))}</span></div>
+                  <div><span style={{ fontSize: 11, color: 'var(--text-muted)' }}>CA total (devis + régie) : </span><span style={{ fontWeight: 800, color: '#10b981' }}>CHF {fmtN(Math.round(totalCA))}</span></div>
+                </div>
+              );
+            })()}
+          </div>
+
           <div style={{ marginBottom: 20 }}>
             <label style={labelStyle}>📝 Notes</label>
             <textarea placeholder="Observations, conditions particulières..." value={form.notes || ''} onChange={e => setForm({ ...form, notes: e.target.value })} style={{ ...inputStyle, height: '70px', resize: 'vertical' }} />
@@ -3953,6 +4006,9 @@ function Devis({ devis, setDevis, clients, parametres, naviguer, setChantiers, c
           const client = clients.find(c => c.id === d.clientId);
           const cs = STATUTS_COULEUR[d.statut] || C.primaire;
           const montant = parseFloat(d.montantHT || d.prixPropose) || 0;
+          const totalRegie = Array.isArray(d.heuresRegie)
+            ? d.heuresRegie.reduce((s, r) => s + (parseFloat(r.heures) || 0) * (parseFloat(r.tarifHeure) || 0), 0)
+            : 0;
           const chantierLie = chantiers.find(ch => String(ch.devisId) === String(d.id));
           const isAccepte = ['accepté', 'Validé', 'Signé'].includes(d.statut);
           return (
@@ -3970,13 +4026,17 @@ function Devis({ devis, setDevis, clients, parametres, naviguer, setChantiers, c
                     {chantierLie && (
                       <span onClick={() => naviguer('chantiers', { chantierActif: chantierLie.id })} style={{ fontSize: '11px', fontWeight: 700, background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.3)', color: '#10b981', padding: '3px 10px', borderRadius: '20px', cursor: 'pointer' }}>🏗️ {chantierLie.numero} →</span>
                     )}
+                    {totalRegie > 0 && (
+                      <span style={{ fontSize: '11px', fontWeight: 700, background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.3)', color: '#f59e0b', padding: '3px 10px', borderRadius: '20px' }}>⏱ Régie +CHF {fmtN(Math.round(totalRegie))}</span>
+                    )}
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexShrink: 0 }}>
                   {montant > 0 && (
                     <div style={{ textAlign: 'right' }}>
-                      <div style={{ fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-muted)', marginBottom: '2px' }}>CA signé HT</div>
-                      <div style={{ fontWeight: 800, fontSize: '15px', color: isAccepte ? '#10b981' : 'var(--text-primary)' }}>CHF {fmtN(montant)}</div>
+                      <div style={{ fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-muted)', marginBottom: '2px' }}>{totalRegie > 0 ? 'CA total HT' : 'CA signé HT'}</div>
+                      <div style={{ fontWeight: 800, fontSize: '15px', color: isAccepte ? '#10b981' : 'var(--text-primary)' }}>CHF {fmtN(montant + totalRegie)}</div>
+                      {totalRegie > 0 && <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>dont CHF {fmtN(Math.round(totalRegie))} régie</div>}
                     </div>
                   )}
                   <Badge texte={d.statut} couleur={cs} />

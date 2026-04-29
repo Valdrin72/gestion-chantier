@@ -168,20 +168,33 @@ export const sommeAvenants = (chantier) =>
     ? chantier.avenants.reduce((s, a) => s + (parseFloat(a.montant) || 0), 0)
     : (parseFloat(chantier.avenants) || 0);
 
+/**
+ * Retourne le CA généré par les heures en régie d'un devis.
+ * Structure : devis.heuresRegie = [{ id, description, heures, tarifHeure }]
+ * Les heures en régie sont du CA supplémentaire attaché au devis (pas au chantier).
+ */
+export const sommeHeuresRegie = (devis) =>
+  Array.isArray(devis?.heuresRegie)
+    ? devis.heuresRegie.reduce((s, r) => s + (parseFloat(r.heures) || 0) * (parseFloat(r.tarifHeure) || 0), 0)
+    : 0;
+
 /** Retourne true si le chantier est actif — comparaison insensible à la casse et aux espaces. */
 export const isChantierActif = (c) => c?.statut?.trim().toLowerCase() === 'en cours';
 
 /**
- * Chiffre d'affaires = montantHT du devis accepté lié + somme avenants.
+ * Chiffre d'affaires = montantHT du devis accepté lié + avenants (chantier) + heures en régie (devis).
  * Retourne null si aucun devis lié — aucun fallback autorisé.
+ *
+ * Séparation claire :
+ *   - avenants  → stockés sur le chantier (travaux supplémentaires négociés)
+ *   - heuresRegie → stockées sur le devis  (heures facturées au temps passé)
  */
 export const calculerCA = (chantier, devisList = []) => {
   if (!chantier.devisId) return null;
   const devisLie = devisList.find(d => String(d.id) === String(chantier.devisId));
   if (!devisLie) return null;
-  // montantHT = champ courant ; prixPropose = rétrocompat anciens devis
   const montantBase = parseFloat(devisLie.montantHT || devisLie.prixPropose) || 0;
-  return montantBase + sommeAvenants(chantier);
+  return montantBase + sommeAvenants(chantier) + sommeHeuresRegie(devisLie);
 };
 
 /**
@@ -876,6 +889,7 @@ export const donneesInitiales = {
       margeCible: 25,
       montantHT: 52000,
       prixPropose: 52000,
+      heuresRegie: [],
       notes: '',
     },
   ],

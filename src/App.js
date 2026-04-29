@@ -2299,7 +2299,7 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
 
   const vide = {
     numero: `CH-${new Date().getFullYear()}-00${chantiers.length + 1}`, nom: '', clientId: '', conducteur: '', directeurTravauxId: '', adresse: '', ville: '', canton: '',
-    dateDebut: '', nombreJours: '', joursRealises: '', inclusSamedi: false, joursImprevus: 0, raisonImprevus: '',
+    dateDebut: '', nombreJours: '', nombrePersonnes: '', joursRealises: '', inclusSamedi: false, joursImprevus: 0, raisonImprevus: '',
     statut: 'En cours', priorite: 'Normale', avancement: 0, typesTravaux: [], surface: '',
     montantDevis: '', avenants: [], montantFacture: 0, equipe: [], employes: [],
     coutMaterielPrevu: '', materielReel: '', coutSousTraitancePrevu: '', sousTraitanceReelle: '',
@@ -3160,10 +3160,17 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
           </div>
 
           {/* Calendrier */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '15px', marginBottom: '15px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '15px', marginBottom: '15px' }}>
             <div><label style={{ ...labelStyle, display: 'flex', alignItems: 'center', gap: '8px' }}>
               <input type="checkbox" checked={form.inclusSamedi || false} onChange={e => setForm({ ...form, inclusSamedi: e.target.checked })} />
               Inclure le samedi</label></div>
+            <div>
+              <label style={labelStyle}>👥 Personnes prévues</label>
+              <input type="number" min="1" placeholder="Ex: 3"
+                value={form.nombrePersonnes || ''}
+                onChange={e => setForm({ ...form, nombrePersonnes: e.target.value })}
+                style={inputStyle} />
+            </div>
             <div><label style={labelStyle}>⚠️ Jours imprévus</label>
               <input type="number" placeholder="0" value={form.joursImprevus || 0} onChange={e => setForm({ ...form, joursImprevus: parseInt(e.target.value) || 0 })} style={inputStyle} /></div>
             <div><label style={labelStyle}>📝 Raison imprévu</label>
@@ -3171,9 +3178,20 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
           </div>
           {form.dateDebut && form.nombreJours && (
             <div style={{ background: 'rgba(59,130,246,0.07)', border: '1px solid rgba(59,130,246,0.18)', padding: '14px 18px', borderRadius: '12px', marginBottom: '15px' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: form.nombrePersonnes > 0 ? '1fr 1fr 1fr' : '1fr 1fr', gap: '15px' }}>
                 <div><div style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px', color: 'var(--text-muted)', marginBottom: '4px' }}>Date de fin prévue</div>
                   <div style={{ fontWeight: 700, color: C.primaire, fontSize: '15px' }}>{calculerDateFinOuvrables(form.dateDebut, form.nombreJours, form.inclusSamedi)}</div></div>
+                {parseInt(form.nombrePersonnes) > 0 && (
+                  <div>
+                    <div style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px', color: 'var(--text-muted)', marginBottom: '4px' }}>Charge estimée</div>
+                    <div style={{ fontWeight: 800, color: '#f59e0b', fontSize: '15px' }}>
+                      {parseInt(form.nombreJours) * parseInt(form.nombrePersonnes)} jours-homme
+                    </div>
+                    <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 2 }}>
+                      {form.nombreJours}j × {form.nombrePersonnes} pers.
+                    </div>
+                  </div>
+                )}
                 {form.joursImprevus > 0 && <div><div style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px', color: 'var(--text-muted)', marginBottom: '4px' }}>Avec imprévus</div>
                   <div style={{ fontWeight: 700, color: C.warning, fontSize: '15px' }}>{calculerDateFinOuvrables(form.dateDebut, totalJours(form), form.inclusSamedi)}</div></div>}
               </div>

@@ -2285,7 +2285,6 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
   const [panelSaisieHeures, setPanelSaisieHeures] = useState(false);
   const [chantierSaisieId, setChantierSaisieId] = useState(null);
   const [dateSaisie, setDateSaisie] = useState(() => new Date().toISOString().split('T')[0]);
-  const [avenant, setAvenant] = useState({ montant: '', date: new Date().toISOString().split('T')[0], description: '' });
   const [simulations, setSimulations] = useState({});
   const [justSimulatedId, setJustSimulatedId] = useState(null);
 
@@ -3115,7 +3114,7 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
             </div>
           </div>
 
-          {/* Données financières — CA & avenants */}
+          {/* Budget prévisionnel */}
           <div style={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', color: 'var(--text-muted)', marginBottom: '12px' }}>Budget prévisionnel</div>
 
           {/* Sélecteur de devis accepté — OBLIGATOIRE */}
@@ -3123,8 +3122,10 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
             const devisAcceptes = devis.filter(d => ['accepté', 'Validé', 'Signé'].includes(d.statut));
             const devisLie = devis.find(d => d.id === form.devisId);
             const caBase = parseFloat(devisLie?.montantHT) || 0;
-            const caAvenants = sommeAvenants(form);
-            const caTotal = caBase + caAvenants;
+            const caRegie = Array.isArray(devisLie?.heuresRegie)
+              ? devisLie.heuresRegie.reduce((s, r) => s + (parseFloat(r.heures) || 0) * (parseFloat(r.tarifHeure) || 0), 0)
+              : 0;
+            const caTotal = caBase + caRegie;
             const hasError = erreurs.devisId || !form.devisId;
             return (
               <>
@@ -3158,15 +3159,17 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
 
                 {/* CA — read-only depuis devis signé */}
                 {devisLie ? (
-                  <div style={{ background: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.2)', borderRadius: 12, padding: '14px 18px', marginBottom: 16, display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+                  <div style={{ background: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.2)', borderRadius: 12, padding: '14px 18px', marginBottom: 16, display: 'grid', gridTemplateColumns: caRegie > 0 ? '1fr 1fr 1fr' : '1fr 1fr', gap: 12 }}>
                     <div>
                       <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px', color: 'var(--text-muted)', marginBottom: 3 }}>CA devis</div>
                       <div style={{ fontSize: 17, fontWeight: 800, color: '#10b981' }}>CHF {fmtN(caBase)}</div>
                     </div>
-                    <div>
-                      <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px', color: 'var(--text-muted)', marginBottom: 3 }}>Avenants</div>
-                      <div style={{ fontSize: 17, fontWeight: 800, color: caAvenants > 0 ? C.violet : 'var(--text-muted)' }}>CHF {fmtN(caAvenants)}</div>
-                    </div>
+                    {caRegie > 0 && (
+                      <div>
+                        <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px', color: 'var(--text-muted)', marginBottom: 3 }}>Régie</div>
+                        <div style={{ fontSize: 17, fontWeight: 800, color: '#f59e0b' }}>+CHF {fmtN(Math.round(caRegie))}</div>
+                      </div>
+                    )}
                     <div>
                       <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px', color: 'var(--text-muted)', marginBottom: 3 }}>CA total</div>
                       <div style={{ fontSize: 17, fontWeight: 800, color: '#10b981' }}>CHF {fmtN(caTotal)}</div>
@@ -3193,37 +3196,6 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
                   style={inputStyle} /></div>
             ))}
           </div>
-          {/* Avenants */}
-          <div style={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', color: C.violet, marginBottom: '8px' }}>Avenants</div>
-          {(Array.isArray(form.avenants) ? form.avenants : []).length > 0 && (
-            <table className="table-cards" style={{ width: '100%', marginBottom: '10px' }}>
-              <thead><tr>{['Description', 'Date', 'Montant (CHF)', ''].map(h => <th key={h} style={thStyle}>{h}</th>)}</tr></thead>
-              <tbody>
-                {(form.avenants || []).map((av, i) => (
-                  <tr key={`av-${av.date}-${av.montant}-${i}`}>
-                    <td style={tdStyle}>{av.description}</td>
-                    <td style={tdStyle}>{av.date}</td>
-                    <td style={tdStyle}>CHF {fmtN(av.montant)}</td>
-                    <td style={tdStyle}><button onClick={() => setForm({ ...form, avenants: form.avenants.filter((_, idx) => idx !== i) })} style={btnDanger}><Trash2 size={13} /> Supprimer</button></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: '10px', alignItems: 'end', marginBottom: '20px' }}>
-            <div><label style={labelStyle}>Description avenant</label>
-              <input placeholder="Ex: Travaux supplémentaires" value={avenant.description} onChange={e => setAvenant({ ...avenant, description: e.target.value })} style={inputStyle} /></div>
-            <div><label style={labelStyle}>Date</label>
-              <input type="date" value={avenant.date} onChange={e => setAvenant({ ...avenant, date: e.target.value })} style={inputStyle} /></div>
-            <div><label style={labelStyle}>Montant (CHF)</label>
-              <input type="text" inputMode="numeric" placeholder="1'500" value={avenant.montant ? fmtN(avenant.montant) : ''} onChange={e => { const raw = e.target.value.replace(/'/g, '').replace(/[^0-9.]/g, ''); setAvenant({ ...avenant, montant: raw }); }} style={inputStyle} /></div>
-            <button onClick={() => {
-              if (!avenant.montant || !avenant.description) return;
-              setForm({ ...form, avenants: [...(Array.isArray(form.avenants) ? form.avenants : []), { ...avenant }] });
-              setAvenant({ montant: '', date: new Date().toISOString().split('T')[0], description: '' });
-            }} style={{ ...btnSucces, padding: '10px 15px' }}>+ Ajouter</button>
-          </div>
-
           {/* Équipe prévue */}
           <div style={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', color: 'var(--text-muted)', marginBottom: '12px' }}>Équipe prévue</div>
           {form.equipe.length > 0 && (

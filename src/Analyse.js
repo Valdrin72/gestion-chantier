@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { C, fmtN, calculerCoutsChantier, calculerCA, statutRentabilite, isChantierActif } from './donnees';
+import { C, fmtN, calculerCoutsChantier, calculerCA, statutRentabilite, isChantierActif, heuresEmploye } from './donnees';
 import { DS } from './ds';
 
 const carteStyle = DS.card;
@@ -79,16 +79,17 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
 
   // ===== DONNÉES PAR EMPLOYÉ =====
   const donneesEmployes = parametres.employes.map(emp => {
+    // Source unique : journal (cohérent avec calculerCoutsChantier)
     const joursTotal = chantiers.reduce((t, c) => {
-      const m = c.equipe?.find(m => parseInt(m.employeId) === emp.id);
-      return t + (m ? parseFloat(m.joursRealises) || parseFloat(m.joursPlannifies) || 0 : 0);
+      const heures = heuresEmploye(c.journal || [], emp.id);
+      return t + heures / 8;
     }, 0);
     const heuresTotal = joursTotal * 8;
     const coutTotal = joursTotal * emp.tarifJour;
     const caGenere = chantiers.reduce((t, c) => {
-      const m = c.equipe?.find(m => parseInt(m.employeId) === emp.id);
-      if (!m) return t;
-      const pctJours = joursTotal > 0 ? (parseFloat(m.joursRealises) || parseFloat(m.joursPlannifies) || 0) / joursTotal : 0;
+      const heures = heuresEmploye(c.journal || [], emp.id);
+      if (heures === 0) return t;
+      const pctJours = joursTotal > 0 ? (heures / 8) / joursTotal : 0;
       const ca = calculerCA(c, devis);
       return ca !== null ? t + (ca * pctJours) : t;
     }, 0);

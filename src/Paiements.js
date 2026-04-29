@@ -16,27 +16,30 @@ export default function Paiements({ chantiers, clients, paiementsData, setPaieme
 
   const getMontantTotal = (chantier) => (parseFloat(chantier.montantDevis) || 0) + (parseFloat(chantier.avenants) || 0);
 
+  const isPaye = (p) => ['Payé','payé','payee','Payee'].includes(p.statut);
+  const isAttente = (p) => ['En attente','en attente','envoyee','partielle','retard'].includes(p.statut);
+
   const getMontantPaye = (chantierId) => {
-    return getPaiements(chantierId).filter(p => p.statut === 'Payé').reduce((t, p) => t + (parseFloat(p.montant) || 0), 0);
+    return getPaiements(chantierId).filter(isPaye).reduce((t, p) => t + (parseFloat(p.montant) || 0), 0);
   };
 
   const getMontantEnAttente = (chantierId) => {
-    return getPaiements(chantierId).filter(p => p.statut === 'En attente').reduce((t, p) => t + (parseFloat(p.montant) || 0), 0);
+    return getPaiements(chantierId).filter(isAttente).reduce((t, p) => t + (parseFloat(p.montant) || 0), 0);
   };
 
   const getMontantEnRetard = (chantierId) => {
     const today = new Date();
-    return getPaiements(chantierId).filter(p => p.statut === 'En attente' && new Date(p.dateEcheance) < today).reduce((t, p) => t + (parseFloat(p.montant) || 0), 0);
+    return getPaiements(chantierId).filter(p => isAttente(p) && new Date(p.dateEcheance) < today).reduce((t, p) => t + (parseFloat(p.montant) || 0), 0);
   };
 
   const estEnRetard = (paiement) => {
-    return paiement.statut === 'En attente' && new Date(paiement.dateEcheance) < new Date();
+    return isAttente(paiement) && new Date(paiement.dateEcheance) < new Date();
   };
 
   const couleurStatut = (statut, enRetard) => {
     if (enRetard) return '#ef4444';
-    if (statut === 'Payé') return '#10b981';
-    if (statut === 'En attente') return '#f59e0b';
+    if (isPaye({ statut })) return '#10b981';
+    if (isAttente({ statut })) return '#f59e0b';
     return '#3b82f6';
   };
 
@@ -215,7 +218,7 @@ export default function Paiements({ chantiers, clients, paiementsData, setPaieme
                     {/* Icône + type */}
                     <div style={{ flexShrink: 0 }}>
                       <div style={{ width: 40, height: 40, borderRadius: '10px', background: couleur + '22', border: `1px solid ${couleur}44`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>
-                        {p.statut === 'Payé' ? '✅' : retard ? '⚠️' : '💳'}
+                        {isPaye(p) ? '✅' : retard ? '⚠️' : '💳'}
                       </div>
                     </div>
                     {/* Type */}
@@ -252,13 +255,13 @@ export default function Paiements({ chantiers, clients, paiementsData, setPaieme
                     </div>
                     {/* Actions */}
                     <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
-                      {p.statut !== 'Payé' && (
+                      {!isPaye(p) && (
                         <button onClick={() => modifierStatut(c.id, p.id, 'Payé')}
                           style={{ ...DS.btnPrimary, padding: '6px 12px', fontSize: '12px' }}>
                           ✅ Payé
                         </button>
                       )}
-                      {p.statut === 'Payé' && (
+                      {isPaye(p) && (
                         <button onClick={() => modifierStatut(c.id, p.id, 'En attente')}
                           style={{ ...DS.btnWarning, padding: '6px 12px', fontSize: '12px' }}>
                           ↩️ Annuler

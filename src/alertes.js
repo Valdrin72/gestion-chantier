@@ -139,7 +139,7 @@ export function calculerAlertes({ chantiers = [], devis = [], factures = [], pai
     Object.values(paiements).forEach(liste => {
       if (!Array.isArray(liste)) return;
       liste.forEach(p => {
-        if (p.statut === 'En attente') {
+        if (['En attente','en attente','envoyee','partielle','retard'].includes(p.statut)) {
           const dateRef = new Date(p.dateEcheance || p.date || 0);
           const joursAttente = Math.floor((now - dateRef) / 86400000);
           if (joursAttente > 30) {

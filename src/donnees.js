@@ -534,8 +534,9 @@ export const calculerRentabiliteReelle = (chantier, parametres, devisList = []) 
   const joursPrevu    = parseInt(chantier.nombreJours) || 0;
   const joursRealises = etat.totalJoursReels;
   const joursRestants = joursPrevu - joursRealises;
-  const enDepassement = joursRealises > 0 && joursRealises > joursPrevu;
-  const enAvance      = joursRealises > 0 && joursRealises < joursPrevu;
+  const joursCalendaireRestants = joursOuvrableRestants(chantier.dateDebut, joursPrevu, chantier.inclusSamedi);
+  const enDepassement = joursCalendaireRestants !== null && joursCalendaireRestants < 0;
+  const enAvance      = false; // "avance" calendaire n'existe pas — travailler moins que prévu = travail restant
   const aucuneSaisie  = joursRealises === 0;
 
   const coutMOReel   = etat.coutMOReel;

@@ -1716,7 +1716,7 @@ function renderTerrainVelocity(c, etat) {
   const graviteConfig = {
     critique:  { icone: '🔴', couleur: C.danger,     titre: `+${v.retardEstime} jours de retard — action nécessaire` },
     attention: { icone: '🟠', couleur: C.warning,    titre: `+${v.retardEstime} jour${v.retardEstime > 1 ? 's' : ''} de retard — action recommandée` },
-    ok:        { icone: '🟢', couleur: C.secondaire, titre: v.retardEstime < 0 ? `${Math.abs(v.retardEstime)} j d'avance — bonne cadence` : 'Dans les temps' },
+    ok:        { icone: '🟢', couleur: C.secondaire, titre: 'Dans les temps' },
   }[gravite];
   let reco = null;
   let impact = null;
@@ -1874,9 +1874,7 @@ function renderRentabiliteJours(c, etat, parametres, devis, naviguer, fmtN, fmtK
     ? 'Pas de données'
     : rj.enDepassement
       ? 'Dépassement'
-      : rj.enAvance
-        ? 'En avance'
-        : 'Dans les délais';
+      : 'En cours';
 
   const couleurRenta = statutRentabilite(rj.rentabilitePct).couleur;
 

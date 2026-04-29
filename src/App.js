@@ -1859,8 +1859,27 @@ function renderEcartTable(couts, fmtN) {
 }
 
 // ── Rentabilité par jours réalisés ──────────────────────────────────────────
-function renderRentabiliteJours(c, etat, parametres, devis, naviguer, fmtN, fmtK) {
-  const rj = calculerRentabiliteReelle(c, parametres, devis);
+function renderRentabiliteJours(c, etat, couts, naviguer, fmtN, fmtK) {
+  const joursPrevu = etat.totalJoursPrevus;
+  const joursRealises = etat.totalJoursReels;
+  const joursCalRestants = joursOuvrableRestants(c.dateDebut, joursPrevu, c.inclusSamedi);
+  const rj = {
+    joursPrevu,
+    joursRealises,
+    joursRestants: joursPrevu - joursRealises,
+    enDepassement: joursCalRestants !== null && joursCalRestants < 0,
+    enAvance: false,
+    aucuneSaisie: joursRealises === 0,
+    coutMOPrevu: couts.coutEquipePrevu,
+    coutMOReel:  couts.coutEquipeReel,
+    autresCouts: (couts.coutMaterielReel || 0) + (couts.coutSousTraitanceReel || 0) + (couts.autresCoutsReel || 0),
+    montantDevis: couts.montantTotal,
+    totalCoutsReel: Math.round(couts.totalCoutsReel || 0),
+    rentabilite: couts.margeReel !== null ? Math.round(couts.margeReel) : null,
+    rentabilitePct: couts.margeReelPct !== null ? parseFloat(parseFloat(couts.margeReelPct).toFixed(1)) : null,
+    rentabiliteProjetee: etat.projectionDisponible && etat.margeEstimee !== null ? Math.round(etat.margeEstimee) : null,
+    rentabiliteProjetee_Pct: etat.projectionDisponible ? etat.margeEstimeePct : null,
+  };
 
   const couleurStatutJours = rj.aucuneSaisie
     ? 'var(--text-muted)'
@@ -2305,6 +2324,17 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
     return liste;
   }, [chantiers, filtre, contexte]);
 
+  // Calculs lourds du chantier sélectionné — mis en cache pour éviter les recalculs sur chaque re-render
+  const etatSelected = useMemo(() => {
+    if (!selected) return null;
+    return calculerEtatChantier(selected, parametres.employes, devis);
+  }, [selected, parametres.employes, devis]);
+
+  const coutsSelected = useMemo(() => {
+    if (!selected) return null;
+    return calculerCoutsChantier(selected, parametres.employes, parametres.localites, parametres.parametres, devis);
+  }, [selected, parametres.employes, parametres.localites, parametres.parametres, devis]);
+
 
   // Cache des jours restants pour tous les chantiers filtrés — évite les recalculs dans le render
   const joursParChantier = useMemo(() => {
@@ -2391,12 +2421,11 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
 
   if (vue === 'detail' && selected) {
     const c = selected;
-    // ══ MOTEUR UNIQUE — source de vérité ════════════════════════════════
-    const etat = calculerEtatChantier(c, parametres.employes, devis);
-    assertEtatValide(etat);                      // types / NaN
-    const coherenceDetail = assertEtatCoherent(etat); // cohérence métier — { ok, critique, warnings }
-    // calculerCoutsChantier conservé uniquement pour KPIs budgétaires comparatifs
-    const couts = calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis);
+    // ══ MOTEUR UNIQUE — source de vérité (memoïsé en amont) ═════════════
+    const etat = etatSelected;
+    assertEtatValide(etat);
+    const coherenceDetail = assertEtatCoherent(etat);
+    const couts = coutsSelected;
     const j = joursOuvrableRestants(c.dateDebut, c.nombreJours, c.inclusSamedi);
 
     const modeChantier = etat.avancementPct === 0 ? 'INIT'
@@ -3054,7 +3083,7 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
         </div>
 
         {/* ── Rentabilité par jours (logique métier BTP) ── */}
-        {renderRentabiliteJours(c, etat, parametres, devis, naviguer, fmtN, fmtK)}
+        {renderRentabiliteJours(c, etat, couts, naviguer, fmtN, fmtK)}
 
 
       </div>

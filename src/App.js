@@ -2397,6 +2397,7 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
     const coherenceDetail = assertEtatCoherent(etat); // cohérence métier — { ok, critique, warnings }
     // calculerCoutsChantier conservé uniquement pour KPIs budgétaires comparatifs
     const couts = calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis);
+    const j = joursOuvrableRestants(c.dateDebut, c.nombreJours, c.inclusSamedi);
 
     const modeChantier = etat.avancementPct === 0 ? 'INIT'
       : etat.avancementPct >= 95 ? 'FINAL'
@@ -2467,7 +2468,6 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
         ? { icone: '⚠️', label: 'Chantier à risque — à traiter aujourd\'hui', couleur: C.warning, fond: 'radial-gradient(ellipse at 6% 50%, rgba(245,158,11,0.13) 0%, rgba(245,158,11,0.04) 100%)' }
         : null;
 
-    const j = joursOuvrableRestants(c.dateDebut, c.nombreJours, c.inclusSamedi);
     const al = getAlerteChantier(c);
     const client = clients.find(cl => cl.id === c.clientId);
     const directeurTravaux = c.directeurTravauxId ? parametres.employes.find(e => e.id === parseInt(c.directeurTravauxId)) : null;

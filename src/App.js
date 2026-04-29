@@ -2446,14 +2446,17 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
           : { icone: '❌', texte: 'Insuffisant — revoir le planning ou ajouter plus de ressources', couleur: C.danger };
       return { texte, conclusion };
     })();
-    const perfMessageCourt = perfRatio === null ? ''
-      : etat.deriveJours > 0 && perfRatio > 1.1
-        ? `+${etat.deriveJours} jour${etat.deriveJours > 1 ? 's' : ''} de retard — action nécessaire`
-        : etat.deriveJours > 0
-          ? `+${etat.deriveJours} jour${etat.deriveJours > 1 ? 's' : ''} — surveiller`
-          : etat.deriveJours < 0
-            ? `+${Math.abs(etat.deriveJours)} jour${Math.abs(etat.deriveJours) > 1 ? 's' : ''} d'avance`
-            : 'Chantier dans les temps';
+    const perfMessageCourt = (() => {
+      if (j === null || !c.dateDebut) return '';
+      if (j < 0) {
+        const r = Math.abs(j);
+        return perfRatio !== null && perfRatio > 1.1
+          ? `+${r}j de retard — action nécessaire`
+          : `+${r}j de retard — surveiller`;
+      }
+      if (j === 0) return 'Dernier jour prévu';
+      return `${j}j restants`;
+    })();
     const perfDetail = `${etat.totalJoursReels} j réalisés sur ${etat.totalJoursPrevus} j prévus`;
 
     // ── Score de criticité (depuis moteur) ───────────────────────────────
@@ -2592,15 +2595,22 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
             couleur: etat.avancementPct === 0 ? '#78909c' : perfConfig ? perfConfig.couleur : C.secondaire,
           };
 
-          // ── Tuile 3 : Planning ──────────────────────────────
-          const joursRestants = Math.max(0, etat.totalJoursPrevus - etat.totalJoursReels);
-          const planTile = etat.totalJoursReels === 0
-            ? { val: `${etat.totalJoursPrevus}j`, label: 'Durée prévue — non démarré', couleur: '#78909c' }
-            : etat.deriveJours > 0
-              ? { val: `+${etat.deriveJours}j retard`, label: `${joursRestants}j restants estimés`, couleur: etat.deriveJours > 5 ? C.danger : C.warning }
-              : etat.deriveJours < 0
-                ? { val: `${Math.abs(etat.deriveJours)}j d'avance`, label: `${joursRestants}j restants`, couleur: C.secondaire }
-                : { val: 'Dans les temps', label: `${joursRestants}j restants`, couleur: C.secondaire };
+          // ── Tuile 3 : Planning (calendaire uniquement) ──────────
+          const joursCalendaire = joursOuvrableRestants(c.dateDebut, c.nombreJours, c.inclusSamedi);
+          const planTile = (() => {
+            if (!c.dateDebut || !c.nombreJours)
+              return { val: '—', label: 'Pas de dates définies', couleur: '#78909c' };
+            if (joursCalendaire === null)
+              return { val: '—', label: 'Calcul impossible', couleur: '#78909c' };
+            if (etat.totalJoursReels === 0)
+              return { val: `${c.nombreJours}j`, label: 'Durée prévue — non démarré', couleur: '#78909c' };
+            if (joursCalendaire > 0)
+              return { val: `${joursCalendaire}j restants`, label: `${etat.avancementPct}% réalisé`, couleur: C.secondaire };
+            if (joursCalendaire === 0)
+              return { val: 'Dernier jour', label: `${etat.avancementPct}% réalisé`, couleur: C.warning };
+            const retard = Math.abs(joursCalendaire);
+            return { val: `+${retard}j de retard`, label: `${etat.avancementPct}% réalisé`, couleur: retard > 5 ? C.danger : C.warning };
+          })();
 
           // ── Tuile 4 : Action recommandée ────────────────────
           const critAlert = alertesChantier.find(a => a.gravite === 'critique');

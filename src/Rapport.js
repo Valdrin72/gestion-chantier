@@ -46,15 +46,17 @@ export default function Rapport({ chantiers, clients, devis = [], parametres, pa
   const caTotal = chantiers.filter(c => calculerCA(c, devis) !== null).reduce((t, c) => t + calculerCA(c, devis), 0);
 
   const getPaiements = (chantierId) => paiementsData[chantierId] || [];
+  const isPaye = (p) => ['Payé','payé','payee','Payee'].includes(p.statut);
+  const isAttente = (p) => ['En attente','en attente','envoyee','partielle','retard'].includes(p.statut);
   const totalPaiementsRecus = chantiers.reduce((t, c) => {
-    return t + getPaiements(c.id).filter(p => p.statut === 'Payé').reduce((s, p) => s + (parseFloat(p.montant) || 0), 0);
+    return t + getPaiements(c.id).filter(isPaye).reduce((s, p) => s + (parseFloat(p.montant) || 0), 0);
   }, 0);
   const totalPaiementsAttente = chantiers.reduce((t, c) => {
-    return t + getPaiements(c.id).filter(p => p.statut === 'En attente').reduce((s, p) => s + (parseFloat(p.montant) || 0), 0);
+    return t + getPaiements(c.id).filter(isAttente).reduce((s, p) => s + (parseFloat(p.montant) || 0), 0);
   }, 0);
   const totalPaiementsRetard = chantiers.reduce((t, c) => {
     const today = new Date();
-    return t + getPaiements(c.id).filter(p => p.statut === 'En attente' && new Date(p.dateEcheance) < today).reduce((s, p) => s + (parseFloat(p.montant) || 0), 0);
+    return t + getPaiements(c.id).filter(p => isAttente(p) && new Date(p.dateEcheance) < today).reduce((s, p) => s + (parseFloat(p.montant) || 0), 0);
   }, 0);
 
   const getScoreQualite = (chantierId) => {
@@ -202,7 +204,7 @@ export default function Rapport({ chantiers, clients, devis = [], parametres, pa
             <div style={{ fontSize: '12px', fontWeight: 700, color: '#ef4444', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: 8 }}>Paiements en retard à relancer</div>
             {chantiers.map(c => {
               const today = new Date();
-              const retards = getPaiements(c.id).filter(p => p.statut === 'En attente' && new Date(p.dateEcheance) < today);
+              const retards = getPaiements(c.id).filter(p => isAttente(p) && new Date(p.dateEcheance) < today);
               if (retards.length === 0) return null;
               const client = clients.find(cl => cl.id === c.clientId);
               return (

@@ -84,7 +84,7 @@ export default function Planning({ chantiers, setChantiers, clients, naviguer })
   const chantiersDuMois = useMemo(() => chantiers.filter(c => {
     if (!c.dateDebut || !c.nombreJours) return false;
     const debut = new Date(c.dateDebut);
-    const fin = new Date(calculerDateFinOuvrables(c.dateDebut, c.nombreJours, c.inclusSamedi));
+    const fin = new Date(calculerDateFinOuvrables(c.dateDebut, (c.nombreJours || 0) + (parseInt(c.joursImprevus) || 0), c.inclusSamedi));
     const debutMois = new Date(anneeActuelle, moisActuel, 1);
     const finMois = new Date(anneeActuelle, moisActuel + 1, 0);
     return debut <= finMois && fin >= debutMois;
@@ -97,7 +97,7 @@ export default function Planning({ chantiers, setChantiers, clients, naviguer })
 
   const getPositionChantier = useCallback((chantier) => {
     const debut = new Date(chantier.dateDebut);
-    const fin = new Date(calculerDateFinOuvrables(chantier.dateDebut, chantier.nombreJours, chantier.inclusSamedi));
+    const fin = new Date(calculerDateFinOuvrables(chantier.dateDebut, (chantier.nombreJours || 0) + (parseInt(chantier.joursImprevus) || 0), chantier.inclusSamedi));
     const debutMois = new Date(anneeActuelle, moisActuel, 1);
     const finMois = new Date(anneeActuelle, moisActuel + 1, 0);
     const debutVisible = debut < debutMois ? debutMois : debut;
@@ -130,7 +130,7 @@ export default function Planning({ chantiers, setChantiers, clients, naviguer })
       map[jour] = chantiers.filter(c => {
         if (!c.dateDebut || !c.nombreJours) return false;
         const debut = new Date(c.dateDebut);
-        const fin = new Date(calculerDateFinOuvrables(c.dateDebut, c.nombreJours, c.inclusSamedi));
+        const fin = new Date(calculerDateFinOuvrables(c.dateDebut, (c.nombreJours || 0) + (parseInt(c.joursImprevus) || 0), c.inclusSamedi));
         return date >= debut && date <= fin;
       });
     });
@@ -378,7 +378,7 @@ export default function Planning({ chantiers, setChantiers, clients, naviguer })
                       <td style={{ padding: '10px 15px', color: 'var(--text-primary)' }}><strong>{c.nom}</strong><div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>{c.numero}</div></td>
                       <td style={{ padding: '10px 15px', color: 'var(--text-primary)' }}>{client?.entreprise || '-'}</td>
                       <td style={{ padding: '10px 15px', color: 'var(--text-primary)' }}>{c.dateDebut}</td>
-                      <td style={{ padding: '10px 15px', color: 'var(--text-primary)' }}>{calculerDateFinOuvrables(c.dateDebut, c.nombreJours, c.inclusSamedi)}</td>
+                      <td style={{ padding: '10px 15px', color: 'var(--text-primary)' }}>{calculerDateFinOuvrables(c.dateDebut, (c.nombreJours || 0) + (parseInt(c.joursImprevus) || 0), c.inclusSamedi)}</td>
                       <td style={{ padding: '10px 15px', color: 'var(--text-primary)' }}>{c.nombreJours}j {c.joursImprevus > 0 && <span style={{ color: C.warning }}>+{c.joursImprevus}j</span>}</td>
                       <td style={{ padding: '10px 15px' }}>
                         <span style={{ background: couleurStatut(c.statut) + '18', color: couleurStatut(c.statut), padding: '3px 10px', borderRadius: '12px', fontSize: '12px', fontWeight: 600 }}>{c.statut}</span>
@@ -464,7 +464,7 @@ export default function Planning({ chantiers, setChantiers, clients, naviguer })
                 style={{ ...DS.input, width: '100%' }} />
               {modal.form.dateDebut && modal.form.nombreJours && (
                 <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 6 }}>
-                  Fin prévue : <strong style={{ color: 'var(--text-primary)' }}>{calculerDateFinOuvrables(modal.form.dateDebut, modal.form.nombreJours, modal.form.inclusSamedi)}</strong>
+                  Fin prévue : <strong style={{ color: 'var(--text-primary)' }}>{calculerDateFinOuvrables(modal.form.dateDebut, (modal.form.nombreJours || 0) + (parseInt(modal.form.joursImprevus) || 0), modal.form.inclusSamedi)}</strong>
                 </div>
               )}
             </div>

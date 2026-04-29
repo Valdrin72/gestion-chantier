@@ -144,6 +144,11 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
     const f = paiementModal;
     const montant = parseFloat(paiementForm.montant) || 0;
     if (montant <= 0) return;
+    const restantDu = (f.montantTTC ?? 0) - (f.montantPaye ?? 0);
+    if (montant > restantDu + 0.01) {
+      alert(`Montant trop élevé. Solde restant : CHF ${restantDu.toFixed(2)}`);
+      return;
+    }
 
     // 1. Ajouter dans paiementsData (clé = chantierId ou 'misc')
     if (setPaiementsData) {

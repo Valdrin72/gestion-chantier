@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { C, fmtN, sommeAvenants } from './donnees';
+import { fmtN, sommeAvenants } from './donnees';
 import { DS } from './ds';
 
 const carteStyle = DS.card;

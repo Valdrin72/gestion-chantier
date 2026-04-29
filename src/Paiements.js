@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { C, fmtN } from './donnees';
+import { C, fmtN, sommeAvenants } from './donnees';
 import { DS } from './ds';
 
 const carteStyle = DS.card;
@@ -14,7 +14,7 @@ export default function Paiements({ chantiers, clients, paiementsData, setPaieme
   // ===== CALCULS =====
   const getPaiements = (chantierId) => paiementsData[chantierId] || [];
 
-  const getMontantTotal = (chantier) => (parseFloat(chantier.montantDevis) || 0) + (parseFloat(chantier.avenants) || 0);
+  const getMontantTotal = (chantier) => (parseFloat(chantier.montantDevis) || 0) + sommeAvenants(chantier);
 
   const isPaye = (p) => ['Payé','payé','payee','Payee'].includes(p.statut);
   const isAttente = (p) => ['En attente','en attente','envoyee','partielle','retard'].includes(p.statut);

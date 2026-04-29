@@ -278,7 +278,7 @@ export const exportFicheChantier = async (chantier, clients, parametres, devis =
           emp?.nom || '-', emp?.poste || '-', m.role || '-',
           `${m.joursPlannifies}j`, `${m.joursRealises || 0}j`,
           `CHF ${((emp?.tarifJour || 0) * (m.joursPlannifies || 0)).toLocaleString()}`,
-          `CHF ${((emp?.tarifJour || 0) * (m.joursRealises || m.joursPlannifies || 0)).toLocaleString()}`,
+          `CHF ${((emp?.tarifJour || 0) * (parseFloat(m.joursRealises) || 0)).toLocaleString()}`,
         ];
       }),
       headStyles: { fillColor: BLEU, fontSize: 8 },

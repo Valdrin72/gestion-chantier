@@ -3335,7 +3335,7 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
                 const nbAuj = Object.values(heuresAujParEmp).filter(h => h > 0).length;
                 const totalHeuresAuj = Object.values(heuresAujParEmp).reduce((s, h) => s + h, 0);
                 const dateLabel = new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
-                const disabled = form.equipe.length === 0;
+                const disabled = false;
                 const chantierEnForm = chantiers.find(ch => ch.id === form.id);
                 return (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
@@ -3363,7 +3363,7 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
                       }}
                     >
                       <span style={{ fontSize: 20 }}>📅</span>
-                      {disabled ? 'Aucun employé dans l\'équipe' : nbAuj > 0 ? 'Modifier la journée' : 'Déclarer la journée du jour'}
+                      {nbAuj > 0 ? 'Modifier la journée' : 'Déclarer la journée du jour'}
                       {!disabled && <span style={{ fontSize: 11, fontWeight: 600, opacity: 0.7 }}>{dateLabel}</span>}
                     </button>
                   </div>

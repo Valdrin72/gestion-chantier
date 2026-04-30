@@ -6,6 +6,175 @@ const MOIS = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 
 const JOURS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
 const STATUTS = ['Planifié', 'En cours', 'Suspendu', 'Terminé', 'Facturé', 'Clôturé'];
 
+// ── Capacité de l'entreprise (jours-homme / jour) ─────────────────────────
+const CAPACITE_PAR_DEFAUT = 4; // personnes disponibles — configurable
+
+function VueCharge({ chantiers, clients }) {
+  const [capacite, setCapacite] = useState(CAPACITE_PAR_DEFAUT);
+
+  const semaines = useMemo(() => {
+    const today = new Date(); today.setHours(0,0,0,0);
+    // Aligner sur le lundi
+    const jourSem = today.getDay() === 0 ? 6 : today.getDay() - 1;
+    const lundi = new Date(today); lundi.setDate(today.getDate() - jourSem);
+
+    return Array.from({ length: 12 }, (_, i) => {
+      const debutSem = new Date(lundi); debutSem.setDate(lundi.getDate() + i * 7);
+      const finSem   = new Date(debutSem); finSem.setDate(debutSem.getDate() + 4); // ven
+
+      // Jours ouvrables dans la semaine
+      const joursOuvrables = 5;
+      const capaciteTotal  = capacite * joursOuvrables; // jours-homme dispo
+
+      // Chantiers actifs cette semaine
+      const chantiersActifs = chantiers.filter(c => {
+        if (!c.dateDebut || !c.nombreJours) return false;
+        if (['Terminé','Clôturé','Facturé','Suspendu'].includes(c.statut)) return false;
+        const debut = new Date(c.dateDebut);
+        // Date fin = dateDebut + nombreJours ouvrables (approximation calendaire : ×1.4)
+        const finEstimee = new Date(debut);
+        finEstimee.setDate(debut.getDate() + Math.round((parseInt(c.nombreJours) || 0) * 1.4));
+        return debut <= finSem && finEstimee >= debutSem;
+      });
+
+      // Besoin en jours-homme cette semaine
+      const besoin = chantiersActifs.reduce((s, c) => {
+        const pers = parseInt(c.nombrePersonnes) || 1;
+        return s + pers * joursOuvrables;
+      }, 0);
+
+      const ratio    = capaciteTotal > 0 ? besoin / capaciteTotal : 0;
+      const ecart    = besoin - capaciteTotal;
+      const statut   = ratio > 1.2 ? 'surcharge' : ratio > 0.85 ? 'plein' : ratio > 0.3 ? 'ok' : 'creux';
+
+      const label = i === 0 ? 'Cette sem.' : i === 1 ? 'Sem. proch.' : `S+${i+1}`;
+      const dateLabel = debutSem.toLocaleDateString('fr-CH', { day: '2-digit', month: '2-digit' });
+
+      return { i, debutSem, finSem, label, dateLabel, chantiersActifs, besoin, capaciteTotal, ratio, ecart, statut };
+    });
+  }, [chantiers, capacite]);
+
+  const statutCfg = {
+    surcharge: { couleur: '#ef4444', bg: '#ef444415', label: 'Surcharge',   icone: '🔴' },
+    plein:     { couleur: '#f59e0b', bg: '#f59e0b15', label: 'Chargé',      icone: '🟡' },
+    ok:        { couleur: '#10b981', bg: '#10b98115', label: 'OK',           icone: '🟢' },
+    creux:     { couleur: '#6b7280', bg: '#6b728015', label: 'Creux',        icone: '⚪' },
+  };
+
+  const alertes = semaines.filter(s => s.statut === 'surcharge' || s.statut === 'creux');
+  const maxBesoin = Math.max(...semaines.map(s => s.besoin), capacite * 5, 1);
+
+  return (
+    <div>
+      {/* ── Config capacité ── */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 24, padding: '14px 20px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 12 }}>
+        <span style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 600 }}>👷 Capacité équipe :</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <button onClick={() => setCapacite(Math.max(1, capacite - 1))} style={{ width: 28, height: 28, borderRadius: 8, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)', color: 'var(--text-primary)', cursor: 'pointer', fontSize: 16, fontFamily: 'Inter,sans-serif' }}>−</button>
+          <span style={{ fontSize: 20, fontWeight: 900, color: 'var(--text-primary)', minWidth: 24, textAlign: 'center' }}>{capacite}</span>
+          <button onClick={() => setCapacite(capacite + 1)} style={{ width: 28, height: 28, borderRadius: 8, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)', color: 'var(--text-primary)', cursor: 'pointer', fontSize: 16, fontFamily: 'Inter,sans-serif' }}>+</button>
+          <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>personnes disponibles · {capacite * 5} jours-homme / semaine</span>
+        </div>
+      </div>
+
+      {/* ── Alertes ── */}
+      {alertes.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 20 }}>
+          {alertes.slice(0, 3).map(s => {
+            const cfg = statutCfg[s.statut];
+            return (
+              <div key={s.i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 18px', borderRadius: 10, background: cfg.bg, border: `1px solid ${cfg.couleur}30`, borderLeft: `4px solid ${cfg.couleur}` }}>
+                <span style={{ fontSize: 16 }}>{cfg.icone}</span>
+                <div style={{ flex: 1 }}>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: cfg.couleur }}>
+                    {s.label} ({s.dateLabel}) — {cfg.label}
+                  </span>
+                  <span style={{ fontSize: 12, color: 'var(--text-muted)', marginLeft: 10 }}>
+                    {s.statut === 'surcharge'
+                      ? `${s.besoin} jours-homme prévus · ${s.ecart > 0 ? `il manque ${s.ecart} jours-homme` : ''}`
+                      : `Seulement ${s.besoin} jours-homme prévus sur ${s.capaciteTotal} disponibles`}
+                  </span>
+                </div>
+                <div style={{ fontSize: 13, fontWeight: 800, color: cfg.couleur }}>{Math.round(s.ratio * 100)}%</div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* ── Graphe barres 12 semaines ── */}
+      <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 16, padding: '22px 24px', marginBottom: 24 }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 20 }}>Charge prévue — 12 semaines</div>
+        <div style={{ display: 'flex', gap: 6, alignItems: 'flex-end', height: 120, marginBottom: 8 }}>
+          {semaines.map(s => {
+            const cfg = statutCfg[s.statut];
+            const pctBesoin   = (s.besoin / maxBesoin) * 100;
+            const pctCapacite = (s.capaciteTotal / maxBesoin) * 100;
+            return (
+              <div key={s.i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
+                {s.besoin > 0 && <div style={{ fontSize: 8, fontWeight: 700, color: cfg.couleur }}>{s.besoin}jh</div>}
+                <div style={{ width: '100%', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', position: 'relative' }}>
+                  {/* Ligne capacité */}
+                  <div style={{ position: 'absolute', bottom: `${pctCapacite}%`, left: 0, right: 0, height: 1, background: 'rgba(255,255,255,0.2)', borderRadius: 1 }} />
+                  {/* Barre besoin */}
+                  <div style={{ width: '100%', height: `${Math.max(pctBesoin, 3)}%`, background: s.besoin === 0 ? 'rgba(255,255,255,0.06)' : `linear-gradient(180deg, ${cfg.couleur}, ${cfg.couleur}99)`, borderRadius: '4px 4px 0 0', minHeight: 3 }} />
+                </div>
+                <div style={{ fontSize: 8, color: 'var(--text-muted)', textAlign: 'center', fontWeight: 600 }}>{s.label}</div>
+              </div>
+            );
+          })}
+        </div>
+        <div style={{ fontSize: 11, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ width: 20, height: 1, background: 'rgba(255,255,255,0.3)' }} />
+          Ligne = capacité max ({capacite * 5} jours-homme)
+        </div>
+      </div>
+
+      {/* ── Détail par semaine ── */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {semaines.filter(s => s.besoin > 0 || s.i < 4).map(s => {
+          const cfg = statutCfg[s.statut];
+          return (
+            <div key={s.i} style={{ background: cfg.bg, border: `1px solid ${cfg.couleur}25`, borderRadius: 12, padding: '14px 18px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: s.chantiersActifs.length > 0 ? 10 : 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span style={{ fontSize: 14 }}>{cfg.icone}</span>
+                  <div>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>{s.label}</span>
+                    <span style={{ fontSize: 11, color: 'var(--text-muted)', marginLeft: 8 }}>{s.dateLabel}</span>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontSize: 14, fontWeight: 800, color: cfg.couleur }}>{s.besoin} / {s.capaciteTotal} jh</div>
+                    <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>{Math.round(s.ratio * 100)}% de capacité</div>
+                  </div>
+                  {/* Mini barre */}
+                  <div style={{ width: 80, height: 6, background: 'rgba(255,255,255,0.08)', borderRadius: 4, overflow: 'hidden' }}>
+                    <div style={{ height: '100%', width: `${Math.min(s.ratio * 100, 100)}%`, background: cfg.couleur, borderRadius: 4 }} />
+                  </div>
+                </div>
+              </div>
+              {s.chantiersActifs.length > 0 && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {s.chantiersActifs.map(c => {
+                    const client = clients.find(cl => String(cl.id) === String(c.clientId));
+                    return (
+                      <span key={c.id} style={{ fontSize: 11, background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 20, padding: '3px 10px', color: 'var(--text-secondary)' }}>
+                        {c.nom || c.numero} · {parseInt(c.nombrePersonnes) || 1} pers.
+                      </span>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export default function Planning({ chantiers, setChantiers, clients, naviguer }) {
   const [vue, setVue] = useState('timeline');
   const [moisActuel, setMoisActuel] = useState(new Date().getMonth());
@@ -156,7 +325,7 @@ export default function Planning({ chantiers, setChantiers, clients, naviguer })
           <div className="page-title-sub">{chantiersDuMois.length} chantier{chantiersDuMois.length !== 1 ? 's' : ''} ce mois · {chantiersNonPlanifies.length} non planifié{chantiersNonPlanifies.length !== 1 ? 's' : ''}</div>
         </div>
         <div className="page-actions-group">
-          {['timeline', 'calendrier', 'liste'].map(v => (
+          {['timeline', 'calendrier', 'liste', 'charge'].map(v => (
             <button key={v} onClick={() => setVue(v)} style={{
               background: vue === v ? 'rgba(59,130,246,0.18)' : 'rgba(255,255,255,0.04)',
               color: vue === v ? '#3b82f6' : 'var(--text-secondary)',
@@ -165,7 +334,7 @@ export default function Planning({ chantiers, setChantiers, clients, naviguer })
               fontSize: '13px', fontWeight: vue === v ? 700 : 500,
               fontFamily: 'Inter, sans-serif', transition: 'all 0.18s',
             }}>
-              {{ timeline: '📊 Timeline', calendrier: '📅 Calendrier', liste: '📋 Liste' }[v]}
+              {{ timeline: '📊 Timeline', calendrier: '📅 Calendrier', liste: '📋 Liste', charge: '👷 Charge' }[v]}
             </button>
           ))}
         </div>
@@ -401,6 +570,9 @@ export default function Planning({ chantiers, setChantiers, clients, naviguer })
           )}
         </div>
       )}
+
+      {/* ── VUE CHARGE ─────────────────────────────────────────── */}
+      {vue === 'charge' && <VueCharge chantiers={chantiers} clients={clients} />}
 
       {/* ── LÉGENDE ────────────────────────────────────────────── */}
       <div style={{ ...DS.card, padding: '15px 25px', marginTop: '20px' }}>

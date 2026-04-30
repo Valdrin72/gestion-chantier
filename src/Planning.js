@@ -31,10 +31,9 @@ function VueCharge({ chantiers, clients }) {
         if (!c.dateDebut || !c.nombreJours) return false;
         if (['Terminé','Clôturé','Facturé','Suspendu'].includes(c.statut)) return false;
         const debut = new Date(c.dateDebut);
-        // Date fin = dateDebut + nombreJours ouvrables (approximation calendaire : ×1.4)
-        const finEstimee = new Date(debut);
-        finEstimee.setDate(debut.getDate() + Math.round((parseInt(c.nombreJours) || 0) * 1.4));
-        return debut <= finSem && finEstimee >= debutSem;
+        const finStr = calculerDateFinOuvrables(c.dateDebut, parseInt(c.nombreJours) || 0, c.inclusSamedi);
+        const fin = new Date(finStr);
+        return debut <= finSem && fin >= debutSem;
       });
 
       // Besoin en jours-homme cette semaine

@@ -573,7 +573,6 @@ function Dashboard({ chantiers, clients, factures, devis = [], parametres, navig
     // Pour marges : uniquement les chantiers avec devis (montantDevis non null)
     const activesAvecDevis = actives.filter(r => r.montantDevis !== null);
     const nbEnRetard  = actives.filter(r => r.enDepassement).length;
-    const nbEnAvance  = actives.filter(r => r.enAvance).length;
     const ecarts      = actives.map(r => r.joursRealises - r.joursPrevu);
     const moyenneEcartJours = actives.length > 0
       ? parseFloat((ecarts.reduce((s, e) => s + e, 0) / actives.length).toFixed(1))
@@ -584,7 +583,6 @@ function Dashboard({ chantiers, clients, factures, devis = [], parametres, navig
     return {
       nbRentables:       actives.filter(r => r.rentabilitePct !== null && r.rentabilitePct >= 15).length,
       nbDepassement:     nbEnRetard,
-      nbEnAvance,
       nbSansSaisie:      vals.filter(r => r.aucuneSaisie).length,
       margeReelleTotale,
       margeReellePct,
@@ -1168,12 +1166,6 @@ function Dashboard({ chantiers, clients, factures, devis = [], parametres, navig
                 val: kpiReel.nbDepassement,
                 couleur: kpiReel.nbDepassement > 0 ? C.danger : '#78909c',
                 dot: kpiReel.nbDepassement > 0 ? '⛔' : '—',
-              },
-              {
-                label: 'En avance',
-                val: kpiReel.nbEnAvance,
-                couleur: kpiReel.nbEnAvance > 0 ? C.secondaire : '#78909c',
-                dot: kpiReel.nbEnAvance > 0 ? '🟢' : '—',
               },
               {
                 label: 'Sans saisie',
@@ -3520,7 +3512,7 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
           if (etatC.deriveJours >= 2)
             return { icone: '🟠', label: 'À surveiller', couleur: C.warning, message: `Retard léger : +${etatC.deriveJours} j`, sous: null, niveau: 'warning', priorite: 3 };
           // Tout va bien
-          return { icone: '🟢', label: 'Dans les temps', couleur: C.secondaire, message: etatC.deriveJours < 0 ? `${Math.abs(etatC.deriveJours)} j d'avance` : 'Cadence normale', sous: null, niveau: 'ok', priorite: 6 };
+          return { icone: '🟢', label: 'Dans les temps', couleur: C.secondaire, message: 'Cadence normale', sous: null, niveau: 'ok', priorite: 6 };
         };
         const getActionsChantier = (etat, chantier) => {
           if (!etat || etat.avancementPct == null) return [];

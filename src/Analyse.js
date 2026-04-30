@@ -144,8 +144,52 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
     try { localStorage.setItem('cyna_objectifs', JSON.stringify(data)); } catch {}
   };
 
+  // ===== DÉRIVE DEVIS → RÉALITÉ PAR TYPE DE TRAVAUX =====
+  const donneesDerive = useMemo(() => parametres.typesTravaux.map(t => {
+    const chantiersDuType = chantiers.filter(c =>
+      (c.typesTravaux || []).includes(t.nom) && calculerCA(c, devis) !== null
+    );
+    if (chantiersDuType.length === 0) return null;
+
+    const lignes = chantiersDuType.map(c => {
+      const joursPrevu  = parseInt(c.nombreJours) || 0;
+      const joursReel   = new Set((c.journal || []).map(e => e.date).filter(Boolean)).size;
+      const couts       = calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis);
+      const ca          = calculerCA(c, devis);
+      const coutsPrevu  = couts.totalCoutsPrevu;
+      const coutsReel   = couts.totalCoutsReel;
+      const margePrevuPct = ca > 0 && coutsPrevu > 0 ? ((ca - coutsPrevu) / ca) * 100 : null;
+      const margeReelPct  = ca > 0 && coutsReel  > 0 ? ((ca - coutsReel)  / ca) * 100 : null;
+      const ecartJours    = joursPrevu > 0 ? ((joursReel - joursPrevu) / joursPrevu) * 100 : null;
+      const ecartCout     = coutsPrevu > 0 ? ((coutsReel - coutsPrevu) / coutsPrevu) * 100 : null;
+      return { c, joursPrevu, joursReel, coutsPrevu, coutsReel, ca, margePrevuPct, margeReelPct, ecartJours, ecartCout };
+    }).filter(l => l.joursPrevu > 0 || l.coutsPrevu > 0);
+
+    if (lignes.length === 0) return null;
+
+    const avg = (arr, key) => { const v = arr.filter(l => l[key] !== null); return v.length ? v.reduce((s,l) => s + l[key], 0) / v.length : null; };
+
+    const ecartJoursMoyen  = avg(lignes, 'ecartJours');
+    const ecartCoutMoyen   = avg(lignes, 'ecartCout');
+    const margePrevuMoyenne = avg(lignes, 'margePrevuPct');
+    const margeReelMoyenne  = avg(lignes, 'margeReelPct');
+    const perteMarge        = margePrevuMoyenne !== null && margeReelMoyenne !== null ? margeReelMoyenne - margePrevuMoyenne : null;
+
+    const signal = (() => {
+      if (ecartJoursMoyen === null && ecartCoutMoyen === null) return 'inconnu';
+      const ecartRef = ecartCoutMoyen ?? ecartJoursMoyen;
+      if (ecartRef > 20)  return 'sousEstime';
+      if (ecartRef > 5)   return 'attention';
+      if (ecartRef < -10) return 'surEstime';
+      return 'ok';
+    })();
+
+    return { nom: t.nom, count: lignes.length, lignes, ecartJoursMoyen, ecartCoutMoyen, margePrevuMoyenne, margeReelMoyenne, perteMarge, signal };
+  }).filter(Boolean).sort((a, b) => (b.ecartCoutMoyen ?? 0) - (a.ecartCoutMoyen ?? 0)), [chantiers, devis, parametres]);
+
   const onglets = [
     { id: 'rentabilite', label: '💰 Rentabilité nette' },
+    { id: 'derive',      label: '🎯 Dérive devis' },
     { id: 'chantiers',   label: '🏗️ Prévu vs Réel' },
     { id: 'clients',     label: '👥 Clients' },
     { id: 'employes',    label: '👷 Coût horaire' },
@@ -251,6 +295,115 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
               ))}
             </div>
           </div>
+        </div>
+      )}
+
+      {/* ===== DÉRIVE DEVIS → RÉALITÉ ===== */}
+      {onglet === 'derive' && (
+        <div>
+          {/* Intro */}
+          <div style={{ background: 'rgba(59,130,246,0.07)', border: '1px solid rgba(59,130,246,0.2)', borderRadius: 12, padding: '14px 18px', marginBottom: 24, fontSize: 13, color: 'var(--text-secondary)' }}>
+            <strong style={{ color: 'var(--text-primary)' }}>Sur quels types de travaux sous-estimes-tu systématiquement ?</strong>
+            {' '}Cette analyse compare ce que tu as devisé avec ce qui s'est réellement passé sur chaque type de chantier.
+          </div>
+
+          {donneesDerive.length === 0 ? (
+            <div style={{ ...carteStyle, textAlign: 'center', color: 'var(--text-muted)', padding: 40 }}>
+              Pas encore assez de données — commence par relier tes chantiers à des devis.
+            </div>
+          ) : (
+            <>
+              {/* Résumé global */}
+              {(() => {
+                const sousEstimes = donneesDerive.filter(d => d.signal === 'sousEstime');
+                const pireType = donneesDerive[0];
+                if (!pireType) return null;
+                return (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 14, marginBottom: 24 }}>
+                    {[
+                      { label: 'Types analysés', val: donneesDerive.length, couleur: '#3b82f6', sub: `${donneesDerive.reduce((s,d) => s + d.count, 0)} chantiers` },
+                      { label: 'Sous-estimés', val: sousEstimes.length, couleur: '#ef4444', sub: sousEstimes.length > 0 ? sousEstimes.map(d => d.nom).join(', ') : 'Aucun' },
+                      { label: 'Plus grande dérive', val: pireType.nom, couleur: '#f59e0b', sub: pireType.ecartCoutMoyen !== null ? `+${pireType.ecartCoutMoyen.toFixed(0)}% coût réel` : '—' },
+                      { label: 'Perte de marge moy.', val: pireType.perteMarge !== null ? `${pireType.perteMarge.toFixed(1)}%` : '—', couleur: pireType.perteMarge !== null && pireType.perteMarge < -3 ? '#ef4444' : '#10b981', sub: 'sur le type le + déviant' },
+                    ].map(k => (
+                      <div key={k.label} style={{ background: `${k.couleur}10`, border: `1px solid ${k.couleur}25`, borderRadius: 12, padding: '16px 18px' }}>
+                        <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px', color: 'var(--text-muted)', marginBottom: 8 }}>{k.label}</div>
+                        <div style={{ fontSize: 18, fontWeight: 900, color: k.couleur, lineHeight: 1.1, wordBreak: 'break-word' }}>{k.val}</div>
+                        <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>{k.sub}</div>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
+
+              {/* Tableau par type */}
+              {donneesDerive.map(d => {
+                const signalCfg = {
+                  sousEstime: { couleur: '#ef4444', bg: '#ef444410', label: '🔴 Sous-estimé',   conseil: 'Augmente tes prix ou réduis la durée estimée sur ce type.' },
+                  attention:  { couleur: '#f59e0b', bg: '#f59e0b10', label: '🟡 À surveiller',  conseil: 'Légère tendance à dépasser — surveille les prochains devis.' },
+                  surEstime:  { couleur: '#10b981', bg: '#10b98110', label: '🟢 Sur-estimé',    conseil: 'Tu es conservateur — tu peux affiner tes prix pour être plus compétitif.' },
+                  ok:         { couleur: '#10b981', bg: '#10b98110', label: '✓ Bien estimé',    conseil: 'Bonne maîtrise de ce type de chantier.' },
+                  inconnu:    { couleur: '#6b7280', bg: '#6b728010', label: '⚪ Données insuffisantes', conseil: 'Ajoute plus de chantiers liés à des devis.' },
+                }[d.signal];
+                const fmtPct  = (v, plus = true) => v === null ? '—' : `${plus && v > 0 ? '+' : ''}${v.toFixed(1)}%`;
+                const fmtJours = (v) => v === null ? '—' : `${v > 0 ? '+' : ''}${v.toFixed(0)}%`;
+                return (
+                  <div key={d.nom} style={{ ...carteStyle, marginBottom: 16, borderLeft: `4px solid ${signalCfg.couleur}` }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 8 }}>
+                      <div>
+                        <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--text-primary)' }}>{d.nom}</div>
+                        <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{d.count} chantier{d.count > 1 ? 's' : ''} analysé{d.count > 1 ? 's' : ''}</div>
+                      </div>
+                      <span style={{ background: signalCfg.bg, color: signalCfg.couleur, border: `1px solid ${signalCfg.couleur}35`, borderRadius: 20, padding: '5px 14px', fontSize: 12, fontWeight: 700 }}>
+                        {signalCfg.label}
+                      </span>
+                    </div>
+
+                    {/* 4 métriques */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 14 }}>
+                      {[
+                        { label: 'Dérive durée',   val: fmtJours(d.ecartJoursMoyen),  couleur: d.ecartJoursMoyen !== null && d.ecartJoursMoyen > 15 ? '#ef4444' : d.ecartJoursMoyen !== null && d.ecartJoursMoyen > 5 ? '#f59e0b' : '#10b981', sub: 'jours réels vs prévus' },
+                        { label: 'Dérive coût',    val: fmtPct(d.ecartCoutMoyen),     couleur: d.ecartCoutMoyen !== null && d.ecartCoutMoyen > 15 ? '#ef4444' : d.ecartCoutMoyen !== null && d.ecartCoutMoyen > 5 ? '#f59e0b' : '#10b981',    sub: 'coût réel vs prévu' },
+                        { label: 'Marge devisée',  val: fmtPct(d.margePrevuMoyenne, false), couleur: '#3b82f6', sub: 'marge prévue moyenne' },
+                        { label: 'Marge réelle',   val: fmtPct(d.margeReelMoyenne, false),  couleur: d.margeReelMoyenne !== null && d.margeReelMoyenne < 10 ? '#ef4444' : d.margeReelMoyenne !== null && d.margeReelMoyenne < 20 ? '#f59e0b' : '#10b981', sub: 'marge réelle moyenne' },
+                      ].map(m => (
+                        <div key={m.label} style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 10, padding: '12px 14px' }}>
+                          <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-muted)', marginBottom: 6 }}>{m.label}</div>
+                          <div style={{ fontSize: 18, fontWeight: 900, color: m.couleur }}>{m.val}</div>
+                          <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 3 }}>{m.sub}</div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Conseil */}
+                    <div style={{ fontSize: 12, color: 'var(--text-muted)', background: 'rgba(255,255,255,0.03)', borderRadius: 8, padding: '10px 14px', borderLeft: `3px solid ${signalCfg.couleur}50` }}>
+                      💡 {signalCfg.conseil}
+                    </div>
+
+                    {/* Détail par chantier */}
+                    {d.lignes.length > 0 && (
+                      <div style={{ marginTop: 14 }}>
+                        <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-muted)', marginBottom: 8 }}>Détail par chantier</div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                          {d.lignes.map(l => (
+                            <div key={l.c.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: 'rgba(255,255,255,0.02)', borderRadius: 8, flexWrap: 'wrap' }}>
+                              <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)', flex: 1, minWidth: 120 }}>{l.c.nom || l.c.numero}</span>
+                              <span style={{ fontSize: 11, color: 'var(--text-muted)', minWidth: 80 }}>{l.joursPrevu}j → {l.joursReel}j{l.ecartJours !== null ? <span style={{ color: l.ecartJours > 15 ? '#ef4444' : 'var(--text-muted)', fontWeight: 700 }}> ({l.ecartJours > 0 ? '+' : ''}{l.ecartJours?.toFixed(0)}%)</span> : ''}</span>
+                              {l.margeReelPct !== null && (
+                                <span style={{ fontSize: 11, fontWeight: 700, color: l.margeReelPct < 10 ? '#ef4444' : l.margeReelPct < 20 ? '#f59e0b' : '#10b981' }}>
+                                  Marge {l.margeReelPct.toFixed(1)}%
+                                </span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </>
+          )}
         </div>
       )}
 

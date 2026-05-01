@@ -295,18 +295,13 @@ function App() {
   }, []); // run once on mount
 
   const navItems = [
-    { id: 'dashboard',    label: 'Dashboard',    Icon: LayoutDashboard, labelCourt: 'Accueil' },
-    { id: 'chantiers',   label: 'Chantiers',    Icon: HardHat,         labelCourt: 'Chantiers' },
-    { id: 'devis',       label: 'Devis',        Icon: FileText,        labelCourt: 'Devis' },
-    { id: 'finances',    label: 'Finances',     Icon: DollarSign,      labelCourt: 'Finances' },
-    { id: 'clients',     label: 'Clients',      Icon: Users,           labelCourt: 'Clients' },
-    { id: 'employes',    label: 'Employés',     Icon: UserCheck,       labelCourt: 'Équipe' },
-    { id: 'planning',    label: 'Planning',     Icon: Calendar,        labelCourt: 'Planning' },
-    { id: 'statistiques',label: 'Statistiques', Icon: BarChart2,       labelCourt: 'Stats' },
-    { id: 'qualite',     label: 'Qualité',      Icon: CheckSquare,     labelCourt: 'Qualité' },
-    { id: 'rapport',     label: 'Rapport',      Icon: ClipboardList,   labelCourt: 'Rapport' },
-    { id: 'analyse',     label: 'Analyse',      Icon: TrendingUp,      labelCourt: 'Analyse' },
-    { id: 'parametres',  label: 'Paramètres',   Icon: Settings,        labelCourt: 'Config' },
+    { id: 'dashboard',  label: 'Dashboard',   Icon: LayoutDashboard, labelCourt: 'Accueil' },
+    { id: 'chantiers',  label: 'Chantiers',   Icon: HardHat,         labelCourt: 'Chantiers' },
+    { id: 'devis',      label: 'Devis',       Icon: FileText,        labelCourt: 'Devis' },
+    { id: 'finances',   label: 'Finances',    Icon: DollarSign,      labelCourt: 'Finances' },
+    { id: 'planning',   label: 'Planning',    Icon: Calendar,        labelCourt: 'Planning' },
+    { id: 'analyse',    label: 'Analyse',     Icon: TrendingUp,      labelCourt: 'Analyse' },
+    { id: 'parametres', label: 'Paramètres',  Icon: Settings,        labelCourt: 'Config' },
   ];
 
   if (!profil) {
@@ -407,8 +402,8 @@ function App() {
           {page === 'statistiques' && <Statistiques chantiers={chantiers} clients={clients} devis={devis} parametres={parametres} periodeGlobale={periodeGlobale} />}
           {page === 'qualite'      && <Qualite chantiers={chantiers} setChantiers={setChantiers} qualiteData={qualiteData} setQualiteData={setQualiteData} contexte={contexte} naviguer={naviguer} />}
           {page === 'rapport'      && <Rapport chantiers={chantiers} clients={clients} devis={devis} parametres={parametres} paiementsData={paiementsData} qualiteData={qualiteData} naviguer={naviguer} />}
-          {page === 'analyse'      && <Analyse chantiers={chantiers} clients={clients} devis={devis} parametres={parametres} setParametres={setParametres} />}
-          {page === 'parametres' && <Parametres parametres={parametres} setParametres={setParametres} />}
+          {page === 'analyse'      && <Analyse chantiers={chantiers} clients={clients} devis={devis} parametres={parametres} setParametres={setParametres} paiementsData={paiementsData} qualiteData={qualiteData} />}
+          {page === 'parametres'   && <Parametres parametres={parametres} setParametres={setParametres} clients={clients} setClients={setClients} chantiers={chantiers} devis={devis} naviguer={naviguer} />}
         </main>
 
         {/* ===== NAVIGATION MOBILE BAS ===== */}
@@ -1151,113 +1146,6 @@ function Dashboard({ chantiers, clients, factures, devis = [], parametres, navig
           ))}
         </div>
 
-        {/* ── Indicateurs rentabilité réelle + écarts prévu/réel ── */}
-        {actifs.length > 0 && (
-          <div style={{ display: 'flex', gap: 10, marginTop: 16, flexWrap: 'wrap' }}>
-            {[
-              {
-                label: 'Rentables (≥10%)',
-                val: `${kpiReel.nbRentables} / ${kpiReel.nbActives || actifs.length}`,
-                couleur: kpiReel.nbRentables > 0 ? C.secondaire : '#78909c',
-                dot: '✅',
-              },
-              {
-                label: 'En dépassement',
-                val: kpiReel.nbDepassement,
-                couleur: kpiReel.nbDepassement > 0 ? C.danger : '#78909c',
-                dot: kpiReel.nbDepassement > 0 ? '⛔' : '—',
-              },
-              {
-                label: 'Sans saisie',
-                val: kpiReel.nbSansSaisie,
-                couleur: kpiReel.nbSansSaisie > 0 ? C.warning : '#78909c',
-                dot: kpiReel.nbSansSaisie > 0 ? '⏳' : '—',
-              },
-              {
-                label: 'Moy. écart / devis',
-                val: kpiReel.moyenneEcartJours === null ? '—'
-                  : kpiReel.moyenneEcartJours === 0 ? '0j'
-                  : `${kpiReel.moyenneEcartJours > 0 ? '+' : ''}${kpiReel.moyenneEcartJours}j`,
-                couleur: kpiReel.moyenneEcartJours === null ? '#78909c'
-                  : kpiReel.moyenneEcartJours > 0 ? C.danger
-                  : kpiReel.moyenneEcartJours < 0 ? C.secondaire
-                  : '#78909c',
-                dot: kpiReel.moyenneEcartJours === null ? '—'
-                  : kpiReel.moyenneEcartJours > 0 ? '📉' : kpiReel.moyenneEcartJours < 0 ? '📈' : '✓',
-              },
-              {
-                label: 'Marge réelle totale',
-                val: kpiReel.nbActives === 0 || kpiReel.margeReellePct === null ? '—'
-                  : `${kpiReel.margeReellePct >= 0 ? '' : '−'}${Math.abs(kpiReel.margeReellePct)}%`,
-                sub: kpiReel.nbActives > 0
-                  ? `${kpiReel.margeReelleTotale < 0 ? '−' : ''}CHF ${fmtN(Math.abs(Math.round(kpiReel.margeReelleTotale)))}`
-                  : null,
-                couleur: kpiReel.nbActives === 0 ? '#78909c' : kpiReel.margeReelleTotale >= 0 ? C.secondaire : C.danger,
-                dot: kpiReel.nbActives === 0 ? '—' : kpiReel.margeReelleTotale >= 0 ? '💰' : '🔴',
-              },
-            ].map(({ label, val, sub, couleur, dot }) => (
-              <div key={label} style={{
-                flex: 1, minWidth: 140,
-                background: `${couleur}10`,
-                border: `1px solid ${couleur}28`,
-                borderRadius: 12, padding: '12px 16px',
-                display: 'flex', alignItems: 'center', gap: 10,
-                backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)',
-              }}>
-                <span style={{ fontSize: 16, flexShrink: 0 }}>{dot}</span>
-                <div>
-                  <div style={{ fontSize: 17, fontWeight: 800, color: couleur, lineHeight: 1, letterSpacing: '-0.4px' }}>{val}</div>
-                  {sub && <div style={{ fontSize: 11, color: couleur, opacity: 0.65, fontWeight: 600, marginTop: 2 }}>{sub}</div>}
-                  <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.38)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.7px', marginTop: 4 }}>{label}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* ── KPI Équipe ── */}
-        {kpiEquipe && (
-          <div style={{ display: 'flex', gap: 10, marginTop: 10, flexWrap: 'wrap' }}>
-            {[
-              {
-                label: 'Coût moy. équipe',
-                val: `CHF ${fmtN(kpiEquipe.coutMoyenEquipe)}`,
-                couleur: C.violet,
-                dot: '👷',
-              },
-              {
-                label: 'Équipe la + chère',
-                val: kpiEquipe.plusCher ? (kpiEquipe.plusCher.c.nom || kpiEquipe.plusCher.c.numero || '—') : '—',
-                sous: kpiEquipe.plusCher ? `CHF ${fmtN(kpiEquipe.plusCher.coutMOReel)}` : '',
-                couleur: C.warning,
-                dot: '💸',
-              },
-              {
-                label: 'Chantier + rentable',
-                val: kpiEquipe.plusRentable ? (kpiEquipe.plusRentable.c.nom || kpiEquipe.plusRentable.c.numero || '—') : '—',
-                sous: kpiEquipe.plusRentable ? `${kpiEquipe.plusRentable.reel.rentabilitePct}%` : '',
-                couleur: C.secondaire,
-                dot: '🏆',
-              },
-            ].map(({ label, val, sous, couleur, dot }) => (
-              <div key={label} style={{
-                flex: 1, minWidth: 160,
-                background: `${couleur}0e`,
-                border: `1px solid ${couleur}25`,
-                borderRadius: 12, padding: '11px 15px',
-                display: 'flex', alignItems: 'center', gap: 10,
-                backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)',
-              }}>
-                <span style={{ fontSize: 16, flexShrink: 0 }}>{dot}</span>
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ fontSize: 14, fontWeight: 800, color: couleur, lineHeight: 1.1, letterSpacing: '-0.3px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{val}</div>
-                  {sous && <div style={{ fontSize: 11, fontWeight: 700, color: couleur, opacity: 0.7, marginTop: 2 }}>{sous}</div>}
-                  <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.7px', marginTop: 3 }}>{label}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
       </div>
 
       {/* ════════════════════════════════════
@@ -4312,7 +4200,7 @@ function EditEmployeRow({ e, parametres, sauv }) {
   );
 }
 
-function Parametres({ parametres, setParametres }) {
+function Parametres({ parametres, setParametres, clients = [], setClients = () => {}, chantiers = [], devis = [], naviguer = () => {} }) {
   const [onglet, setOnglet] = useState('dashboard');
   const [nouvelEmploye, setNouvelEmploye] = useState({ nom: '', poste: 'Ouvrier qualifié', tarifJour: '', telephone: '', email: '' });
   const [nouvelleLocalite, setNouvelleLocalite] = useState({ nom: '', tarifJour: '' });
@@ -4332,6 +4220,7 @@ function Parametres({ parametres, setParametres }) {
     { id: 'chantiers', label: '📋 Chantiers', desc: 'Statuts et priorités' },
     { id: 'devis', label: '💰 Devis', desc: 'Marges et tarifs' },
     { id: 'employes', label: '👷 Employés', desc: 'Tarifs journaliers' },
+    { id: 'clients_param', label: '👥 Clients', desc: 'Carnet d\'adresses' },
     { id: 'localites', label: '🚗 Localités', desc: 'Frais déplacement' },
     { id: 'travaux', label: '🔧 Travaux', desc: 'Types et tarifs' },
     { id: 'zones', label: '📍 Zones géo.', desc: 'Tarifs par région' },
@@ -4650,6 +4539,10 @@ function Parametres({ parametres, setParametres }) {
             ))}
           </div>
         </div>
+      )}
+
+      {onglet === 'clients_param' && (
+        <Clients clients={clients} setClients={setClients} chantiers={chantiers} devis={devis} naviguer={naviguer} />
       )}
     </div>
   );

@@ -1,10 +1,12 @@
 import React, { useState, useMemo } from 'react';
 import { C, fmtN, calculerCoutsChantier, calculerCA, statutRentabilite, isChantierActif, heuresEmploye } from './donnees';
 import { DS } from './ds';
+import Statistiques from './Statistiques';
+import Rapport from './Rapport';
 
 const carteStyle = DS.card;
 
-export default function Analyse({ chantiers, clients, devis = [], parametres, setParametres }) {
+export default function Analyse({ chantiers, clients, devis = [], parametres, setParametres, paiementsData, qualiteData }) {
   const [onglet, setOnglet] = useState('rentabilite');
   const [tauxChargesSociales, setTauxChargesSociales] = useState(parametres.parametres?.tauxChargesSociales || 25);
   const [tauxImpots, setTauxImpots] = useState(parametres.parametres?.tauxImpots || 15);
@@ -196,6 +198,8 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
     { id: 'corps',       label: '🔧 Corps de métier' },
     { id: 'projection',  label: '🔮 Projections' },
     { id: 'objectifs',   label: '🎯 Objectifs' },
+    { id: 'statistiques',label: '📊 Statistiques' },
+    { id: 'rapport',     label: '📋 Rapport hebdo' },
   ];
 
   return (
@@ -871,6 +875,14 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
             )}
           </div>
         </div>
+      )}
+
+      {onglet === 'statistiques' && (
+        <Statistiques chantiers={chantiers} clients={clients} devis={devis} parametres={parametres} periodeGlobale="annee" />
+      )}
+
+      {onglet === 'rapport' && (
+        <Rapport chantiers={chantiers} clients={clients} devis={devis} parametres={parametres} paiementsData={paiementsData || {}} qualiteData={qualiteData || {}} />
       )}
     </div>
   );

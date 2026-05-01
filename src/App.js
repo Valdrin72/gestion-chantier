@@ -162,9 +162,7 @@ const NAV_FALLBACK = {
 function App() {
   const [page, setPage] = useState('dashboard');
   const [contexte, setContexte] = useState({});
-  const [darkMode, setDarkMode] = useState(() => {
-    try { return localStorage.getItem('cyna_theme') === 'dark'; } catch { return false; }
-  });
+  const [darkMode, setDarkMode] = useState(false);
   const [mobileMenuOuvert, setMobileMenuOuvert] = useState(false);
   const [sidebarOuvert, setSidebarOuvert] = useState(false);
 

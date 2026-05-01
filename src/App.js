@@ -63,7 +63,7 @@ function CoutBadge({ label, valeur, couleur }) {
       backdropFilter: 'blur(8px)',
       WebkitBackdropFilter: 'blur(8px)',
     }}>
-      <div style={{ fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', color: 'rgba(255,255,255,0.4)', marginBottom: '6px' }}>{label}</div>
+      <div style={{ fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', color: 'var(--text-muted)', marginBottom: '6px' }}>{label}</div>
       <div style={{ fontWeight: 800, fontSize: '16px', color: couleur, letterSpacing: '-0.3px' }}>CHF {fmtN(valeur)}</div>
     </div>
   );
@@ -113,7 +113,7 @@ function BarreAvancement({ valeur, couleur }) {
   if (progress > 70) auto = '#22c55e';
   const c = couleur || auto;
   return (
-    <div style={{ background: 'rgba(255,255,255,0.05)', borderRadius: '10px', height: '8px', width: '100%', overflow: 'hidden', boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.3)' }}>
+    <div style={{ background: 'var(--bg-hover)', borderRadius: '10px', height: '8px', width: '100%', overflow: 'hidden', boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.3)' }}>
       <div style={{ background: `linear-gradient(90deg, ${c}, ${c}cc)`, width: `${progress}%`, height: '8px', borderRadius: '10px', transition: 'width 0.4s ease', boxShadow: `0 0 8px ${c}` }} />
     </div>
   );
@@ -366,15 +366,15 @@ function App() {
                 onClick={revenirArriere}
                 style={{
                   display: 'flex', alignItems: 'center', gap: 5,
-                  background: 'rgba(255,255,255,0.06)',
-                  border: '1px solid rgba(255,255,255,0.1)',
+                  background: 'var(--bg-glass-2)',
+                  border: '1px solid var(--border-hover)',
                   borderRadius: 8, padding: '5px 12px',
                   color: 'var(--text-secondary)', cursor: 'pointer',
                   fontSize: 13, fontWeight: 600, fontFamily: 'inherit',
                   transition: 'all 0.15s',
                 }}
                 onMouseEnter={e => { e.currentTarget.style.background = 'rgba(59,130,246,0.12)'; e.currentTarget.style.color = '#60a5fa'; e.currentTarget.style.borderColor = 'rgba(59,130,246,0.3)'; }}
-                onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; e.currentTarget.style.color = 'var(--text-secondary)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'; }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'var(--bg-glass-2)'; e.currentTarget.style.color = 'var(--text-secondary)'; e.currentTarget.style.borderColor = 'var(--border-hover)'; }}
               >
                 <ChevronRight size={14} style={{ transform: 'rotate(180deg)' }} />
                 Retour
@@ -998,7 +998,7 @@ function Dashboard({ chantiers, clients, factures, devis = [], parametres, navig
 
   // ── Helpers JSX réutilisables ───────────────────────────────
   const SectionLabel = ({ children }) => (
-    <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1.4px', color: 'rgba(255,255,255,0.45)', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8, paddingBottom: 12, borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+    <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1.4px', color: 'var(--text-muted)', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8, paddingBottom: 12, borderBottom: '1px solid var(--border)' }}>
       <span style={{ width: 3, height: 12, borderRadius: 2, background: 'linear-gradient(180deg, #3b82f6, #6366f1)', flexShrink: 0, boxShadow: '0 0 8px rgba(59,130,246,0.4)', display: 'inline-block' }} />
       {children}
     </div>
@@ -1007,13 +1007,13 @@ function Dashboard({ chantiers, clients, factures, devis = [], parametres, navig
   const ActionRow = ({ nom, texte, btnLabel, btnCouleur, onAction, Icon: RowIcon }) => (
     <div
       onClick={onAction}
-      style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', borderRadius: 10, marginBottom: 6, background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.07)', cursor: 'pointer', transition: 'background 0.3s ease, border-color 0.3s ease, transform 0.3s ease, box-shadow 0.3s ease' }}
+      style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', borderRadius: 10, marginBottom: 6, background: 'var(--bg-glass)', border: '1px solid var(--border)', cursor: 'pointer', transition: 'background 0.3s ease, border-color 0.3s ease, transform 0.3s ease, box-shadow 0.3s ease' }}
       onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(59,130,246,0.2)'; e.currentTarget.style.background = 'rgba(59,130,246,0.04)'; e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.2)'; }}
-      onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.07)'; e.currentTarget.style.background = 'rgba(255,255,255,0.025)'; e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = ''; }}
+      onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.background = 'var(--bg-glass)'; e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = ''; }}
     >
       {RowIcon && <RowIcon size={14} strokeWidth={1.8} style={{ color: btnCouleur, flexShrink: 0 }} />}
       <span style={{ fontWeight: 700, fontSize: 13, color: '#f1f5f9', flexShrink: 0 }}>{nom}</span>
-      <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{texte}</span>
+      <span style={{ fontSize: 12, color: 'var(--text-muted)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{texte}</span>
       <button
         onClick={e => { e.stopPropagation(); onAction(); }}
         style={{ background: 'linear-gradient(135deg, rgba(59,130,246,0.2) 0%, rgba(99,102,241,0.14) 100%)', color: '#93c5fd', border: '1px solid rgba(59,130,246,0.35)', borderRadius: 8, padding: '6px 14px', cursor: 'pointer', fontSize: 12, fontWeight: 700, flexShrink: 0, transition: 'all 0.3s ease', whiteSpace: 'nowrap' }}
@@ -1032,13 +1032,13 @@ function Dashboard({ chantiers, clients, factures, devis = [], parametres, navig
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 36, flexWrap: 'wrap', gap: 14 }}>
         <div>
           <div className="page-title-main">Tableau de bord</div>
-          <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: 13, margin: '6px 0 0', fontWeight: 400 }}>
+          <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: '6px 0 0', fontWeight: 400 }}>
             {getPeriodeLabel(periodeGlobale)}
           </p>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 10 }}>
           {/* ── Sélecteur de période ── */}
-          <div style={{ display: 'flex', gap: 4, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 12, padding: '4px 5px' }}>
+          <div style={{ display: 'flex', gap: 4, background: 'var(--bg-glass-2)', border: '1px solid var(--border)', borderRadius: 12, padding: '4px 5px' }}>
             {[
               { id: 'semaine', label: 'Semaine' },
               { id: 'mois',    label: 'Mois' },
@@ -1054,7 +1054,7 @@ function Dashboard({ chantiers, clients, factures, devis = [], parametres, navig
                   border: periodeGlobale === p.id
                     ? '1px solid rgba(59,130,246,0.45)'
                     : '1px solid transparent',
-                  color: periodeGlobale === p.id ? '#93c5fd' : 'rgba(255,255,255,0.4)',
+                  color: periodeGlobale === p.id ? '#93c5fd' : 'var(--text-muted)',
                   borderRadius: 8,
                   padding: '6px 16px',
                   cursor: 'pointer',
@@ -1068,7 +1068,7 @@ function Dashboard({ chantiers, clients, factures, devis = [], parametres, navig
             ))}
           </div>
           {/* ── Badge chantiers actifs ── */}
-          <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 20, padding: '5px 14px', fontWeight: 500 }}>
+          <span style={{ fontSize: 12, color: 'var(--text-secondary)', background: 'var(--bg-hover)', border: '1px solid var(--border)', borderRadius: 20, padding: '5px 14px', fontWeight: 500 }}>
             {actifs.length} chantier{actifs.length !== 1 ? 's' : ''} actif{actifs.length !== 1 ? 's' : ''}
           </span>
         </div>
@@ -1129,7 +1129,7 @@ function Dashboard({ chantiers, clients, factures, devis = [], parametres, navig
                 border: featured ? '1px solid rgba(59,130,246,0.35)' : '1px solid rgba(255,255,255,0.09)',
                 transition: 'transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease' }}
               onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-4px) scale(1.01)'; e.currentTarget.style.boxShadow = featured ? '0 32px 72px rgba(0,0,0,0.75), 0 0 0 1px rgba(59,130,246,0.6), 0 0 64px rgba(59,130,246,0.22)' : '0 20px 56px rgba(0,0,0,0.7), 0 0 0 1px rgba(59,130,246,0.35), 0 0 32px rgba(59,130,246,0.1)'; e.currentTarget.style.borderColor = featured ? 'rgba(59,130,246,0.65)' : 'rgba(59,130,246,0.4)'; }}
-              onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = featured ? '0 8px 32px rgba(59,130,246,0.25), 0 2px 8px rgba(0,0,0,0.6), inset 0 1px 0 rgba(59,130,246,0.18)' : '0 4px 24px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.07)'; e.currentTarget.style.borderColor = featured ? 'rgba(59,130,246,0.35)' : 'rgba(255,255,255,0.09)'; }}
+              onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = featured ? '0 8px 32px rgba(59,130,246,0.25), 0 2px 8px rgba(0,0,0,0.6), inset 0 1px 0 rgba(59,130,246,0.18)' : '0 4px 24px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.07)'; e.currentTarget.style.borderColor = featured ? 'rgba(59,130,246,0.35)' : 'var(--border)'; }}
             >
               {/* Watermark icon */}
               <div style={{ position: 'absolute', right: -10, top: -10, color: couleur, opacity: featured ? 0.12 : 0.08 }}><Icon size={120} strokeWidth={1} /></div>
@@ -1139,9 +1139,9 @@ function Dashboard({ chantiers, clients, factures, devis = [], parametres, navig
               <div style={{ width: 44, height: 44, borderRadius: 12, background: `linear-gradient(135deg, rgba(${couleur === '#3382c2' || couleur === C.primaire ? '59,130,246' : couleur === C.secondaire ? '16,185,129' : couleur === C.warning ? '245,158,11' : couleur === C.violet ? '139,92,246' : couleur === C.danger ? '239,68,68' : '120,144,156'},${featured ? '0.28' : '0.16'}) 0%, rgba(${couleur === C.primaire ? '99,102,241' : couleur === C.secondaire ? '5,150,105' : couleur === C.warning ? '217,119,6' : couleur === C.violet ? '109,40,217' : '90,100,120'},${featured ? '0.18' : '0.1'}) 100%)`, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 22, flexShrink: 0, boxShadow: `0 0 ${featured ? '24px' : '14px'} rgba(${couleur === C.primaire ? '59,130,246' : couleur === C.secondaire ? '16,185,129' : couleur === C.warning ? '245,158,11' : couleur === C.violet ? '139,92,246' : '120,144,156'},${featured ? '0.45' : '0.25'}), inset 0 1px 0 rgba(255,255,255,0.15)` }}>
                 <Icon size={20} strokeWidth={1.8} style={{ color: featured ? '#fff' : couleur }} />
               </div>
-              <div style={{ fontSize: 10, color: featured ? 'rgba(147,197,253,0.65)' : 'rgba(255,255,255,0.4)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1.4px', marginBottom: 10 }}>{label}</div>
+              <div style={{ fontSize: 10, color: featured ? 'rgba(147,197,253,0.65)' : 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1.4px', marginBottom: 10 }}>{label}</div>
               <div style={{ fontSize: featured ? 46 : 42, fontWeight: 900, letterSpacing: '-2.5px', lineHeight: 1, color: featured ? '#ddeeff' : '#f8faff', textShadow: featured ? '0 0 24px rgba(59,130,246,0.5)' : '0 1px 4px rgba(0,0,0,0.4)' }}>{valeur}</div>
-              <div style={{ fontSize: 12, color: featured ? 'rgba(147,197,253,0.5)' : 'rgba(255,255,255,0.35)', marginTop: 12, lineHeight: 1.4 }}>{sous}</div>
+              <div style={{ fontSize: 12, color: featured ? 'rgba(147,197,253,0.5)' : 'var(--text-muted)', marginTop: 12, lineHeight: 1.4 }}>{sous}</div>
             </div>
           ))}
         </div>
@@ -1246,8 +1246,8 @@ function Dashboard({ chantiers, clients, factures, devis = [], parametres, navig
               const badge = PRIORITE_BADGE[priorite.niveau];
               const isCritique = priorite.niveau === 'critique';
               const isAttention = priorite.niveau === 'attention';
-              const cardBg = isCritique ? 'radial-gradient(ellipse at 8% 50%, rgba(239,68,68,0.1) 0%, rgba(239,68,68,0.04) 100%)' : isAttention ? 'radial-gradient(ellipse at 8% 50%, rgba(245,158,11,0.1) 0%, rgba(245,158,11,0.03) 100%)' : 'rgba(255,255,255,0.03)';
-              const cardBorder = isCritique ? 'rgba(239,68,68,0.28)' : isAttention ? 'rgba(245,158,11,0.22)' : 'rgba(255,255,255,0.07)';
+              const cardBg = isCritique ? 'radial-gradient(ellipse at 8% 50%, rgba(239,68,68,0.1) 0%, rgba(239,68,68,0.04) 100%)' : isAttention ? 'radial-gradient(ellipse at 8% 50%, rgba(245,158,11,0.1) 0%, rgba(245,158,11,0.03) 100%)' : 'var(--bg-glass)';
+              const cardBorder = isCritique ? 'rgba(239,68,68,0.28)' : isAttention ? 'rgba(245,158,11,0.22)' : 'var(--border)';
               const cardBorderLeft = badge.color;
               return (
                 <div key={c.id} onClick={() => naviguer('chantiers', { chantierActif: c.id })}
@@ -1260,13 +1260,13 @@ function Dashboard({ chantiers, clients, factures, devis = [], parametres, navig
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontWeight: 700, fontSize: 14, color: '#f1f5f9', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.nom || c.numero}</div>
-                    <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', marginTop: 2 }}>{retardJ > 0 ? `${retardJ}j de retard` : r !== null && r < 0 ? `Rentabilité ${r}%` : r !== null && r < 10 ? `Marge faible ${r}%` : 'À surveiller'}</div>
+                    <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{retardJ > 0 ? `${retardJ}j de retard` : r !== null && r < 0 ? `Rentabilité ${r}%` : r !== null && r < 10 ? `Marge faible ${r}%` : 'À surveiller'}</div>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                     <span style={{ fontSize: 11, background: badge.bg, color: badge.color, border: `1px solid ${badge.border}`, borderRadius: 20, padding: '3px 10px', fontWeight: 700 }}>{badge.label}</span>
                     {retardJ > 0 && <span style={{ fontSize: 11, background: 'rgba(239,68,68,0.12)', color: C.danger, borderRadius: 20, padding: '3px 10px', fontWeight: 700 }}>−{retardJ}j</span>}
                     {r !== null && <span style={{ fontSize: 11, color: r >= 15 ? C.secondaire : r >= 0 ? C.warning : C.danger, fontWeight: 700, background: r >= 15 ? 'rgba(16,185,129,0.1)' : r >= 0 ? 'rgba(245,158,11,0.1)' : 'rgba(239,68,68,0.1)', padding: '3px 10px', borderRadius: 20 }}>{r >= 0 ? '+' : ''}{r}%</span>}
-                    <span style={{ fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,0.35)', display: 'flex', alignItems: 'center', gap: 2 }}>Voir <ChevronRight size={13} strokeWidth={2.5} /></span>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 2 }}>Voir <ChevronRight size={13} strokeWidth={2.5} /></span>
                   </div>
                 </div>
               );
@@ -1349,7 +1349,7 @@ function Dashboard({ chantiers, clients, factures, devis = [], parametres, navig
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
                       <span style={{ fontWeight: 700, fontSize: 14, color: '#f1f5f9', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.nom || c.numero}</span>
-                      {client && <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.32)', flexShrink: 0 }}>{client.nom || client.raisonSociale}</span>}
+                      {client && <span style={{ fontSize: 12, color: 'var(--text-muted)', flexShrink: 0 }}>{client.nom || client.raisonSociale}</span>}
                     </div>
                     <div style={{ fontSize: 12, color: couleur, marginTop: 3, fontWeight: 600, opacity: 0.9 }}>{probleme}</div>
                   </div>
@@ -1367,7 +1367,7 @@ function Dashboard({ chantiers, clients, factures, devis = [], parametres, navig
                     <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px', background: `${couleur}18`, color: couleur, border: `1px solid ${couleur}32`, borderRadius: 20, padding: '3px 10px' }}>
                       {statutLabel}
                     </span>
-                    <ChevronRight size={13} strokeWidth={2.5} style={{ color: 'rgba(255,255,255,0.22)' }} />
+                    <ChevronRight size={13} strokeWidth={2.5} style={{ color: 'var(--text-muted)' }} />
                   </div>
                 </div>
               );
@@ -1398,7 +1398,7 @@ function Dashboard({ chantiers, clients, factures, devis = [], parametres, navig
                   return (
                     <div key={c.id} onClick={() => naviguer('chantiers', { chantierActif: c.id })}
                       style={{ borderLeft: `3px solid ${etat}`, paddingLeft: 16, paddingRight: 8, paddingTop: 10, paddingBottom: 10, marginBottom: 8, cursor: 'pointer', borderRadius: '0 10px 10px 0', transition: 'background 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease', background: 'transparent' }}
-                      onMouseEnter={e => { e.currentTarget.style.background = retardJ > 0 ? 'rgba(239,68,68,0.05)' : 'rgba(255,255,255,0.03)'; e.currentTarget.style.transform = 'translateX(2px)'; e.currentTarget.style.boxShadow = retardJ > 0 ? '0 2px 16px rgba(239,68,68,0.12)' : ''; }}
+                      onMouseEnter={e => { e.currentTarget.style.background = retardJ > 0 ? 'rgba(239,68,68,0.05)' : 'var(--bg-glass)'; e.currentTarget.style.transform = 'translateX(2px)'; e.currentTarget.style.boxShadow = retardJ > 0 ? '0 2px 16px rgba(239,68,68,0.12)' : ''; }}
                       onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = ''; }}
                     >
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
@@ -1411,7 +1411,7 @@ function Dashboard({ chantiers, clients, factures, devis = [], parametres, navig
                           </span>
                         )}
                       </div>
-                      <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)', marginTop: 4, marginBottom: 10 }}>
+                      <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4, marginBottom: 10 }}>
                         {[c.ville, c.canton].filter(Boolean).join(' · ')}{c.dateDebut ? ` · début ${c.dateDebut}` : ''}
                       </div>
                       <BarreAvancement valeur={progress} couleur={etat} />
@@ -1429,8 +1429,8 @@ function Dashboard({ chantiers, clients, factures, devis = [], parametres, navig
                           const rentLabel = statut ? `${rentPfx[statut.label] || ''} ${statut.label}` : null;
                           return (
                             <span style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-                              {dateFinStr && <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)' }}>fin {dateFinStr}</span>}
-                              {montant > 0 && <span style={{ fontSize: 13, fontWeight: 700, color: 'rgba(255,255,255,0.75)' }}>CHF {fmtN(montant)}</span>}
+                              {dateFinStr && <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>fin {dateFinStr}</span>}
+                              {montant > 0 && <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>CHF {fmtN(montant)}</span>}
                               {rentLabel && <span style={{ background: rentColor + '22', color: rentColor, border: `1px solid ${rentColor}44`, borderRadius: 20, padding: '2px 8px', fontSize: 10, fontWeight: 700 }}>{rentLabel}</span>}
                             </span>
                           );
@@ -1446,7 +1446,7 @@ function Dashboard({ chantiers, clients, factures, devis = [], parametres, navig
           {/* Droite — Actions rapides */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <div style={carteStyle}>
-              <div style={{ fontWeight: 700, fontSize: 11, color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 7 }}>
+              <div style={{ fontWeight: 700, fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 7 }}>
                 <Plus size={12} strokeWidth={2} style={{ color: '#3b82f6' }} /> Actions rapides
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -1457,7 +1457,7 @@ function Dashboard({ chantiers, clients, factures, devis = [], parametres, navig
                   { label: 'Analyse',          page: 'analyse',   Icon: TrendingUp },
                 ].map(({ label, page, Icon }) => (
                   <button key={label} onClick={() => naviguer(page)}
-                    style={{ background: 'linear-gradient(135deg, rgba(59,130,246,0.1) 0%, rgba(99,102,241,0.06) 100%)', color: 'rgba(255,255,255,0.85)', border: '1px solid rgba(59,130,246,0.2)', borderRadius: 10, padding: '12px 14px', cursor: 'pointer', fontWeight: 600, fontSize: 13, display: 'flex', alignItems: 'center', gap: 9, width: '100%', textAlign: 'left', transition: 'all 0.3s ease' }}
+                    style={{ background: 'linear-gradient(135deg, rgba(59,130,246,0.1) 0%, rgba(99,102,241,0.06) 100%)', color: 'var(--text-primary)', border: '1px solid rgba(59,130,246,0.2)', borderRadius: 10, padding: '12px 14px', cursor: 'pointer', fontWeight: 600, fontSize: 13, display: 'flex', alignItems: 'center', gap: 9, width: '100%', textAlign: 'left', transition: 'all 0.3s ease' }}
                     onMouseEnter={e => { e.currentTarget.style.background = 'linear-gradient(135deg, rgba(59,130,246,0.2) 0%, rgba(99,102,241,0.14) 100%)'; e.currentTarget.style.borderColor = 'rgba(59,130,246,0.45)'; e.currentTarget.style.boxShadow = '0 0 24px rgba(59,130,246,0.18), 0 0 0 1px rgba(59,130,246,0.25), 0 6px 20px rgba(0,0,0,0.2)'; e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.color = '#fff'; }}
                     onMouseLeave={e => { e.currentTarget.style.background = 'linear-gradient(135deg, rgba(59,130,246,0.1) 0%, rgba(99,102,241,0.06) 100%)'; e.currentTarget.style.borderColor = 'rgba(59,130,246,0.2)'; e.currentTarget.style.boxShadow = ''; e.currentTarget.style.transform = ''; e.currentTarget.style.color = 'rgba(255,255,255,0.85)'; }}
                   >
@@ -1594,7 +1594,7 @@ function renderProjectionCard(etat, fmtK) {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap', gap: 8 }}>
         <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', color: 'var(--text-muted)' }}>Projection à terminaison</span>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontSize: 11, color: 'var(--text-muted)', background: 'rgba(255,255,255,0.06)', borderRadius: 20, padding: '3px 10px' }}>{etat.avancementPct}% réalisé</span>
+          <span style={{ fontSize: 11, color: 'var(--text-muted)', background: 'var(--bg-glass-2)', borderRadius: 20, padding: '3px 10px' }}>{etat.avancementPct}% réalisé</span>
           <span style={{ fontSize: 11, fontWeight: 700, color: fiab.couleur, background: fiab.couleur + '18', border: `1px solid ${fiab.couleur}40`, borderRadius: 20, padding: '3px 10px', whiteSpace: 'nowrap' }}>{fiab.label}</span>
         </div>
       </div>
@@ -1603,7 +1603,7 @@ function renderProjectionCard(etat, fmtK) {
         <div style={{ fontSize: 46, fontWeight: 900, color: urgenceConfig.couleur, letterSpacing: '-2px', lineHeight: 1 }}>{margeVal >= 0 ? '+' : '−'}CHF {fmtK(Math.abs(margeVal))}</div>
         <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 8 }}>{margeVal >= 0 ? 'marge estimée' : 'perte estimée'}</div>
       </div>
-      <div style={{ borderTop: '1px solid rgba(255,255,255,0.07)', paddingTop: 12, display: 'flex', flexDirection: 'column', gap: 4, textAlign: 'center' }}>
+      <div style={{ borderTop: '1px solid var(--border)', paddingTop: 12, display: 'flex', flexDirection: 'column', gap: 4, textAlign: 'center' }}>
         <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>Coût final estimé&nbsp;<span style={{ color: 'var(--text-secondary)', fontWeight: 700, fontSize: 14 }}>CHF {fmtK(etat.coutFinalEstime)}</span></div>
         <div style={{ fontSize: 11, color: 'var(--text-muted)', opacity: 0.8 }}>Marge estimée&nbsp;<span style={{ color: margePct >= 15 ? C.secondaire : margePct >= 5 ? C.warning : C.danger, fontWeight: 600 }}>{margePct}%</span></div>
       </div>
@@ -1644,12 +1644,12 @@ function renderEcartTable(couts, fmtN) {
   return (
     <div style={{ marginBottom: 16 }}>
       <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.7px', color: 'var(--text-muted)', marginBottom: 8 }}>Écart prévu / réel par poste</div>
-      <div style={{ border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10, overflow: 'hidden' }}>
+      <div style={{ border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
           <thead>
-            <tr style={{ background: 'rgba(255,255,255,0.04)' }}>
+            <tr style={{ background: 'var(--bg-glass-2)' }}>
               {['Poste', 'Prévu', 'Réel', 'Écart', '%'].map(h => (
-                <th key={h} style={{ padding: '8px 12px', textAlign: h === 'Poste' ? 'left' : 'right', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-muted)', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>{h}</th>
+                <th key={h} style={{ padding: '8px 12px', textAlign: h === 'Poste' ? 'left' : 'right', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-muted)', borderBottom: '1px solid var(--border)' }}>{h}</th>
               ))}
             </tr>
           </thead>
@@ -1657,7 +1657,7 @@ function renderEcartTable(couts, fmtN) {
             {lignes.map(l => {
               const couleurEcart = l.ecart > 0 ? C.danger : l.ecart < 0 ? C.secondaire : 'var(--text-muted)';
               return (
-                <tr key={l.label} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                <tr key={l.label} style={{ borderBottom: '1px solid var(--border)' }}>
                   <td style={{ padding: '8px 12px', color: 'var(--text-secondary)' }}>{l.label}</td>
                   <td style={{ padding: '8px 12px', textAlign: 'right', color: 'var(--text-muted)' }}>CHF {fmtN(l.prevu)}</td>
                   <td style={{ padding: '8px 12px', textAlign: 'right', color: 'var(--text-secondary)' }}>CHF {fmtN(l.reel)}</td>
@@ -1668,7 +1668,7 @@ function renderEcartTable(couts, fmtN) {
             })}
           </tbody>
           <tfoot>
-            <tr style={{ background: 'rgba(255,255,255,0.04)' }}>
+            <tr style={{ background: 'var(--bg-glass-2)' }}>
               <td style={{ padding: '8px 12px', fontWeight: 700, color: 'var(--text-primary)' }}>Total</td>
               <td style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 700, color: 'var(--text-primary)' }}>CHF {fmtN(couts.totalCoutsPrevu)}</td>
               <td style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 700, color: 'var(--text-primary)' }}>CHF {fmtN(couts.totalCoutsReel)}</td>
@@ -1766,7 +1766,7 @@ function renderRentabiliteJours(c, etat, couts, naviguer, fmtN, fmtK) {
             <span>0 jour</span>
             <span>{rj.joursPrevu} jours prévus</span>
           </div>
-          <div style={{ background: 'rgba(255,255,255,0.06)', borderRadius: 8, height: 10, overflow: 'hidden', position: 'relative' }}>
+          <div style={{ background: 'var(--bg-glass-2)', borderRadius: 8, height: 10, overflow: 'hidden', position: 'relative' }}>
             <div style={{
               height: '100%', borderRadius: 8, transition: 'width 0.4s ease',
               background: rj.enDepassement
@@ -1806,7 +1806,7 @@ function renderRentabiliteJours(c, etat, couts, naviguer, fmtN, fmtK) {
 
       {/* Rentabilité basée sur les jours */}
       {!rj.aucuneSaisie && (
-        <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: 14, marginTop: 2 }}>
+        <div style={{ borderTop: '1px solid var(--border)', paddingTop: 14, marginTop: 2 }}>
           <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', color: 'var(--text-muted)', marginBottom: 10 }}>
             Rentabilité calculée sur les jours réalisés
           </div>
@@ -1836,7 +1836,7 @@ function renderRentabiliteJours(c, etat, couts, naviguer, fmtN, fmtK) {
 
       {/* Analyse équipe */}
       {nbTotal > 0 && (
-        <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: 14, marginTop: 14 }}>
+        <div style={{ borderTop: '1px solid var(--border)', paddingTop: 14, marginTop: 14 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: etatEquipe === 'partiel' ? 6 : 10 }}>
             <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', color: couleurEtat }}>{titreEtat}</div>
             {etatEquipe === 'complet' && (
@@ -1858,7 +1858,7 @@ function renderRentabiliteJours(c, etat, couts, naviguer, fmtN, fmtK) {
           )}
 
           {etatEquipe === 'vide' && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', background: 'var(--bg-glass)', border: '1px solid var(--border)', borderRadius: 8 }}>
               <span style={{ fontSize: 22, fontWeight: 900, color: 'var(--text-muted)' }}>—</span>
               <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Ajoutez des journées pour activer le suivi réel</span>
             </div>
@@ -1873,15 +1873,15 @@ function renderRentabiliteJours(c, etat, couts, naviguer, fmtN, fmtK) {
                   return (
                     <div key={m.employeId}
                       onClick={() => naviguer('employes', { employeActif: m.employeId })}
-                      style={{ background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 10, padding: '10px 14px', cursor: 'pointer', transition: 'background 0.18s ease, border-color 0.18s ease, transform 0.18s ease' }}
+                      style={{ background: 'var(--bg-glass)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 14px', cursor: 'pointer', transition: 'background 0.18s ease, border-color 0.18s ease, transform 0.18s ease' }}
                       onMouseEnter={e => { e.currentTarget.style.background = 'rgba(59,130,246,0.06)'; e.currentTarget.style.borderColor = 'rgba(59,130,246,0.22)'; e.currentTarget.style.transform = 'translateX(3px)'; }}
-                      onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.025)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.06)'; e.currentTarget.style.transform = ''; }}
+                      onMouseLeave={e => { e.currentTarget.style.background = 'var(--bg-glass)'; e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.transform = ''; }}
                     >
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                           <span style={{ fontWeight: 700, fontSize: 13, color: 'var(--text-primary)' }}>{m.nom}</span>
                           <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{m.poste}</span>
-                          <ChevronRight size={11} strokeWidth={2} style={{ color: 'rgba(255,255,255,0.2)' }} />
+                          <ChevronRight size={11} strokeWidth={2} style={{ color: 'var(--text-muted)' }} />
                         </div>
                         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                           <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>CHF {fmtN(m.tarifJour)}/j × {m.joursReels}j</span>
@@ -1889,7 +1889,7 @@ function renderRentabiliteJours(c, etat, couts, naviguer, fmtN, fmtK) {
                           <span style={{ fontSize: 11, fontWeight: 700, background: couleurCout + '18', color: couleurCout, border: `1px solid ${couleurCout}30`, borderRadius: 20, padding: '2px 8px' }}>{m.partPct}%</span>
                         </div>
                       </div>
-                      <div style={{ height: 4, background: 'rgba(255,255,255,0.05)', borderRadius: 4, overflow: 'hidden' }}>
+                      <div style={{ height: 4, background: 'var(--bg-hover)', borderRadius: 4, overflow: 'hidden' }}>
                         <div style={{ height: '100%', width: `${barWidth}%`, background: `linear-gradient(90deg, ${couleurCout}cc, ${couleurCout}66)`, borderRadius: 4 }} />
                       </div>
                     </div>
@@ -1897,7 +1897,7 @@ function renderRentabiliteJours(c, etat, couts, naviguer, fmtN, fmtK) {
                 })}
               </div>
 
-              <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid rgba(255,255,255,0.04)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                   <span style={{ fontSize: 12, fontWeight: 700, color: etatEquipe === 'complet' ? 'var(--text-secondary)' : C.warning }}>
                     {etatEquipe === 'complet' ? 'Total équipe' : 'Total partiel'}
@@ -1971,7 +1971,7 @@ function ModalSaisieHeures({ chantierSaisie, initialDate, onFermer, onSave, para
       <div style={{
         background: 'var(--bg-card)', borderRadius: 20, padding: '28px 32px',
         width: '100%', maxWidth: 600,
-        border: '1px solid rgba(255,255,255,0.1)',
+        border: '1px solid var(--border-hover)',
         boxShadow: '0 24px 80px rgba(0,0,0,0.7)',
       }}>
         {/* Header */}
@@ -1984,7 +1984,7 @@ function ModalSaisieHeures({ chantierSaisie, initialDate, onFermer, onSave, para
         </div>
 
         {/* Équipe source */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, padding: '8px 14px', background: 'rgba(255,255,255,0.04)', borderRadius: 8, border: '1px solid rgba(255,255,255,0.08)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, padding: '8px 14px', background: 'var(--bg-glass-2)', borderRadius: 8, border: '1px solid var(--border)' }}>
           <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)' }}>
             👷 Équipe du chantier ({empsList.length})
           </span>
@@ -2028,7 +2028,7 @@ function ModalSaisieHeures({ chantierSaisie, initialDate, onFermer, onSave, para
           >Tout à 8h</button>
           <button
             onClick={() => setHeures({})}
-            style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, padding: '7px 14px', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}
+            style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', background: 'var(--bg-glass-2)', border: '1px solid var(--border-hover)', borderRadius: 8, padding: '7px 14px', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}
           >Effacer</button>
         </div>
 
@@ -2042,8 +2042,8 @@ function ModalSaisieHeures({ chantierSaisie, initialDate, onFermer, onSave, para
               <div key={emp.id} style={{
                 display: 'flex', alignItems: 'center', gap: 12,
                 padding: '12px 16px', borderRadius: 12,
-                background: isOver ? C.danger + '12' : isActive ? C.secondaire + '10' : 'rgba(255,255,255,0.03)',
-                border: `1px solid ${isOver ? C.danger + '40' : isActive ? C.secondaire + '30' : 'rgba(255,255,255,0.07)'}`,
+                background: isOver ? C.danger + '12' : isActive ? C.secondaire + '10' : 'var(--bg-glass)',
+                border: `1px solid ${isOver ? C.danger + '40' : isActive ? C.secondaire + '30' : 'var(--border)'}`,
               }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{emp.nom}</div>
@@ -2057,7 +2057,7 @@ function ModalSaisieHeures({ chantierSaisie, initialDate, onFermer, onSave, para
                       style={{
                         fontSize: 11, fontWeight: 700,
                         color: h === v ? 'white' : 'var(--text-muted)',
-                        background: h === v ? C.primaire : 'rgba(255,255,255,0.05)',
+                        background: h === v ? C.primaire : 'var(--bg-hover)',
                         border: `1px solid ${h === v ? C.primaire : 'rgba(255,255,255,0.1)'}`,
                         borderRadius: 6, padding: '4px 7px', cursor: 'pointer', fontFamily: 'Inter, sans-serif',
                       }}
@@ -2074,8 +2074,8 @@ function ModalSaisieHeures({ chantierSaisie, initialDate, onFermer, onSave, para
                       setHeures(prev => ({ ...prev, [emp.id]: val }));
                     }}
                     style={{
-                      width: 62, background: 'rgba(255,255,255,0.08)',
-                      border: `1px solid ${isOver ? C.danger + '60' : 'rgba(255,255,255,0.15)'}`,
+                      width: 62, background: 'var(--bg-glass-2)',
+                      border: `1px solid ${isOver ? C.danger + '60' : 'var(--border-hover)'}`,
                       borderRadius: 8, color: isOver ? C.danger : 'var(--text-primary)',
                       fontFamily: 'Inter, sans-serif', fontSize: 15, fontWeight: 700,
                       textAlign: 'center', padding: '6px 8px',
@@ -2671,7 +2671,7 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
                 }
               </span>
               {etat.totalJoursPrevus > 0 && (
-                <span style={{ fontSize: 11, color: 'var(--text-muted)', background: 'rgba(255,255,255,0.06)', borderRadius: 20, padding: '2px 10px' }}>
+                <span style={{ fontSize: 11, color: 'var(--text-muted)', background: 'var(--bg-glass-2)', borderRadius: 20, padding: '2px 10px' }}>
                   {etat.avancementPct}%
                 </span>
               )}
@@ -2699,7 +2699,7 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
 
         {/* ── MODE INIT — chantier non démarré ── */}
         {etat.totalJoursReels === 0 && etat.coutTotalReel === 0 && (
-          <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 14, padding: '20px 24px' }}>
+          <div style={{ background: 'var(--bg-glass)', border: '1px solid var(--border-hover)', borderRadius: 14, padding: '20px 24px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
               <span style={{ fontSize: 28, lineHeight: 1 }}>🏗️</span>
               <div>
@@ -2712,7 +2712,7 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
 
         {/* ── Projection indisponible — chantier trop tôt ── */}
         {etat.totalJoursReels > 0 && !etat.projectionDisponible && (
-          <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 12, padding: '14px 18px', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ background: 'var(--bg-glass)', border: '1px solid var(--border)', borderRadius: 12, padding: '14px 18px', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 12 }}>
             <span style={{ fontSize: 18, flexShrink: 0 }}>📊</span>
             <div>
               <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-secondary)' }}>Projection indisponible — chantier trop tôt</div>
@@ -2788,7 +2788,7 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
                   <span>Progression facturation</span>
                   <span>{pctFacture}% facturé · {pctEncaisse}% encaissé</span>
                 </div>
-                <div style={{ background: 'rgba(255,255,255,0.06)', borderRadius: 6, height: 8, overflow: 'hidden', position: 'relative' }}>
+                <div style={{ background: 'var(--bg-glass-2)', borderRadius: 6, height: 8, overflow: 'hidden', position: 'relative' }}>
                   <div style={{ position: 'absolute', left: 0, top: 0, height: '100%', width: `${pctFacture}%`, background: `linear-gradient(90deg, ${C.info}, ${C.primaire})`, borderRadius: 6, transition: 'width 0.4s ease' }} />
                   <div style={{ position: 'absolute', left: 0, top: 0, height: '100%', width: `${pctEncaisse}%`, background: C.secondaire + 'aa', borderRadius: 6 }} />
                 </div>
@@ -2889,7 +2889,7 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
               { label: 'Coût/m² réel', valeur: couts.coutParM2Reel !== null ? `CHF ${couts.coutParM2Reel}` : '—', couleur: couts.coutParM2Reel !== null ? C.violet : 'var(--text-muted)' },
               { label: 'Prix/m² devis', valeur: couts.prixParM2Devis !== null ? `CHF ${couts.prixParM2Devis}` : '—', couleur: couts.prixParM2Devis !== null ? C.info : 'var(--text-muted)' },
             ].map(s => (
-              <div key={s.label} style={{ background: (typeof s.couleur === 'string' && s.couleur.startsWith('#')) ? s.couleur + '12' : 'rgba(255,255,255,0.04)', border: `1px solid ${(typeof s.couleur === 'string' && s.couleur.startsWith('#')) ? s.couleur + '30' : 'rgba(255,255,255,0.08)'}`, borderRadius: '12px', padding: '16px', textAlign: 'center', backdropFilter: 'blur(8px)' }}>
+              <div key={s.label} style={{ background: (typeof s.couleur === 'string' && s.couleur.startsWith('#')) ? s.couleur + '12' : 'var(--bg-glass-2)', border: `1px solid ${(typeof s.couleur === 'string' && s.couleur.startsWith('#')) ? s.couleur + '30' : 'rgba(255,255,255,0.08)'}`, borderRadius: '12px', padding: '16px', textAlign: 'center', backdropFilter: 'blur(8px)' }}>
                 <div style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px', color: 'var(--text-muted)', marginBottom: '6px' }}>{s.label}</div>
                 <div style={{ fontSize: '20px', fontWeight: 800, color: s.couleur, letterSpacing: '-0.3px' }}>{s.valeur}</div>
                 {s.sub && <div style={{ fontSize: 10, color: s.couleur, opacity: 0.7, marginTop: 3 }}>{s.sub}</div>}
@@ -2915,7 +2915,7 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
                 </div>
               </div>
               {/* RAD = coût estimé pour finir à ce rythme */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, padding: '12px 14px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--bg-glass-2)', border: '1px solid var(--border-hover)', borderRadius: 10, padding: '12px 14px' }}>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px', color: 'var(--text-muted)' }}>RAD — Coût pour finir</div>
                   <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 1 }}>À ce rythme, reste à dépenser</div>
@@ -2966,9 +2966,9 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
       <div style={{ display: 'flex', gap: '6px', marginBottom: '20px', flexWrap: 'wrap' }}>
         {statuts.map(s => (
           <button key={s} onClick={() => setFiltre(s)} style={{
-            background: filtre === s ? 'rgba(59,130,246,0.18)' : 'rgba(255,255,255,0.04)',
+            background: filtre === s ? 'rgba(59,130,246,0.18)' : 'var(--bg-glass-2)',
             color: filtre === s ? C.primaire : 'var(--text-secondary)',
-            border: filtre === s ? '1px solid rgba(59,130,246,0.4)' : '1px solid rgba(255,255,255,0.08)',
+            border: filtre === s ? '1px solid rgba(59,130,246,0.4)' : '1px solid var(--border)',
             padding: '5px 14px', borderRadius: '20px', cursor: 'pointer', fontSize: '13px',
             fontWeight: filtre === s ? 700 : 500, fontFamily: 'Inter, sans-serif',
             transition: 'all 0.18s',
@@ -3069,9 +3069,9 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
               {parametres.typesTravaux.map(t => (
                 <button key={t.id} onClick={() => toggleTravaux(t.nom)} style={{
-                  background: (form.typesTravaux || []).includes(t.nom) ? 'rgba(59,130,246,0.18)' : 'rgba(255,255,255,0.04)',
+                  background: (form.typesTravaux || []).includes(t.nom) ? 'rgba(59,130,246,0.18)' : 'var(--bg-glass-2)',
                   color: (form.typesTravaux || []).includes(t.nom) ? C.primaire : 'var(--text-secondary)',
-                  border: (form.typesTravaux || []).includes(t.nom) ? '1px solid rgba(59,130,246,0.4)' : '1px solid rgba(255,255,255,0.08)',
+                  border: (form.typesTravaux || []).includes(t.nom) ? '1px solid rgba(59,130,246,0.4)' : '1px solid var(--border)',
                   padding: '5px 14px', borderRadius: '20px', cursor: 'pointer', fontSize: '13px',
                   fontWeight: (form.typesTravaux || []).includes(t.nom) ? 700 : 500,
                   fontFamily: 'Inter, sans-serif', transition: 'all 0.15s',
@@ -3165,7 +3165,7 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
           {/* ══ SUIVI TERRAIN — édition uniquement ══════════════════════ */}
           {form.id && (
             <>
-              <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)', margin: '8px 0 20px' }} />
+              <div style={{ borderTop: '1px solid var(--border)', margin: '8px 0 20px' }} />
               <div style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.9px', color: C.warning, marginBottom: '14px', display: 'flex', alignItems: 'center', gap: 8 }}>
                 <span style={{ display: 'inline-block', width: 3, height: 14, background: C.warning, borderRadius: 2 }} />
                 Suivi terrain
@@ -3231,7 +3231,7 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
                       onClick={() => chantierEnForm && !disabled && ouvrirSaisieHeures(chantierEnForm)}
                       style={{
                         width: '100%', padding: '14px', borderRadius: 12, cursor: disabled ? 'not-allowed' : 'pointer',
-                        background: disabled ? 'rgba(255,255,255,0.04)' : `linear-gradient(135deg, ${C.secondaire}22, ${C.secondaire}10)`,
+                        background: disabled ? 'var(--bg-glass-2)' : `linear-gradient(135deg, ${C.secondaire}22, ${C.secondaire}10)`,
                         border: `1px solid ${disabled ? 'rgba(255,255,255,0.1)' : C.secondaire + '40'}`,
                         color: disabled ? 'var(--text-muted)' : C.secondaire,
                         fontSize: 15, fontWeight: 700, fontFamily: 'Inter, sans-serif',
@@ -3314,7 +3314,7 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
                           }).join(', ');
                         const nbPresents = Object.values(info.heuresParEmp).filter(h => h > 0).length;
                         return (
-                          <div key={date} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 12px', background: 'rgba(255,255,255,0.03)', borderRadius: 8, fontSize: 12 }}>
+                          <div key={date} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 12px', background: 'var(--bg-glass)', borderRadius: 8, fontSize: 12 }}>
                             <span style={{ color: 'var(--text-muted)', minWidth: 60 }}>{label}</span>
                             <span style={{ color: C.secondaire, fontWeight: 600 }}>{nbPresents} empl. · {info.totalH}h</span>
                             <span style={{ color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{noms}</span>
@@ -3890,7 +3890,7 @@ function Devis({ devis, setDevis, clients, parametres, naviguer, setChantiers, c
                   <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '2px' }}>{client?.entreprise || 'Client inconnu'} — {client?.prenom} {client?.nom}</div>
                   <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '8px' }}>{d.notes?.split('\n')[0] || '—'}</div>
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                    <span onClick={() => client && naviguer('clients', { clientActif: client.id })} style={{ fontSize: '11px', fontWeight: 600, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--text-secondary)', padding: '3px 10px', borderRadius: '20px', cursor: 'pointer' }}>👥 Voir client →</span>
+                    <span onClick={() => client && naviguer('clients', { clientActif: client.id })} style={{ fontSize: '11px', fontWeight: 600, background: 'var(--bg-glass-2)', border: '1px solid var(--border-hover)', color: 'var(--text-secondary)', padding: '3px 10px', borderRadius: '20px', cursor: 'pointer' }}>👥 Voir client →</span>
                     {chantierLie && (
                       <span onClick={() => naviguer('chantiers', { chantierActif: chantierLie.id })} style={{ fontSize: '11px', fontWeight: 700, background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.3)', color: '#10b981', padding: '3px 10px', borderRadius: '20px', cursor: 'pointer' }}>🏗️ {chantierLie.numero} →</span>
                     )}
@@ -4228,10 +4228,10 @@ function Parametres({ parametres, setParametres, clients = [], setClients = () =
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px', marginBottom: '24px' }}>
         {onglets.map(o => (
           <div key={o.id} onClick={() => setOnglet(o.id)} style={{
-            background: onglet === o.id ? 'rgba(59,130,246,0.16)' : 'rgba(255,255,255,0.035)',
+            background: onglet === o.id ? 'rgba(59,130,246,0.16)' : 'var(--bg-glass)',
             backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)',
             borderRadius: '12px', padding: '14px 12px', cursor: 'pointer', textAlign: 'center',
-            border: onglet === o.id ? '1px solid rgba(59,130,246,0.45)' : '1px solid rgba(255,255,255,0.08)',
+            border: onglet === o.id ? '1px solid rgba(59,130,246,0.45)' : '1px solid var(--border)',
             boxShadow: onglet === o.id ? '0 4px 20px rgba(59,130,246,0.18)' : '0 2px 12px rgba(0,0,0,0.3)',
             transition: 'all 0.18s',
           }}>
@@ -4247,7 +4247,7 @@ function Parametres({ parametres, setParametres, clients = [], setClients = () =
           <div className="ds-card-title" style={{ marginBottom: '20px' }}>Paramètres du Dashboard</div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '15px' }}>
             {[['⚠️ Alerte jours restants', 'joursAlerte'], ['📊 Nb chantiers affichés', 'nbChantiersAffiche'], ['📅 Période stats (mois)', 'periodeStats']].map(([label, key]) => (
-              <div key={key} style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '12px', padding: '15px' }}>
+              <div key={key} style={{ background: 'var(--bg-glass-2)', border: '1px solid var(--border)', borderRadius: '12px', padding: '15px' }}>
                 <label style={labelStyle}>{label}</label>
                 <input type="number" value={parametres.parametres?.[key] || ''} placeholder="5"
                   onChange={e => sauv({ ...parametres, parametres: { ...parametres.parametres, [key]: parseFloat(e.target.value) } })}
@@ -4265,7 +4265,7 @@ function Parametres({ parametres, setParametres, clients = [], setClients = () =
             <div>
               <div style={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', color: 'var(--text-muted)', marginBottom: '12px' }}>Statuts disponibles</div>
               {['À chiffrer', 'Devis envoyé', 'Validé', 'En préparation', 'Planifié', 'En cours', 'Suspendu', 'Terminé', 'Facturé', 'Clôturé'].map(s => (
-                <div key={s} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 0', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                <div key={s} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 0', borderBottom: '1px solid var(--border)' }}>
                   <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: { 'En cours': C.warning, 'Terminé': C.secondaire, 'Planifié': C.info, 'Suspendu': C.danger, 'Facturé': C.violet }[s] || C.primaire }} />
                   <span style={{ fontSize: '14px' }}>{s}</span>
                 </div>
@@ -4274,7 +4274,7 @@ function Parametres({ parametres, setParametres, clients = [], setClients = () =
             <div>
               <div style={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', color: 'var(--text-muted)', marginBottom: '12px' }}>Priorités</div>
               {['Basse', 'Normale', 'Haute', 'Urgente'].map(p => (
-                <div key={p} style={{ padding: '8px 0', borderBottom: '1px solid rgba(255,255,255,0.06)', fontSize: '14px', color: 'var(--text-secondary)' }}>⭐ {p}</div>
+                <div key={p} style={{ padding: '8px 0', borderBottom: '1px solid var(--border)', fontSize: '14px', color: 'var(--text-secondary)' }}>⭐ {p}</div>
               ))}
             </div>
           </div>
@@ -4286,7 +4286,7 @@ function Parametres({ parametres, setParametres, clients = [], setClients = () =
           <div className="ds-card-title" style={{ marginBottom: '20px' }}>Paramètres des Devis</div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '15px' }}>
             {[['Marge cible (%)', 'margeCible'], ['Seuil min. (%)', 'seuilRentabiliteMin'], ['Plafond crédibilité (%)', 'plafondCredi'], ['Frais généraux (%)', 'tauxFraisGeneraux'], ['Coeff. MO', 'coefficientMainOeuvre'], ['TVA (%)', 'tauxTVA']].map(([label, key]) => (
-              <div key={key} style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '12px', padding: '15px' }}>
+              <div key={key} style={{ background: 'var(--bg-glass-2)', border: '1px solid var(--border)', borderRadius: '12px', padding: '15px' }}>
                 <label style={labelStyle}>{label}</label>
                 <input type="number" value={parametres.parametres?.[key] || ''}
                   onChange={e => sauv({ ...parametres, parametres: { ...parametres.parametres, [key]: parseFloat(e.target.value) } })}
@@ -4436,7 +4436,7 @@ function Parametres({ parametres, setParametres, clients = [], setClients = () =
               { label: '🔴 Rendement carrelage', key: 'rendementCarrelage', defaut: 35 },
               { label: '🔸 Rendement joint (ml/j)', key: 'rendementJoint', defaut: 60 },
             ].map(s => (
-              <div key={s.key} style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '10px', padding: '12px' }}>
+              <div key={s.key} style={{ background: 'var(--bg-glass-2)', border: '1px solid var(--border)', borderRadius: '10px', padding: '12px' }}>
                 <label style={labelStyle}>{s.label}</label>
                 <input type="number" value={parametres.parametres?.[s.key] || s.defaut}
                   onChange={e => sauv({ ...parametres, parametres: { ...parametres.parametres, [s.key]: parseFloat(e.target.value) } })}
@@ -4450,7 +4450,7 @@ function Parametres({ parametres, setParametres, clients = [], setClients = () =
               ['🔧 Tarif ouvrier qualifié (CHF/j)', 'tarifOuvrier', 350],
               ["🪛 Tarif main d'œuvre (CHF/j)", 'tarifMainOeuvre', 280],
             ].map(([label, key, defaut]) => (
-              <div key={key} style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '12px', padding: '15px' }}>
+              <div key={key} style={{ background: 'var(--bg-glass-2)', border: '1px solid var(--border)', borderRadius: '12px', padding: '15px' }}>
                 <label style={labelStyle}>{label}</label>
                 <input type="number" value={parametres.parametres?.[key] || defaut}
                   onChange={e => sauv({ ...parametres, parametres: { ...parametres.parametres, [key]: parseFloat(e.target.value) } })}
@@ -4466,7 +4466,7 @@ function Parametres({ parametres, setParametres, clients = [], setClients = () =
           <div className="ds-card-title" style={{ marginBottom: '20px' }}>Paramètres Qualité</div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
             {[['🟢 Seuil score Bon (%)', 'qualiteSeuilBon', 80], ['🟡 Seuil score Moyen (%)', 'qualiteSeuilMoyen', 50]].map(([label, key, defaut]) => (
-              <div key={key} style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '12px', padding: '15px' }}>
+              <div key={key} style={{ background: 'var(--bg-glass-2)', border: '1px solid var(--border)', borderRadius: '12px', padding: '15px' }}>
                 <label style={labelStyle}>{label}</label>
                 <input type="number" value={parametres.parametres?.[key] || defaut}
                   onChange={e => sauv({ ...parametres, parametres: { ...parametres.parametres, [key]: parseFloat(e.target.value) } })}
@@ -4482,7 +4482,7 @@ function Parametres({ parametres, setParametres, clients = [], setClients = () =
           <div className="ds-card-title" style={{ marginBottom: '20px' }}>Paramètres Paiements</div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '15px' }}>
             {[['📅 Délai paiement (jours)', 'delaiPaiement', 30], ['⚠️ Alerte retard (jours)', 'alerteRetardPaiement', 7], ['💰 Acompte standard (%)', 'acompteStandard', 30]].map(([label, key, defaut]) => (
-              <div key={key} style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '12px', padding: '15px' }}>
+              <div key={key} style={{ background: 'var(--bg-glass-2)', border: '1px solid var(--border)', borderRadius: '12px', padding: '15px' }}>
                 <label style={labelStyle}>{label}</label>
                 <input type="number" value={parametres.parametres?.[key] || defaut}
                   onChange={e => sauv({ ...parametres, parametres: { ...parametres.parametres, [key]: parseFloat(e.target.value) } })}
@@ -4498,7 +4498,7 @@ function Parametres({ parametres, setParametres, clients = [], setClients = () =
           <div className="ds-card-title" style={{ marginBottom: '20px' }}>Paramètres du Rapport</div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '15px' }}>
             {[['⚠️ Seuil alerte chantier (jours)', 'joursAlerte', 5], ['📊 Marge minimale alerte (%)', 'margeMinAlerte', 15], ['💰 Montant retard alerte (CHF)', 'montantRetardAlerte', 1000]].map(([label, key, defaut]) => (
-              <div key={key} style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '12px', padding: '15px' }}>
+              <div key={key} style={{ background: 'var(--bg-glass-2)', border: '1px solid var(--border)', borderRadius: '12px', padding: '15px' }}>
                 <label style={labelStyle}>{label}</label>
                 <input type="number" value={parametres.parametres?.[key] || defaut}
                   onChange={e => sauv({ ...parametres, parametres: { ...parametres.parametres, [key]: parseFloat(e.target.value) } })}

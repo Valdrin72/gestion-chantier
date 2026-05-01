@@ -2163,6 +2163,7 @@ function ModalSaisieHeures({ chantierSaisie, initialDate, onFermer, onSave, para
 function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = [], parametres, naviguer, contexte }) {
   const [vue, setVue] = useState('liste');
   const [selected, setSelected] = useState(null);
+  const [detailOnglet, setDetailOnglet] = useState('vue');
   const [ajout, setAjout] = useState(false);
   const [filtre, setFiltre] = useState(contexte?.filtreStatut || 'Tous');
   const [membreEquipe, setMembreEquipe] = useState({ employeId: '', joursPlannifies: '', joursRealises: '', role: 'Ouvrier' });
@@ -2176,7 +2177,7 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
   React.useEffect(() => {
     if (contexte?.chantierActif) {
       const c = chantiers.find(ch => ch.id === contexte.chantierActif);
-      if (c) { setSelected(c); setVue('detail'); }
+      if (c) { setSelected(c); setVue('detail'); setDetailOnglet('vue'); }
     }
     if (contexte?.filtreStatut) setFiltre(contexte.filtreStatut);
     if (contexte?.clientActif) setFiltre('Tous');
@@ -2457,6 +2458,23 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
           <button onClick={() => supprimer(c.id)} style={btnDanger}><Trash2 size={14} /> Supprimer</button>
         </div>
 
+        {/* ── Onglets détail ── */}
+        <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', marginBottom: 20 }}>
+          {[
+            { id: 'vue',       label: '📋 Vue' },
+            { id: 'analyse',   label: '📈 Analyse' },
+            { id: 'financier', label: '💰 Financier' },
+          ].map(o => (
+            <button key={o.id} onClick={() => setDetailOnglet(o.id)} style={{
+              background: 'transparent', border: 'none',
+              borderBottom: detailOnglet === o.id ? '2px solid #3b82f6' : '2px solid transparent',
+              color: detailOnglet === o.id ? '#3b82f6' : 'var(--text-secondary)',
+              padding: '10px 18px', marginBottom: '-1px',
+              cursor: 'pointer', fontSize: 14, fontWeight: detailOnglet === o.id ? 700 : 400,
+            }}>{o.label}</button>
+          ))}
+        </div>
+
         {/* ── Fallback données invalides (erreur critique moteur) ── */}
         {!coherenceDetail.ok && (
           <div style={{
@@ -2563,6 +2581,7 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
           );
         })()}
 
+        {detailOnglet === 'vue' && <>
         {/* ── Criticité globale ── */}
         {criticiteConfig && (
           <div style={{
@@ -2629,6 +2648,9 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
             })}
           </div>
         )}
+        </>}
+
+        {detailOnglet === 'analyse' && <>
         {/* ── Intelligence terrain ── */}
         {etat.projectionDisponible && isChantierActif(c) && renderTerrainVelocity(c, etat)}
 
@@ -2766,6 +2788,11 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
         {/* ── Recommandations automatiques ── */}
         {etat.projectionDisponible && renderRecommandations(etat, couts)}
 
+        {/* ── Rentabilité par jours (logique métier BTP) ── */}
+        {renderRentabiliteJours(c, etat, couts, naviguer, fmtN, fmtK)}
+        </>}
+
+        {detailOnglet === 'financier' && <>
         <div style={carteStyle}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
             <div className="ds-card-title" style={{ margin: 0 }}>Financier</div>
@@ -2962,9 +2989,7 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
           )}
         </div>
 
-        {/* ── Rentabilité par jours (logique métier BTP) ── */}
-        {renderRentabiliteJours(c, etat, couts, naviguer, fmtN, fmtK)}
-
+        </>}
 
       </div>
     </React.Fragment>);

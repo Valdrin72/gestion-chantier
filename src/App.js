@@ -1474,7 +1474,7 @@ function Dashboard({ chantiers, clients, factures, devis = [], parametres, navig
       {/* ════════════════════════════════════
           ZONE SECONDAIRE
       ════════════════════════════════════ */}
-      {(risqueFuturData.length > 0 || aNesPasOublier.length > 0 || aAnticiper.length > 0 || actionsLog.length > 0) && (
+      {(risqueFuturData.length > 0 || aNesPasOublier.length > 0 || aAnticiper.length > 0) && (
         <div>
           <SectionLabel><Bell size={11} /> Suivi & anticipation</SectionLabel>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -1521,63 +1521,6 @@ function Dashboard({ chantiers, clients, factures, devis = [], parametres, navig
               </div>
             )}
 
-            {/* Dernières actions + Impact (2 colonnes) */}
-            {actionsLog.length > 0 && (() => {
-              const TYPE_CONFIG = { urgence: { label: 'Urgence', couleur: C.danger, icon: '🔴' }, ressource: { label: 'Voir chantier', couleur: C.warning, icon: '🟠' }, analyse: { label: 'Analyser', couleur: C.primaire, icon: '🔵' }, relance: { label: 'Relancer', couleur: C.violet, icon: '🟣' } };
-              const recentes = actionsLog.slice(0, 5);
-              const uneSemaine = Date.now() - 7 * 24 * 3600 * 1000;
-              const actsSemaine = actionsLog.filter(a => a.date > uneSemaine);
-              const relancesLog = actionsLog.filter(a => a.type === 'relance');
-              const nbRelances = relancesLog.length;
-              const nbUrgences = actionsLog.filter(a => a.type === 'urgence').length;
-              const chantiersTraites = new Set(actionsLog.filter(a => a.chantierId).map(a => a.chantierId)).size;
-              const idsRelances = new Set(relancesLog.flatMap(a => a.factureIds || []));
-              const facturesPaieesApresRelance = idsRelances.size > 0 ? facturesSafe.filter(f => idsRelances.has(f.id) && f.statut === 'payee') : [];
-              const nbPayees = facturesPaieesApresRelance.length;
-              const montantEncaisse = facturesPaieesApresRelance.reduce((t, f) => t + (parseFloat(f.montantTTC) || 0), 0);
-              const cashEnAttente = idsRelances.size === 0 ? facturesSafe.filter(f => ['envoyee', 'partielle', 'retard'].includes(f.statut)).reduce((t, f) => t + Math.max(0, (parseFloat(f.montantTTC) || 0) - (parseFloat(f.montantPaye) || 0)), 0) : 0;
-              const libRelances = nbRelances > 0 ? (nbPayees > 0 ? `${nbRelances} relance${nbRelances !== 1 ? 's' : ''} → ${nbPayees} payée${nbPayees !== 1 ? 's' : ''}` : `${nbRelances} relance${nbRelances !== 1 ? 's' : ''}`) : null;
-              const tuiles = [
-                { icon: '⚡', valeur: `${actsSemaine.length} action${actsSemaine.length !== 1 ? 's' : ''}`, label: 'cette semaine', accent: null },
-                libRelances && { icon: '📩', valeur: libRelances, label: nbPayees > 0 ? 'relances abouties' : 'effectuées', accent: nbPayees > 0 ? { bg: 'rgba(46,125,50,0.08)', border: 'rgba(46,125,50,0.3)', valeurColor: C.secondaire } : { bg: 'rgba(91,91,219,0.08)', border: 'rgba(91,91,219,0.25)', valeurColor: C.violet } },
-                nbPayees > 0 && montantEncaisse > 0 && { icon: '💰', valeur: `CHF ${fmtN(montantEncaisse)}`, label: 'encaissés', accent: { bg: 'rgba(46,125,50,0.10)', border: 'rgba(46,125,50,0.35)', valeurColor: C.secondaire }, star: true },
-                nbPayees === 0 && nbRelances > 0 && cashEnAttente > 0 && { icon: '💰', valeur: `CHF ${fmtN(cashEnAttente)}`, label: 'en attente de paiement', accent: { bg: 'rgba(245,158,11,0.08)', border: 'rgba(245,158,11,0.3)', valeurColor: C.warning } },
-                nbUrgences > 0 && { icon: '🚨', valeur: `${nbUrgences} urgence${nbUrgences !== 1 ? 's' : ''}`, label: 'traitées', accent: { bg: 'rgba(239,68,68,0.09)', border: 'rgba(239,68,68,0.25)', valeurColor: C.danger } },
-                chantiersTraites > 0 && { icon: '🏗️', valeur: `${chantiersTraites} chantier${chantiersTraites !== 1 ? 's' : ''}`, label: `traité${chantiersTraites !== 1 ? 's' : ''}`, accent: { bg: 'rgba(51,130,194,0.08)', border: 'rgba(51,130,194,0.25)', valeurColor: C.primaire } },
-              ].filter(Boolean);
-              return (
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, opacity: 0.88 }}>
-                  <div style={{ ...carteStyle, marginBottom: 0, padding: '14px 18px' }}>
-                    <div style={{ fontWeight: 700, fontSize: 12, color: 'var(--text-muted)', marginBottom: 10 }}>🕓 Dernières actions <span style={{ fontWeight: 400 }}>— {actionsLog.length} enregistrée{actionsLog.length > 1 ? 's' : ''}</span></div>
-                    {recentes.map(a => {
-                      const cfg = TYPE_CONFIG[a.type] || { label: a.type, couleur: '#78909c', icon: '⚪' };
-                      const d = new Date(a.date);
-                      const sameDay = d.toDateString() === new Date().toDateString();
-                      const dateStr = sameDay ? `Aujourd'hui ${d.toLocaleTimeString('fr-CH', { hour: '2-digit', minute: '2-digit' })}` : d.toLocaleDateString('fr-CH', { day: '2-digit', month: '2-digit' }) + ' ' + d.toLocaleTimeString('fr-CH', { hour: '2-digit', minute: '2-digit' });
-                      return (
-                        <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 0', borderBottom: '1px solid var(--border)' }}>
-                          <span style={{ fontSize: 12, flexShrink: 0 }}>{cfg.icon}</span>
-                          <span style={{ fontSize: 11, fontWeight: 700, color: cfg.couleur, flexShrink: 0, minWidth: 72 }}>{cfg.label}</span>
-                          <span style={{ fontSize: 11, color: 'var(--text-primary)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.label}</span>
-                          <span style={{ fontSize: 10, color: 'var(--text-muted)', flexShrink: 0 }}>{dateStr}</span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                  <div style={{ ...carteStyle, marginBottom: 0, padding: '14px 18px' }}>
-                    <div style={{ fontWeight: 700, fontSize: 12, color: 'var(--text-muted)', marginBottom: 10 }}>📊 Impact récent</div>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                      {tuiles.map((t) => (
-                        <div key={t.label} style={{ background: t.accent ? t.accent.bg : 'var(--bg)', border: `1.5px solid ${t.accent ? t.accent.border : 'var(--border)'}`, borderRadius: 10, padding: t.star ? '8px 16px' : '7px 14px', display: 'flex', flexDirection: 'column', gap: 2, boxShadow: t.star ? '0 2px 10px rgba(46,125,50,0.12)' : 'none' }}>
-                          <div style={{ fontSize: t.star ? 14 : 12, fontWeight: 800, color: t.accent ? t.accent.valeurColor : 'var(--text-primary)', whiteSpace: 'nowrap' }}>{t.icon} {t.valeur}</div>
-                          <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>{t.label}</div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              );
-            })()}
 
           </div>
         </div>

@@ -154,6 +154,7 @@ export const DS = {
     padding: '12px 16px',
     fontSize: '14px',
     color: 'var(--text-primary)',
+    fontWeight: 500,
     borderBottom: '1px solid var(--ds-td-border)',
   },
 

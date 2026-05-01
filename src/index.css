@@ -153,9 +153,14 @@
   --border        : #e2e8f0;
   --border-hover  : #cbd5e1;
   --border-focus  : #3b82f6;
-  --text-primary  : #0f172a;
-  --text-secondary: #334155;
-  --text-muted    : #64748b;
+
+  /* Hiérarchie texte — 4 niveaux */
+  --text-strong   : #020617;   /* valeurs CHF, %, chiffres clés */
+  --text-primary  : #0f172a;   /* titres, noms */
+  --text-secondary: #334155;   /* texte standard */
+  --text-muted    : #64748b;   /* sous-titres, infos secondaires */
+  --text-weak     : #94a3b8;   /* labels, aides */
+
   --bg:            #ffffff;
   --bg-topbar:     #ffffff;
   --border-input:  #e2e8f0;
@@ -196,19 +201,56 @@
   --ds-td-border: #f1f5f9;
   --ds-input-border: #e2e8f0;
   --ds-input-bg: #ffffff;
-  --ds-section-label-color: #94a3b8;
+  --ds-section-label-color: #64748b;
   --ds-section-label-border: #e2e8f0;
 }
 
-/* ── Light mode : fond global ── */
+/* ── Light mode : fond global + hiérarchie texte ── */
 .app-layout[data-theme="light"] {
   background: #ffffff;
+  color: #0f172a;
 }
 .app-layout[data-theme="light"] .app-main {
   background: transparent;
+  color: #0f172a;
 }
 .app-layout[data-theme="light"] .app-main::before {
   display: none;
+}
+
+/* Cascade texte pour tous les éléments sans couleur explicite */
+.app-layout[data-theme="light"] p,
+.app-layout[data-theme="light"] span:not([class]),
+.app-layout[data-theme="light"] label,
+.app-layout[data-theme="light"] li {
+  color: inherit;
+}
+
+/* Titres toujours foncés */
+.app-layout[data-theme="light"] h1,
+.app-layout[data-theme="light"] h2,
+.app-layout[data-theme="light"] h3,
+.app-layout[data-theme="light"] h4 {
+  color: #0f172a;
+  font-weight: 700;
+}
+
+/* Valeurs numériques importantes (classe utilitaire) */
+.app-layout[data-theme="light"] .value-strong {
+  color: #020617;
+  font-weight: 700;
+}
+
+/* Inputs lisibles */
+.app-layout[data-theme="light"] input,
+.app-layout[data-theme="light"] select,
+.app-layout[data-theme="light"] textarea {
+  color: #0f172a !important;
+}
+
+/* Topbar icons */
+.app-layout[data-theme="light"] .topbar {
+  color: #0f172a;
 }
 [data-theme="light"] .sidebar {
   background: #ffffff;

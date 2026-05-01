@@ -113,7 +113,7 @@ function BarreAvancement({ valeur, couleur }) {
   if (progress > 70) auto = '#22c55e';
   const c = couleur || auto;
   return (
-    <div style={{ background: 'var(--bg-hover)', borderRadius: '10px', height: '8px', width: '100%', overflow: 'hidden', boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.3)' }}>
+    <div style={{ background: 'var(--bg-hover)', borderRadius: '10px', height: '8px', width: '100%', overflow: 'hidden', boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.08)' }}>
       <div style={{ background: `linear-gradient(90deg, ${c}, ${c}cc)`, width: `${progress}%`, height: '8px', borderRadius: '10px', transition: 'width 0.4s ease', boxShadow: `0 0 8px ${c}` }} />
     </div>
   );
@@ -1012,11 +1012,11 @@ function Dashboard({ chantiers, clients, factures, devis = [], parametres, navig
       onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.background = 'var(--bg-glass)'; e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = ''; }}
     >
       {RowIcon && <RowIcon size={14} strokeWidth={1.8} style={{ color: btnCouleur, flexShrink: 0 }} />}
-      <span style={{ fontWeight: 700, fontSize: 13, color: '#f1f5f9', flexShrink: 0 }}>{nom}</span>
+      <span style={{ fontWeight: 700, fontSize: 13, color: 'var(--text-primary)', flexShrink: 0 }}>{nom}</span>
       <span style={{ fontSize: 12, color: 'var(--text-muted)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{texte}</span>
       <button
         onClick={e => { e.stopPropagation(); onAction(); }}
-        style={{ background: 'linear-gradient(135deg, rgba(59,130,246,0.2) 0%, rgba(99,102,241,0.14) 100%)', color: '#93c5fd', border: '1px solid rgba(59,130,246,0.35)', borderRadius: 8, padding: '6px 14px', cursor: 'pointer', fontSize: 12, fontWeight: 700, flexShrink: 0, transition: 'all 0.3s ease', whiteSpace: 'nowrap' }}
+        style={{ background: 'rgba(59,130,246,0.1)', color: '#2563eb', border: '1px solid rgba(59,130,246,0.25)', borderRadius: 8, padding: '6px 14px', cursor: 'pointer', fontSize: 12, fontWeight: 700, flexShrink: 0, transition: 'all 0.2s ease', whiteSpace: 'nowrap', fontFamily: 'Inter, sans-serif' }}
         onMouseEnter={e => { e.stopPropagation(); e.currentTarget.style.background = 'linear-gradient(135deg, rgba(59,130,246,0.32) 0%, rgba(99,102,241,0.24) 100%)'; e.currentTarget.style.boxShadow = '0 0 20px rgba(59,130,246,0.3), 0 0 0 1px rgba(59,130,246,0.5)'; e.currentTarget.style.borderColor = 'rgba(59,130,246,0.55)'; }}
         onMouseLeave={e => { e.currentTarget.style.background = 'linear-gradient(135deg, rgba(59,130,246,0.2) 0%, rgba(99,102,241,0.14) 100%)'; e.currentTarget.style.boxShadow = ''; e.currentTarget.style.borderColor = 'rgba(59,130,246,0.35)'; }}
       >{btnLabel}</button>
@@ -1037,7 +1037,7 @@ function Dashboard({ chantiers, clients, factures, devis = [], parametres, navig
         <div style={{ display: 'flex', gap: 4, background: 'var(--bg-glass-2)', border: '1px solid var(--border)', borderRadius: 12, padding: '4px 5px' }}>
           {[{ id: 'semaine', label: 'Semaine' }, { id: 'mois', label: 'Mois' }, { id: 'annee', label: 'Année' }].map(p => (
             <button key={p.id} onClick={() => setPeriodeGlobale(p.id)}
-              style={{ background: periodeGlobale === p.id ? 'linear-gradient(135deg, rgba(59,130,246,0.32) 0%, rgba(99,102,241,0.22) 100%)' : 'transparent', border: periodeGlobale === p.id ? '1px solid rgba(59,130,246,0.45)' : '1px solid transparent', color: periodeGlobale === p.id ? '#93c5fd' : 'var(--text-muted)', borderRadius: 8, padding: '6px 16px', cursor: 'pointer', fontSize: 12, fontWeight: periodeGlobale === p.id ? 700 : 500, transition: 'all 0.18s' }}
+              style={{ background: periodeGlobale === p.id ? 'rgba(59,130,246,0.12)' : 'transparent', border: periodeGlobale === p.id ? '1px solid rgba(59,130,246,0.3)' : '1px solid transparent', color: periodeGlobale === p.id ? '#2563eb' : 'var(--text-muted)', borderRadius: 8, padding: '6px 16px', cursor: 'pointer', fontSize: 12, fontWeight: periodeGlobale === p.id ? 700 : 500, transition: 'all 0.18s', fontFamily: 'Inter, sans-serif' }}
             >{p.label}</button>
           ))}
         </div>

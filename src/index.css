@@ -170,6 +170,8 @@
   --bottom-nav-border: #e2e8f0;
   --shadow-card:   0 1px 3px rgba(0,0,0,0.08), 0 4px 16px rgba(0,0,0,0.04);
   --shadow-hover:  0 4px 12px rgba(0,0,0,0.12), 0 1px 3px rgba(0,0,0,0.08);
+  --bg-glass      : #f8fafc;
+  --bg-glass-2    : #f1f5f9;
   --green-bg: rgba(16,185,129,0.08);
   --orange-bg: rgba(245,158,11,0.08);
   --red-bg: rgba(239,68,68,0.08);

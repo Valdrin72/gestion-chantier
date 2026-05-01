@@ -1080,10 +1080,8 @@ function Dashboard({ chantiers, clients, factures, devis = [], parametres, navig
               : kpi.nbFacturesEnAttente > 0
                 ? `${kpi.nbFacturesEnAttente} à encaisser`
                 : 'Aucune en attente',
-            gradient: kpi.cashEnAttente > 0
-              ? 'linear-gradient(135deg, #EA580C 0%, #F97316 50%, #FB923C 100%)'
-              : 'linear-gradient(135deg, #475569 0%, #64748B 100%)',
-            glow: 'rgba(234,88,12,0.3)',
+            gradient: 'linear-gradient(135deg, #1D4ED8 0%, #2563EB 45%, #60A5FA 100%)',
+            glow: 'rgba(29,78,216,0.35)',
           },
           {
             label: 'Heures engagées', page: 'planning', Icon: Clock,
@@ -1091,8 +1089,8 @@ function Dashboard({ chantiers, clients, factures, devis = [], parametres, navig
             sous: kpi.nbEmployes > 0
               ? `${kpi.nbEmployes} employé${kpi.nbEmployes > 1 ? 's' : ''} mobilisé${kpi.nbEmployes > 1 ? 's' : ''}`
               : 'Équipes non renseignées',
-            gradient: 'linear-gradient(135deg, #4F46E5 0%, #6366F1 50%, #818CF8 100%)',
-            glow: 'rgba(79,70,229,0.3)',
+            gradient: 'linear-gradient(135deg, #1D4ED8 0%, #2563EB 45%, #60A5FA 100%)',
+            glow: 'rgba(29,78,216,0.35)',
           },
         ].map(({ label, page, Icon, valeur, sous, gradient, glow }) => (
           <div key={label} onClick={() => naviguer(page)}

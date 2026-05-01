@@ -434,15 +434,15 @@ export const calculerDevisClient = (devis) => {
 
 // ===== C =====
 export const C = {
-  primaire: '#3382c2',
-  secondaire: '#2e7d32',
-  danger: '#b71c1c',
-  warning: '#e65100',
-  info: '#0288d1',
-  violet: '#6a1b9a',
-  orange: '#f57f17',
-  gris: '#f5f5f5',
-  blanc: '#ffffff',
+  primaire:   '#2563eb',  // blue-600
+  secondaire: '#10b981',  // emerald-500
+  danger:     '#ef4444',  // red-500
+  warning:    '#f59e0b',  // amber-500
+  info:       '#2563eb',  // same as primaire
+  violet:     '#6366f1',  // indigo-500
+  orange:     '#f97316',  // orange-500
+  gris:       '#f8fafc',
+  blanc:      '#ffffff',
 };
 
 // ===== RENTABILITÉ PAR JOURS (sans dates) =====

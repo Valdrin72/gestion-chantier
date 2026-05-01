@@ -143,27 +143,28 @@
 
 /* Light mode override */
 [data-theme="light"] {
-  --bg-app        : #ffffff;
+  /* Fond : gris très doux — crée la profondeur avec les cartes blanches */
+  --bg-app        : #f0f2f5;
   --bg-card       : #ffffff;
   --bg-sidebar    : #ffffff;
   --bg-header     : #ffffff;
-  --bg-hover      : #f8fafc;
+  --bg-hover      : #f4f6f8;
   --bg-active     : #eff6ff;
   --bg-input      : #ffffff;
-  --border        : #e2e8f0;
-  --border-hover  : #cbd5e1;
+  --border        : #d1d9e0;
+  --border-hover  : #b0bec5;
   --border-focus  : #3b82f6;
 
   /* Hiérarchie texte — 4 niveaux */
-  --text-strong   : #020617;   /* valeurs CHF, %, chiffres clés */
-  --text-primary  : #0f172a;   /* titres, noms */
-  --text-secondary: #334155;   /* texte standard */
-  --text-muted    : #64748b;   /* sous-titres, infos secondaires */
-  --text-weak     : #94a3b8;   /* labels, aides */
+  --text-strong   : #020617;
+  --text-primary  : #0f172a;
+  --text-secondary: #334155;
+  --text-muted    : #64748b;
+  --text-weak     : #94a3b8;
 
-  --bg:            #ffffff;
+  --bg:            #f0f2f5;
   --bg-topbar:     #ffffff;
-  --border-input:  #e2e8f0;
+  --border-input:  #d1d9e0;
   --dash-card:     #ffffff;
   --dash-border:   #e2e8f0;
   --dash-border-bg:#f8fafc;
@@ -173,32 +174,32 @@
   --scrollbar-thumb: #cbd5e1;
   --bottom-nav-bg: #ffffff;
   --bottom-nav-border: #e2e8f0;
-  --shadow-card:   0 1px 3px rgba(0,0,0,0.08), 0 4px 16px rgba(0,0,0,0.04);
-  --shadow-hover:  0 4px 12px rgba(0,0,0,0.12), 0 1px 3px rgba(0,0,0,0.08);
-  --bg-glass      : #f8fafc;
-  --bg-glass-2    : #f1f5f9;
+  --shadow-card:   0 1px 3px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.08), 0 1px 0 rgba(255,255,255,0.9) inset;
+  --shadow-hover:  0 4px 16px rgba(0,0,0,0.12), 0 1px 4px rgba(0,0,0,0.08);
+  --bg-glass      : #f4f6f8;
+  --bg-glass-2    : #eef0f3;
   --green-bg: rgba(16,185,129,0.08);
   --orange-bg: rgba(245,158,11,0.08);
   --red-bg: rgba(239,68,68,0.08);
   --blue-bg: rgba(59,130,246,0.08);
   --purple-bg: rgba(139,92,246,0.08);
 
-  /* DS tokens — light mode */
+  /* DS tokens — light mode avec profondeur */
   --ds-card-bg: #ffffff;
   --ds-card-blur: none;
-  --ds-card-shadow: 0 1px 3px rgba(0,0,0,0.07), 0 4px 16px rgba(0,0,0,0.05);
-  --ds-card-border: #e2e8f0;
+  --ds-card-shadow: 0 1px 0 rgba(0,0,0,0.04), 0 2px 8px rgba(0,0,0,0.07), 0 8px 24px rgba(0,0,0,0.06);
+  --ds-card-border: #d1d9e0;
   --ds-card-compact-bg: #ffffff;
-  --ds-card-compact-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 2px 8px rgba(0,0,0,0.04);
-  --ds-card-compact-border: #e2e8f0;
-  --ds-card-inset-bg: #f8fafc;
-  --ds-card-inset-border: #e2e8f0;
-  --ds-card-inset-shadow: inset 0 1px 3px rgba(0,0,0,0.05);
+  --ds-card-compact-shadow: 0 1px 0 rgba(0,0,0,0.04), 0 2px 6px rgba(0,0,0,0.06);
+  --ds-card-compact-border: #d1d9e0;
+  --ds-card-inset-bg: #f4f6f8;
+  --ds-card-inset-border: #d1d9e0;
+  --ds-card-inset-shadow: inset 0 1px 4px rgba(0,0,0,0.06);
   --ds-btn-ghost-bg: #ffffff;
-  --ds-btn-ghost-border: #e2e8f0;
-  --ds-th-bg: #f8fafc;
-  --ds-th-border: #e2e8f0;
-  --ds-td-border: #f1f5f9;
+  --ds-btn-ghost-border: #d1d9e0;
+  --ds-th-bg: #f4f6f8;
+  --ds-th-border: #d1d9e0;
+  --ds-td-border: #eef0f3;
   --ds-input-border: #e2e8f0;
   --ds-input-bg: #ffffff;
   --ds-section-label-color: #64748b;
@@ -207,7 +208,7 @@
 
 /* ── Light mode : fond global + hiérarchie texte ── */
 .app-layout[data-theme="light"] {
-  background: #ffffff;
+  background: #f0f2f5;
   color: #0f172a;
 }
 .app-layout[data-theme="light"] .app-main {

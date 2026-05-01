@@ -1,38 +1,38 @@
 // ============================================================
 // CYNA — DESIGN SYSTEM TOKENS (styles partagés)
-// Importez ce fichier dans chaque module pour un rendu uniforme.
+// Utilise des CSS variables pour s'adapter au thème light/dark.
 // ============================================================
 
 export const DS = {
   // ── Cartes ──────────────────────────────────────────────────
   card: {
-    background: 'linear-gradient(145deg, rgba(255,255,255,0.055) 0%, rgba(255,255,255,0.028) 50%, rgba(255,255,255,0.038) 100%)',
-    backdropFilter: 'blur(14px) saturate(1.6)',
-    WebkitBackdropFilter: 'blur(14px) saturate(1.6)',
+    background: 'var(--ds-card-bg)',
+    backdropFilter: 'var(--ds-card-blur)',
+    WebkitBackdropFilter: 'var(--ds-card-blur)',
     padding: '24px',
     borderRadius: '16px',
     marginBottom: '24px',
-    boxShadow: '0 2px 8px rgba(0,0,0,0.3), 0 8px 32px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.09)',
-    border: '1px solid rgba(255,255,255,0.08)',
+    boxShadow: 'var(--ds-card-shadow)',
+    border: '1px solid var(--ds-card-border)',
     position: 'relative',
   },
   cardCompact: {
-    background: 'linear-gradient(145deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.025) 100%)',
-    backdropFilter: 'blur(12px) saturate(1.4)',
-    WebkitBackdropFilter: 'blur(12px) saturate(1.4)',
+    background: 'var(--ds-card-compact-bg)',
+    backdropFilter: 'var(--ds-card-blur)',
+    WebkitBackdropFilter: 'var(--ds-card-blur)',
     padding: '16px 20px',
     borderRadius: '14px',
     marginBottom: '16px',
-    boxShadow: '0 2px 8px rgba(0,0,0,0.25), 0 6px 20px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.07)',
-    border: '1px solid rgba(255,255,255,0.07)',
+    boxShadow: 'var(--ds-card-compact-shadow)',
+    border: '1px solid var(--ds-card-compact-border)',
     position: 'relative',
   },
   cardInset: {
-    background: 'rgba(255,255,255,0.025)',
+    background: 'var(--ds-card-inset-bg)',
     borderRadius: '12px',
     padding: '16px 18px',
-    border: '1px solid rgba(255,255,255,0.06)',
-    boxShadow: 'inset 0 2px 6px rgba(0,0,0,0.25)',
+    border: '1px solid var(--ds-card-inset-border)',
+    boxShadow: 'var(--ds-card-inset-shadow)',
   },
 
   // ── Boutons ─────────────────────────────────────────────────
@@ -69,7 +69,7 @@ export const DS = {
     whiteSpace: 'nowrap',
   },
   btnDanger: {
-    background: 'rgba(239,68,68,0.08)',
+    background: 'var(--red-bg)',
     color: '#ef4444',
     border: '1px solid rgba(239,68,68,0.3)',
     borderRadius: '10px',
@@ -84,9 +84,9 @@ export const DS = {
     whiteSpace: 'nowrap',
   },
   btnGhost: {
-    background: 'rgba(255,255,255,0.04)',
+    background: 'var(--ds-btn-ghost-bg)',
     color: 'var(--text-secondary)',
-    border: '1px solid rgba(255,255,255,0.1)',
+    border: '1px solid var(--ds-btn-ghost-border)',
     borderRadius: '10px',
     padding: '8px 16px',
     fontSize: '14px',
@@ -99,7 +99,7 @@ export const DS = {
     whiteSpace: 'nowrap',
   },
   btnWarning: {
-    background: 'rgba(245,158,11,0.1)',
+    background: 'var(--orange-bg)',
     color: '#f59e0b',
     border: '1px solid rgba(245,158,11,0.3)',
     borderRadius: '10px',
@@ -119,8 +119,8 @@ export const DS = {
     width: '100%',
     padding: '9px 13px',
     borderRadius: '10px',
-    border: '1px solid rgba(255,255,255,0.08)',
-    background: 'rgba(255,255,255,0.04)',
+    border: '1px solid var(--ds-input-border)',
+    background: 'var(--ds-input-bg)',
     color: 'var(--text-primary)',
     fontSize: '14px',
     fontFamily: 'Inter, sans-serif',
@@ -145,8 +145,8 @@ export const DS = {
     textTransform: 'uppercase',
     letterSpacing: '0.5px',
     color: 'var(--text-secondary)',
-    background: 'rgba(255,255,255,0.025)',
-    borderBottom: '1px solid rgba(255,255,255,0.07)',
+    background: 'var(--ds-th-bg)',
+    borderBottom: '1px solid var(--ds-th-border)',
     textAlign: 'left',
     whiteSpace: 'nowrap',
   },
@@ -154,7 +154,7 @@ export const DS = {
     padding: '12px 16px',
     fontSize: '14px',
     color: 'var(--text-primary)',
-    borderBottom: '1px solid rgba(255,255,255,0.04)',
+    borderBottom: '1px solid var(--ds-td-border)',
   },
 
   // ── Sections ────────────────────────────────────────────────
@@ -163,10 +163,10 @@ export const DS = {
     fontWeight: 700,
     textTransform: 'uppercase',
     letterSpacing: '1.4px',
-    color: 'rgba(255,255,255,0.35)',
+    color: 'var(--ds-section-label-color)',
     marginBottom: '14px',
     paddingBottom: '10px',
-    borderBottom: '1px solid rgba(255,255,255,0.04)',
+    borderBottom: '1px solid var(--ds-section-label-border)',
     display: 'flex',
     alignItems: 'center',
     gap: '6px',

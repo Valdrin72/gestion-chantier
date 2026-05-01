@@ -1916,7 +1916,7 @@ function ModalSaisieHeures({ chantierSaisie, initialDate, onFermer, onSave, para
                       onClick={() => setHeures(prev => ({ ...prev, [emp.id]: v }))}
                       style={{
                         fontSize: 11, fontWeight: 700,
-                        color: h === v ? 'white' : 'var(--text-muted)',
+                        color: h === v ? '#ffffff' : 'var(--text-muted)',
                         background: h === v ? C.primaire : 'var(--bg-hover)',
                         border: `1px solid ${h === v ? C.primaire : 'rgba(255,255,255,0.1)'}`,
                         borderRadius: 6, padding: '4px 7px', cursor: 'pointer', fontFamily: 'Inter, sans-serif',
@@ -4071,7 +4071,7 @@ function Parametres({ parametres, setParametres, clients = [], setClients = () =
           animation: 'fadeIn 0.2s ease',
         }}>
           <span style={{ fontSize: 18 }}>✅</span>
-          <span style={{ fontWeight: 700, color: '#fff', fontSize: 14 }}>Paramètres enregistrés</span>
+          <span style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: 14 }}>Paramètres enregistrés</span>
         </div>
       )}
       <div className="page-header-row">

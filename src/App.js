@@ -1026,186 +1026,146 @@ function Dashboard({ chantiers, clients, factures, devis = [], parametres, navig
   return (
     <div>
 
-      {/* ════════════════════════════════════
-          EN-TÊTE
-      ════════════════════════════════════ */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 36, flexWrap: 'wrap', gap: 14 }}>
+      {/* ── EN-TÊTE ─────────────────────────────────────────────── */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 32, flexWrap: 'wrap', gap: 14 }}>
         <div>
           <div className="page-title-main">Tableau de bord</div>
-          <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: '6px 0 0', fontWeight: 400 }}>
-            {getPeriodeLabel(periodeGlobale)}
+          <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: '6px 0 0' }}>
+            {getPeriodeLabel(periodeGlobale)} · {actifs.length} chantier{actifs.length !== 1 ? 's' : ''} actif{actifs.length !== 1 ? 's' : ''}
           </p>
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 10 }}>
-          {/* ── Sélecteur de période ── */}
-          <div style={{ display: 'flex', gap: 4, background: 'var(--bg-glass-2)', border: '1px solid var(--border)', borderRadius: 12, padding: '4px 5px' }}>
-            {[
-              { id: 'semaine', label: 'Semaine' },
-              { id: 'mois',    label: 'Mois' },
-              { id: 'annee',   label: 'Année' },
-            ].map(p => (
-              <button
-                key={p.id}
-                onClick={() => setPeriodeGlobale(p.id)}
-                style={{
-                  background: periodeGlobale === p.id
-                    ? 'linear-gradient(135deg, rgba(59,130,246,0.32) 0%, rgba(99,102,241,0.22) 100%)'
-                    : 'transparent',
-                  border: periodeGlobale === p.id
-                    ? '1px solid rgba(59,130,246,0.45)'
-                    : '1px solid transparent',
-                  color: periodeGlobale === p.id ? '#93c5fd' : 'var(--text-muted)',
-                  borderRadius: 8,
-                  padding: '6px 16px',
-                  cursor: 'pointer',
-                  fontSize: 12,
-                  fontWeight: periodeGlobale === p.id ? 700 : 500,
-                  transition: 'all 0.18s',
-                  letterSpacing: '0.2px',
-                  boxShadow: periodeGlobale === p.id ? '0 0 14px rgba(59,130,246,0.2)' : 'none',
-                }}
-              >{p.label}</button>
-            ))}
-          </div>
-          {/* ── Badge chantiers actifs ── */}
-          <span style={{ fontSize: 12, color: 'var(--text-secondary)', background: 'var(--bg-hover)', border: '1px solid var(--border)', borderRadius: 20, padding: '5px 14px', fontWeight: 500 }}>
-            {actifs.length} chantier{actifs.length !== 1 ? 's' : ''} actif{actifs.length !== 1 ? 's' : ''}
-          </span>
-        </div>
-      </div>
-
-      {/* ════════════════════════════════════
-          KPI
-      ════════════════════════════════════ */}
-      <div style={{ marginBottom: 32, position: 'relative' }}>
-        {/* Zone de lumière derrière les KPI */}
-        <div style={{ position: 'absolute', inset: '-40px -80px', background: 'radial-gradient(ellipse at 50% 40%, rgba(59,130,246,0.10) 0%, rgba(99,102,241,0.06) 40%, transparent 70%)', pointerEvents: 'none', zIndex: 0 }} />
-        <SectionLabel><BarChart2 size={11} /> Indicateurs clés</SectionLabel>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 20, position: 'relative', zIndex: 1 }}>
-          {[
-            {
-              label: 'Rentabilité moyenne',
-              valeur: kpi.rentaMoyenne !== null ? `${Math.round(kpi.rentaMoyenne)} %` : '—',
-              sous: kpi.nbChantiersRenta > 0
-                ? `${kpi.nbChantiersRenta} chantier${kpi.nbChantiersRenta > 1 ? 's' : ''} analysé${kpi.nbChantiersRenta > 1 ? 's' : ''}`
-                : 'Aucun coût saisi',
-              couleur: kpi.rentaMoyenne === null ? '#78909c' : kpi.rentaMoyenne >= 15 ? C.secondaire : kpi.rentaMoyenne >= 0 ? C.warning : C.danger,
-              page: 'analyse', Icon: TrendingUp,
-            },
-            {
-              label: 'CA en cours',
-              valeur: `CHF ${fmtN(kpi.caEnCours)}`,
-              sous: kpi.nbChantiersActifs > 0
-                ? `${kpi.nbChantiersActifs - (kpi.nbActifsSansDevis || 0)} / ${kpi.nbChantiersActifs} avec devis${kpi.nbActifsSansDevis > 0 ? ` · ⚠ ${kpi.nbActifsSansDevis} sans devis` : ''}`
-                : 'Aucun chantier actif',
-              couleur: C.primaire, page: 'devis', Icon: DollarSign, featured: true,
-            },
-            {
-              label: 'Cash en attente',
-              valeur: `CHF ${fmtN(kpi.cashEnAttente)}`,
-              sous: kpi.nbFacturesRetard > 0 ? `dont ${kpi.nbFacturesRetard} en retard` : kpi.nbFacturesEnAttente > 0 ? `${kpi.nbFacturesEnAttente} facture${kpi.nbFacturesEnAttente > 1 ? 's' : ''} à encaisser` : 'Aucune facture en attente',
-              couleur: kpi.cashEnAttente > 0 ? C.warning : '#78909c',
-              page: 'finances', Icon: CreditCard,
-            },
-            {
-              label: 'Heures engagées',
-              valeur: kpi.heuresEngagees > 0 ? `${fmtN(kpi.heuresEngagees)} h` : '—',
-              sous: kpi.nbEmployes > 0 ? `${kpi.nbEmployes} employé${kpi.nbEmployes > 1 ? 's' : ''} mobilisé${kpi.nbEmployes > 1 ? 's' : ''}` : 'Équipes non renseignées',
-              couleur: C.violet, page: 'planning', Icon: Clock,
-            },
-          ].map(({ label, valeur, sous, couleur, page, Icon, featured }) => (
-            <div key={label} onClick={() => naviguer(page)}
-              style={{ cursor: 'pointer',
-                background: featured
-                  /* featured : lumière bleue + gradient bleu→violet */
-                  ? 'radial-gradient(circle at 25% 30%, rgba(59,130,246,0.28) 0%, transparent 50%), radial-gradient(circle at 85% 75%, rgba(139,92,246,0.14) 0%, transparent 45%), linear-gradient(145deg, #0d1e3a 0%, #0f1530 50%, #130d28 100%)'
-                  /* normal : lumière subtile + gradient bleu→violet très discret */
-                  : 'radial-gradient(circle at 20% 25%, rgba(59,130,246,0.1) 0%, transparent 45%), radial-gradient(circle at 85% 80%, rgba(99,102,241,0.06) 0%, transparent 40%), linear-gradient(145deg, #121a28 0%, #0e1422 55%, #100d1c 100%)',
-                backdropFilter: 'blur(12px) saturate(1.5)', WebkitBackdropFilter: 'blur(12px) saturate(1.5)',
-                color: '#fff', borderRadius: 16, padding: '28px 26px', position: 'relative', overflow: 'hidden',
-                boxShadow: featured
-                  ? '0 8px 32px rgba(59,130,246,0.25), 0 2px 8px rgba(0,0,0,0.6), inset 0 1px 0 rgba(59,130,246,0.18), inset 0 0 0 1px rgba(139,92,246,0.06)'
-                  : '0 4px 24px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.07)',
-                border: featured ? '1px solid rgba(59,130,246,0.35)' : '1px solid rgba(255,255,255,0.09)',
-                transition: 'transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease' }}
-              onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-4px) scale(1.01)'; e.currentTarget.style.boxShadow = featured ? '0 32px 72px rgba(0,0,0,0.75), 0 0 0 1px rgba(59,130,246,0.6), 0 0 64px rgba(59,130,246,0.22)' : '0 20px 56px rgba(0,0,0,0.7), 0 0 0 1px rgba(59,130,246,0.35), 0 0 32px rgba(59,130,246,0.1)'; e.currentTarget.style.borderColor = featured ? 'rgba(59,130,246,0.65)' : 'rgba(59,130,246,0.4)'; }}
-              onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = featured ? '0 8px 32px rgba(59,130,246,0.25), 0 2px 8px rgba(0,0,0,0.6), inset 0 1px 0 rgba(59,130,246,0.18)' : '0 4px 24px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.07)'; e.currentTarget.style.borderColor = featured ? 'rgba(59,130,246,0.35)' : 'var(--border)'; }}
-            >
-              {/* Watermark icon */}
-              <div style={{ position: 'absolute', right: -10, top: -10, color: couleur, opacity: featured ? 0.12 : 0.08 }}><Icon size={120} strokeWidth={1} /></div>
-              {/* Shimmer line top */}
-              <div style={{ position: 'absolute', top: 0, left: '10%', right: '10%', height: 1, background: featured ? 'linear-gradient(90deg, transparent, rgba(59,130,246,0.5), rgba(139,92,246,0.3), transparent)' : 'linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent)' }} />
-              {/* Icon badge */}
-              <div style={{ width: 44, height: 44, borderRadius: 12, background: `linear-gradient(135deg, rgba(${couleur === '#3382c2' || couleur === C.primaire ? '59,130,246' : couleur === C.secondaire ? '16,185,129' : couleur === C.warning ? '245,158,11' : couleur === C.violet ? '139,92,246' : couleur === C.danger ? '239,68,68' : '120,144,156'},${featured ? '0.28' : '0.16'}) 0%, rgba(${couleur === C.primaire ? '99,102,241' : couleur === C.secondaire ? '5,150,105' : couleur === C.warning ? '217,119,6' : couleur === C.violet ? '109,40,217' : '90,100,120'},${featured ? '0.18' : '0.1'}) 100%)`, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 22, flexShrink: 0, boxShadow: `0 0 ${featured ? '24px' : '14px'} rgba(${couleur === C.primaire ? '59,130,246' : couleur === C.secondaire ? '16,185,129' : couleur === C.warning ? '245,158,11' : couleur === C.violet ? '139,92,246' : '120,144,156'},${featured ? '0.45' : '0.25'}), inset 0 1px 0 rgba(255,255,255,0.15)` }}>
-                <Icon size={20} strokeWidth={1.8} style={{ color: featured ? '#fff' : couleur }} />
-              </div>
-              <div style={{ fontSize: 10, color: featured ? 'rgba(147,197,253,0.65)' : 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1.4px', marginBottom: 10 }}>{label}</div>
-              <div style={{ fontSize: featured ? 46 : 42, fontWeight: 900, letterSpacing: '-2.5px', lineHeight: 1, color: featured ? '#ddeeff' : '#f8faff', textShadow: featured ? '0 0 24px rgba(59,130,246,0.5)' : '0 1px 4px rgba(0,0,0,0.4)' }}>{valeur}</div>
-              <div style={{ fontSize: 12, color: featured ? 'rgba(147,197,253,0.5)' : 'var(--text-muted)', marginTop: 12, lineHeight: 1.4 }}>{sous}</div>
-            </div>
+        <div style={{ display: 'flex', gap: 4, background: 'var(--bg-glass-2)', border: '1px solid var(--border)', borderRadius: 12, padding: '4px 5px' }}>
+          {[{ id: 'semaine', label: 'Semaine' }, { id: 'mois', label: 'Mois' }, { id: 'annee', label: 'Année' }].map(p => (
+            <button key={p.id} onClick={() => setPeriodeGlobale(p.id)}
+              style={{ background: periodeGlobale === p.id ? 'linear-gradient(135deg, rgba(59,130,246,0.32) 0%, rgba(99,102,241,0.22) 100%)' : 'transparent', border: periodeGlobale === p.id ? '1px solid rgba(59,130,246,0.45)' : '1px solid transparent', color: periodeGlobale === p.id ? '#93c5fd' : 'var(--text-muted)', borderRadius: 8, padding: '6px 16px', cursor: 'pointer', fontSize: 12, fontWeight: periodeGlobale === p.id ? 700 : 500, transition: 'all 0.18s' }}
+            >{p.label}</button>
           ))}
         </div>
-
       </div>
 
-      {/* ════════════════════════════════════
-          PRÉVISION TRÉSORERIE 30J
-      ════════════════════════════════════ */}
+      {/* ── KPI CARDS — gradients profonds ──────────────────────── */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 18, marginBottom: 32 }}>
+        {[
+          {
+            label: 'CA en cours', page: 'devis', Icon: DollarSign,
+            valeur: `CHF ${fmtN(kpi.caEnCours)}`,
+            sous: kpi.nbChantiersActifs > 0
+              ? `${kpi.nbChantiersActifs - (kpi.nbActifsSansDevis || 0)}/${kpi.nbChantiersActifs} avec devis`
+              : 'Aucun chantier actif',
+            gradient: 'linear-gradient(135deg, #1D4ED8 0%, #2563EB 45%, #60A5FA 100%)',
+            glow: 'rgba(29,78,216,0.35)',
+          },
+          {
+            label: 'Rentabilité moy.', page: 'analyse', Icon: TrendingUp,
+            valeur: kpi.rentaMoyenne !== null ? `${Math.round(kpi.rentaMoyenne)}%` : '—',
+            sous: kpi.nbChantiersRenta > 0
+              ? `${kpi.nbChantiersRenta} chantier${kpi.nbChantiersRenta > 1 ? 's' : ''} analysé${kpi.nbChantiersRenta > 1 ? 's' : ''}`
+              : 'Aucun coût saisi',
+            gradient: kpi.rentaMoyenne === null
+              ? 'linear-gradient(135deg, #475569 0%, #64748B 100%)'
+              : kpi.rentaMoyenne >= 15
+                ? 'linear-gradient(135deg, #059669 0%, #10B981 50%, #34D399 100%)'
+                : kpi.rentaMoyenne >= 0
+                  ? 'linear-gradient(135deg, #D97706 0%, #F59E0B 50%, #FCD34D 100%)'
+                  : 'linear-gradient(135deg, #DC2626 0%, #EF4444 100%)',
+            glow: kpi.rentaMoyenne !== null && kpi.rentaMoyenne >= 15
+              ? 'rgba(5,150,105,0.3)'
+              : kpi.rentaMoyenne !== null && kpi.rentaMoyenne >= 0
+                ? 'rgba(217,119,6,0.3)'
+                : 'rgba(220,38,38,0.3)',
+          },
+          {
+            label: 'Cash en attente', page: 'finances', Icon: CreditCard,
+            valeur: `CHF ${fmtN(kpi.cashEnAttente)}`,
+            sous: kpi.nbFacturesRetard > 0
+              ? `${kpi.nbFacturesRetard} facture${kpi.nbFacturesRetard > 1 ? 's' : ''} en retard`
+              : kpi.nbFacturesEnAttente > 0
+                ? `${kpi.nbFacturesEnAttente} à encaisser`
+                : 'Aucune en attente',
+            gradient: kpi.cashEnAttente > 0
+              ? 'linear-gradient(135deg, #EA580C 0%, #F97316 50%, #FB923C 100%)'
+              : 'linear-gradient(135deg, #475569 0%, #64748B 100%)',
+            glow: 'rgba(234,88,12,0.3)',
+          },
+          {
+            label: 'Heures engagées', page: 'planning', Icon: Clock,
+            valeur: kpi.heuresEngagees > 0 ? `${fmtN(kpi.heuresEngagees)}h` : '—',
+            sous: kpi.nbEmployes > 0
+              ? `${kpi.nbEmployes} employé${kpi.nbEmployes > 1 ? 's' : ''} mobilisé${kpi.nbEmployes > 1 ? 's' : ''}`
+              : 'Équipes non renseignées',
+            gradient: 'linear-gradient(135deg, #4F46E5 0%, #6366F1 50%, #818CF8 100%)',
+            glow: 'rgba(79,70,229,0.3)',
+          },
+        ].map(({ label, page, Icon, valeur, sous, gradient, glow }) => (
+          <div key={label} onClick={() => naviguer(page)}
+            style={{
+              background: gradient,
+              borderRadius: 18,
+              padding: '26px 24px',
+              position: 'relative',
+              overflow: 'hidden',
+              cursor: 'pointer',
+              boxShadow: `0 8px 32px ${glow}, 0 2px 8px rgba(0,0,0,0.12)`,
+              border: '1px solid rgba(255,255,255,0.18)',
+              transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+            }}
+            onMouseEnter={e => {
+              e.currentTarget.style.transform = 'translateY(-4px)';
+              e.currentTarget.style.boxShadow = `0 20px 48px ${glow}, 0 4px 16px rgba(0,0,0,0.15)`;
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.transform = '';
+              e.currentTarget.style.boxShadow = `0 8px 32px ${glow}, 0 2px 8px rgba(0,0,0,0.12)`;
+            }}
+          >
+            {/* Reflet lumière haut-gauche */}
+            <div style={{ position: 'absolute', top: -40, left: -40, width: 160, height: 160, borderRadius: '50%', background: 'rgba(255,255,255,0.1)', pointerEvents: 'none' }} />
+            {/* Ligne shimmer haute */}
+            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.45), transparent)', pointerEvents: 'none' }} />
+            {/* Icône watermark */}
+            <div style={{ position: 'absolute', right: -12, bottom: -12, opacity: 0.1, pointerEvents: 'none' }}>
+              <Icon size={110} strokeWidth={1} style={{ color: '#fff' }} />
+            </div>
+            <Icon size={20} strokeWidth={1.8} style={{ color: 'rgba(255,255,255,0.8)', marginBottom: 18, display: 'block' }} />
+            <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.6)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1.2px', marginBottom: 8 }}>{label}</div>
+            <div style={{ fontSize: 34, fontWeight: 900, color: '#ffffff', letterSpacing: '-1.5px', lineHeight: 1, marginBottom: 10 }}>{valeur}</div>
+            <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.55)' }}>{sous}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* ── TRÉSORERIE 30J ───────────────────────────────────────── */}
       {actifs.length > 0 && (
-        <div style={{ marginBottom: 32 }}>
-          <SectionLabel>💰 Trésorerie à 30 jours</SectionLabel>
-          <div style={{
-            ...carteStyle,
-            borderLeft: `4px solid ${previsionTreso30j.alerteFaible ? C.danger : C.secondaire}`,
-            padding: '20px 24px',
-          }}>
+        <div style={{ marginBottom: 28 }}>
+          <div style={{ ...carteStyle, borderLeft: `4px solid ${previsionTreso30j.alerteFaible ? C.danger : C.secondaire}`, padding: '20px 24px' }}>
             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 20, flexWrap: 'wrap' }}>
-              {/* Chiffre principal */}
               <div>
-                <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', color: 'var(--text-muted)', marginBottom: 6 }}>
-                  Encaissements prévus (30 jours)
+                <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--text-muted)', marginBottom: 6 }}>
+                  Trésorerie prévue — 30 jours
                 </div>
-                <div style={{ fontSize: 38, fontWeight: 900, letterSpacing: '-1.5px', color: previsionTreso30j.interpretation ? previsionTreso30j.interpretation.couleur : (previsionTreso30j.alerteFaible ? C.danger : C.secondaire), lineHeight: 1 }}>
+                <div style={{ fontSize: 34, fontWeight: 900, letterSpacing: '-1.5px', color: previsionTreso30j.interpretation ? previsionTreso30j.interpretation.couleur : C.secondaire, lineHeight: 1 }}>
                   CHF {fmtN(Math.round(previsionTreso30j.total))}
                 </div>
                 {previsionTreso30j.couverture !== null && (
-                  <div style={{ marginTop: 6 }}>
-                    <div style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 500 }}>
-                      Couvre {previsionTreso30j.couverture.toFixed(1)} mois de charges
-                    </div>
-                    <div style={{ fontSize: 12, fontWeight: 700, marginTop: 3, color: previsionTreso30j.couverture < 1 ? C.danger : 'var(--text-muted)' }}>
-                      {previsionTreso30j.couverture < 1 ? '🔴 ' : ''}Jusqu'au {previsionTreso30j.dateLimite}
-                    </div>
+                  <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 8, fontWeight: 500 }}>
+                    Couvre {previsionTreso30j.couverture.toFixed(1)} mois · jusqu'au {previsionTreso30j.dateLimite}
                   </div>
                 )}
-                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4, opacity: 0.7 }}>
-                  Basé sur l'avancement actuel des chantiers
-                </div>
                 {previsionTreso30j.interpretation && (
-                  <div style={{ marginTop: 10 }}>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: previsionTreso30j.interpretation.couleur }}>
-                      {previsionTreso30j.interpretation.dot} {previsionTreso30j.interpretation.label}
-                    </div>
-                    {previsionTreso30j.interpretation.action && (
-                      <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>
-                        Action : {previsionTreso30j.interpretation.action.toLowerCase()}
-                      </div>
-                    )}
+                  <div style={{ fontSize: 13, fontWeight: 700, color: previsionTreso30j.interpretation.couleur, marginTop: 8 }}>
+                    {previsionTreso30j.interpretation.dot} {previsionTreso30j.interpretation.label}
                   </div>
                 )}
               </div>
-              {/* Top 3 contributeurs */}
               {previsionTreso30j.top3.length > 0 && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, minWidth: 220 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, minWidth: 200 }}>
                   <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', color: 'var(--text-muted)', marginBottom: 2 }}>
                     Principaux contributeurs
                   </div>
                   {previsionTreso30j.top3.map((x, i) => (
                     <div key={x.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-                        <span style={{ fontSize: 10, fontWeight: 800, color: 'var(--text-muted)', minWidth: 14 }}>{i + 1}.</span>
-                        <span style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 130 }}>{x.nom}</span>
-                      </div>
+                      <span style={{ fontSize: 11, fontWeight: 800, color: 'var(--text-muted)', minWidth: 14 }}>{i + 1}.</span>
+                      <span style={{ fontSize: 12, color: 'var(--text-secondary)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{x.nom}</span>
                       <span style={{ fontSize: 13, fontWeight: 700, color: C.secondaire, whiteSpace: 'nowrap' }}>CHF {fmtN(x.encaissementPrevu)}</span>
                     </div>
                   ))}
@@ -1216,72 +1176,54 @@ function Dashboard({ chantiers, clients, factures, devis = [], parametres, navig
         </div>
       )}
 
-      {/* ════════════════════════════════════
-          ZONE PRIORITÉ
-      ════════════════════════════════════ */}
+      {/* ── PRIORITÉS DU JOUR ────────────────────────────────────── */}
       {(alertes.length > 0 || top3.length > 0 || actionsRecommandees.length > 0) && (
-        <div style={{ marginBottom: 32 }}>
+        <div style={{ marginBottom: 28 }}>
           <SectionLabel>🚨 Priorités du jour</SectionLabel>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
 
-            {/* Alertes — vraies cartes */}
-            {alertes.length > 0 && alertes.map((a) => (
+            {alertes.map((a) => (
               <div key={a.id} onClick={() => naviguer(a.page, a.ctx)}
-                style={{ background: a.critique ? 'radial-gradient(ellipse at 10% 50%, rgba(239,68,68,0.12) 0%, rgba(239,68,68,0.05) 100%)' : 'radial-gradient(ellipse at 10% 50%, rgba(245,158,11,0.12) 0%, rgba(245,158,11,0.04) 100%)', border: `1px solid ${a.critique ? 'rgba(239,68,68,0.35)' : 'rgba(245,158,11,0.3)'}`, borderLeft: `4px solid ${a.critique ? C.danger : C.warning}`, borderRadius: 12, padding: '18px 22px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 14, boxShadow: a.critique ? '0 4px 20px rgba(239,68,68,0.12), inset 0 1px 0 rgba(239,68,68,0.1)' : '0 4px 20px rgba(245,158,11,0.1), inset 0 1px 0 rgba(245,158,11,0.08)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', transition: 'transform 0.3s ease, box-shadow 0.3s ease' }}
-                onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = a.critique ? '0 12px 32px rgba(239,68,68,0.22), 0 0 0 1px rgba(239,68,68,0.2)' : '0 12px 32px rgba(245,158,11,0.18), 0 0 0 1px rgba(245,158,11,0.18)'; }}
-                onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = a.critique ? '0 4px 20px rgba(239,68,68,0.12), inset 0 1px 0 rgba(239,68,68,0.1)' : '0 4px 20px rgba(245,158,11,0.1), inset 0 1px 0 rgba(245,158,11,0.08)'; }}
+                style={{ background: 'var(--dash-card)', border: '1px solid var(--dash-border)', borderLeft: `4px solid ${a.critique ? C.danger : C.warning}`, borderRadius: 12, padding: '14px 18px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 12, transition: 'box-shadow 0.2s, transform 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}
+                onMouseEnter={e => { e.currentTarget.style.transform = 'translateX(3px)'; e.currentTarget.style.boxShadow = `0 4px 16px ${a.critique ? 'rgba(239,68,68,0.12)' : 'rgba(245,158,11,0.12)'}`; }}
+                onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.04)'; }}
               >
-                <div style={{ width: 10, height: 10, borderRadius: '50%', background: a.critique ? C.danger : C.warning, flexShrink: 0, boxShadow: `0 0 14px ${a.critique ? C.danger : C.warning}, 0 0 6px ${a.critique ? C.danger : C.warning}` }} />
-                <span style={{ fontSize: 14, fontWeight: 700, color: a.critique ? C.danger : C.warning, flex: 1, lineHeight: 1.4 }}>{a.message}</span>
-                <span style={{ fontSize: 12, fontWeight: 600, color: a.critique ? C.danger : C.warning, opacity: 0.8, flexShrink: 0, display: 'flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' }}>Voir <ChevronRight size={13} strokeWidth={2.5} /></span>
+                <div style={{ width: 8, height: 8, borderRadius: '50%', background: a.critique ? C.danger : C.warning, flexShrink: 0 }} />
+                <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', flex: 1 }}>{a.message}</span>
+                <span style={{ fontSize: 12, color: a.critique ? C.danger : C.warning, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 3, whiteSpace: 'nowrap' }}>Voir <ChevronRight size={13} /></span>
               </div>
             ))}
 
-            {/* Top 3 — standalone cards avec icône alert */}
-            {top3.length > 0 && top3.map(c => {
+            {top3.map(c => {
               const j = joursParChantier[c.id];
               const r = rentaParChantier[c.id];
               const retardJ = j !== null && j < 0 ? Math.abs(j) : 0;
               const priorite = calculerPriorite(c);
               const badge = PRIORITE_BADGE[priorite.niveau];
-              const isCritique = priorite.niveau === 'critique';
-              const isAttention = priorite.niveau === 'attention';
-              const cardBg = isCritique ? 'radial-gradient(ellipse at 8% 50%, rgba(239,68,68,0.1) 0%, rgba(239,68,68,0.04) 100%)' : isAttention ? 'radial-gradient(ellipse at 8% 50%, rgba(245,158,11,0.1) 0%, rgba(245,158,11,0.03) 100%)' : 'var(--bg-glass)';
-              const cardBorder = isCritique ? 'rgba(239,68,68,0.28)' : isAttention ? 'rgba(245,158,11,0.22)' : 'var(--border)';
-              const cardBorderLeft = badge.color;
               return (
                 <div key={c.id} onClick={() => naviguer('chantiers', { chantierActif: c.id })}
-                  style={{ background: cardBg, border: `1px solid ${cardBorder}`, borderLeft: `4px solid ${cardBorderLeft}`, borderRadius: 12, padding: '16px 20px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 14, backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', transition: 'transform 0.3s ease, box-shadow 0.3s ease', boxShadow: isCritique ? '0 4px 20px rgba(239,68,68,0.12), inset 0 1px 0 rgba(239,68,68,0.08)' : isAttention ? '0 4px 20px rgba(245,158,11,0.1), inset 0 1px 0 rgba(245,158,11,0.07)' : '0 4px 16px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.04)' }}
-                  onMouseEnter={e => { e.currentTarget.style.transform = 'translateX(4px)'; e.currentTarget.style.boxShadow = isCritique ? '0 8px 32px rgba(239,68,68,0.22), 0 0 0 1px rgba(239,68,68,0.2)' : isAttention ? '0 8px 32px rgba(245,158,11,0.18), 0 0 0 1px rgba(245,158,11,0.18)' : '0 8px 24px rgba(0,0,0,0.3)'; }}
-                  onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = isCritique ? '0 4px 20px rgba(239,68,68,0.12), inset 0 1px 0 rgba(239,68,68,0.08)' : isAttention ? '0 4px 20px rgba(245,158,11,0.1), inset 0 1px 0 rgba(245,158,11,0.07)' : '0 4px 16px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.04)'; }}
+                  style={{ background: 'var(--dash-card)', border: '1px solid var(--dash-border)', borderLeft: `4px solid ${badge.color}`, borderRadius: 12, padding: '14px 18px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 12, transition: 'box-shadow 0.2s, transform 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}
+                  onMouseEnter={e => { e.currentTarget.style.transform = 'translateX(3px)'; e.currentTarget.style.boxShadow = `0 4px 16px ${badge.color}22`; }}
+                  onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.04)'; }}
                 >
-                  <div style={{ width: 34, height: 34, borderRadius: 9, background: isCritique ? 'linear-gradient(135deg, rgba(239,68,68,0.22) 0%, rgba(220,38,38,0.12) 100%)' : isAttention ? 'linear-gradient(135deg, rgba(245,158,11,0.22) 0%, rgba(217,119,6,0.12) 100%)' : 'rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: isCritique ? '0 0 12px rgba(239,68,68,0.2), inset 0 1px 0 rgba(255,255,255,0.1)' : isAttention ? '0 0 12px rgba(245,158,11,0.18), inset 0 1px 0 rgba(255,255,255,0.1)' : 'inset 0 1px 0 rgba(255,255,255,0.08)' }}>
-                    <AlertTriangle size={16} strokeWidth={2} style={{ color: badge.color }} />
-                  </div>
+                  <AlertTriangle size={14} strokeWidth={2} style={{ color: badge.color, flexShrink: 0 }} />
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontWeight: 700, fontSize: 14, color: '#f1f5f9', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.nom || c.numero}</div>
-                    <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{retardJ > 0 ? `${retardJ}j de retard` : r !== null && r < 0 ? `Rentabilité ${r}%` : r !== null && r < 10 ? `Marge faible ${r}%` : 'À surveiller'}</div>
+                    <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-primary)' }}>{c.nom || c.numero}</div>
+                    <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
+                      {retardJ > 0 ? `${retardJ}j de retard` : r !== null && r < 0 ? `Rentabilité ${r}%` : r !== null && r < 10 ? `Marge faible ${r}%` : 'À surveiller'}
+                    </div>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                    <span style={{ fontSize: 11, background: badge.bg, color: badge.color, border: `1px solid ${badge.border}`, borderRadius: 20, padding: '3px 10px', fontWeight: 700 }}>{badge.label}</span>
-                    {retardJ > 0 && <span style={{ fontSize: 11, background: 'rgba(239,68,68,0.12)', color: C.danger, borderRadius: 20, padding: '3px 10px', fontWeight: 700 }}>−{retardJ}j</span>}
-                    {r !== null && <span style={{ fontSize: 11, color: r >= 15 ? C.secondaire : r >= 0 ? C.warning : C.danger, fontWeight: 700, background: r >= 15 ? 'rgba(16,185,129,0.1)' : r >= 0 ? 'rgba(245,158,11,0.1)' : 'rgba(239,68,68,0.1)', padding: '3px 10px', borderRadius: 20 }}>{r >= 0 ? '+' : ''}{r}%</span>}
-                    <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 2 }}>Voir <ChevronRight size={13} strokeWidth={2.5} /></span>
-                  </div>
+                  <span style={{ fontSize: 11, background: badge.bg, color: badge.color, border: `1px solid ${badge.border}`, borderRadius: 20, padding: '3px 10px', fontWeight: 700, flexShrink: 0 }}>{badge.label}</span>
+                  <ChevronRight size={13} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
                 </div>
               );
             })}
 
-            {/* Actions recommandées */}
             {actionsRecommandees.length > 0 && (
-              <div style={{ background: 'radial-gradient(ellipse at 0% 50%, rgba(59,130,246,0.1) 0%, transparent 55%), radial-gradient(ellipse at 100% 0%, rgba(99,102,241,0.07) 0%, transparent 50%), rgba(255,255,255,0.03)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)', borderRadius: 14, border: '1px solid rgba(59,130,246,0.2)', padding: '14px 16px', boxShadow: '0 4px 20px rgba(0,0,0,0.3), inset 0 1px 0 rgba(59,130,246,0.1)' }}>
-                <div style={{ fontWeight: 700, fontSize: 10, color: 'rgba(147,197,253,0.8)', textTransform: 'uppercase', letterSpacing: '1.2px', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6, textShadow: '0 0 12px rgba(59,130,246,0.4)' }}>
-                  ⚡ Actions recommandées
-                  <span style={{ fontWeight: 400, color: 'rgba(147,197,253,0.45)' }}>— {actionsRecommandees.length}</span>
-                </div>
+              <div style={{ ...carteStyle, marginBottom: 0, padding: '16px 20px' }}>
+                <div style={{ fontWeight: 700, fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1.2px', marginBottom: 10 }}>⚡ Actions recommandées</div>
                 {actionsRecommandees.map((a) => (
-                  <ActionRow key={a.id}
-                    nom={a.nom} texte={a.action} btnLabel={a.btnLabel} btnCouleur={a.btnCouleur} Icon={a.Icon}
+                  <ActionRow key={a.id} nom={a.nom} texte={a.action} btnLabel={a.btnLabel} btnCouleur={a.btnCouleur} Icon={a.Icon}
                     onAction={() => { logAction({ type: a.type, chantierId: a.ctx?.chantierActif || null, label: a.nom, factureIds: a.factureIds || [] }); naviguer(a.page, a.ctx); }}
                   />
                 ))}
@@ -1291,103 +1233,16 @@ function Dashboard({ chantiers, clients, factures, devis = [], parametres, navig
         </div>
       )}
 
-      {/* ════════════════════════════════════
-          À TRAITER EN PRIORITÉ
-      ════════════════════════════════════ */}
-      {analyseChantiers.length > 0 && (
-        <div style={{ marginBottom: 32 }}>
-          <SectionLabel>🎯 À traiter en priorité</SectionLabel>
+      {/* ── CHANTIERS + SIDEBAR ─────────────────────────────────── */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: 20, marginBottom: 28, alignItems: 'start' }}>
 
-          {/* Légende statuts */}
-          <div style={{ display: 'flex', gap: 14, marginBottom: 14, flexWrap: 'wrap' }}>
-            {[
-              { label: 'Perte',        couleur: C.danger,   count: analyseChantiers.filter(a => a.statut === 'perte').length },
-              { label: 'Dépassement',  couleur: C.warning,  count: analyseChantiers.filter(a => a.statut === 'depassement').length },
-              { label: 'Faible marge', couleur: C.warning,  count: analyseChantiers.filter(a => a.statut === 'faible').length },
-              { label: 'Sans saisie',  couleur: '#78909c',  count: analyseChantiers.filter(a => a.statut === 'non_saisi').length },
-            ].filter(l => l.count > 0).map(l => (
-              <span key={l.label} style={{ fontSize: 11, fontWeight: 700, color: l.couleur, background: `${l.couleur}14`, border: `1px solid ${l.couleur}28`, borderRadius: 20, padding: '3px 11px', display: 'flex', alignItems: 'center', gap: 5 }}>
-                <span style={{ width: 6, height: 6, borderRadius: '50%', background: l.couleur, display: 'inline-block' }} />
-                {l.count} {l.label}
-              </span>
-            ))}
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
-            {analyseChantiers.map(({ c, client, statut, probleme, marge, couleur, reel }) => {
-              const statutLabel = { perte: 'Perte', depassement: 'Dépassement', faible: 'Faible marge', non_saisi: 'Sans saisie' }[statut];
-              const isCritique = statut === 'perte';
-              return (
-                <div key={c.id}
-                  onClick={() => naviguer('chantiers', { chantierActif: c.id })}
-                  style={{
-                    background: isCritique
-                      ? 'radial-gradient(ellipse at 6% 50%, rgba(239,68,68,0.1) 0%, rgba(239,68,68,0.03) 100%)'
-                      : statut === 'non_saisi'
-                        ? 'rgba(120,144,156,0.06)'
-                        : 'radial-gradient(ellipse at 6% 50%, rgba(245,158,11,0.08) 0%, rgba(245,158,11,0.02) 100%)',
-                    border: `1px solid ${isCritique ? 'rgba(239,68,68,0.25)' : statut === 'non_saisi' ? 'rgba(120,144,156,0.18)' : 'rgba(245,158,11,0.2)'}`,
-                    borderLeft: `4px solid ${couleur}`,
-                    borderRadius: 12,
-                    padding: '13px 18px',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 14,
-                    backdropFilter: 'blur(8px)',
-                    WebkitBackdropFilter: 'blur(8px)',
-                    transition: 'transform 0.2s ease, box-shadow 0.2s ease',
-                    boxShadow: isCritique ? '0 2px 12px rgba(239,68,68,0.1)' : 'none',
-                  }}
-                  onMouseEnter={e => { e.currentTarget.style.transform = 'translateX(4px)'; e.currentTarget.style.boxShadow = `0 4px 20px ${couleur}22`; }}
-                  onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = isCritique ? '0 2px 12px rgba(239,68,68,0.1)' : 'none'; }}
-                >
-                  {/* Dot */}
-                  <div style={{ width: 9, height: 9, borderRadius: '50%', background: couleur, flexShrink: 0, boxShadow: `0 0 10px ${couleur}` }} />
-
-                  {/* Nom + client */}
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
-                      <span style={{ fontWeight: 700, fontSize: 14, color: '#f1f5f9', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.nom || c.numero}</span>
-                      {client && <span style={{ fontSize: 12, color: 'var(--text-muted)', flexShrink: 0 }}>{client.nom || client.raisonSociale}</span>}
-                    </div>
-                    <div style={{ fontSize: 12, color: couleur, marginTop: 3, fontWeight: 600, opacity: 0.9 }}>{probleme}</div>
-                  </div>
-
-                  {/* Marge + badge + flèche */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-                    {marge !== null && (
-                      <span style={{ fontSize: 15, fontWeight: 900, color: couleur, letterSpacing: '-0.5px' }}>
-                        {marge >= 0 ? '+' : ''}{marge.toFixed(1)}%
-                      </span>
-                    )}
-                    {statut === 'non_saisi' && reel && reel.joursPrevu > 0 && (
-                      <span style={{ fontSize: 12, color: '#78909c', fontWeight: 600 }}>{reel.joursPrevu}j prévus</span>
-                    )}
-                    <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px', background: `${couleur}18`, color: couleur, border: `1px solid ${couleur}32`, borderRadius: 20, padding: '3px 10px' }}>
-                      {statutLabel}
-                    </span>
-                    <ChevronRight size={13} strokeWidth={2.5} style={{ color: 'var(--text-muted)' }} />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* ════════════════════════════════════
-          ZONE PRINCIPALE (2 colonnes)
-      ════════════════════════════════════ */}
-      <div style={{ marginBottom: 32 }}>
-        <SectionLabel><HardHat size={11} /> Chantiers en cours</SectionLabel>
-        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 20, alignItems: 'start' }}>
-
-          {/* Gauche — Chantiers */}
-          <div style={carteStyle}>
+        {/* Liste chantiers (Linear style) */}
+        <div>
+          <SectionLabel><HardHat size={11} /> Chantiers en cours</SectionLabel>
+          <div style={{ ...carteStyle, padding: 0, overflow: 'hidden' }}>
             {actifs.length === 0
-              ? <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: 0 }}>Aucun chantier en cours.</p>
-              : [...actifs].sort((a, b) => calculerPriorite(b).score - calculerPriorite(a).score).map(c => {
+              ? <p style={{ color: 'var(--text-muted)', fontSize: 13, padding: '20px 24px', margin: 0 }}>Aucun chantier en cours.</p>
+              : [...actifs].sort((a, b) => calculerPriorite(b).score - calculerPriorite(a).score).map((c, idx, arr) => {
                   const j = joursParChantier[c.id];
                   const etat = couleurEtat(c);
                   const priorite = calculerPriorite(c);
@@ -1395,61 +1250,50 @@ function Dashboard({ chantiers, clients, factures, devis = [], parametres, navig
                   const renta = rentaParChantier[c.id];
                   const retardJ = j !== null && j < 0 ? Math.abs(j) : 0;
                   const progress = Math.max(0, Math.min(100, Number(c.avancement ?? 0)));
+                  const montant = calculerCA(c, devis);
+                  const couts = calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis);
+                  const mPct = parseFloat(couts.margeReelPct);
+                  const statut = montant > 0 ? statutRentabilite(mPct) : null;
+                  const dateFin = calculerDateFinOuvrables(c.dateDebut, parseInt(c.nombreJours) || 0, c.inclusSamedi);
+                  const dateFinStr = dateFin ? new Date(dateFin).toLocaleDateString('fr-CH', { day: '2-digit', month: '2-digit', year: '2-digit' }) : null;
                   return (
                     <div key={c.id} onClick={() => naviguer('chantiers', { chantierActif: c.id })}
-                      style={{ borderLeft: `3px solid ${etat}`, paddingLeft: 16, paddingRight: 8, paddingTop: 10, paddingBottom: 10, marginBottom: 8, cursor: 'pointer', borderRadius: '0 10px 10px 0', transition: 'background 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease', background: 'transparent' }}
-                      onMouseEnter={e => { e.currentTarget.style.background = retardJ > 0 ? 'rgba(239,68,68,0.05)' : 'var(--bg-glass)'; e.currentTarget.style.transform = 'translateX(2px)'; e.currentTarget.style.boxShadow = retardJ > 0 ? '0 2px 16px rgba(239,68,68,0.12)' : ''; }}
-                      onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = ''; }}
+                      style={{ padding: '18px 24px', borderBottom: idx < arr.length - 1 ? '1px solid var(--dash-border)' : 'none', cursor: 'pointer', transition: 'background 0.15s', borderLeft: `3px solid ${etat}` }}
+                      onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-hover)'; }}
+                      onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
                     >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
                         <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-primary)', flex: 1 }}>{c.nom || c.numero}</span>
-                        <span style={{ fontSize: 11, background: badge.bg, color: badge.color, border: `1px solid ${badge.border}`, borderRadius: 20, padding: '2px 9px', fontWeight: 700, flexShrink: 0 }}>{badge.label}</span>
-                        {retardJ > 0 && <span style={{ fontSize: 11, background: 'rgba(239,68,68,0.14)', color: C.danger, border: '1px solid rgba(239,68,68,0.28)', borderRadius: 20, padding: '2px 8px', fontWeight: 700 }}>−{retardJ}j</span>}
-                        {renta !== null && (
-                          <span style={{ fontSize: 11, borderRadius: 20, padding: '2px 8px', fontWeight: 700, background: renta >= 15 ? 'rgba(16,185,129,0.12)' : renta >= 0 ? 'rgba(245,158,11,0.12)' : 'rgba(239,68,68,0.12)', color: renta >= 15 ? C.secondaire : renta >= 0 ? C.warning : C.danger }}>
-                            {renta >= 0 ? '+' : ''}{renta}%
-                          </span>
-                        )}
-                      </div>
-                      <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4, marginBottom: 10 }}>
-                        {[c.ville, c.canton].filter(Boolean).join(' · ')}{c.dateDebut ? ` · début ${c.dateDebut}` : ''}
+                        <span style={{ fontSize: 11, background: badge.bg, color: badge.color, border: `1px solid ${badge.border}`, borderRadius: 20, padding: '2px 9px', fontWeight: 700 }}>{badge.label}</span>
+                        {retardJ > 0 && <span style={{ fontSize: 11, background: 'rgba(239,68,68,0.1)', color: C.danger, border: '1px solid rgba(239,68,68,0.2)', borderRadius: 20, padding: '2px 8px', fontWeight: 700 }}>−{retardJ}j</span>}
+                        {renta !== null && <span style={{ fontSize: 11, borderRadius: 20, padding: '2px 8px', fontWeight: 700, background: renta >= 15 ? 'rgba(16,185,129,0.1)' : renta >= 0 ? 'rgba(245,158,11,0.1)' : 'rgba(239,68,68,0.1)', color: renta >= 15 ? C.secondaire : renta >= 0 ? C.warning : C.danger }}>{renta >= 0 ? '+' : ''}{renta}%</span>}
                       </div>
                       <BarreAvancement valeur={progress} couleur={etat} />
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 6 }}>
-                        <span style={{ fontSize: 15, fontWeight: 900, color: etat, letterSpacing: '-0.3px' }}>{progress}%</span>
-                        {(() => {
-                          const montant = calculerCA(c, devis);
-                          const dateFin = calculerDateFinOuvrables(c.dateDebut, parseInt(c.nombreJours) || 0, c.inclusSamedi);
-                          const dateFinStr = dateFin ? new Date(dateFin).toLocaleDateString('fr-CH', { day: '2-digit', month: '2-digit', year: '2-digit' }) : null;
-                          const couts = calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis);
-                          const mPct = parseFloat(couts.margeReelPct);
-                          const statut = montant > 0 ? statutRentabilite(mPct) : null;
-                          const rentColor = statut?.couleur || null;
-                          const rentPfx = { Rentable: '✓', Limite: '⚠', 'Non rentable': '✗' };
-                          const rentLabel = statut ? `${rentPfx[statut.label] || ''} ${statut.label}` : null;
-                          return (
-                            <span style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-                              {dateFinStr && <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>fin {dateFinStr}</span>}
-                              {montant > 0 && <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>CHF {fmtN(montant)}</span>}
-                              {rentLabel && <span style={{ background: rentColor + '22', color: rentColor, border: `1px solid ${rentColor}44`, borderRadius: 20, padding: '2px 8px', fontSize: 10, fontWeight: 700 }}>{rentLabel}</span>}
-                            </span>
-                          );
-                        })()}
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 10, flexWrap: 'wrap', gap: 6 }}>
+                        <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                          {[c.ville, c.canton].filter(Boolean).join(' · ')}{dateFinStr ? ` · fin ${dateFinStr}` : ''}
+                        </span>
+                        <span style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                          {montant > 0 && <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-secondary)' }}>CHF {fmtN(montant)}</span>}
+                          {statut && <span style={{ background: statut.couleur + '18', color: statut.couleur, border: `1px solid ${statut.couleur}30`, borderRadius: 20, padding: '2px 8px', fontSize: 10, fontWeight: 700 }}>{statut.label}</span>}
+                          <span style={{ fontSize: 15, fontWeight: 900, color: etat }}>{progress}%</span>
+                        </span>
                       </div>
-
                     </div>
                   );
                 })
             }
           </div>
+        </div>
 
-          {/* Droite — Actions rapides */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <div style={carteStyle}>
-              <div style={{ fontWeight: 700, fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 7 }}>
-                <Plus size={12} strokeWidth={2} style={{ color: '#3b82f6' }} /> Actions rapides
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {/* Colonne droite */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+
+          {/* Actions rapides */}
+          <div>
+            <SectionLabel><Plus size={11} /> Actions rapides</SectionLabel>
+            <div style={{ ...carteStyle, padding: '12px 16px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
                 {[
                   { label: 'Nouveau devis',    page: 'devis',     Icon: FileText   },
                   { label: 'Nouveau chantier', page: 'chantiers', Icon: HardHat    },
@@ -1457,70 +1301,87 @@ function Dashboard({ chantiers, clients, factures, devis = [], parametres, navig
                   { label: 'Analyse',          page: 'analyse',   Icon: TrendingUp },
                 ].map(({ label, page, Icon }) => (
                   <button key={label} onClick={() => naviguer(page)}
-                    style={{ background: 'linear-gradient(135deg, rgba(59,130,246,0.1) 0%, rgba(99,102,241,0.06) 100%)', color: 'var(--text-primary)', border: '1px solid rgba(59,130,246,0.2)', borderRadius: 10, padding: '12px 14px', cursor: 'pointer', fontWeight: 600, fontSize: 13, display: 'flex', alignItems: 'center', gap: 9, width: '100%', textAlign: 'left', transition: 'all 0.3s ease' }}
-                    onMouseEnter={e => { e.currentTarget.style.background = 'linear-gradient(135deg, rgba(59,130,246,0.2) 0%, rgba(99,102,241,0.14) 100%)'; e.currentTarget.style.borderColor = 'rgba(59,130,246,0.45)'; e.currentTarget.style.boxShadow = '0 0 24px rgba(59,130,246,0.18), 0 0 0 1px rgba(59,130,246,0.25), 0 6px 20px rgba(0,0,0,0.2)'; e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.color = '#fff'; }}
-                    onMouseLeave={e => { e.currentTarget.style.background = 'linear-gradient(135deg, rgba(59,130,246,0.1) 0%, rgba(99,102,241,0.06) 100%)'; e.currentTarget.style.borderColor = 'rgba(59,130,246,0.2)'; e.currentTarget.style.boxShadow = ''; e.currentTarget.style.transform = ''; e.currentTarget.style.color = 'rgba(255,255,255,0.85)'; }}
+                    style={{ background: 'var(--bg-hover)', color: 'var(--text-primary)', border: '1px solid var(--border)', borderRadius: 10, padding: '11px 14px', cursor: 'pointer', fontWeight: 600, fontSize: 13, display: 'flex', alignItems: 'center', gap: 9, width: '100%', textAlign: 'left', transition: 'all 0.15s', fontFamily: 'Inter, sans-serif' }}
+                    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(59,130,246,0.08)'; e.currentTarget.style.borderColor = 'rgba(59,130,246,0.3)'; e.currentTarget.style.color = '#2563eb'; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = 'var(--bg-hover)'; e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-primary)'; }}
                   >
-                    <Icon size={15} strokeWidth={1.8} style={{ color: '#60a5fa', flexShrink: 0 }} />{label}
+                    <Icon size={15} strokeWidth={1.8} style={{ color: '#3b82f6', flexShrink: 0 }} />{label}
                   </button>
                 ))}
               </div>
             </div>
           </div>
 
+          {/* À traiter en priorité */}
+          {analyseChantiers.length > 0 && (
+            <div>
+              <SectionLabel>🎯 À traiter</SectionLabel>
+              <div style={{ ...carteStyle, padding: '8px 12px' }}>
+                {analyseChantiers.slice(0, 5).map(({ c, statut, probleme, marge, couleur }) => (
+                  <div key={c.id} onClick={() => naviguer('chantiers', { chantierActif: c.id })}
+                    style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 8px', borderRadius: 9, cursor: 'pointer', borderBottom: '1px solid var(--border)', transition: 'background 0.15s' }}
+                    onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-hover)'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                  >
+                    <div style={{ width: 7, height: 7, borderRadius: '50%', background: couleur, flexShrink: 0 }} />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.nom || c.numero}</div>
+                      <div style={{ fontSize: 11, color: couleur, marginTop: 1 }}>{probleme}</div>
+                    </div>
+                    {marge !== null && <span style={{ fontSize: 12, fontWeight: 700, color: couleur, flexShrink: 0 }}>{marge >= 0 ? '+' : ''}{marge.toFixed(0)}%</span>}
+                    <ChevronRight size={12} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
         </div>
       </div>
 
-      {/* ════════════════════════════════════
-          ZONE SECONDAIRE
-      ════════════════════════════════════ */}
+      {/* ── SUIVI & ANTICIPATION ─────────────────────────────────── */}
       {(risqueFuturData.length > 0 || aNesPasOublier.length > 0 || aAnticiper.length > 0) && (
         <div>
           <SectionLabel><Bell size={11} /> Suivi & anticipation</SectionLabel>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: risqueFuturData.length > 0 && (aNesPasOublier.length > 0 || aAnticiper.length > 0) ? '1fr 1fr' : '1fr', gap: 16 }}>
 
-            {/* Risque futur */}
             {risqueFuturData.length > 0 && (
-              <div style={{ ...carteStyle, marginBottom: 0, padding: '14px 18px', opacity: 0.92 }}>
-                <div style={{ fontWeight: 700, fontSize: 12, color: C.warning, marginBottom: 10 }}>⚠️ Risque futur</div>
+              <div style={{ ...carteStyle, marginBottom: 0, padding: '16px 20px' }}>
+                <div style={{ fontWeight: 700, fontSize: 12, color: C.warning, marginBottom: 12 }}>⚠️ Risque futur</div>
                 {risqueFuturData.map(({ c, risque }) => (
                   <div key={c.id} onClick={() => naviguer('chantiers', { chantierActif: c.id })}
-                    style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', padding: '7px 10px', borderRadius: 9, marginBottom: 4, cursor: 'pointer', background: 'var(--bg)', border: '1px solid var(--border)', transition: 'opacity 0.15s' }}
-                    onMouseEnter={e => e.currentTarget.style.opacity = '0.72'}
-                    onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+                    style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', padding: '8px 10px', borderRadius: 9, marginBottom: 4, cursor: 'pointer', background: 'var(--bg-hover)', border: '1px solid var(--border)', transition: 'background 0.15s' }}
+                    onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-active)'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'var(--bg-hover)'}
                   >
-                    <span style={{ fontWeight: 600, fontSize: 13, color: 'var(--text-primary)', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.nom || c.numero}</span>
+                    <span style={{ fontWeight: 600, fontSize: 13, color: 'var(--text-primary)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.nom || c.numero}</span>
                     {risque.raisons.map(r => (
-                      <span key={r} style={{ fontSize: 11, color: 'var(--text-muted)', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 20, padding: '2px 8px', flexShrink: 0 }}>{r}</span>
+                      <span key={r} style={{ fontSize: 11, color: 'var(--text-muted)', background: 'var(--dash-card)', border: '1px solid var(--border)', borderRadius: 20, padding: '2px 8px' }}>{r}</span>
                     ))}
-                    <ChevronRight size={13} strokeWidth={2.5} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
+                    <ChevronRight size={12} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
                   </div>
                 ))}
               </div>
             )}
 
-            {/* À ne pas oublier + À anticiper (2 colonnes) */}
-            {(aNesPasOublier.length > 0 || aAnticiper.length > 0) && (
-              <div style={{ display: 'grid', gridTemplateColumns: aNesPasOublier.length > 0 && aAnticiper.length > 0 ? '1fr 1fr' : '1fr', gap: 12 }}>
-                {aNesPasOublier.length > 0 && (
-                  <div style={{ ...carteStyle, marginBottom: 0, padding: '14px 18px', opacity: 0.92 }}>
-                    <div style={{ fontWeight: 700, fontSize: 12, color: C.secondaire, marginBottom: 10 }}>🧠 À ne pas oublier</div>
-                    {aNesPasOublier.map((a) => (
-                      <ActionRow key={a.id} nom={a.nom} texte={a.probleme} btnLabel={a.btnLabel} btnCouleur={a.btnCouleur} onAction={() => naviguer(a.page, a.ctx)} />
-                    ))}
-                  </div>
-                )}
-                {aAnticiper.length > 0 && (
-                  <div style={{ ...carteStyle, marginBottom: 0, padding: '14px 18px', opacity: 0.92 }}>
-                    <div style={{ fontWeight: 700, fontSize: 12, color: C.info, marginBottom: 10 }}>🔮 À anticiper</div>
-                    {aAnticiper.map((a) => (
-                      <ActionRow key={a.id} nom={a.nom} texte={a.probleme} btnLabel={a.btnLabel} btnCouleur={a.btnCouleur} onAction={() => naviguer(a.page, a.ctx)} />
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {aNesPasOublier.length > 0 && (
+                <div style={{ ...carteStyle, marginBottom: 0, padding: '16px 20px' }}>
+                  <div style={{ fontWeight: 700, fontSize: 12, color: C.secondaire, marginBottom: 10 }}>🧠 À ne pas oublier</div>
+                  {aNesPasOublier.map((a) => (
+                    <ActionRow key={a.id} nom={a.nom} texte={a.probleme} btnLabel={a.btnLabel} btnCouleur={a.btnCouleur} onAction={() => naviguer(a.page, a.ctx)} />
+                  ))}
+                </div>
+              )}
+              {aAnticiper.length > 0 && (
+                <div style={{ ...carteStyle, marginBottom: 0, padding: '16px 20px' }}>
+                  <div style={{ fontWeight: 700, fontSize: 12, color: C.info, marginBottom: 10 }}>🔮 À anticiper</div>
+                  {aAnticiper.map((a) => (
+                    <ActionRow key={a.id} nom={a.nom} texte={a.probleme} btnLabel={a.btnLabel} btnCouleur={a.btnCouleur} onAction={() => naviguer(a.page, a.ctx)} />
+                  ))}
+                </div>
+              )}
+            </div>
 
           </div>
         </div>
@@ -1529,6 +1390,7 @@ function Dashboard({ chantiers, clients, factures, devis = [], parametres, navig
     </div>
   );
 }
+
 
 // ── Helpers de rendu pour la vue détail chantier ───────────────────────────
 // Fonctions nommées (pas d'IIFEs) — retournent du JSX, n'utilisent pas de hooks

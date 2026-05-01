@@ -154,8 +154,8 @@
   --border-hover  : #cbd5e1;
   --border-focus  : #3b82f6;
   --text-primary  : #0f172a;
-  --text-secondary: #475569;
-  --text-muted    : #94a3b8;
+  --text-secondary: #334155;
+  --text-muted    : #64748b;
   --bg:            #ffffff;
   --bg-topbar:     #ffffff;
   --border-input:  #e2e8f0;
@@ -221,7 +221,7 @@
 }
 [data-theme="light"] .sidebar-logo-name { color: #0f172a; }
 [data-theme="light"] .sidebar-logo-sub  { color: #64748b; }
-[data-theme="light"] .sidebar-item { color: #475569; }
+[data-theme="light"] .sidebar-item { color: #1e293b; }
 [data-theme="light"] .sidebar-item:hover {
   background: #f1f5f9 !important;
   color: #0f172a !important;
@@ -266,8 +266,13 @@
 }
 [data-theme="light"] input::placeholder,
 [data-theme="light"] textarea::placeholder { color: #94a3b8 !important; }
+[data-theme="light"] table { color: #0f172a !important; }
+[data-theme="light"] table td { color: #1e293b !important; }
+[data-theme="light"] table th { color: #475569 !important; }
 [data-theme="light"] table tbody tr:hover { background: #f8fafc !important; }
 [data-theme="light"] table thead tr { background: #f8fafc !important; }
+[data-theme="light"] p, [data-theme="light"] span, [data-theme="light"] div { color: inherit; }
+[data-theme="light"] .app-main { color: #0f172a; }
 
 /* === RESET === */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }

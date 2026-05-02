@@ -124,7 +124,7 @@ function BadgeRentabilite({ ca, couts }) {
       padding: '3px 10px', borderRadius: 20,
       fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap',
     }}>
-      <span style={{ width: 6, height: 6, borderRadius: '50%', background: cfg.couleur, display: 'inline-block', flexShrink: 0 }} />
+      <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--text-muted)', display: 'inline-block', flexShrink: 0 }} />
       {cfg.label}
     </span>
   );
@@ -1125,7 +1125,7 @@ function Dashboard({ chantiers, clients, factures, devis = [], parametres, navig
                 )}
                 {previsionTreso30j.interpretation && (
                   <div style={{ fontSize: 13, fontWeight: 700, color: previsionTreso30j.interpretation.couleur, marginTop: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: previsionTreso30j.interpretation.couleur, display: 'inline-block', flexShrink: 0 }} />
+                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--text-muted)', display: 'inline-block', flexShrink: 0 }} />
                     {previsionTreso30j.interpretation.label}
                   </div>
                 )}
@@ -1161,7 +1161,7 @@ function Dashboard({ chantiers, clients, factures, devis = [], parametres, navig
                 onMouseEnter={e => { e.currentTarget.style.transform = 'translateX(3px)'; e.currentTarget.style.boxShadow = `0 4px 16px ${a.critique ? 'rgba(239,68,68,0.12)' : 'rgba(245,158,11,0.12)'}`; }}
                 onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.04)'; }}
               >
-                <div style={{ width: 8, height: 8, borderRadius: '50%', background: a.critique ? C.danger : C.warning, flexShrink: 0 }} />
+                <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--text-muted)', flexShrink: 0 }} />
                 <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', flex: 1 }}>{a.message}</span>
                 <span style={{ fontSize: 12, color: a.critique ? C.danger : C.warning, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 3, whiteSpace: 'nowrap' }}>Voir <ChevronRight size={13} /></span>
               </div>
@@ -2652,7 +2652,7 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
           {/* ── Alerte dépassement budget ── */}
           {couts.depassementBudget && (
             <div style={{ background: C.danger + '15', border: `1px solid ${C.danger}50`, borderRadius: 10, padding: '10px 16px', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 10 }}>
-              <AlertTriangle size={18} strokeWidth={2} style={{ color: "var(--color-danger, #ef4444)", flexShrink: 0 }} />
+              <AlertTriangle size={18} strokeWidth={2} style={{ color: "var(--text-muted)", flexShrink: 0 }} />
               <div>
                 <span style={{ fontWeight: 700, color: C.danger, fontSize: 13 }}>Dépassement budget</span>
                 <span style={{ fontSize: 12, color: 'var(--text-muted)', marginLeft: 8 }}>
@@ -2663,7 +2663,7 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
           )}
           {couts.alerteOrange && (
             <div style={{ background: C.warning + '15', border: `1px solid ${C.warning}50`, borderRadius: 10, padding: '10px 16px', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 10 }}>
-              <AlertTriangle size={18} strokeWidth={2} style={{ color: "var(--color-warning, #f59e0b)", flexShrink: 0 }} />
+              <AlertTriangle size={18} strokeWidth={2} style={{ color: "var(--text-muted)", flexShrink: 0 }} />
               <div>
                 <span style={{ fontWeight: 700, color: C.warning, fontSize: 13 }}>Attention budget</span>
                 <span style={{ fontSize: 12, color: 'var(--text-muted)', marginLeft: 8 }}>
@@ -2676,7 +2676,7 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
           {/* Correction #4 — Alertes rythme / vélocité */}
           {couts.alerteRythmeRouge && (
             <div style={{ background: C.danger + '15', border: `1px solid ${C.danger}50`, borderRadius: 10, padding: '10px 16px', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 10 }}>
-              <AlertTriangle size={18} strokeWidth={2} style={{ color: "var(--color-danger, #ef4444)", flexShrink: 0 }} />
+              <AlertTriangle size={18} strokeWidth={2} style={{ color: "var(--text-muted)", flexShrink: 0 }} />
               <div>
                 <span style={{ fontWeight: 700, color: C.danger, fontSize: 13 }}>Rythme de dépense critique</span>
                 <span style={{ fontSize: 12, color: 'var(--text-muted)', marginLeft: 8 }}>
@@ -2687,7 +2687,7 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
           )}
           {!couts.alerteRythmeRouge && couts.alerteRythmeOrange && (
             <div style={{ background: C.warning + '15', border: `1px solid ${C.warning}50`, borderRadius: 10, padding: '10px 16px', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 10 }}>
-              <AlertTriangle size={18} strokeWidth={2} style={{ color: "var(--color-warning, #f59e0b)", flexShrink: 0 }} />
+              <AlertTriangle size={18} strokeWidth={2} style={{ color: "var(--text-muted)", flexShrink: 0 }} />
               <div>
                 <span style={{ fontWeight: 700, color: C.warning, fontSize: 13 }}>Rythme de dépense élevé</span>
                 <span style={{ fontSize: 12, color: 'var(--text-muted)', marginLeft: 8 }}>
@@ -2708,7 +2708,7 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
           {/* ── P8 Badge données incomplètes ── */}
           {couts.donneesIncompletes && (
             <div style={{ background: C.warning + '12', border: `1px solid ${C.warning}40`, borderRadius: 8, padding: '8px 14px', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-              <AlertTriangle size={15} strokeWidth={2} style={{ color: "var(--color-warning, #f59e0b)", flexShrink: 0 }} />
+              <AlertTriangle size={15} strokeWidth={2} style={{ color: "var(--text-muted)", flexShrink: 0 }} />
               <span style={{ fontSize: 12, color: C.warning, fontWeight: 700 }}>Données incomplètes</span>
               <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Coûts réels manquants : {couts.champsManquants.join(', ')}</span>
               <span style={{ fontSize: 11, color: 'var(--text-muted)', fontStyle: 'italic' }}>— La marge calculée est indicative.</span>
@@ -2978,7 +2978,7 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
                   </div>
                 ) : (
                   <div style={{ background: 'rgba(239,68,68,0.05)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 12, padding: '14px 18px', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <AlertTriangle size={18} strokeWidth={2} style={{ color: "var(--color-warning, #f59e0b)", flexShrink: 0 }} />
+                    <AlertTriangle size={18} strokeWidth={2} style={{ color: "var(--text-muted)", flexShrink: 0 }} />
                     <div>
                       <div style={{ fontSize: 12, fontWeight: 700, color: '#ef4444' }}>Aucun devis lié</div>
                       <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>Le CA sera indisponible tant qu'aucun devis accepté n'est sélectionné.</div>
@@ -3320,7 +3320,7 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
                 padding: '13px 18px', borderRadius: 12, marginBottom: 16,
                 background: C.warning + '0f', border: `1px solid ${C.warning}30`, borderLeft: `4px solid ${C.warning}`,
               }}>
-                <AlertTriangle size={18} strokeWidth={2} style={{ color: "var(--color-warning, #f59e0b)", flexShrink: 0 }} />
+                <AlertTriangle size={18} strokeWidth={2} style={{ color: "var(--text-muted)", flexShrink: 0 }} />
                 <span style={{ fontSize: 14, fontWeight: 800, color: C.warning }}>
                   {nbWarning} chantier{nbWarning > 1 ? 's' : ''} à surveiller
                 </span>

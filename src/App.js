@@ -317,6 +317,9 @@ function App() {
             <div className="sidebar-logo-sub">Gestion de chantiers · Genève</div>
           </div>
         </div>
+        <button className="sidebar-cta" onClick={() => { naviguer('chantiers'); setSidebarOuvert(false); }}>
+          <Plus size={16} strokeWidth={2.6} /> Nouveau chantier
+        </button>
         <nav className="sidebar-nav">
           {navAutorisees.map(item => (
             <button
@@ -1059,7 +1062,7 @@ function Dashboard({ chantiers, clients, factures, devis = [], parametres, navig
       <span style={{ fontSize: 12, color: 'var(--text-muted)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{texte}</span>
       <button
         onClick={e => { e.stopPropagation(); onAction(); }}
-        style={{ background: 'rgba(59,130,246,0.1)', color: '#2563eb', border: '1px solid rgba(59,130,246,0.25)', borderRadius: 8, padding: '6px 14px', cursor: 'pointer', fontSize: 12, fontWeight: 700, flexShrink: 0, transition: 'all 0.2s ease', whiteSpace: 'nowrap', fontFamily: 'Inter, sans-serif' }}
+        style={{ background: 'rgba(59,130,246,0.1)', color: '#2563eb', border: '1px solid rgba(59,130,246,0.25)', borderRadius: 8, padding: '6px 14px', cursor: 'pointer', fontSize: 12, fontWeight: 700, flexShrink: 0, transition: 'all 0.2s ease', whiteSpace: 'nowrap', fontFamily: 'inherit' }}
         onMouseEnter={e => { e.stopPropagation(); e.currentTarget.style.background = 'linear-gradient(135deg, rgba(59,130,246,0.32) 0%, rgba(99,102,241,0.24) 100%)'; e.currentTarget.style.boxShadow = '0 0 20px rgba(59,130,246,0.3), 0 0 0 1px rgba(59,130,246,0.5)'; e.currentTarget.style.borderColor = 'rgba(59,130,246,0.55)'; }}
         onMouseLeave={e => { e.currentTarget.style.background = 'linear-gradient(135deg, rgba(59,130,246,0.2) 0%, rgba(99,102,241,0.14) 100%)'; e.currentTarget.style.boxShadow = ''; e.currentTarget.style.borderColor = 'rgba(59,130,246,0.35)'; }}
       >{btnLabel}</button>
@@ -1865,7 +1868,7 @@ function ModalSaisieHeures({ chantierSaisie, initialDate, onFermer, onSave, para
           </span>
           <button
             onClick={() => { onFermer(); ouvrirModification(chantierSaisie); }}
-            style={{ fontSize: 11, fontWeight: 600, color: C.primaire, background: C.primaire + '12', border: `1px solid ${C.primaire}30`, borderRadius: 6, padding: '3px 10px', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}
+            style={{ fontSize: 11, fontWeight: 600, color: C.primaire, background: C.primaire + '12', border: `1px solid ${C.primaire}30`, borderRadius: 6, padding: '3px 10px', cursor: 'pointer', fontFamily: 'inherit' }}
           >Modifier l'équipe →</button>
         </div>
 
@@ -1891,7 +1894,7 @@ function ModalSaisieHeures({ chantierSaisie, initialDate, onFermer, onSave, para
               if (Object.keys(hierHeures).length === 0) { alert('Aucune saisie trouvée pour la veille.'); return; }
               setHeures({ ...hierHeures });
             }}
-            style={{ fontSize: 12, fontWeight: 700, color: C.info, background: C.info + '15', border: `1px solid ${C.info}35`, borderRadius: 8, padding: '7px 14px', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}
+            style={{ fontSize: 12, fontWeight: 700, color: C.info, background: C.info + '15', border: `1px solid ${C.info}35`, borderRadius: 8, padding: '7px 14px', cursor: 'pointer', fontFamily: 'inherit' }}
           >Remplir comme hier</button>
           <button
             onClick={() => {
@@ -1899,11 +1902,11 @@ function ModalSaisieHeures({ chantierSaisie, initialDate, onFermer, onSave, para
               empsList.forEach(e => { h[e.id] = 8; });
               setHeures(h);
             }}
-            style={{ fontSize: 12, fontWeight: 700, color: C.primaire, background: C.primaire + '15', border: `1px solid ${C.primaire}35`, borderRadius: 8, padding: '7px 14px', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}
+            style={{ fontSize: 12, fontWeight: 700, color: C.primaire, background: C.primaire + '15', border: `1px solid ${C.primaire}35`, borderRadius: 8, padding: '7px 14px', cursor: 'pointer', fontFamily: 'inherit' }}
           >Tout à 8h</button>
           <button
             onClick={() => setHeures({})}
-            style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', background: 'var(--bg-glass-2)', border: '1px solid var(--border-hover)', borderRadius: 8, padding: '7px 14px', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}
+            style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', background: 'var(--bg-glass-2)', border: '1px solid var(--border-hover)', borderRadius: 8, padding: '7px 14px', cursor: 'pointer', fontFamily: 'inherit' }}
           >Effacer</button>
         </div>
 
@@ -1934,7 +1937,7 @@ function ModalSaisieHeures({ chantierSaisie, initialDate, onFermer, onSave, para
                         color: h === v ? '#ffffff' : 'var(--text-muted)',
                         background: h === v ? C.primaire : 'var(--bg-hover)',
                         border: `1px solid ${h === v ? C.primaire : 'rgba(255,255,255,0.1)'}`,
-                        borderRadius: 6, padding: '4px 7px', cursor: 'pointer', fontFamily: 'Inter, sans-serif',
+                        borderRadius: 6, padding: '4px 7px', cursor: 'pointer', fontFamily: 'inherit',
                       }}
                     >{v}h</button>
                   ))}
@@ -1952,7 +1955,7 @@ function ModalSaisieHeures({ chantierSaisie, initialDate, onFermer, onSave, para
                       width: 62, background: 'var(--bg-glass-2)',
                       border: `1px solid ${isOver ? C.danger + '60' : 'var(--border-hover)'}`,
                       borderRadius: 8, color: isOver ? C.danger : 'var(--text-primary)',
-                      fontFamily: 'Inter, sans-serif', fontSize: 15, fontWeight: 700,
+                      fontFamily: 'inherit', fontSize: 15, fontWeight: 700,
                       textAlign: 'center', padding: '6px 8px',
                     }}
                   />
@@ -2845,7 +2848,7 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
             color: filtre === s ? C.primaire : 'var(--text-secondary)',
             border: filtre === s ? '1px solid rgba(59,130,246,0.4)' : '1px solid var(--border)',
             padding: '5px 14px', borderRadius: '20px', cursor: 'pointer', fontSize: '13px',
-            fontWeight: filtre === s ? 700 : 500, fontFamily: 'Inter, sans-serif',
+            fontWeight: filtre === s ? 700 : 500, fontFamily: 'inherit',
             transition: 'all 0.18s',
           }}>{s}</button>
         ))}
@@ -2949,7 +2952,7 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
                   border: (form.typesTravaux || []).includes(t.nom) ? '1px solid rgba(59,130,246,0.4)' : '1px solid var(--border)',
                   padding: '5px 14px', borderRadius: '20px', cursor: 'pointer', fontSize: '13px',
                   fontWeight: (form.typesTravaux || []).includes(t.nom) ? 700 : 500,
-                  fontFamily: 'Inter, sans-serif', transition: 'all 0.15s',
+                  fontFamily: 'inherit', transition: 'all 0.15s',
                 }}>{t.nom}</button>
               ))}
             </div>
@@ -3098,7 +3101,7 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
                         </span>
                         <button
                           onClick={() => chantierEnForm && ouvrirSaisieHeures(chantierEnForm)}
-                          style={{ fontSize: 11, fontWeight: 700, color: C.secondaire, background: 'transparent', border: `1px solid ${C.secondaire}50`, borderRadius: 6, padding: '3px 10px', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}
+                          style={{ fontSize: 11, fontWeight: 700, color: C.secondaire, background: 'transparent', border: `1px solid ${C.secondaire}50`, borderRadius: 6, padding: '3px 10px', cursor: 'pointer', fontFamily: 'inherit' }}
                         >Modifier</button>
                       </div>
                     )}
@@ -3109,7 +3112,7 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
                         background: disabled ? 'var(--bg-glass-2)' : `linear-gradient(135deg, ${C.secondaire}22, ${C.secondaire}10)`,
                         border: `1px solid ${disabled ? 'rgba(255,255,255,0.1)' : C.secondaire + '40'}`,
                         color: disabled ? 'var(--text-muted)' : C.secondaire,
-                        fontSize: 15, fontWeight: 700, fontFamily: 'Inter, sans-serif',
+                        fontSize: 15, fontWeight: 700, fontFamily: 'inherit',
                         display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
                         opacity: disabled ? 0.5 : 1,
                       }}

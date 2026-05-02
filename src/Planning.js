@@ -312,7 +312,7 @@ export default function Planning({ chantiers, setChantiers, clients, naviguer })
     background: 'rgba(59,130,246,0.14)', color: '#60a5fa',
     border: '1px solid rgba(59,130,246,0.3)', borderRadius: 8,
     padding: '5px 12px', cursor: 'pointer', fontSize: 12, fontWeight: 600,
-    fontFamily: 'Inter, sans-serif', transition: 'all 0.15s',
+    fontFamily: 'inherit', transition: 'all 0.15s',
   };
 
   return (
@@ -331,7 +331,7 @@ export default function Planning({ chantiers, setChantiers, clients, naviguer })
               border: vue === v ? '1px solid rgba(59,130,246,0.4)' : '1px solid rgba(255,255,255,0.08)',
               padding: '6px 14px', borderRadius: '20px', cursor: 'pointer',
               fontSize: '13px', fontWeight: vue === v ? 700 : 500,
-              fontFamily: 'Inter, sans-serif', transition: 'all 0.18s',
+              fontFamily: 'inherit', transition: 'all 0.18s',
             }}>
               {{ timeline: 'Timeline', calendrier: 'Calendrier', liste: 'Liste', charge: 'Charge' }[v]}
             </button>
@@ -345,7 +345,7 @@ export default function Planning({ chantiers, setChantiers, clients, naviguer })
           <span style={{ color: C.warning, fontWeight: 700, fontSize: 13 }}>{chantiersNonPlanifies.length} chantier{chantiersNonPlanifies.length > 1 ? 's' : ''} sans date :</span>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             {chantiersNonPlanifies.map(c => (
-              <button key={c.id} onClick={() => ouvrirModal(c)} style={{ background: 'rgba(245,158,11,0.14)', color: C.warning, border: '1px solid rgba(245,158,11,0.3)', borderRadius: 8, padding: '4px 12px', cursor: 'pointer', fontSize: 12, fontWeight: 600, fontFamily: 'Inter, sans-serif' }}>
+              <button key={c.id} onClick={() => ouvrirModal(c)} style={{ background: 'rgba(245,158,11,0.14)', color: C.warning, border: '1px solid rgba(245,158,11,0.3)', borderRadius: 8, padding: '4px 12px', cursor: 'pointer', fontSize: 12, fontWeight: 600, fontFamily: 'inherit' }}>
                 + Planifier {c.nom}
               </button>
             ))}
@@ -663,7 +663,7 @@ export default function Planning({ chantiers, setChantiers, clients, naviguer })
                 background: 'rgba(239,68,68,0.12)', color: C.danger,
                 border: '1px solid rgba(239,68,68,0.3)', borderRadius: 10,
                 padding: '10px 16px', cursor: 'pointer', fontSize: 13, fontWeight: 600,
-                fontFamily: 'Inter, sans-serif',
+                fontFamily: 'inherit',
               }}>
                 Retirer du planning
               </button>
@@ -672,7 +672,7 @@ export default function Planning({ chantiers, setChantiers, clients, naviguer })
                   background: 'rgba(255,255,255,0.06)', color: 'var(--text-secondary)',
                   border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10,
                   padding: '10px 20px', cursor: 'pointer', fontSize: 13, fontWeight: 600,
-                  fontFamily: 'Inter, sans-serif',
+                  fontFamily: 'inherit',
                 }}>Annuler</button>
                 <button onClick={sauvegarderModal} style={{
                   ...DS.btnPrimary, borderRadius: 10, padding: '10px 20px', fontSize: 13,

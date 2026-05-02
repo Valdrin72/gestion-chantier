@@ -245,7 +245,7 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
                 <button onClick={() => {
                   setParametres({ ...parametres, parametres: { ...parametres.parametres, tauxChargesSociales, tauxFraisGeneraux, tauxImpots } });
                   setTaxSaved(true);
-                }} style={{ background: 'rgba(16,185,129,0.15)', color: '#10b981', border: '1px solid rgba(16,185,129,0.35)', borderRadius: 8, padding: '8px 18px', cursor: 'pointer', fontWeight: 700, fontSize: 13, fontFamily: 'Inter, sans-serif' }}>
+                }} style={{ background: 'rgba(16,185,129,0.15)', color: '#10b981', border: '1px solid rgba(16,185,129,0.35)', borderRadius: 8, padding: '8px 18px', cursor: 'pointer', fontWeight: 700, fontSize: 13, fontFamily: 'inherit' }}>
                   Enregistrer les paramètres
                 </button>
                 {taxSaved && <span style={{ fontSize: 12, color: '#10b981', fontWeight: 600 }}>Sauvegardé</span>}

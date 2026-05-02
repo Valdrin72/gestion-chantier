@@ -31,21 +31,19 @@ const btnPrimaire = DS.btnPrimary;
 const btnSucces  = DS.btnSuccess;
 const btnDanger  = DS.btnDanger;
 
-function Badge({ texte, couleur, glow = false }) {
+function Badge({ texte, couleur }) {
   return (
     <span style={{
-      background: couleur + '22',
+      background: couleur + '15',
       color: couleur,
-      border: `1px solid ${couleur}44`,
-      padding: '3px 12px',
+      border: `1px solid ${couleur}30`,
+      padding: '3px 10px',
       borderRadius: '20px',
       fontSize: '11px',
-      fontWeight: 700,
+      fontWeight: 600,
       display: 'inline-flex',
       alignItems: 'center',
-      letterSpacing: '0.3px',
       whiteSpace: 'nowrap',
-      ...(glow && { boxShadow: `0 0 8px ${couleur}55, 0 0 2px ${couleur}33` }),
     }}>
       {texte}
     </span>
@@ -55,16 +53,14 @@ function Badge({ texte, couleur, glow = false }) {
 function CoutBadge({ label, valeur, couleur }) {
   return (
     <div style={{
-      background: couleur + '18',
-      border: `1px solid ${couleur}38`,
+      background: couleur + '10',
+      border: `1px solid ${couleur}25`,
       borderRadius: '12px',
-      padding: '12px 18px',
+      padding: '12px 16px',
       minWidth: '130px',
-      backdropFilter: 'blur(8px)',
-      WebkitBackdropFilter: 'blur(8px)',
     }}>
-      <div style={{ fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', color: 'var(--text-muted)', marginBottom: '6px' }}>{label}</div>
-      <div style={{ fontWeight: 800, fontSize: '16px', color: couleur, letterSpacing: '-0.3px' }}>CHF {fmtN(valeur)}</div>
+      <div style={{ fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-muted)', marginBottom: '6px' }}>{label}</div>
+      <div style={{ fontWeight: 700, fontSize: '16px', color: couleur }}>CHF {fmtN(valeur)}</div>
     </div>
   );
 }
@@ -72,36 +68,25 @@ function CoutBadge({ label, valeur, couleur }) {
 function StatCard({ titre, valeur, couleur, Icon }) {
   return (
     <div style={{
-      background: `linear-gradient(145deg, ${couleur}0a 0%, rgba(255,255,255,0.03) 60%, rgba(255,255,255,0.02) 100%)`,
-      backdropFilter: 'blur(14px) saturate(1.6)',
-      WebkitBackdropFilter: 'blur(14px) saturate(1.6)',
-      borderRadius: '16px',
-      padding: '22px',
+      background: 'var(--ds-card-bg)',
+      borderRadius: '14px',
+      padding: '20px',
       minWidth: '150px',
       flex: 1,
-      border: `1px solid ${couleur}28`,
-      boxShadow: `0 2px 8px rgba(0,0,0,0.3), 0 8px 28px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.08)`,
-      position: 'relative',
-      overflow: 'hidden',
-      transition: 'transform 0.18s cubic-bezier(0.4,0,0.2,1), box-shadow 0.18s ease',
+      border: '1px solid var(--ds-card-border)',
+      boxShadow: 'var(--ds-card-shadow)',
     }}>
-      {/* Icône watermark */}
-      <div style={{ position: 'absolute', right: -6, top: -6, color: couleur, opacity: 0.12, pointerEvents: 'none' }}>
-        {Icon && <Icon size={80} strokeWidth={1.2} />}
-      </div>
-      {/* Picto coloré */}
       <div style={{
-        width: 38, height: 38, borderRadius: 10,
-        background: `linear-gradient(135deg, ${couleur}28 0%, ${couleur}14 100%)`,
-        border: `1px solid ${couleur}30`,
+        width: 36, height: 36, borderRadius: 9,
+        background: couleur + '15',
+        border: `1px solid ${couleur}25`,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        marginBottom: 16,
-        boxShadow: `0 0 18px ${couleur}28, 0 2px 8px rgba(0,0,0,0.2)`,
+        marginBottom: 14,
       }}>
-        {Icon && <Icon size={18} strokeWidth={2} style={{ color: couleur }} />}
+        {Icon && <Icon size={17} strokeWidth={2} style={{ color: couleur }} />}
       </div>
-      <div style={{ fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--text-muted)', marginBottom: '8px' }}>{titre}</div>
-      <div style={{ fontSize: '26px', fontWeight: 800, letterSpacing: '-0.6px', lineHeight: 1.1, color: 'var(--text-primary)' }}>{valeur}</div>
+      <div style={{ fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.6px', color: 'var(--text-muted)', marginBottom: '6px' }}>{titre}</div>
+      <div style={{ fontSize: '26px', fontWeight: 800, letterSpacing: '-0.5px', lineHeight: 1.1, color: 'var(--text-primary)' }}>{valeur}</div>
     </div>
   );
 }
@@ -113,8 +98,8 @@ function BarreAvancement({ valeur, couleur }) {
   if (progress > 70) auto = '#22c55e';
   const c = couleur || auto;
   return (
-    <div style={{ background: 'var(--bg-hover)', borderRadius: '10px', height: '8px', width: '100%', overflow: 'hidden', boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.08)' }}>
-      <div style={{ background: `linear-gradient(90deg, ${c}, ${c}cc)`, width: `${progress}%`, height: '8px', borderRadius: '10px', transition: 'width 0.4s ease', boxShadow: `0 0 8px ${c}` }} />
+    <div style={{ background: 'var(--bg-hover)', borderRadius: '10px', height: '6px', width: '100%', overflow: 'hidden' }}>
+      <div style={{ background: c, width: `${progress}%`, height: '6px', borderRadius: '10px', transition: 'width 0.4s ease' }} />
     </div>
   );
 }
@@ -996,8 +981,8 @@ function Dashboard({ chantiers, clients, factures, devis = [], parametres, navig
 
   // ── Helpers JSX réutilisables ───────────────────────────────
   const SectionLabel = ({ children }) => (
-    <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1.4px', color: 'var(--text-muted)', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8, paddingBottom: 12, borderBottom: '1px solid var(--border)' }}>
-      <span style={{ width: 3, height: 12, borderRadius: 2, background: 'linear-gradient(180deg, #3b82f6, #6366f1)', flexShrink: 0, boxShadow: '0 0 8px rgba(59,130,246,0.4)', display: 'inline-block' }} />
+    <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.8px', color: 'var(--text-muted)', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8, paddingBottom: 12, borderBottom: '1px solid var(--border)' }}>
+      <span style={{ width: 3, height: 12, borderRadius: 2, background: '#2563eb', flexShrink: 0, display: 'inline-block' }} />
       {children}
     </div>
   );
@@ -1096,36 +1081,26 @@ function Dashboard({ chantiers, clients, factures, devis = [], parametres, navig
           <div key={label} onClick={() => naviguer(page)}
             style={{
               background: gradient,
-              borderRadius: 18,
-              padding: '26px 24px',
-              position: 'relative',
-              overflow: 'hidden',
+              borderRadius: 16,
+              padding: '24px',
               cursor: 'pointer',
-              boxShadow: `0 8px 32px ${glow}, 0 2px 8px rgba(0,0,0,0.12)`,
-              border: '1px solid rgba(255,255,255,0.18)',
-              transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+              boxShadow: `0 4px 16px ${glow}`,
+              border: '1px solid rgba(255,255,255,0.15)',
+              transition: 'transform 0.18s ease, box-shadow 0.18s ease',
             }}
             onMouseEnter={e => {
-              e.currentTarget.style.transform = 'translateY(-4px)';
-              e.currentTarget.style.boxShadow = `0 20px 48px ${glow}, 0 4px 16px rgba(0,0,0,0.15)`;
+              e.currentTarget.style.transform = 'translateY(-2px)';
+              e.currentTarget.style.boxShadow = `0 10px 28px ${glow}`;
             }}
             onMouseLeave={e => {
               e.currentTarget.style.transform = '';
-              e.currentTarget.style.boxShadow = `0 8px 32px ${glow}, 0 2px 8px rgba(0,0,0,0.12)`;
+              e.currentTarget.style.boxShadow = `0 4px 16px ${glow}`;
             }}
           >
-            {/* Reflet lumière haut-gauche */}
-            <div style={{ position: 'absolute', top: -40, left: -40, width: 160, height: 160, borderRadius: '50%', background: 'rgba(255,255,255,0.1)', pointerEvents: 'none' }} />
-            {/* Ligne shimmer haute */}
-            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.45), transparent)', pointerEvents: 'none' }} />
-            {/* Icône watermark */}
-            <div style={{ position: 'absolute', right: -12, bottom: -12, opacity: 0.1, pointerEvents: 'none' }}>
-              <Icon size={110} strokeWidth={1} style={{ color: '#fff' }} />
-            </div>
-            <Icon size={20} strokeWidth={1.8} style={{ color: 'rgba(255,255,255,0.8)', marginBottom: 18, display: 'block' }} />
-            <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.6)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1.2px', marginBottom: 8 }}>{label}</div>
-            <div style={{ fontSize: 34, fontWeight: 900, color: '#ffffff', letterSpacing: '-1.5px', lineHeight: 1, marginBottom: 10 }}>{valeur}</div>
-            <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.55)' }}>{sous}</div>
+            <Icon size={18} strokeWidth={1.8} style={{ color: 'rgba(255,255,255,0.75)', marginBottom: 16, display: 'block' }} />
+            <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.65)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 6 }}>{label}</div>
+            <div style={{ fontSize: 32, fontWeight: 800, color: '#ffffff', letterSpacing: '-1px', lineHeight: 1, marginBottom: 8 }}>{valeur}</div>
+            <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.55)', fontWeight: 500 }}>{sous}</div>
           </div>
         ))}
       </div>

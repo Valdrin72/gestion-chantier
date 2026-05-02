@@ -1035,8 +1035,8 @@ function Dashboard({ chantiers, clients, factures, devis = [], parametres, navig
             sous: kpi.nbChantiersActifs > 0
               ? `${kpi.nbChantiersActifs - (kpi.nbActifsSansDevis || 0)}/${kpi.nbChantiersActifs} avec devis`
               : 'Aucun chantier actif',
-            gradient: 'linear-gradient(135deg, #1D4ED8 0%, #2563EB 45%, #60A5FA 100%)',
-            glow: 'rgba(29,78,216,0.35)',
+            gradient: 'linear-gradient(140deg, #0f2460 0%, #1d3a8a 28%, #2563eb 62%, #3b82f6 100%)',
+            glow: 'rgba(37,99,235,0.45)',
           },
           {
             label: 'Rentabilité moy.', page: 'analyse', Icon: TrendingUp,
@@ -1045,17 +1045,17 @@ function Dashboard({ chantiers, clients, factures, devis = [], parametres, navig
               ? `${kpi.nbChantiersRenta} chantier${kpi.nbChantiersRenta > 1 ? 's' : ''} analysé${kpi.nbChantiersRenta > 1 ? 's' : ''}`
               : 'Aucun coût saisi',
             gradient: kpi.rentaMoyenne === null
-              ? 'linear-gradient(135deg, #475569 0%, #64748B 100%)'
+              ? 'linear-gradient(140deg, #0f172a 0%, #1e293b 50%, #334155 100%)'
               : kpi.rentaMoyenne >= 15
-                ? 'linear-gradient(135deg, #059669 0%, #10B981 50%, #34D399 100%)'
+                ? 'linear-gradient(140deg, #052e16 0%, #065f46 28%, #059669 62%, #10b981 100%)'
                 : kpi.rentaMoyenne >= 0
-                  ? 'linear-gradient(135deg, #D97706 0%, #F59E0B 50%, #FCD34D 100%)'
-                  : 'linear-gradient(135deg, #DC2626 0%, #EF4444 100%)',
+                  ? 'linear-gradient(140deg, #451a03 0%, #92400e 28%, #d97706 62%, #f59e0b 100%)'
+                  : 'linear-gradient(140deg, #450a0a 0%, #991b1b 35%, #dc2626 70%, #ef4444 100%)',
             glow: kpi.rentaMoyenne !== null && kpi.rentaMoyenne >= 15
-              ? 'rgba(5,150,105,0.3)'
+              ? 'rgba(5,150,105,0.4)'
               : kpi.rentaMoyenne !== null && kpi.rentaMoyenne >= 0
-                ? 'rgba(217,119,6,0.3)'
-                : 'rgba(220,38,38,0.3)',
+                ? 'rgba(217,119,6,0.4)'
+                : 'rgba(220,38,38,0.4)',
           },
           {
             label: 'Cash en attente', page: 'finances', Icon: CreditCard,
@@ -1065,8 +1065,8 @@ function Dashboard({ chantiers, clients, factures, devis = [], parametres, navig
               : kpi.nbFacturesEnAttente > 0
                 ? `${kpi.nbFacturesEnAttente} à encaisser`
                 : 'Aucune en attente',
-            gradient: 'linear-gradient(135deg, #1D4ED8 0%, #2563EB 45%, #60A5FA 100%)',
-            glow: 'rgba(29,78,216,0.35)',
+            gradient: 'linear-gradient(140deg, #0c2d50 0%, #0369a1 30%, #0284c7 62%, #0ea5e9 100%)',
+            glow: 'rgba(3,105,161,0.45)',
           },
           {
             label: 'Heures engagées', page: 'planning', Icon: Clock,
@@ -1074,33 +1074,33 @@ function Dashboard({ chantiers, clients, factures, devis = [], parametres, navig
             sous: kpi.nbEmployes > 0
               ? `${kpi.nbEmployes} employé${kpi.nbEmployes > 1 ? 's' : ''} mobilisé${kpi.nbEmployes > 1 ? 's' : ''}`
               : 'Équipes non renseignées',
-            gradient: 'linear-gradient(135deg, #1D4ED8 0%, #2563EB 45%, #60A5FA 100%)',
-            glow: 'rgba(29,78,216,0.35)',
+            gradient: 'linear-gradient(140deg, #1e1b4b 0%, #3730a3 28%, #4f46e5 62%, #818cf8 100%)',
+            glow: 'rgba(79,70,229,0.45)',
           },
         ].map(({ label, page, Icon, valeur, sous, gradient, glow }) => (
           <div key={label} onClick={() => naviguer(page)}
             style={{
               background: gradient,
-              borderRadius: 16,
-              padding: '24px',
+              borderRadius: 18,
+              padding: '26px 24px',
               cursor: 'pointer',
-              boxShadow: `0 4px 16px ${glow}`,
-              border: '1px solid rgba(255,255,255,0.15)',
-              transition: 'transform 0.18s ease, box-shadow 0.18s ease',
+              boxShadow: `0 6px 24px ${glow}, 0 2px 8px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.12)`,
+              border: '1px solid rgba(255,255,255,0.18)',
+              transition: 'transform 0.2s ease, box-shadow 0.2s ease',
             }}
             onMouseEnter={e => {
-              e.currentTarget.style.transform = 'translateY(-2px)';
-              e.currentTarget.style.boxShadow = `0 10px 28px ${glow}`;
+              e.currentTarget.style.transform = 'translateY(-3px)';
+              e.currentTarget.style.boxShadow = `0 16px 40px ${glow}, 0 4px 12px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.15)`;
             }}
             onMouseLeave={e => {
               e.currentTarget.style.transform = '';
-              e.currentTarget.style.boxShadow = `0 4px 16px ${glow}`;
+              e.currentTarget.style.boxShadow = `0 6px 24px ${glow}, 0 2px 8px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.12)`;
             }}
           >
-            <Icon size={18} strokeWidth={1.8} style={{ color: 'rgba(255,255,255,0.75)', marginBottom: 16, display: 'block' }} />
-            <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.65)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 6 }}>{label}</div>
-            <div style={{ fontSize: 32, fontWeight: 800, color: '#ffffff', letterSpacing: '-1px', lineHeight: 1, marginBottom: 8 }}>{valeur}</div>
-            <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.55)', fontWeight: 500 }}>{sous}</div>
+            <Icon size={20} strokeWidth={1.8} style={{ color: 'rgba(255,255,255,0.85)', marginBottom: 18, display: 'block' }} />
+            <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.7)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: 8 }}>{label}</div>
+            <div style={{ fontSize: 36, fontWeight: 900, color: '#ffffff', letterSpacing: '-1.5px', lineHeight: 1, marginBottom: 10, textShadow: '0 1px 4px rgba(0,0,0,0.2)' }}>{valeur}</div>
+            <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)', fontWeight: 500 }}>{sous}</div>
           </div>
         ))}
       </div>

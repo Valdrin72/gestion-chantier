@@ -58,7 +58,7 @@ const checklistsDefaut = {
 };
 
 const TYPES_CONTROLE = [
-  { id: 'demarrage', label: '🚀 Démarrage', couleur: C.info, items: checklistsDefaut.demarrage },
+  { id: 'demarrage', label: 'Démarrage', couleur: C.info, items: checklistsDefaut.demarrage },
   { id: 'miParcours', label: '🔍 Mi-parcours', couleur: C.warning, items: checklistsDefaut.miParcours },
   { id: 'reception', label: '🏁 Réception', couleur: C.secondaire, items: checklistsDefaut.reception },
   { id: 'securite', label: '🦺 Sécurité', couleur: C.danger, items: checklistsDefaut.securite },
@@ -211,7 +211,7 @@ export default function Qualite({ chantiers, setChantiers, qualiteData, setQuali
                     {data[item.id] && <span style={{ color: 'white', fontSize: '12px' }}>✓</span>}
                   </div>
                   <span style={{ fontSize: '14px', color: data[item.id] ? '#10b981' : 'var(--text-primary)' }}>{item.texte}</span>
-                  {data[item.id] && <span style={{ marginLeft: 'auto', fontSize: '12px', color: '#3b82f6' }}>✅ Validé</span>}
+                  {data[item.id] && <span style={{ marginLeft: 'auto', fontSize: '12px', color: '#3b82f6' }}>Validé</span>}
                 </div>
               ))}
             </div>
@@ -234,7 +234,7 @@ export default function Qualite({ chantiers, setChantiers, qualiteData, setQuali
             newData[key] = allChecked;
             setQualiteData(newData);
           }} style={{ ...DS.btnPrimary }}>
-            ✅ Tout valider
+            Tout valider
           </button>
           <button onClick={() => {
             const newData = { ...qualiteData };
@@ -254,10 +254,10 @@ export default function Qualite({ chantiers, setChantiers, qualiteData, setQuali
 
       <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap', marginBottom: '25px' }}>
         {[
-          { label: '🏗️ Chantiers suivis', val: chantiers.length, couleur: '#10b981' },
-          { label: '✅ Score moyen', val: `${chantiers.length > 0 ? Math.round(chantiers.reduce((s, c) => s + getScoreGlobal(c.id), 0) / chantiers.length) : 0}%`, couleur: '#10b981' },
-          { label: '⚠️ À compléter', val: chantiers.filter(c => getScoreGlobal(c.id) < 80).length, couleur: C.warning },
-          { label: '🔴 Critiques', val: chantiers.filter(c => getScoreGlobal(c.id) < 50).length, couleur: C.danger },
+          { label: 'Chantiers suivis', val: chantiers.length, couleur: '#10b981' },
+          { label: 'Score moyen', val: `${chantiers.length > 0 ? Math.round(chantiers.reduce((s, c) => s + getScoreGlobal(c.id), 0) / chantiers.length) : 0}%`, couleur: '#10b981' },
+          { label: 'À compléter', val: chantiers.filter(c => getScoreGlobal(c.id) < 80).length, couleur: C.warning },
+          { label: 'Critiques', val: chantiers.filter(c => getScoreGlobal(c.id) < 50).length, couleur: C.danger },
         ].map(s => (
           <div key={s.label} className="premium-card" style={{
             background: `linear-gradient(145deg, ${s.couleur}14 0%, ${s.couleur}07 60%, rgba(255,255,255,0.02) 100%)`,
@@ -318,7 +318,7 @@ export default function Qualite({ chantiers, setChantiers, qualiteData, setQuali
                     <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Score global</div>
                     <div style={{ marginTop: '8px' }}>
                       <span style={{ background: couleurScore(scoreGlobal) + '18', color: couleurScore(scoreGlobal), padding: '4px 12px', borderRadius: '12px', fontSize: '12px', fontWeight: 600 }}>
-                        {scoreGlobal >= 80 ? '✅ Bon' : scoreGlobal >= 50 ? '⚠️ À améliorer' : '🔴 Critique'}
+                        {scoreGlobal >= 80 ? 'Bon' : scoreGlobal >= 50 ? 'À améliorer' : 'Critique'}
                       </span>
                     </div>
                     <div style={{ marginTop: '8px', fontSize: '12px', color: '#3b82f6' }}>👁️ Voir détail →</div>

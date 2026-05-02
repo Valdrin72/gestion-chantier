@@ -516,9 +516,9 @@ export default function ImportPDF({ parametres, onCreerDevis, onCreerChantier, o
             <label style={labelStyle}>Type de document</label>
             <div style={{ display: 'flex', gap: '10px' }}>
               {[
-                { id: 'plans', label: '📐 Plans / Métrés', desc: 'Plans d\'architecte avec surfaces et dimensions' },
-                { id: 'devis', label: '💰 Devis fournisseur', desc: 'Devis avec montants et prix' },
-                { id: 'les_deux', label: '📋 Les deux', desc: 'Document mixte avec métrés et montants' },
+                { id: 'plans', label: 'Plans / Métrés', desc: 'Plans d\'architecte avec surfaces et dimensions' },
+                { id: 'devis', label: 'Devis fournisseur', desc: 'Devis avec montants et prix' },
+                { id: 'les_deux', label: 'Les deux', desc: 'Document mixte avec métrés et montants' },
               ].map(t => (
                 <div key={t.id} onClick={() => setTypePDF(t.id)}
                   style={{ flex: 1, background: typePDF === t.id ? 'rgba(59,130,246,0.15)' : 'rgba(255,255,255,0.03)', border: `1px solid ${typePDF === t.id ? 'rgba(59,130,246,0.45)' : 'rgba(255,255,255,0.08)'}`, borderRadius: '12px', padding: '15px', cursor: 'pointer', textAlign: 'center', transition: 'all 0.18s' }}>
@@ -549,7 +549,7 @@ export default function ImportPDF({ parametres, onCreerDevis, onCreerChantier, o
           )}
 
           <div style={{ marginTop: '20px', background: 'var(--bg-hover)', border: `1px solid var(--border)`, borderRadius: '8px', padding: '12px' }}>
-            <strong style={{ color: C.warning }}>💡 Conseil :</strong> Pour de meilleurs résultats, utilisez des PDF avec du texte sélectionnable (pas des scans ou images). Les PDFs générés par logiciels CAO ou Excel fonctionnent parfaitement.
+            <strong style={{ color: C.warning }}>Conseil :</strong> Pour de meilleurs résultats, utilisez des PDF avec du texte sélectionnable (pas des scans ou images). Les PDFs générés par logiciels CAO ou Excel fonctionnent parfaitement.
           </div>
         </div>
       )}
@@ -560,7 +560,7 @@ export default function ImportPDF({ parametres, onCreerDevis, onCreerChantier, o
           <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', alignItems: 'center' }}>
             <button onClick={() => setEtape('upload')} style={{ background: 'var(--bg-hover)', color: 'var(--text-primary)', border: 'none', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer' }}>← Retour</button>
             <div style={{ flex: 1 }}>
-              <strong style={{ color: '#3b82f6' }}>📐 {nomFichier}</strong>
+              <strong style={{ color: '#3b82f6' }}>{nomFichier}</strong>
               <span style={{ color: 'var(--text-secondary)', fontSize: '13px', marginLeft: '10px' }}>{metres.length} métrés détectés</span>
             </div>
             <button onClick={ajouterMetre} style={{ background: '#10b981', color: 'white', border: 'none', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer' }}>+ Ajouter</button>
@@ -574,10 +574,10 @@ export default function ImportPDF({ parametres, onCreerDevis, onCreerChantier, o
             <div className="ds-section-label" style={{ marginTop: 0 }}>Paramètres de calcul</div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '15px' }}>
               {[
-                { label: '🔧 Matériel CHF/m²', val: tauxMO, set: setTauxMO },
-                { label: '📐 Rendement m²/jour', val: rendement, set: setRendement },
-                { label: '👷 Tarif jour (CHF)', val: tarifJour, set: setTarifJour },
-                { label: '💰 Marge cible (%)', val: margeCible, set: setMargeCible },
+                { label: 'Matériel CHF/m²', val: tauxMO, set: setTauxMO },
+                { label: 'Rendement m²/jour', val: rendement, set: setRendement },
+                { label: 'Tarif jour (CHF)', val: tarifJour, set: setTarifJour },
+                { label: 'Marge cible (%)', val: margeCible, set: setMargeCible },
                 { label: '🏢 Frais généraux (%)', val: tauxFraisGen, set: setTauxFraisGen },
               ].map(s => (
                 <div key={s.label}>
@@ -680,7 +680,7 @@ export default function ImportPDF({ parametres, onCreerDevis, onCreerChantier, o
           <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', alignItems: 'center' }}>
             <button onClick={() => setEtape(typePDF === 'les_deux' ? 'metres' : 'upload')} style={{ background: 'var(--bg-hover)', color: 'var(--text-primary)', border: 'none', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer' }}>← Retour</button>
             <div style={{ flex: 1 }}>
-              <strong style={{ color: '#3b82f6' }}>💰 {nomFichier}</strong>
+              <strong style={{ color: '#3b82f6' }}>{nomFichier}</strong>
               <span style={{ color: 'var(--text-secondary)', fontSize: '13px', marginLeft: '10px' }}>{montants.length} montants détectés</span>
             </div>
             <button onClick={ajouterMontant} style={{ background: '#10b981', color: 'white', border: 'none', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer' }}>+ Ajouter</button>
@@ -693,7 +693,7 @@ export default function ImportPDF({ parametres, onCreerDevis, onCreerChantier, o
           <div style={carteStyle}>
             <div className="ds-section-label" style={{ marginTop: 0 }}>Paramètres</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
-              <div><label style={labelStyle}>💰 Marge cible (%)</label>
+              <div><label style={labelStyle}>Marge cible (%)</label>
                 <input type="number" value={margeCible} onChange={e => setMargeCible(parseFloat(e.target.value) || 0)} style={{ ...inputStyle, fontWeight: 'bold', color: '#10b981', borderColor: '#10b981' }} /></div>
               <div><label style={labelStyle}>🏢 Frais généraux (%)</label>
                 <input type="number" value={tauxFraisGen} onChange={e => setTauxFraisGen(parseFloat(e.target.value) || 0)} style={{ ...inputStyle, fontWeight: 'bold', color: '#10b981', borderColor: '#10b981' }} /></div>
@@ -791,7 +791,7 @@ export default function ImportPDF({ parametres, onCreerDevis, onCreerChantier, o
             {analyse && (
               <div style={{ marginBottom: '20px', border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden' }}>
                 <div style={{ padding: '10px 16px', background: analyse.qualite === 'reussie' ? 'rgba(16,185,129,0.12)' : analyse.qualite === 'partielle' ? 'rgba(245,158,11,0.12)' : 'rgba(239,68,68,0.12)', display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <span style={{ fontSize: 18 }}>{analyse.qualite === 'reussie' ? '✅' : analyse.qualite === 'partielle' ? '⚠️' : '❌'}</span>
+                  <span style={{ fontSize: 18 }}>{analyse.qualite === 'reussie' ? '' : analyse.qualite === 'partielle' ? '' : '✗'}</span>
                   <span style={{ fontWeight: 700, color: analyse.qualite === 'reussie' ? '#10b981' : analyse.qualite === 'partielle' ? '#f59e0b' : '#ef4444' }}>
                     Analyse {analyse.qualite === 'reussie' ? 'réussie' : analyse.qualite === 'partielle' ? 'partielle' : 'incomplète'}
                   </span>
@@ -799,10 +799,10 @@ export default function ImportPDF({ parametres, onCreerDevis, onCreerChantier, o
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1px', background: 'var(--border)' }}>
                   {[
-                    { label: '👤 Client', val: analyse.client || '—', color: analyse.client ? 'var(--text-primary)' : 'var(--text-muted)' },
-                    { label: '💰 Montant', val: analyse.montant > 0 ? `CHF ${analyse.montant.toLocaleString('fr-CH')}` : '—', color: analyse.montant > 0 ? '#10b981' : 'var(--text-muted)' },
-                    { label: '📐 Surface', val: analyse.surface > 0 ? `${analyse.surface} m²` : '—', color: analyse.surface > 0 ? '#3b82f6' : 'var(--text-muted)' },
-                    { label: '🔧 Postes', val: analyse.lignes.length > 0 ? `${analyse.lignes.length} poste${analyse.lignes.length > 1 ? 's' : ''}` : '—', color: analyse.lignes.length > 0 ? '#8b5cf6' : 'var(--text-muted)' },
+                    { label: 'Client', val: analyse.client || '—', color: analyse.client ? 'var(--text-primary)' : 'var(--text-muted)' },
+                    { label: 'Montant', val: analyse.montant > 0 ? `CHF ${analyse.montant.toLocaleString('fr-CH')}` : '—', color: analyse.montant > 0 ? '#10b981' : 'var(--text-muted)' },
+                    { label: 'Surface', val: analyse.surface > 0 ? `${analyse.surface} m²` : '—', color: analyse.surface > 0 ? '#3b82f6' : 'var(--text-muted)' },
+                    { label: 'Postes', val: analyse.lignes.length > 0 ? `${analyse.lignes.length} poste${analyse.lignes.length > 1 ? 's' : ''}` : '—', color: analyse.lignes.length > 0 ? '#8b5cf6' : 'var(--text-muted)' },
                   ].map(item => (
                     <div key={item.label} style={{ background: 'var(--bg-card)', padding: '12px 16px' }}>
                       <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 4, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>{item.label}</div>
@@ -833,26 +833,26 @@ export default function ImportPDF({ parametres, onCreerDevis, onCreerChantier, o
               {calculs.surfaceTotal !== undefined && (
                 <>
                   <div style={{ background: 'rgba(51,130,194,0.12)', borderRadius: '10px', padding: '15px 20px', display: 'flex', justifyContent: 'space-between', border: '1px solid var(--border)' }}>
-                    <span>📐 Surfaces totales</span>
+                    <span>Surfaces totales</span>
                     <strong style={{ color: '#10b981' }}>{calculs.surfaceTotal.toFixed(1)} m² + {calculs.mlTotal.toFixed(1)} ml + {calculs.unitesTotal} unités</strong>
                   </div>
                   <div style={{ background: 'rgba(139,92,246,0.12)', borderRadius: '10px', padding: '15px 20px', display: 'flex', justifyContent: 'space-between', border: '1px solid var(--border)' }}>
-                    <span>👷 Jours de travail estimés</span>
+                    <span>Jours de travail estimés</span>
                     <strong style={{ color: C.violet }}>{calculs.joursNecessaires} jours ouvrables</strong>
                   </div>
                   <div style={{ background: 'rgba(245,158,11,0.12)', borderRadius: '10px', padding: '15px 20px', display: 'flex', justifyContent: 'space-between', border: '1px solid var(--border)' }}>
-                    <span>👷 Coût main d'œuvre</span>
+                    <span>Coût main d'œuvre</span>
                     <strong style={{ color: C.warning }}>CHF {Math.round(calculs.coutMO).toLocaleString()}</strong>
                   </div>
                   <div style={{ background: 'rgba(245,158,11,0.12)', borderRadius: '10px', padding: '15px 20px', display: 'flex', justifyContent: 'space-between', border: '1px solid var(--border)' }}>
-                    <span>🔧 Coût matériel estimé</span>
+                    <span>Coût matériel estimé</span>
                     <strong style={{ color: C.warning }}>CHF {Math.round(calculs.coutMateriel).toLocaleString()}</strong>
                   </div>
                 </>
               )}
               {calculs.totalFournisseur !== undefined && (
                 <div style={{ background: 'rgba(245,158,11,0.12)', borderRadius: '10px', padding: '15px 20px', display: 'flex', justifyContent: 'space-between', border: '1px solid var(--border)' }}>
-                  <span>💰 Total devis fournisseur ({calculs.nbMontants} postes)</span>
+                  <span>Total devis fournisseur ({calculs.nbMontants} postes)</span>
                   <strong style={{ color: C.warning }}>CHF {Math.round(calculs.totalFournisseur).toLocaleString()}</strong>
                 </div>
               )}
@@ -870,7 +870,7 @@ export default function ImportPDF({ parametres, onCreerDevis, onCreerChantier, o
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '15px', marginBottom: '25px' }}>
               {[
                 { label: 'Prix minimum', val: Math.round(calculs.coutRevient * 1.1), desc: 'Marge 10% — Risqué', couleur: C.danger, bg: 'rgba(239,68,68,0.09)' },
-                { label: '✅ Prix conseillé', val: Math.round(calculs.prixVente), desc: `Marge ${calculs.margePct}% — Recommandé`, couleur: C.secondaire, bg: 'rgba(16,185,129,0.12)' },
+                { label: 'Prix conseillé', val: Math.round(calculs.prixVente), desc: `Marge ${calculs.margePct}% — Recommandé`, couleur: C.secondaire, bg: 'rgba(16,185,129,0.12)' },
                 { label: '💎 Prix premium', val: Math.round(calculs.prixVente * 1.15), desc: 'Marge +15% — Haut de gamme', couleur: C.violet, bg: 'rgba(139,92,246,0.12)' },
               ].map(s => (
                 <div key={s.label} style={{ background: s.bg, border: `3px solid ${s.couleur}`, borderRadius: '14px', padding: '20px', textAlign: 'center' }}>
@@ -911,7 +911,7 @@ export default function ImportPDF({ parametres, onCreerDevis, onCreerChantier, o
                   notes: `Importé depuis PDF : ${nomFichier}`,
                 });
               }} style={{ ...DS.btnPrimary, padding: '14px 24px', fontSize: '15px' }}>
-                💰 Créer un devis avec ces données
+                Créer un devis avec ces données
               </button>
               <button onClick={() => {
                 const cb = onCreerMetrage || onCreerChantier;
@@ -922,7 +922,7 @@ export default function ImportPDF({ parametres, onCreerDevis, onCreerChantier, o
                   lignes: analyse?.lignes || [],
                 });
               }} style={{ background: '#10b981', color: 'white', border: 'none', padding: '20px', borderRadius: '12px', cursor: 'pointer', fontSize: '16px', fontWeight: 'bold' }}>
-                📐 Créer un métrage avec ces données
+                Créer un métrage avec ces données
               </button>
             </div>
           </div>

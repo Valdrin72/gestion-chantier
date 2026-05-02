@@ -190,16 +190,16 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
   }).filter(Boolean).sort((a, b) => (b.ecartCoutMoyen ?? 0) - (a.ecartCoutMoyen ?? 0)), [chantiers, devis, parametres]);
 
   const onglets = [
-    { id: 'rentabilite', label: '💰 Rentabilité nette' },
-    { id: 'derive',      label: '🎯 Dérive devis' },
-    { id: 'chantiers',   label: '🏗️ Prévu vs Réel' },
+    { id: 'rentabilite', label: 'Rentabilité nette' },
+    { id: 'derive',      label: 'Dérive devis' },
+    { id: 'chantiers',   label: 'Prévu vs Réel' },
     { id: 'clients',     label: '👥 Clients' },
-    { id: 'employes',    label: '👷 Coût horaire' },
-    { id: 'corps',       label: '🔧 Corps de métier' },
-    { id: 'projection',  label: '🔮 Projections' },
-    { id: 'objectifs',   label: '🎯 Objectifs' },
-    { id: 'statistiques',label: '📊 Statistiques' },
-    { id: 'rapport',     label: '📋 Rapport hebdo' },
+    { id: 'employes',    label: 'Coût horaire' },
+    { id: 'corps',       label: 'Corps de métier' },
+    { id: 'projection',  label: 'Projections' },
+    { id: 'objectifs',   label: 'Objectifs' },
+    { id: 'statistiques',label: 'Statistiques' },
+    { id: 'rapport',     label: 'Rapport hebdo' },
   ];
 
   return (
@@ -246,7 +246,7 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
                   setParametres({ ...parametres, parametres: { ...parametres.parametres, tauxChargesSociales, tauxFraisGeneraux, tauxImpots } });
                   setTaxSaved(true);
                 }} style={{ background: 'rgba(16,185,129,0.15)', color: '#10b981', border: '1px solid rgba(16,185,129,0.35)', borderRadius: 8, padding: '8px 18px', cursor: 'pointer', fontWeight: 700, fontSize: 13, fontFamily: 'Inter, sans-serif' }}>
-                  ✅ Enregistrer les paramètres
+                  Enregistrer les paramètres
                 </button>
                 {taxSaved && <span style={{ fontSize: 12, color: '#10b981', fontWeight: 600 }}>Sauvegardé</span>}
               </div>
@@ -258,7 +258,7 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
             <div className="ds-card-title">Cascade de rentabilité</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               {[
-                { label: '💰 Chiffre d\'affaires total', val: caTotal, pct: 100, couleur: '#10b981', bg: 'rgba(16,185,129,0.08)', bold: false, big: false },
+                { label: 'Chiffre d\'affaires total', val: caTotal, pct: 100, couleur: '#10b981', bg: 'rgba(16,185,129,0.08)', bold: false, big: false },
                 { label: '➖ Coûts directs chantiers', val: -coutsTotal, pct: -(coutsTotal / caTotal * 100).toFixed(1), couleur: '#ef4444', bg: 'rgba(239,68,68,0.08)', bold: false, big: false },
                 { label: '= Marge brute', val: margeAvantCharges, pct: (margeAvantCharges / caTotal * 100).toFixed(1), couleur: margeAvantCharges >= 0 ? '#10b981' : '#ef4444', bg: 'var(--bg-hover)', bold: true, big: false },
                 { label: '➖ Charges sociales', val: -chargesSociales, pct: -(chargesSociales / caTotal * 100).toFixed(1), couleur: '#f59e0b', bg: 'rgba(245,158,11,0.08)', bold: false, big: false },
@@ -287,9 +287,9 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
             <div className="ds-card-title">Seuil de rentabilité</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '15px' }}>
               {[
-                { label: '🎯 Seuil de rentabilité', val: `CHF ${fmtN(Math.round(seuilRentabilite))}`, couleur: '#f59e0b', bg: 'rgba(245,158,11,0.12)', desc: 'CA minimum à réaliser' },
+                { label: 'Seuil de rentabilité', val: `CHF ${fmtN(Math.round(seuilRentabilite))}`, couleur: '#f59e0b', bg: 'rgba(245,158,11,0.12)', desc: 'CA minimum à réaliser' },
                 { label: 'CA actuel', val: `CHF ${fmtN(Math.round(caTotal))}`, couleur: caTotal >= seuilRentabilite ? '#10b981' : '#ef4444', bg: caTotal >= seuilRentabilite ? 'rgba(16,185,129,0.10)' : 'rgba(239,68,68,0.09)', desc: caTotal >= seuilRentabilite ? 'Au-dessus du seuil' : 'En dessous du seuil' },
-                { label: '📊 Écart au seuil', val: `CHF ${fmtN(Math.abs(Math.round(caTotal - seuilRentabilite)))}`, couleur: caTotal >= seuilRentabilite ? '#10b981' : '#ef4444', bg: 'var(--bg-hover)', desc: caTotal >= seuilRentabilite ? '✅ Marge de sécurité' : '⚠️ Manque à combler' },
+                { label: 'Écart au seuil', val: `CHF ${fmtN(Math.abs(Math.round(caTotal - seuilRentabilite)))}`, couleur: caTotal >= seuilRentabilite ? '#10b981' : '#ef4444', bg: 'var(--bg-hover)', desc: caTotal >= seuilRentabilite ? 'Marge de sécurité' : 'Manque à combler' },
               ].map(s => (
                 <div key={s.label} style={{ background: s.bg, border: `2px solid ${s.couleur}`, borderRadius: '12px', padding: '20px', textAlign: 'center' }}>
                   <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>{s.label}</div>
@@ -343,9 +343,9 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
               {/* Tableau par type */}
               {donneesDerive.map(d => {
                 const signalCfg = {
-                  sousEstime: { couleur: '#ef4444', bg: '#ef444410', label: '🔴 Sous-estimé',   conseil: 'Augmente tes prix ou réduis la durée estimée sur ce type.' },
-                  attention:  { couleur: '#f59e0b', bg: '#f59e0b10', label: '🟡 À surveiller',  conseil: 'Légère tendance à dépasser — surveille les prochains devis.' },
-                  surEstime:  { couleur: '#10b981', bg: '#10b98110', label: '🟢 Sur-estimé',    conseil: 'Tu es conservateur — tu peux affiner tes prix pour être plus compétitif.' },
+                  sousEstime: { couleur: '#ef4444', bg: '#ef444410', label: 'Sous-estimé',   conseil: 'Augmente tes prix ou réduis la durée estimée sur ce type.' },
+                  attention:  { couleur: '#f59e0b', bg: '#f59e0b10', label: 'À surveiller',  conseil: 'Légère tendance à dépasser — surveille les prochains devis.' },
+                  surEstime:  { couleur: '#10b981', bg: '#10b98110', label: 'Sur-estimé',    conseil: 'Tu es conservateur — tu peux affiner tes prix pour être plus compétitif.' },
                   ok:         { couleur: '#10b981', bg: '#10b98110', label: '✓ Bien estimé',    conseil: 'Bonne maîtrise de ce type de chantier.' },
                   inconnu:    { couleur: '#6b7280', bg: '#6b728010', label: '⚪ Données insuffisantes', conseil: 'Ajoute plus de chantiers liés à des devis.' },
                 }[d.signal];
@@ -381,7 +381,7 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
 
                     {/* Conseil */}
                     <div style={{ fontSize: 12, color: 'var(--text-muted)', background: 'rgba(255,255,255,0.03)', borderRadius: 8, padding: '10px 14px', borderLeft: `3px solid ${signalCfg.couleur}50` }}>
-                      💡 {signalCfg.conseil}
+                      {signalCfg.conseil}
                     </div>
 
                     {/* Détail par chantier */}
@@ -606,7 +606,7 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
                         </span>
                       </td>
                       <td style={{ padding: '12px 15px', color: 'var(--text-primary)' }}>
-                        {parseFloat(t.margePct) >= 20 ? '🟢 Excellent' : parseFloat(t.margePct) >= 15 ? '🟡 Correct' : '🔴 Critique'}
+                        {parseFloat(t.margePct) >= 20 ? 'Excellent' : parseFloat(t.margePct) >= 15 ? 'Correct' : 'Critique'}
                       </td>
                     </tr>
                   ))}
@@ -658,7 +658,7 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '15px' }}>
               {[
                 { scenario: '📉 Pessimiste (-20%)', ca: projectionAnnuelle * 0.8 },
-                { scenario: '📊 Réaliste', ca: projectionAnnuelle },
+                { scenario: 'Réaliste', ca: projectionAnnuelle },
                 { scenario: '📈 Optimiste (+20%)', ca: projectionAnnuelle * 1.2 },
               ].map((s, i) => {
                 const couts = s.ca * (coutsTotal / caTotal || 0.6);
@@ -716,7 +716,7 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
 
               {/* Podium top 3 */}
               <div style={carteStyle}>
-                <div className="ds-card-title">🏆 Top clients par CA</div>
+                <div className="ds-card-title">Top clients par CA</div>
                 <div style={{ display: 'flex', gap: 14, marginBottom: 20, flexWrap: 'wrap' }}>
                   {donneesClients.slice(0, 3).map((cl, i) => {
                     const couleurs = ['#f59e0b', '#94a3b8', '#cd7c2f'];
@@ -774,12 +774,12 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
         <div>
           {/* Saisie objectifs */}
           <div style={carteStyle}>
-            <div className="ds-card-title">🎯 Définir les objectifs annuels</div>
+            <div className="ds-card-title">Définir les objectifs annuels</div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px,1fr))', gap: 20 }}>
               {[
-                { label: '💰 CA annuel cible (CHF)', key: 'caAnnuel', type: 'number' },
+                { label: 'CA annuel cible (CHF)', key: 'caAnnuel', type: 'number' },
                 { label: '📈 Marge nette cible (%)', key: 'margeCible', type: 'number' },
-                { label: '🏗️ Nb chantiers cible', key: 'nbChantiers', type: 'number' },
+                { label: 'Nb chantiers cible', key: 'nbChantiers', type: 'number' },
               ].map(f => (
                 <div key={f.key}>
                   <label style={DS.label}>{f.label}</label>
@@ -829,7 +829,7 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
 
           {/* Chantiers classifiés par rentabilité */}
           <div style={carteStyle}>
-            <div className="ds-card-title">📊 Rentabilité par chantier — Vue d'ensemble</div>
+            <div className="ds-card-title">Rentabilité par chantier — Vue d'ensemble</div>
             <div style={{ display: 'flex', gap: 10, marginBottom: 20, flexWrap: 'wrap' }}>
               {['Rentable', 'Limite', 'Non rentable'].map(label => {
                 const count = donneesChantiers.filter(c => statutRentabilite(c.couts.margeReelPct).label === label).length;
@@ -844,7 +844,7 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
             </div>
             {donneesChantiers.filter(c => statutRentabilite(c.couts.margeReelPct).label !== 'Rentable').length > 0 && (
               <>
-                <div className="ds-section-label" style={{ marginBottom: 12 }}>⚠️ Chantiers nécessitant attention</div>
+                <div className="ds-section-label" style={{ marginBottom: 12 }}>Chantiers nécessitant attention</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {donneesChantiers
                     .filter(c => statutRentabilite(c.couts.margeReelPct).label !== 'Rentable')

@@ -117,9 +117,9 @@ export default function Paiements({ chantiers, clients, paiementsData, setPaieme
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '15px', marginTop: '20px' }}>
             {[
               { label: 'Total devis', val: `CHF ${fmtN(montantTotal)}`, couleur: '#10b981', bg: 'rgba(16,185,129,0.12)' },
-              { label: '✅ Encaissé', val: `CHF ${fmtN(montantPaye)}`, couleur: '#10b981', bg: 'rgba(16,185,129,0.12)' },
+              { label: 'Encaissé', val: `CHF ${fmtN(montantPaye)}`, couleur: '#10b981', bg: 'rgba(16,185,129,0.12)' },
               { label: '⏳ En attente', val: `CHF ${fmtN(getMontantEnAttente(c.id))}`, couleur: '#f59e0b', bg: 'rgba(245,158,11,0.12)' },
-              { label: '💰 Restant', val: `CHF ${fmtN(montantRestant)}`, couleur: montantRestant > 0 ? '#ef4444' : '#10b981', bg: montantRestant > 0 ? 'rgba(239,68,68,0.12)' : 'rgba(16,185,129,0.12)' },
+              { label: 'Restant', val: `CHF ${fmtN(montantRestant)}`, couleur: montantRestant > 0 ? '#ef4444' : '#10b981', bg: montantRestant > 0 ? 'rgba(239,68,68,0.12)' : 'rgba(16,185,129,0.12)' },
             ].map(s => (
               <div key={s.label} style={{ background: s.bg, border: `2px solid ${s.couleur}`, borderRadius: '10px', padding: '12px', textAlign: 'center' }}>
                 <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>{s.label}</div>
@@ -177,7 +177,7 @@ export default function Paiements({ chantiers, clients, paiementsData, setPaieme
             <div style={{ display: 'flex', gap: '10px' }}>
               <button onClick={() => ajouterPaiement(c.id)}
                 style={{ ...DS.btnPrimary }}>
-                ✅ Ajouter
+                Ajouter
               </button>
               <button onClick={() => setAjoutPaiement(false)}
                 style={{ ...DS.btnDanger }}>
@@ -218,7 +218,7 @@ export default function Paiements({ chantiers, clients, paiementsData, setPaieme
                     {/* Icône + type */}
                     <div style={{ flexShrink: 0 }}>
                       <div style={{ width: 40, height: 40, borderRadius: '10px', background: couleur + '22', border: `1px solid ${couleur}44`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>
-                        {isPaye(p) ? '✅' : retard ? '⚠️' : '💳'}
+                        {isPaye(p) ? '' : retard ? '' : ''}
                       </div>
                     </div>
                     {/* Type */}
@@ -250,7 +250,7 @@ export default function Paiements({ chantiers, clients, paiementsData, setPaieme
                         fontWeight: 700,
                         letterSpacing: '0.2px',
                       }}>
-                        {retard ? '⚠️ Retard' : p.statut}
+                        {retard ? 'Retard' : p.statut}
                       </span>
                     </div>
                     {/* Actions */}
@@ -258,7 +258,7 @@ export default function Paiements({ chantiers, clients, paiementsData, setPaieme
                       {!isPaye(p) && (
                         <button onClick={() => modifierStatut(c.id, p.id, 'Payé')}
                           style={{ ...DS.btnPrimary, padding: '6px 12px', fontSize: '12px' }}>
-                          ✅ Payé
+                          Payé
                         </button>
                       )}
                       {isPaye(p) && (
@@ -290,7 +290,7 @@ export default function Paiements({ chantiers, clients, paiementsData, setPaieme
       {/* ALERTES RETARD */}
       {chantiersEnRetard.length > 0 && (
         <div className="alert-banner alert-banner-danger" style={{ marginBottom: '25px' }}>
-          <div style={{ fontWeight: 'bold', color: '#ef4444', marginBottom: '10px', fontSize: '16px' }}>⚠️ Paiements en retard !</div>
+          <div style={{ fontWeight: 'bold', color: '#ef4444', marginBottom: '10px', fontSize: '16px' }}>Paiements en retard !</div>
           {chantiersEnRetard.map(c => (
             <div key={c.id} style={{ color: '#ef4444', marginBottom: '5px' }}>
               ▶ <strong>{c.nom}</strong> — CHF {fmtN(getMontantEnRetard(c.id))} en retard
@@ -302,10 +302,10 @@ export default function Paiements({ chantiers, clients, paiementsData, setPaieme
       {/* KPIs GLOBAUX */}
       <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap', marginBottom: '25px' }}>
         {[
-          { label: '💰 CA Total', val: `CHF ${fmtN(totalCA)}`, couleur: '#10b981' },
-          { label: '✅ Encaissé', val: `CHF ${fmtN(totalPaye)}`, couleur: '#10b981' },
+          { label: 'CA Total', val: `CHF ${fmtN(totalCA)}`, couleur: '#10b981' },
+          { label: 'Encaissé', val: `CHF ${fmtN(totalPaye)}`, couleur: '#10b981' },
           { label: '⏳ En attente', val: `CHF ${fmtN(totalEnAttente)}`, couleur: '#f59e0b' },
-          { label: '⚠️ En retard', val: `CHF ${fmtN(totalEnRetard)}`, couleur: '#ef4444' },
+          { label: 'En retard', val: `CHF ${fmtN(totalEnRetard)}`, couleur: '#ef4444' },
         ].map(s => (
           <div key={s.label} className="premium-card" style={{
             background: `linear-gradient(145deg, ${s.couleur}14 0%, ${s.couleur}07 60%, rgba(255,255,255,0.02) 100%)`,
@@ -367,9 +367,9 @@ export default function Paiements({ chantiers, clients, paiementsData, setPaieme
                 <div style={{ textAlign: 'right', marginLeft: '20px' }}>
                   <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Total</div>
                   <div style={{ fontWeight: 'bold', fontSize: '16px', color: 'var(--text-primary)' }}>CHF {fmtN(montantTotal)}</div>
-                  <div style={{ fontSize: '13px', color: '#10b981' }}>✅ CHF {fmtN(montantPaye)}</div>
+                  <div style={{ fontSize: '13px', color: '#10b981' }}>CHF {fmtN(montantPaye)}</div>
                   {montantRetard > 0 && (
-                    <div style={{ fontSize: '13px', color: '#ef4444', fontWeight: 'bold' }}>⚠️ CHF {fmtN(montantRetard)} retard</div>
+                    <div style={{ fontSize: '13px', color: '#ef4444', fontWeight: 'bold' }}>CHF {fmtN(montantRetard)} retard</div>
                   )}
                   <div style={{ marginTop: '8px', fontSize: '12px', color: '#22d3ee' }}>👁️ Voir détail →</div>
                 </div>

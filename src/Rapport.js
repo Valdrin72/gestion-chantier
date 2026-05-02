@@ -92,7 +92,7 @@ export default function Rapport({ chantiers, clients, devis = [], parametres, pa
       {/* ALERTES */}
       {alertes.length > 0 && (
         <div className="alert-banner alert-banner-danger" style={{ marginBottom: '20px' }}>
-          <div style={{ fontWeight: 'bold', color: '#ef4444', fontSize: '16px', marginBottom: '10px' }}>⚠️ {alertes.length} alerte(s) urgente(s) cette semaine !</div>
+          <div style={{ fontWeight: 'bold', color: '#ef4444', fontSize: '16px', marginBottom: '10px' }}>{alertes.length} alerte(s) urgente(s) cette semaine !</div>
           {alertes.map(c => {
             const j = joursOuvrableRestants(c.dateDebut, c.nombreJours, c.inclusSamedi);
             const al = getAlerte(j);
@@ -104,12 +104,12 @@ export default function Rapport({ chantiers, clients, devis = [], parametres, pa
       {/* KPIs */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '15px', marginBottom: '25px' }}>
         {[
-          { icone: '🏗️', label: 'Chantiers en cours', valeur: chantiersEnCours.length, couleur: '#10b981', bg: 'rgba(16,185,129,0.12)' },
-          { icone: '📅', label: 'Chantiers planifiés', valeur: chantiersPlanifies.length, couleur: '#3b82f6', bg: 'rgba(59,130,246,0.12)' },
-          { icone: '💰', label: 'CA Total', valeur: `CHF ${fmtN(caTotal)}`, couleur: '#f59e0b', bg: 'rgba(245,158,11,0.12)' },
-          { icone: '✅', label: 'Paiements reçus', valeur: `CHF ${fmtN(totalPaiementsRecus)}`, couleur: '#10b981', bg: 'rgba(16,185,129,0.12)' },
+          { icone: 'info', label: 'Chantiers en cours', valeur: chantiersEnCours.length, couleur: '#10b981', bg: 'rgba(16,185,129,0.12)' },
+          { icone: 'info', label: 'Chantiers planifiés', valeur: chantiersPlanifies.length, couleur: '#3b82f6', bg: 'rgba(59,130,246,0.12)' },
+          { icone: 'info', label: 'CA Total', valeur: `CHF ${fmtN(caTotal)}`, couleur: '#f59e0b', bg: 'rgba(245,158,11,0.12)' },
+          { icone: 'info', label: 'Paiements reçus', valeur: `CHF ${fmtN(totalPaiementsRecus)}`, couleur: '#10b981', bg: 'rgba(16,185,129,0.12)' },
           { icone: '⏳', label: 'En attente', valeur: `CHF ${fmtN(totalPaiementsAttente)}`, couleur: '#f59e0b', bg: 'rgba(245,158,11,0.12)' },
-          { icone: '🔴', label: 'En retard', valeur: `CHF ${fmtN(totalPaiementsRetard)}`, couleur: '#ef4444', bg: 'rgba(239,68,68,0.12)' },
+          { icone: 'danger', label: 'En retard', valeur: `CHF ${fmtN(totalPaiementsRetard)}`, couleur: '#ef4444', bg: 'rgba(239,68,68,0.12)' },
         ].map(s => (
           <div key={s.label} style={{ background: s.bg, border: `2px solid ${s.couleur}`, borderRadius: '12px', padding: '18px', display: 'flex', alignItems: 'center', gap: '15px' }}>
             <div style={{ fontSize: '32px' }}>{s.icone}</div>
@@ -187,9 +187,9 @@ export default function Rapport({ chantiers, clients, devis = [], parametres, pa
         <div className="ds-card-title">Paiements de la semaine</div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '15px', marginBottom: '20px' }}>
           {[
-            { label: '✅ Reçus', val: `CHF ${fmtN(totalPaiementsRecus)}`, couleur: '#10b981', bg: 'rgba(16,185,129,0.12)' },
+            { label: 'Reçus', val: `CHF ${fmtN(totalPaiementsRecus)}`, couleur: '#10b981', bg: 'rgba(16,185,129,0.12)' },
             { label: '⏳ En attente', val: `CHF ${fmtN(totalPaiementsAttente)}`, couleur: '#f59e0b', bg: 'rgba(245,158,11,0.12)' },
-            { label: '🔴 En retard', val: `CHF ${fmtN(totalPaiementsRetard)}`, couleur: '#ef4444', bg: 'rgba(239,68,68,0.12)' },
+            { label: 'En retard', val: `CHF ${fmtN(totalPaiementsRetard)}`, couleur: '#ef4444', bg: 'rgba(239,68,68,0.12)' },
           ].map(s => (
             <div key={s.label} style={{ background: s.bg, border: `2px solid ${s.couleur}`, borderRadius: '10px', padding: '15px', textAlign: 'center' }}>
               <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>{s.label}</div>
@@ -247,7 +247,7 @@ export default function Rapport({ chantiers, clients, devis = [], parametres, pa
                   </td>
                   <td style={{ padding: '12px 15px' }}>
                     <span style={{ background: couleurScore(score) + '18', color: couleurScore(score), fontWeight: 600, padding: '3px 12px', borderRadius: '12px', fontSize: '12px' }}>
-                      {score >= 80 ? '✅ Bon' : score >= 50 ? '⚠️ À améliorer' : '🔴 Critique'}
+                      {score >= 80 ? 'Bon' : score >= 50 ? 'À améliorer' : 'Critique'}
                     </span>
                   </td>
                 </tr>

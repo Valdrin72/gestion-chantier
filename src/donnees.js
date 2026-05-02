@@ -63,10 +63,10 @@ export const joursOuvrableRestants = (dateDebut, nombreJours, inclusSamedi = fal
 export const getAlerte = (jours) => {
   if (jours === null) return null;
   if (jours < 0) return { texte: `⛔ DÉPASSÉ de ${Math.abs(jours)} jour(s)`, couleur: '#b71c1c', niveau: 'critique', banniere: 'danger' };
-  if (jours === 0) return { texte: '🚨 FIN AUJOURD\'HUI !', couleur: '#b71c1c', niveau: 'critique', banniere: 'danger' };
-  if (jours <= 2) return { texte: `⚠️ ${jours} jour(s) restant(s) !`, couleur: '#e65100', niveau: 'danger', banniere: 'warning' };
+  if (jours === 0) return { texte: 'FIN AUJOURD\'HUI !', couleur: '#b71c1c', niveau: 'critique', banniere: 'danger' };
+  if (jours <= 2) return { texte: `${jours} jour(s) restant(s) !`, couleur: '#e65100', niveau: 'danger', banniere: 'warning' };
   if (jours <= 5) return { texte: `📢 ${jours} jours restants`, couleur: '#f57f17', niveau: 'warning', banniere: 'warning' };
-  return { texte: `✅ ${jours} jours restants`, couleur: '#2e7d32', niveau: 'ok', banniere: null };
+  return { texte: `${jours} jours restants`, couleur: '#2e7d32', niveau: 'ok', banniere: null };
 };
 
 export const getAlerteChantier = (chantier) => {
@@ -76,7 +76,7 @@ export const getAlerteChantier = (chantier) => {
   if (jours === null) return null;
   if (jours >= 0) return getAlerte(jours);
   const abs = Math.abs(jours);
-  return { texte: `🔴 Retard ${abs} jour${abs > 1 ? 's' : ''}`, couleur: '#b71c1c', niveau: 'critique', banniere: 'danger' };
+  return { texte: `Retard ${abs} jour${abs > 1 ? 's' : ''}`, couleur: '#b71c1c', niveau: 'critique', banniere: 'danger' };
 };
 
 export const estRetardJustifie = (chantier) => false;
@@ -92,7 +92,7 @@ export const estRetardJustifie = (chantier) => false;
  *
  * Exemple :
  *   const ts = getChantierStatus(chantier);
- *   // → { status: 'warning', label: '🟡 Retard justifié (+3j)', delay: 2, couleur: '#f59e0b' }
+ *   // → { status: 'warning', label: 'Retard justifié (+3j)', delay: 2, couleur: '#f59e0b' }
  *   <Badge texte={ts.label} couleur={ts.couleur} />
  */
 export const getChantierStatus = (chantier) => {
@@ -101,9 +101,9 @@ export const getChantierStatus = (chantier) => {
   if (!dateDebut || !base) return { status: 'ok', label: '–', delay: 0, couleur: '#6b7280' };
   const jours = joursOuvrableRestants(dateDebut, base, inclusSamedi);
   if (jours === null) return { status: 'ok', label: '–', delay: 0, couleur: '#6b7280' };
-  if (jours >= 0) return { status: 'ok', label: '🟢 À l\'heure', delay: 0, couleur: '#22c55e' };
+  if (jours >= 0) return { status: 'ok', label: 'À l\'heure', delay: 0, couleur: '#22c55e' };
   const abs = Math.abs(jours);
-  return { status: 'danger', label: `🔴 Retard de ${abs}j`, delay: abs, couleur: '#ef4444' };
+  return { status: 'danger', label: `Retard de ${abs}j`, delay: abs, couleur: '#ef4444' };
 };
 
 // ===== CALCULS FINANCIERS =====
@@ -404,7 +404,7 @@ export const calculerDevis = (form, parametres) => {
   let niveauRisque = 'Faible';
   if (prixPropose < prixMinRentable) { positionnement = 'Dangereux ⛔'; niveauRisque = 'Critique'; }
   else if (prixPropose < prixConseille * 0.95) { positionnement = 'Agressif'; niveauRisque = 'Élevé'; }
-  else if (prixPropose > prixPlafond) { positionnement = 'Excessif ⚠️'; niveauRisque = 'Commercial'; }
+  else if (prixPropose > prixPlafond) { positionnement = 'Excessif'; niveauRisque = 'Commercial'; }
   else if (prixPropose > prixConseille * 1.15) { positionnement = 'Premium'; niveauRisque = 'Faible'; }
 
   return {

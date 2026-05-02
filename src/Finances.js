@@ -93,15 +93,15 @@ function Tresorerie({ factures = [], chantiers = [], clients = [], devis = [] })
   }, [factures, chantiers, clients, devis]);
 
   const urgenceConfig = {
-    retard:  { couleur: '#ef4444', bg: '#ef444410', label: 'En retard',    dot: '🔴' },
-    urgent:  { couleur: '#f59e0b', bg: '#f59e0b10', label: '≤ 7 jours',   dot: '🟡' },
+    retard:  { couleur: '#ef4444', bg: '#ef444410', label: 'En retard',    dot: 'red' },
+    urgent:  { couleur: '#f59e0b', bg: '#f59e0b10', label: '≤ 7 jours',   dot: 'yellow' },
     proche:  { couleur: '#3b82f6', bg: '#3b82f610', label: '≤ 30 jours',  dot: '🔵' },
     normal:  { couleur: '#6b7280', bg: '#6b728010', label: '> 30 jours',  dot: '⚪' },
   };
 
   const signalConfig = {
-    danger:  { couleur: '#ef4444', bg: '#ef444412', icone: '🚨', texte: 'Encaissements critiques en retard — relancer immédiatement' },
-    warning: { couleur: '#f59e0b', bg: '#f59e0b12', icone: '⚠️', texte: 'Des paiements arrivent bientôt — anticiper les relances' },
+    danger:  { couleur: '#ef4444', bg: '#ef444412', icone: 'danger', texte: 'Encaissements critiques en retard — relancer immédiatement' },
+    warning: { couleur: '#f59e0b', bg: '#f59e0b12', icone: 'warning', texte: 'Des paiements arrivent bientôt — anticiper les relances' },
     ok:      { couleur: '#10b981', bg: '#10b98112', icone: '✓',  texte: 'Situation cash saine — aucune urgence détectée' },
   };
   const signal = signalConfig[data.signalCash];
@@ -322,7 +322,7 @@ export default function Finances({
       {/* ── Alertes retard ── */}
       {kpis.enRetard > 0 && (
         <div className="alert-banner alert-banner-danger" style={{ marginBottom: 20 }}>
-          <strong>⚠️ {facturesPeriode.filter(f => f.statut === 'retard').length} facture(s) en retard</strong>
+          <strong>Les factures en retard : {facturesPeriode.filter(f => f.statut === 'retard').length} facture(s) en retard</strong>
           {' — '}CHF {fmt(kpis.enRetard)} impayé(s). Consultez l'onglet Factures pour les détails.
         </div>
       )}

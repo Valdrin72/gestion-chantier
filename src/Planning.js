@@ -54,9 +54,9 @@ function VueCharge({ chantiers, clients }) {
   }, [chantiers, capacite]);
 
   const statutCfg = {
-    surcharge: { couleur: '#ef4444', bg: '#ef444415', label: 'Surcharge',   icone: '🔴' },
-    plein:     { couleur: '#f59e0b', bg: '#f59e0b15', label: 'Chargé',      icone: '🟡' },
-    ok:        { couleur: '#10b981', bg: '#10b98115', label: 'OK',           icone: '🟢' },
+    surcharge: { couleur: '#ef4444', bg: '#ef444415', label: 'Surcharge',   icone: 'danger' },
+    plein:     { couleur: '#f59e0b', bg: '#f59e0b15', label: 'Chargé',      icone: 'warning' },
+    ok:        { couleur: '#10b981', bg: '#10b98115', label: 'OK',           icone: 'ok' },
     creux:     { couleur: '#6b7280', bg: '#6b728015', label: 'Creux',        icone: '⚪' },
   };
 
@@ -67,7 +67,7 @@ function VueCharge({ chantiers, clients }) {
     <div>
       {/* ── Config capacité ── */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 24, padding: '14px 20px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 12 }}>
-        <span style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 600 }}>👷 Capacité équipe :</span>
+        <span style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 600 }}>Capacité équipe :</span>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <button onClick={() => setCapacite(Math.max(1, capacite - 1))} style={{ width: 28, height: 28, borderRadius: 8, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)', color: 'var(--text-primary)', cursor: 'pointer', fontSize: 16, fontFamily: 'Inter,sans-serif' }}>−</button>
           <span style={{ fontSize: 20, fontWeight: 900, color: 'var(--text-primary)', minWidth: 24, textAlign: 'center' }}>{capacite}</span>
@@ -333,7 +333,7 @@ export default function Planning({ chantiers, setChantiers, clients, naviguer })
               fontSize: '13px', fontWeight: vue === v ? 700 : 500,
               fontFamily: 'Inter, sans-serif', transition: 'all 0.18s',
             }}>
-              {{ timeline: '📊 Timeline', calendrier: '📅 Calendrier', liste: '📋 Liste', charge: '👷 Charge' }[v]}
+              {{ timeline: 'Timeline', calendrier: 'Calendrier', liste: 'Liste', charge: 'Charge' }[v]}
             </button>
           ))}
         </div>
@@ -342,7 +342,7 @@ export default function Planning({ chantiers, setChantiers, clients, naviguer })
       {/* ── CHANTIERS NON PLANIFIÉS ─────────────────────────────── */}
       {chantiersNonPlanifies.length > 0 && (
         <div style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.25)', borderRadius: 12, padding: '14px 18px', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
-          <span style={{ color: C.warning, fontWeight: 700, fontSize: 13 }}>⚠️ {chantiersNonPlanifies.length} chantier{chantiersNonPlanifies.length > 1 ? 's' : ''} sans date :</span>
+          <span style={{ color: C.warning, fontWeight: 700, fontSize: 13 }}>{chantiersNonPlanifies.length} chantier{chantiersNonPlanifies.length > 1 ? 's' : ''} sans date :</span>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             {chantiersNonPlanifies.map(c => (
               <button key={c.id} onClick={() => ouvrirModal(c)} style={{ background: 'rgba(245,158,11,0.14)', color: C.warning, border: '1px solid rgba(245,158,11,0.3)', borderRadius: 8, padding: '4px 12px', cursor: 'pointer', fontSize: 12, fontWeight: 600, fontFamily: 'Inter, sans-serif' }}>

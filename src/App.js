@@ -2130,7 +2130,7 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
         ? { icone: '✔', texte: 'Permet de revenir dans les délais', couleur: C.secondaire }
         : retardResiduel <= 2
           ? { icone: 'warning', texte: 'Réduit le retard mais reste sous contrôle', couleur: C.warning }
-          : { icone: '❌', texte: 'Insuffisant — revoir le planning ou ajouter plus de ressources', couleur: C.danger };
+          : { icone: 'danger', texte: 'Insuffisant — revoir le planning ou ajouter plus de ressources', couleur: C.danger };
       return { texte, conclusion };
     })();
     const perfMessageCourt = (() => {
@@ -2519,7 +2519,7 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
               ['Début', c.dateDebut],
               ['🏁 Fin prévue', c.dateDebut && c.nombreJours ? calculerDateFinOuvrables(c.dateDebut, c.nombreJours, c.inclusSamedi) : '—'],
               ['⏱️ Jours prévus', c.nombreJours ? `${c.nombreJours} jours` : '—'],
-              ['📐 Surface', c.surface ? `${c.surface} m²` : '—'],
+              ['Surface', c.surface ? `${c.surface} m²` : '—'],
               ['Travaux', c.typesTravaux?.join(', ') || '—'],
             ].map(([label, val]) => (
               <div key={label} className="info-item">
@@ -4019,7 +4019,7 @@ function Parametres({ parametres, setParametres, clients = [], setClients = () =
   };
 
   const onglets = [
-    { id: 'dashboard', label: '🏠 Dashboard', desc: 'Alertes et affichage' },
+    { id: 'dashboard', label: 'Dashboard', desc: 'Alertes et affichage' },
     { id: 'chantiers', label: 'Chantiers', desc: 'Statuts et priorités' },
     { id: 'devis', label: 'Devis', desc: 'Marges et tarifs' },
     { id: 'employes', label: 'Employés', desc: 'Tarifs journaliers' },
@@ -4027,7 +4027,7 @@ function Parametres({ parametres, setParametres, clients = [], setClients = () =
     { id: 'localites', label: '🚗 Localités', desc: 'Frais déplacement' },
     { id: 'travaux', label: 'Travaux', desc: 'Types et tarifs' },
     { id: 'zones', label: '📍 Zones géo.', desc: 'Tarifs par région' },
-    { id: 'metrage', label: '📐 Métrage', desc: 'Rendements équipe' },
+    { id: 'metrage', label: 'Métrage', desc: 'Rendements équipe' },
     { id: 'qualite', label: 'Qualité', desc: 'Checklists' },
     { id: 'paiements', label: '💳 Paiements', desc: 'Délais et rappels' },
     { id: 'rapport', label: 'Rapport', desc: 'Alertes hebdo' },

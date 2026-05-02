@@ -419,16 +419,16 @@ export default function SoumissionAssistee({ parametres, onCreerDevis, naviguer 
       const analyse = extraireDonneesPDF(texteComplet);
       if (analyse.lignes && analyse.lignes.length > 0) {
         setLignes(analyse.lignes.map(ligneDepuisPDF));
-        setMessageImport(`✅ ${analyse.lignes.length} poste(s) importé(s) depuis le PDF`);
+        setMessageImport(`${analyse.lignes.length} poste(s) importé(s) depuis le PDF`);
       } else {
         setLignes([nouvelleLigne()]);
-        setMessageImport('⚠️ Aucun poste détecté — remplissez le tableau manuellement');
+        setMessageImport('Aucun poste détecté — remplissez le tableau manuellement');
       }
       if (!titreProjet && fichier.name) {
         setTitreProjet(fichier.name.replace(/\.pdf$/i, '').replace(/[-_]/g, ' '));
       }
     } catch (err) {
-      setMessageImport('❌ Erreur de lecture PDF : ' + (err.message || 'fichier invalide'));
+      setMessageImport('Erreur de lecture PDF : ' + (err.message || 'fichier invalide'));
     } finally {
       setImportEnCours(false);
     }
@@ -487,7 +487,7 @@ export default function SoumissionAssistee({ parametres, onCreerDevis, naviguer 
 
       {/* ── Message import ── */}
       {messageImport && (
-        <div className={`alert-banner ${messageImport.startsWith('✅') ? 'alert-banner-success' : messageImport.startsWith('❌') ? 'alert-banner-danger' : 'alert-banner-warning'}`}
+        <div className={`alert-banner ${messageImport.startsWith('[ok]') ? 'alert-banner-success' : messageImport.startsWith('[err]') ? 'alert-banner-danger' : 'alert-banner-warning'}`}
           style={{ marginBottom: 16 }}>
           {messageImport}
         </div>

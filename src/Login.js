@@ -21,7 +21,7 @@ const PROFILS = [
   {
     id: 'administratif',
     nom: 'Administratif',
-    icone: '📋',
+    icone: '',
     couleur: C.info,
     description: 'Clients, devis, paiements et statistiques',
     pages: ['dashboard', 'clients', 'devis', 'finances', 'statistiques', 'rapport', 'analyse'],
@@ -30,7 +30,7 @@ const PROFILS = [
   {
     id: 'chef_equipe',
     nom: "Chef d'équipe",
-    icone: '👷',
+    icone: '',
     couleur: C.secondaire,
     description: 'Accès à ses chantiers uniquement',
     pages: ['dashboard', 'chantiers', 'planning', 'qualite'],
@@ -49,7 +49,7 @@ export default function Login({ onLogin }) {
 
         {/* LOGO */}
         <div style={{ textAlign: 'center', marginBottom: '40px' }}>
-          <div style={{ fontSize: '60px', marginBottom: '10px' }}>🏗️</div>
+          
           <div style={{ color: 'white', fontSize: '36px', fontWeight: 'bold', letterSpacing: '4px' }}>CYNA</div>
           <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: '14px', marginTop: '5px' }}>Entreprise du bâtiment · Genève</div>
         </div>
@@ -111,7 +111,7 @@ export default function Login({ onLogin }) {
             fontSize: '16px', fontWeight: 'bold', cursor: selected ? 'pointer' : 'not-allowed',
             transition: 'all 0.2s'
           }}>
-          {selected ? `✅ Continuer en tant que ${PROFILS.find(p => p.id === selected)?.nom}` : 'Sélectionnez un profil'}
+          {selected ? `Continuer en tant que ${PROFILS.find(p => p.id === selected)?.nom}` : 'Sélectionnez un profil'}
         </button>
 
         <div style={{ textAlign: 'center', marginTop: '20px', color: 'rgba(255,255,255,0.4)', fontSize: '12px' }}>

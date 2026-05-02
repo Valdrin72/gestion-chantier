@@ -141,12 +141,12 @@ export default function Statistiques({ chantiers, clients, devis = [], parametre
       {/* KPIs GLOBAUX */}
       <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap', marginBottom: '30px' }}>
         {[
-          { titre: "CA Total", valeur: `CHF ${fmtN(caTotal)}`, couleur: COL_CA, icone: '💰' },
+          { titre: "CA Total", valeur: `CHF ${fmtN(caTotal)}`, couleur: COL_CA, icone: 'info' },
           { titre: "Total coûts", valeur: `CHF ${fmtN(coutsTotaux)}`, couleur: COL_COUT, icone: '💸' },
-          { titre: "Rentabilité", valeur: `CHF ${fmtN(rentabilite)}`, couleur: rentabilite >= 0 ? '#10b981' : C.danger, icone: '📊' },
+          { titre: "Rentabilité", valeur: `CHF ${fmtN(rentabilite)}`, couleur: rentabilite >= 0 ? '#10b981' : C.danger, icone: 'info' },
           { titre: "Marge globale", valeur: `${margeGlobale}%`, couleur: couleurMarge(margeGlobale), icone: '📉' },
-          { titre: "Chantiers", valeur: `${filtresAvecDevis.length} / ${chantiersFiltres.length}`, sub: nbSansDevis > 0 ? `${nbSansDevis} sans devis` : null, couleur: C.info, icone: '🏗️' },
-          { titre: "Prévision 3 mois", valeur: `CHF ${fmtN(Math.round(prevision3Mois))}`, couleur: C.violet, icone: '🔮' },
+          { titre: "Chantiers", valeur: `${filtresAvecDevis.length} / ${chantiersFiltres.length}`, sub: nbSansDevis > 0 ? `${nbSansDevis} sans devis` : null, couleur: C.info, icone: 'info' },
+          { titre: "Prévision 3 mois", valeur: `CHF ${fmtN(Math.round(prevision3Mois))}`, couleur: C.violet, icone: 'info' },
         ].map(s => (
           <div key={s.titre} style={{
             background: `linear-gradient(145deg, ${s.couleur}0a 0%, rgba(255,255,255,0.028) 60%, rgba(255,255,255,0.02) 100%)`,
@@ -227,7 +227,7 @@ export default function Statistiques({ chantiers, clients, devis = [], parametre
 
         {/* CAMEMBERT PAR TYPE DE TRAVAUX */}
         <div style={carteStyle}>
-          <div className="ds-card-title" style={{ marginBottom: 16 }}>🔧 Répartition par travaux</div>
+          <div className="ds-card-title" style={{ marginBottom: 16 }}>Répartition par travaux</div>
           {donneesTravaux.length === 0 ? <p style={{ color: 'var(--text-secondary)' }}>Aucune donnée</p> : (
             <>
               <ResponsiveContainer width="100%" height={250}>
@@ -278,7 +278,7 @@ export default function Statistiques({ chantiers, clients, devis = [], parametre
 
       {/* PRÉVISIONS */}
       <div style={carteStyle}>
-        <div className="ds-card-title" style={{ marginBottom: 16 }}>🔮 Prévisions</div>
+        <div className="ds-card-title" style={{ marginBottom: 16 }}>Prévisions</div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '15px', marginBottom: '20px' }}>
           {[
             { label: 'CA réalisé',        valeur: `CHF ${fmtN(Math.round(caRealise))}`,      couleur: COL_CA },
@@ -311,7 +311,7 @@ export default function Statistiques({ chantiers, clients, devis = [], parametre
 
       {/* TABLEAU RENTABILITÉ PAR TRAVAUX */}
       <div style={carteStyle}>
-        <div className="ds-card-title" style={{ marginBottom: 16 }}>🔧 Rentabilité par type de travaux</div>
+        <div className="ds-card-title" style={{ marginBottom: 16 }}>Rentabilité par type de travaux</div>
         {donneesTravaux.length === 0 ? <p style={{ color: 'var(--text-secondary)' }}>Aucune donnée</p> : (
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead><tr>
@@ -332,7 +332,7 @@ export default function Statistiques({ chantiers, clients, devis = [], parametre
                   </td>
                   <td style={{ padding: '10px 15px', color: t.Marge >= 0 ? C.secondaire : C.danger, fontWeight: 'bold' }}>CHF {fmtN(t.Marge)}</td>
                   <td style={{ padding: '10px 15px' }}>
-                    {parseFloat(t.margePct) >= 20 ? '🟢 Bon' : parseFloat(t.margePct) >= 15 ? '🟡 À surveiller' : '🔴 Critique'}
+                    {parseFloat(t.margePct) >= 20 ? 'Bon' : parseFloat(t.margePct) >= 15 ? 'À surveiller' : 'Critique'}
                   </td>
                 </tr>
               ))}
@@ -343,7 +343,7 @@ export default function Statistiques({ chantiers, clients, devis = [], parametre
 
       {/* PRÉVU VS RÉEL — ÉCARTS JOURS */}
       <div style={carteStyle}>
-        <div className="ds-card-title" style={{ marginBottom: 4 }}>📐 Prévu vs Réel — Écart des jours</div>
+        <div className="ds-card-title" style={{ marginBottom: 4 }}>Prévu vs Réel — Écart des jours</div>
         <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 20 }}>
           Comparaison entre l'estimation du devis et les jours effectivement réalisés. Permet d'améliorer les futurs devis.
         </div>
@@ -418,7 +418,7 @@ export default function Statistiques({ chantiers, clients, devis = [], parametre
                 <tbody>
                   {donneesEcarts.map((d) => {
                     const couleurEc = d.statut === 'en_retard' ? C.danger : d.statut === 'en_avance' ? C.secondaire : '#78909c';
-                    const statutLabel = { en_retard: '🔴 Dépassement', en_avance: '🟢 En avance', ok: '✓ Conforme' }[d.statut] || d.statut;
+                    const statutLabel = { en_retard: 'Dépassement', en_avance: 'En avance', ok: '✓ Conforme' }[d.statut] || d.statut;
                     return (
                       <tr key={d.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
                         <td style={{ padding: '10px 15px', fontWeight: 600 }}>{d.nom}</td>
@@ -447,7 +447,7 @@ export default function Statistiques({ chantiers, clients, devis = [], parametre
 
       {/* CLASSEMENT CLIENTS */}
       <div style={carteStyle}>
-        <div className="ds-card-title" style={{ marginBottom: 16 }}>🏆 Classement clients</div>
+        <div className="ds-card-title" style={{ marginBottom: 16 }}>Classement clients</div>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead><tr>
             {['Rang', 'Client', 'Chantiers', 'CA Total', 'Marge %', 'Gain CHF'].map(h => (
@@ -474,7 +474,7 @@ export default function Statistiques({ chantiers, clients, devis = [], parametre
       </div>
       {/* TOP EMPLOYÉS */}
       <div style={carteStyle}>
-        <div className="ds-card-title" style={{ marginBottom: 4 }}>👷 Analyse par employé</div>
+        <div className="ds-card-title" style={{ marginBottom: 4 }}>Analyse par employé</div>
         <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 20 }}>
           Jours travaillés, coût total et coût moyen par chantier — sur la période sélectionnée.
         </div>

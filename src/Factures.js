@@ -332,8 +332,8 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
       {/* KPIs */}
       <div style={{ display: 'flex', gap: 16, marginBottom: 24, flexWrap: 'wrap' }}>
         <KpiCard label="Total facturé"  value={`${fmt(kpis.totalFacture)} CHF`}  couleur="#3b82f6" icon="📄" />
-        <KpiCard label="Encaissé"       value={`${fmt(kpis.totalEncaisse)} CHF`} couleur="#10b981" icon="✅" />
-        <KpiCard label="En retard"      value={`${fmt(kpis.totalRetard)} CHF`}   couleur="#ef4444" icon="⚠️" />
+        <KpiCard label="Encaissé"       value={`${fmt(kpis.totalEncaisse)} CHF`} couleur="#10b981" icon="" />
+        <KpiCard label="En retard"      value={`${fmt(kpis.totalRetard)} CHF`}   couleur="#ef4444" icon="" />
         <KpiCard label="Brouillons"     value={kpis.nbBrouillon}                 couleur="#8b5cf6" icon="✏️" />
       </div>
 
@@ -481,7 +481,7 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
               </div>
             </div>
             <div style={{ display: 'flex', gap: 10 }}>
-              <button style={{ ...S.btnSuccess, flex: 1 }} onClick={enregistrerPaiement}>✅ Confirmer le paiement</button>
+              <button style={{ ...S.btnSuccess, flex: 1 }} onClick={enregistrerPaiement}>Confirmer le paiement</button>
               <button style={S.btnGhost} onClick={() => setPaiementModal(null)}>Annuler</button>
             </div>
           </div>
@@ -731,7 +731,7 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
                 </div>
               </div>
               <div style={{ display: 'flex', gap: 10 }}>
-                <button style={{ ...S.btnSuccess, flex: 1 }} onClick={enregistrerPaiement}>✅ Confirmer le paiement</button>
+                <button style={{ ...S.btnSuccess, flex: 1 }} onClick={enregistrerPaiement}>Confirmer le paiement</button>
                 <button style={S.btnGhost} onClick={() => setPaiementModal(null)}>Annuler</button>
               </div>
             </div>

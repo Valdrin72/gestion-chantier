@@ -6,8 +6,8 @@ import { DS } from './ds';
 const CATEGORIES = [
   { id: 'avant', label: '📸 Avant travaux', couleur: C.info, bg: 'rgba(59,130,246,0.12)' },
   { id: 'pendant', label: '🔨 Pendant travaux', couleur: C.warning, bg: 'rgba(245,158,11,0.12)' },
-  { id: 'apres', label: '✅ Après travaux', couleur: C.secondaire, bg: 'rgba(16,185,129,0.12)' },
-  { id: 'probleme', label: '⚠️ Problème / Imprévu', couleur: C.danger, bg: 'rgba(239,68,68,0.12)' },
+  { id: 'apres', label: 'Après travaux', couleur: C.secondaire, bg: 'rgba(16,185,129,0.12)' },
+  { id: 'probleme', label: 'Problème / Imprévu', couleur: C.danger, bg: 'rgba(239,68,68,0.12)' },
   { id: 'autre', label: '📁 Autre', couleur: C.violet, bg: 'rgba(139,92,246,0.12)' },
 ];
 
@@ -173,7 +173,7 @@ export default function Photos({ chantiers, photosData, setPhotosData }) {
                       style={{ background: 'rgba(183,28,28,0.85)', color: 'white', border: 'none', borderRadius: '50%', width: '28px', height: '28px', cursor: 'pointer', fontSize: '14px' }}>✕</button>
                   </div>
                   <div style={{ position: 'absolute', bottom: '0', left: '0', right: '0', background: 'linear-gradient(transparent, rgba(0,0,0,0.7))', padding: '8px', color: 'white', fontSize: '11px' }}>
-                    📅 {photo.date} {photo.heure}
+                    {photo.date} {photo.heure}
                   </div>
                 </div>
                 <div style={{ padding: '10px' }}>
@@ -198,7 +198,7 @@ export default function Photos({ chantiers, photosData, setPhotosData }) {
                 style={{ maxWidth: '90vw', maxHeight: '80vh', objectFit: 'contain', borderRadius: '8px' }} />
               <div style={{ background: 'rgba(22,27,34,0.95)', padding: '12px 20px', borderRadius: '0 0 8px 8px', textAlign: 'center' }}>
                 <div style={{ fontWeight: 'bold', color: '#3b82f6' }}>{photoSelectionnee.description || 'Sans description'}</div>
-                <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>📅 {photoSelectionnee.date} à {photoSelectionnee.heure} · {photoSelectionnee.taille}</div>
+                <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>{photoSelectionnee.date} à {photoSelectionnee.heure} · {photoSelectionnee.taille}</div>
                 <button onClick={(e) => { e.stopPropagation(); supprimerPhoto(c.id, photoSelectionnee.id); }}
                   style={{ ...DS.btnDanger, marginTop: '8px' }}>
                   🗑️ Supprimer
@@ -221,10 +221,10 @@ export default function Photos({ chantiers, photosData, setPhotosData }) {
       {/* KPIs */}
       <div style={{ display: 'flex', gap: '15px', marginBottom: '25px', flexWrap: 'wrap' }}>
         {[
-          { label: '🏗️ Chantiers avec photos', val: Object.keys(photosData).filter(id => photosData[id]?.length > 0).length, couleur: '#3b82f6' },
+          { label: 'Chantiers avec photos', val: Object.keys(photosData).filter(id => photosData[id]?.length > 0).length, couleur: '#3b82f6' },
           { label: '📸 Photos totales', val: Object.values(photosData).reduce((t, p) => t + (p?.length || 0), 0), couleur: '#10b981' },
           { label: '📸 Avant travaux', val: Object.values(photosData).reduce((t, p) => t + (p?.filter(ph => ph.categorie === 'avant').length || 0), 0), couleur: '#3b82f6' },
-          { label: '✅ Après travaux', val: Object.values(photosData).reduce((t, p) => t + (p?.filter(ph => ph.categorie === 'apres').length || 0), 0), couleur: '#10b981' },
+          { label: 'Après travaux', val: Object.values(photosData).reduce((t, p) => t + (p?.filter(ph => ph.categorie === 'apres').length || 0), 0), couleur: '#10b981' },
         ].map(s => (
           <div key={s.label} style={{ background: `linear-gradient(145deg, ${s.couleur}0a 0%, rgba(255,255,255,0.025) 100%)`, border: `1px solid ${s.couleur}28`, borderRadius: '16px', padding: '20px', flex: 1, minWidth: '150px', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
             <div style={{ fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--text-muted)', marginBottom: '8px' }}>{s.label}</div>

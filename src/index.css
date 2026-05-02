@@ -1,5 +1,5 @@
-/* Google Font — Inter */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+/* Google Fonts — DM Sans + Inter */
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800;900&family=Inter:wght@400;500;600;700;800&display=swap');
 
 /* ============================================================
    CYNA BTP — DESIGN SYSTEM FINTECH PROFESSIONNEL (Stripe/Linear)
@@ -141,69 +141,69 @@
   --dash-muted:      var(--text-secondary);
 }
 
-/* Light mode override */
+/* Light mode override — valeurs exactes CYNA App.html */
 [data-theme="light"] {
-  /* Fond : gris très doux — crée la profondeur avec les cartes blanches */
-  --bg-app        : #f0f2f5;
-  --bg-card       : #ffffff;
-  --bg-sidebar    : #ffffff;
-  --bg-header     : #ffffff;
-  --bg-hover      : #f4f6f8;
-  --bg-active     : #eff6ff;
-  --bg-input      : #ffffff;
-  --border        : #d1d9e0;
-  --border-hover  : #b0bec5;
-  --border-focus  : #3b82f6;
+  /* Fond — slate-50 comme source de vérité */
+  --bg-app        : #F8FAFC;
+  --bg-card       : #FFFFFF;
+  --bg-sidebar    : #FFFFFF;
+  --bg-header     : #FFFFFF;
+  --bg-hover      : #F8FAFC;
+  --bg-active     : #EEF2FF;
+  --bg-input      : #F8FAFC;
+  --border        : #E2E8F0;
+  --border-hover  : #CBD5E1;
+  --border-focus  : #3B82F6;
 
-  /* Hiérarchie texte — 4 niveaux */
+  /* Hiérarchie texte slate */
   --text-strong   : #020617;
-  --text-primary  : #0f172a;
-  --text-secondary: #334155;
-  --text-muted    : #64748b;
-  --text-weak     : #94a3b8;
+  --text-primary  : #0F172A;
+  --text-secondary: #475569;
+  --text-muted    : #64748B;
+  --text-weak     : #94A3B8;
 
-  --bg:            #f0f2f5;
-  --bg-topbar:     #ffffff;
-  --border-input:  #d1d9e0;
-  --dash-card:     #ffffff;
-  --dash-border:   #e2e8f0;
-  --dash-border-bg:#f8fafc;
-  --dash-text:     #0f172a;
-  --dash-muted:    #64748b;
-  --table-hover:   #f8fafc;
-  --scrollbar-thumb: #cbd5e1;
-  --bottom-nav-bg: #ffffff;
-  --bottom-nav-border: #e2e8f0;
-  --shadow-card:   0 1px 3px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.08), 0 1px 0 rgba(255,255,255,0.9) inset;
-  --shadow-hover:  0 4px 16px rgba(0,0,0,0.12), 0 1px 4px rgba(0,0,0,0.08);
-  --bg-glass      : #f4f6f8;
-  --bg-glass-2    : #eef0f3;
+  --bg:            #F8FAFC;
+  --bg-topbar:     #FFFFFF;
+  --border-input:  #E2E8F0;
+  --dash-card:     #FFFFFF;
+  --dash-border:   #E2E8F0;
+  --dash-border-bg:#F1F5F9;
+  --dash-text:     #0F172A;
+  --dash-muted:    #64748B;
+  --table-hover:   #F8FAFC;
+  --scrollbar-thumb: #CBD5E1;
+  --bottom-nav-bg: #FFFFFF;
+  --bottom-nav-border: #E2E8F0;
+  --shadow-card:   0 1px 3px rgba(15,23,42,0.04), 0 1px 2px rgba(15,23,42,0.06);
+  --shadow-hover:  0 4px 16px rgba(15,23,42,0.10), 0 1px 4px rgba(15,23,42,0.06);
+  --bg-glass      : #F8FAFC;
+  --bg-glass-2    : #F1F5F9;
   --green-bg: rgba(16,185,129,0.08);
   --orange-bg: rgba(245,158,11,0.08);
   --red-bg: rgba(239,68,68,0.08);
   --blue-bg: rgba(59,130,246,0.08);
   --purple-bg: rgba(139,92,246,0.08);
 
-  /* DS tokens — light mode avec profondeur */
-  --ds-card-bg: #ffffff;
+  /* DS tokens light — source de vérité CYNA App.html */
+  --ds-card-bg: #FFFFFF;
   --ds-card-blur: none;
-  --ds-card-shadow: 0 1px 0 rgba(0,0,0,0.04), 0 2px 8px rgba(0,0,0,0.07), 0 8px 24px rgba(0,0,0,0.06);
-  --ds-card-border: #d1d9e0;
-  --ds-card-compact-bg: #ffffff;
-  --ds-card-compact-shadow: 0 1px 0 rgba(0,0,0,0.04), 0 2px 6px rgba(0,0,0,0.06);
-  --ds-card-compact-border: #d1d9e0;
-  --ds-card-inset-bg: #f4f6f8;
-  --ds-card-inset-border: #d1d9e0;
-  --ds-card-inset-shadow: inset 0 1px 4px rgba(0,0,0,0.06);
-  --ds-btn-ghost-bg: #ffffff;
-  --ds-btn-ghost-border: #d1d9e0;
-  --ds-th-bg: #f4f6f8;
-  --ds-th-border: #d1d9e0;
-  --ds-td-border: #eef0f3;
-  --ds-input-border: #e2e8f0;
-  --ds-input-bg: #ffffff;
-  --ds-section-label-color: #64748b;
-  --ds-section-label-border: #e2e8f0;
+  --ds-card-shadow: 0 1px 3px rgba(15,23,42,0.04), 0 1px 2px rgba(15,23,42,0.06);
+  --ds-card-border: #E2E8F0;
+  --ds-card-compact-bg: #FFFFFF;
+  --ds-card-compact-shadow: 0 1px 3px rgba(15,23,42,0.04), 0 1px 2px rgba(15,23,42,0.06);
+  --ds-card-compact-border: #E2E8F0;
+  --ds-card-inset-bg: #F8FAFC;
+  --ds-card-inset-border: #E2E8F0;
+  --ds-card-inset-shadow: inset 0 1px 4px rgba(15,23,42,0.04);
+  --ds-btn-ghost-bg: #FFFFFF;
+  --ds-btn-ghost-border: #E2E8F0;
+  --ds-th-bg: #F8FAFC;
+  --ds-th-border: #E2E8F0;
+  --ds-td-border: #F1F5F9;
+  --ds-input-border: #E2E8F0;
+  --ds-input-bg: #F8FAFC;
+  --ds-section-label-color: #64748B;
+  --ds-section-label-border: #E2E8F0;
 }
 
 /* ── Light mode : fond global + hiérarchie texte ── */
@@ -266,14 +266,14 @@
 [data-theme="light"] .sidebar-logo-sub  { color: #64748b; }
 [data-theme="light"] .sidebar-item { color: #1e293b; }
 [data-theme="light"] .sidebar-item:hover {
-  background: #f1f5f9 !important;
-  color: #0f172a !important;
+  background: #F8FAFC !important;
+  color: #0F172A !important;
   box-shadow: none !important;
 }
 [data-theme="light"] .sidebar-item.active {
-  background: #eff6ff !important;
-  color: #2563eb !important;
-  border-left-color: #3b82f6 !important;
+  background: #EEF2FF !important;
+  color: #4F46E5 !important;
+  border-left-color: #4F46E5 !important;
   box-shadow: none !important;
 }
 [data-theme="light"] .sidebar-profile {
@@ -321,14 +321,17 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {
-  font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, Arial, sans-serif;
+  font-family: 'DM Sans', 'Inter', 'Segoe UI', system-ui, -apple-system, Arial, sans-serif;
   background: var(--bg-app);
   color: var(--text-primary);
   transition: background 0.3s, color 0.3s;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  font-size: 14px;
+  font-size: 13px;
   line-height: 1.5;
+}
+button, input, select, textarea {
+  font-family: 'DM Sans', 'Inter', sans-serif;
 }
 
 [data-theme="light"] body { background: var(--bg-app); }

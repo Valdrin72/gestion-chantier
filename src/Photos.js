@@ -4,11 +4,11 @@ import { DS } from './ds';
 
 
 const CATEGORIES = [
-  { id: 'avant', label: '📸 Avant travaux', couleur: C.info, bg: 'rgba(59,130,246,0.12)' },
-  { id: 'pendant', label: '🔨 Pendant travaux', couleur: C.warning, bg: 'rgba(245,158,11,0.12)' },
+  { id: 'avant', label: 'Avant travaux', couleur: C.info, bg: 'rgba(59,130,246,0.12)' },
+  { id: 'pendant', label: 'Pendant travaux', couleur: C.warning, bg: 'rgba(245,158,11,0.12)' },
   { id: 'apres', label: 'Après travaux', couleur: C.secondaire, bg: 'rgba(16,185,129,0.12)' },
   { id: 'probleme', label: 'Problème / Imprévu', couleur: C.danger, bg: 'rgba(239,68,68,0.12)' },
-  { id: 'autre', label: '📁 Autre', couleur: C.violet, bg: 'rgba(139,92,246,0.12)' },
+  { id: 'autre', label: 'Autre', couleur: C.violet, bg: 'rgba(139,92,246,0.12)' },
 ];
 
 export default function Photos({ chantiers, photosData, setPhotosData }) {
@@ -115,8 +115,8 @@ export default function Photos({ chantiers, photosData, setPhotosData }) {
           </div>
           <div className="page-actions-group">
             <button onClick={() => { setChantierSelectionne(null); setPhotoSelectionnee(null); }} style={{ ...DS.btnGhost }}>← Retour</button>
-            <button onClick={() => fileRef.current?.click()} style={{ ...DS.btnPrimary }}>📁 Importer</button>
-            <button onClick={() => cameraRef.current?.click()} style={{ ...DS.btnPrimary }}>📷 Photo</button>
+            <button onClick={() => fileRef.current?.click()} style={{ ...DS.btnPrimary }}>Importer</button>
+            <button onClick={() => cameraRef.current?.click()} style={{ ...DS.btnPrimary }}>Photo</button>
           </div>
           <input ref={fileRef} type="file" accept="image/*" multiple style={{ display: 'none' }}
             onChange={e => e.target.files?.length && ajouterPhoto(e.target.files, c.id, categorieActive)} />
@@ -144,7 +144,7 @@ export default function Photos({ chantiers, photosData, setPhotosData }) {
             <div style={{ color: categorieInfo.couleur, fontWeight: 'bold' }}>⏳ Chargement des photos...</div>
           ) : (
             <>
-              <div style={{ fontSize: '30px' }}>📸</div>
+              <div style={{ fontSize: '30px', color: 'var(--text-muted)' }}>◎</div>
               <div style={{ color: categorieInfo.couleur, fontWeight: 'bold', marginTop: '5px' }}>
                 Cliquez pour ajouter des photos — {categorieInfo.label}
               </div>
@@ -156,7 +156,7 @@ export default function Photos({ chantiers, photosData, setPhotosData }) {
         {/* GALERIE */}
         {photosCategorie.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-secondary)' }}>
-            <div style={{ fontSize: '40px' }}>📷</div>
+            <div style={{ fontSize: '30px', color: 'var(--text-muted)' }}>◎</div>
             <div style={{ marginTop: '10px' }}>Aucune photo dans cette catégorie</div>
             <div style={{ fontSize: '13px', marginTop: '5px' }}>Cliquez sur la zone ci-dessus pour en ajouter</div>
           </div>
@@ -170,7 +170,7 @@ export default function Photos({ chantiers, photosData, setPhotosData }) {
                     style={{ width: '100%', height: '150px', objectFit: 'cover' }} />
                   <div style={{ position: 'absolute', top: '8px', right: '8px' }}>
                     <button onClick={(e) => { e.stopPropagation(); supprimerPhoto(c.id, photo.id); }}
-                      style={{ background: 'rgba(183,28,28,0.85)', color: 'white', border: 'none', borderRadius: '50%', width: '28px', height: '28px', cursor: 'pointer', fontSize: '14px' }}>✕</button>
+                      style={{ background: 'rgba(183,28,28,0.85)', color: 'white', border: 'none', borderRadius: '50%', width: '28px', height: '28px', cursor: 'pointer', fontSize: '14px' }}>×</button>
                   </div>
                   <div style={{ position: 'absolute', bottom: '0', left: '0', right: '0', background: 'linear-gradient(transparent, rgba(0,0,0,0.7))', padding: '8px', color: 'white', fontSize: '11px' }}>
                     {photo.date} {photo.heure}
@@ -205,7 +205,7 @@ export default function Photos({ chantiers, photosData, setPhotosData }) {
                 </button>
               </div>
               <button onClick={() => setPhotoSelectionnee(null)}
-                style={{ position: 'absolute', top: '-15px', right: '-15px', background: 'var(--bg-card)', color: 'var(--text-primary)', border: 'none', borderRadius: '50%', width: '35px', height: '35px', cursor: 'pointer', fontSize: '18px', fontWeight: 'bold', boxShadow: '0 2px 10px rgba(0,0,0,0.3)' }}>✕</button>
+                style={{ position: 'absolute', top: '-15px', right: '-15px', background: 'var(--bg-card)', color: 'var(--text-primary)', border: 'none', borderRadius: '50%', width: '35px', height: '35px', cursor: 'pointer', fontSize: '18px', fontWeight: 'bold', boxShadow: '0 2px 10px rgba(0,0,0,0.3)' }}>×</button>
             </div>
           </div>
         )}
@@ -222,8 +222,8 @@ export default function Photos({ chantiers, photosData, setPhotosData }) {
       <div style={{ display: 'flex', gap: '15px', marginBottom: '25px', flexWrap: 'wrap' }}>
         {[
           { label: 'Chantiers avec photos', val: Object.keys(photosData).filter(id => photosData[id]?.length > 0).length, couleur: '#3b82f6' },
-          { label: '📸 Photos totales', val: Object.values(photosData).reduce((t, p) => t + (p?.length || 0), 0), couleur: '#10b981' },
-          { label: '📸 Avant travaux', val: Object.values(photosData).reduce((t, p) => t + (p?.filter(ph => ph.categorie === 'avant').length || 0), 0), couleur: '#3b82f6' },
+          { label: 'Photos totales', val: Object.values(photosData).reduce((t, p) => t + (p?.length || 0), 0), couleur: '#10b981' },
+          { label: 'Avant travaux', val: Object.values(photosData).reduce((t, p) => t + (p?.filter(ph => ph.categorie === 'avant').length || 0), 0), couleur: '#3b82f6' },
           { label: 'Après travaux', val: Object.values(photosData).reduce((t, p) => t + (p?.filter(ph => ph.categorie === 'apres').length || 0), 0), couleur: '#10b981' },
         ].map(s => (
           <div key={s.label} style={{ background: `linear-gradient(145deg, ${s.couleur}0a 0%, rgba(255,255,255,0.025) 100%)`, border: `1px solid ${s.couleur}28`, borderRadius: '16px', padding: '20px', flex: 1, minWidth: '150px', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
@@ -254,7 +254,7 @@ export default function Photos({ chantiers, photosData, setPhotosData }) {
                     <img src={premierePhoto.base64} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   ) : (
                     <div style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>
-                      <div style={{ fontSize: '30px' }}>📷</div>
+                      <div style={{ fontSize: '30px', color: 'var(--text-muted)' }}>◎</div>
                       <div style={{ fontSize: '11px' }}>Aucune photo</div>
                     </div>
                   )}
@@ -263,7 +263,7 @@ export default function Photos({ chantiers, photosData, setPhotosData }) {
                 {/* INFOS */}
                 <div style={{ padding: '15px 20px', flex: 1 }}>
                   <div style={{ fontSize: '16px', fontWeight: 'bold', color: 'var(--text-primary)' }}>{c.nom}</div>
-                  <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '3px' }}>📍 {c.ville} · {c.statut}</div>
+                  <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '3px' }}>{c.ville} · {c.statut}</div>
 
                   {/* CATÉGORIES */}
                   <div style={{ display: 'flex', gap: '8px', marginTop: '10px', flexWrap: 'wrap' }}>
@@ -279,7 +279,7 @@ export default function Photos({ chantiers, photosData, setPhotosData }) {
                 <div style={{ padding: '15px 20px', textAlign: 'center', display: 'flex', flexDirection: 'column', justifyContent: 'center', borderLeft: '1px solid var(--border)' }}>
                   <div style={{ fontSize: '24px', fontWeight: 800, letterSpacing: '-0.5px', color: total > 0 ? '#3b82f6' : 'var(--text-muted)' }}>{total}</div>
                   <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>photo{total > 1 ? 's' : ''}</div>
-                  <div style={{ fontSize: '12px', color: '#3b82f6', marginTop: '5px' }}>👁️ Voir →</div>
+                  <div style={{ fontSize: '12px', color: '#3b82f6', marginTop: '5px' }}>Voir →</div>
                 </div>
               </div>
             </div>

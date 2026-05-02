@@ -212,7 +212,7 @@ export default function Rapport({ chantiers, clients, devis = [], parametres, pa
                   <div style={{ fontWeight: 'bold', color: '#ef4444' }}>{c.nom} — {client?.entreprise}</div>
                   {retards.map(p => (
                     <div key={p.id} style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '4px' }}>
-                      📞 {p.type} — <strong>CHF {fmtN(parseFloat(p.montant))}</strong> — Échéance : {p.dateEcheance}
+                      {p.type} — <strong>CHF {fmtN(parseFloat(p.montant))}</strong> — Échéance : {p.dateEcheance}
                     </div>
                   ))}
                 </div>

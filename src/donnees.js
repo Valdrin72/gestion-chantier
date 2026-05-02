@@ -62,10 +62,10 @@ export const joursOuvrableRestants = (dateDebut, nombreJours, inclusSamedi = fal
 
 export const getAlerte = (jours) => {
   if (jours === null) return null;
-  if (jours < 0) return { texte: `⛔ DÉPASSÉ de ${Math.abs(jours)} jour(s)`, couleur: '#b71c1c', niveau: 'critique', banniere: 'danger' };
+  if (jours < 0) return { texte: `DÉPASSÉ de ${Math.abs(jours)} jour(s)`, couleur: '#b71c1c', niveau: 'critique', banniere: 'danger' };
   if (jours === 0) return { texte: 'FIN AUJOURD\'HUI !', couleur: '#b71c1c', niveau: 'critique', banniere: 'danger' };
   if (jours <= 2) return { texte: `${jours} jour(s) restant(s) !`, couleur: '#e65100', niveau: 'danger', banniere: 'warning' };
-  if (jours <= 5) return { texte: `📢 ${jours} jours restants`, couleur: '#f57f17', niveau: 'warning', banniere: 'warning' };
+  if (jours <= 5) return { texte: `${jours} jours restants`, couleur: '#f57f17', niveau: 'warning', banniere: 'warning' };
   return { texte: `${jours} jours restants`, couleur: '#2e7d32', niveau: 'ok', banniere: null };
 };
 
@@ -402,7 +402,7 @@ export const calculerDevis = (form, parametres) => {
 
   let positionnement = 'Marché';
   let niveauRisque = 'Faible';
-  if (prixPropose < prixMinRentable) { positionnement = 'Dangereux ⛔'; niveauRisque = 'Critique'; }
+  if (prixPropose < prixMinRentable) { positionnement = 'Dangereux'; niveauRisque = 'Critique'; }
   else if (prixPropose < prixConseille * 0.95) { positionnement = 'Agressif'; niveauRisque = 'Élevé'; }
   else if (prixPropose > prixPlafond) { positionnement = 'Excessif'; niveauRisque = 'Commercial'; }
   else if (prixPropose > prixConseille * 1.15) { positionnement = 'Premium'; niveauRisque = 'Faible'; }

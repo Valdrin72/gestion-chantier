@@ -1449,7 +1449,7 @@ function renderProjectionCard(etat, fmtK) {
 function renderRecommandations(etat, couts) {
   const recommandations = [];
   if (couts.ratioEfficacite !== null && couts.ratioEfficacite < 0.85)
-    recommandations.push({ icone: '📉', texte: 'Le chantier consomme plus vite qu\'il n\'avance' });
+    recommandations.push({ icone: '↓', texte: 'Le chantier consomme plus vite qu\'il n\'avance' });
   if (etat.coutTotalReel > 0 && (etat.coutMOReel / etat.coutTotalReel) > 0.6)
     recommandations.push({ icone: 'mo', texte: 'Main d\'œuvre trop élevée — vérifier productivité ou dimensionnement équipe' });
   if (couts.coutMaterielPrevu > 0 && etat.coutMateriel > couts.coutMaterielPrevu * 1.15)
@@ -1473,7 +1473,7 @@ function renderEcartTable(couts, fmtN) {
     { label: 'Main d\'œuvre', prevu: couts.coutEquipePrevu, reel: couts.coutEquipeReel, ecart: couts.ecartEquipe, ecartPct: couts.ecartEquipePct },
     { label: 'Matériel', prevu: couts.coutMaterielPrevu, reel: couts.coutMaterielReel, ecart: couts.ecartMateriel, ecartPct: couts.ecartMaterielPct },
     { label: 'Sous-traitance', prevu: couts.coutSousTraitancePrevu, reel: couts.coutSousTraitanceReel, ecart: couts.ecartSousTraitance, ecartPct: couts.ecartSousTraitancePct },
-    { label: '📦 Autres', prevu: couts.autresCoutsPrevu, reel: couts.autresCoutsReel, ecart: couts.ecartAutres, ecartPct: couts.ecartAutresPct },
+    { label: 'Autres', prevu: couts.autresCoutsPrevu, reel: couts.autresCoutsReel, ecart: couts.ecartAutres, ecartPct: couts.ecartAutresPct },
   ].filter(l => l.prevu > 0 || l.reel > 0);
   const totalEcart = couts.totalCoutsReel - couts.totalCoutsPrevu;
   return (
@@ -1559,7 +1559,7 @@ function renderRentabiliteJours(c, etat, couts, naviguer, fmtN, fmtK) {
   const ec = rj.aucuneSaisie ? null : calculerEcartChantier(c);
   const ecKpi = {
     label: 'Écart / devis',
-    valeur: ec ? (ec.ecartJours === 0 ? '0j ✓' : `${ec.ecartJours > 0 ? '+' : ''}${ec.ecartJours}j`) : '—',
+    valeur: ec ? (ec.ecartJours === 0 ? '0j' : `${ec.ecartJours > 0 ? '+' : ''}${ec.ecartJours}j`) : '—',
     couleur: !ec ? '#78909c' : ec.ecartJours > 0 ? C.danger : ec.ecartJours < 0 ? C.secondaire : '#78909c',
   };
 
@@ -1676,7 +1676,7 @@ function renderRentabiliteJours(c, etat, couts, naviguer, fmtN, fmtK) {
             <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', color: couleurEtat }}>{titreEtat}</div>
             {etatEquipe === 'complet' && (
               <span style={{ fontSize: 10, fontWeight: 700, color: C.secondaire, background: C.secondaire + '14', border: `1px solid ${C.secondaire}28`, borderRadius: 20, padding: '2px 10px' }}>
-                ✔ Données complètes — analyse fiable
+                Données complètes — analyse fiable
               </span>
             )}
             {etatEquipe === 'partiel' && (
@@ -1688,7 +1688,7 @@ function renderRentabiliteJours(c, etat, couts, naviguer, fmtN, fmtK) {
 
           {alerteCouverture && (
             <div style={{ fontSize: 11, fontWeight: 600, color: alerteCouverture.couleur, background: alerteCouverture.couleur + '10', border: `1px solid ${alerteCouverture.couleur}25`, borderRadius: 6, padding: '6px 10px', marginBottom: 10 }}>
-              ⚠ {alerteCouverture.texte}
+              {alerteCouverture.texte}
             </div>
           )}
 
@@ -1737,7 +1737,7 @@ function renderRentabiliteJours(c, etat, couts, naviguer, fmtN, fmtK) {
                   <span style={{ fontSize: 12, fontWeight: 700, color: etatEquipe === 'complet' ? 'var(--text-secondary)' : C.warning }}>
                     {etatEquipe === 'complet' ? 'Total équipe' : 'Total partiel'}
                   </span>
-                  {etatEquipe === 'complet' && <span style={{ fontSize: 10, color: C.secondaire }}>✔ Basé sur 100% des employés</span>}
+                  {etatEquipe === 'complet' && <span style={{ fontSize: 10, color: C.secondaire }}>Basé sur 100% des employés</span>}
                   {etatEquipe === 'partiel' && (
                     <span style={{ fontSize: 10, color: C.warning }}>Basé sur {nbReel} / {nbTotal} employés ({couverture}%)</span>
                   )}
@@ -1931,7 +1931,7 @@ function ModalSaisieHeures({ chantierSaisie, initialDate, onFermer, onSave, para
           disabled={nbSaisis === 0}
           style={{ ...btnSucces, width: '100%', justifyContent: 'center', padding: '14px', fontSize: 15, fontWeight: 800, opacity: nbSaisis === 0 ? 0.5 : 1 }}
         >
-          ✓ Valider — {nbSaisis} employé{nbSaisis !== 1 ? 's' : ''} · {totalH}h
+          Valider — {nbSaisis} employé{nbSaisis !== 1 ? 's' : ''} · {totalH}h
         </button>
       </div>
     </div>
@@ -2127,7 +2127,7 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
         ? `Gain estimé : -${gainJours} jour${gainJours > 1 ? 's' : ''} sur la fin de chantier`
         : `Permettrait de réduire le retard à ~${retardResiduel} jour${retardResiduel > 1 ? 's' : ''}`;
       const conclusion = retardResiduel <= 0
-        ? { icone: '✔', texte: 'Permet de revenir dans les délais', couleur: C.secondaire }
+        ? { icone: '', texte: 'Permet de revenir dans les délais', couleur: C.secondaire }
         : retardResiduel <= 2
           ? { icone: 'warning', texte: 'Réduit le retard mais reste sous contrôle', couleur: C.warning }
           : { icone: 'danger', texte: 'Insuffisant — revoir le planning ou ajouter plus de ressources', couleur: C.danger };
@@ -2240,7 +2240,7 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
         <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', marginBottom: 20 }}>
           {[
             { id: 'vue',       label: 'Vue' },
-            { id: 'analyse',   label: '📈 Analyse' },
+            { id: 'analyse',   label: 'Analyse' },
             { id: 'financier', label: 'Financier' },
           ].map(o => (
             <button key={o.id} onClick={() => setDetailOnglet(o.id)} style={{
@@ -2261,7 +2261,7 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
             background: 'rgba(144,164,174,0.08)', border: '1px solid rgba(144,164,174,0.3)',
             borderLeft: '4px solid #90a4ae',
           }}>
-            <span style={{ fontSize: 20, lineHeight: 1 }}>⚪</span>
+            <span style={{ fontSize: 20, lineHeight: 1, color: "var(--text-muted)" }}>○</span>
             <div>
               <div style={{ fontSize: 13, fontWeight: 800, color: '#90a4ae' }}>Données invalides — analyse impossible</div>
               <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 3 }}>Vérifier les données saisies pour ce chantier</div>
@@ -2322,9 +2322,9 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
             if (critAlert)                return { icone: 'danger', val: 'Action urgente', label: critAlert.texte.length > 50 ? critAlert.texte.slice(0, 48) + '…' : critAlert.texte, couleur: C.danger };
             if (perfReco === 'renforcer') return { niveau: 'danger', val: 'Renforcer l\'équipe', label: 'Retard important — revoir planning', couleur: C.danger };
             if (perfReco === 'ajouter')  return { niveau: 'warning', val: '+1 ouvrier', label: 'Réduire le retard en cours', couleur: C.warning };
-            if (perfReco === 'surveiller') return { icone: '👁', val: 'Surveiller', label: 'Possible rattrapage sans action', couleur: C.warning };
+            if (perfReco === 'surveiller') return { icone: '◎', val: 'Surveiller', label: 'Possible rattrapage sans action', couleur: C.warning };
             if (modeChantier === 'INIT') return { icone: '▶', val: 'Saisir les heures', label: 'Aucune donnée terrain', couleur: '#78909c' };
-            return { icone: '✓', val: 'RAS', label: 'Aucune action requise', couleur: C.secondaire };
+            return { icone: '', val: 'RAS', label: 'Aucune action requise', couleur: C.secondaire };
           })();
 
           const tiles = [
@@ -2479,7 +2479,7 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
               {client && (
                 <div style={{ color: 'var(--text-secondary)', marginTop: '8px', cursor: 'pointer', fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}
                   onClick={() => naviguer('clients', { clientActif: c.clientId })}>
-                  👥 {client.prenom} {client.nom} — {client.entreprise} · 📞 {client.telephone}
+                  {client.prenom} {client.nom} — {client.entreprise} · {client.telephone}
                   <span style={{ color: C.primaire, textDecoration: 'none', fontSize: '12px', fontWeight: 600, background: 'rgba(59,130,246,0.1)', padding: '2px 8px', borderRadius: 6 }}>Voir →</span>
                 </div>
               )}
@@ -2489,7 +2489,7 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
               <Badge texte={c.statut} couleur={couleurStatut(c.statut)} />
               {chantierStatusBadge && <Badge texte={chantierStatusBadge.label} couleur={chantierStatusBadge.couleur} glow />}
               {c.devisId && !isChantierActif(c) && !['Terminé', 'Facturé', 'Clôturé'].includes(c.statut) && (
-                <Badge texte="⚠ CA non comptabilisé" couleur={C.warning} />
+                <Badge texte="CA non comptabilisé" couleur={C.warning} />
               )}
               <BadgeRentabilite ca={etat.devisTotal} couts={etat.coutTotalReel} />
             </div>
@@ -2517,8 +2517,8 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
               ['Adresse', `${c.adresse || ''}${c.ville ? ', ' + c.ville : ''}${c.canton ? ' (' + c.canton + ')' : ''}`],
               ['Dir. travaux', directeurTravaux ? `${directeurTravaux.nom} — ${directeurTravaux.poste || ''}` : (c.conducteur || '—')],
               ['Début', c.dateDebut],
-              ['🏁 Fin prévue', c.dateDebut && c.nombreJours ? calculerDateFinOuvrables(c.dateDebut, c.nombreJours, c.inclusSamedi) : '—'],
-              ['⏱️ Jours prévus', c.nombreJours ? `${c.nombreJours} jours` : '—'],
+              ['Fin prévue', c.dateDebut && c.nombreJours ? calculerDateFinOuvrables(c.dateDebut, c.nombreJours, c.inclusSamedi) : '—'],
+              ['Jours prévus', c.nombreJours ? `${c.nombreJours} jours` : '—'],
               ['Surface', c.surface ? `${c.surface} m²` : '—'],
               ['Travaux', c.typesTravaux?.join(', ') || '—'],
             ].map(([label, val]) => (
@@ -2597,7 +2597,7 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
             <div style={{ background: 'rgba(239,68,68,0.05)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 10, padding: '14px 18px', marginBottom: 16 }}>
               <div style={{ fontWeight: 700, color: '#ef4444', fontSize: 13, marginBottom: 4 }}>Aucun devis lié</div>
               <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Le chiffre d'affaires est indisponible. Liez un devis accepté pour activer le suivi financier.</div>
-              <button onClick={() => { setAjout(true); setForm({ ...c }); }} style={{ marginTop: 10, ...DS.btnGhost, fontSize: 12, padding: '5px 12px' }}>✏️ Modifier le chantier</button>
+              <button onClick={() => { setAjout(true); setForm({ ...c }); }} style={{ marginTop: 10, ...DS.btnGhost, fontSize: 12, padding: '5px 12px' }}>Modifier le chantier</button>
             </div>
           )}
 
@@ -2606,8 +2606,8 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
             <div style={{ marginBottom: 20 }}>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 14 }}>
                 {[
-                  { label: '📄 CA signé', val: `CHF ${fmtK(devisTotal)}`, sub: (() => { const av = sommeAvenants(c); const rg = Array.isArray(devisSource?.heuresRegie) ? devisSource.heuresRegie.reduce((s,r) => s+(parseFloat(r.heures)||0)*(parseFloat(r.tarifHeure)||0),0) : 0; if (av > 0 && rg > 0) return `avenants ${fmtK(av)} + régie ${fmtK(rg)}`; if (av > 0) return `dont avenants CHF ${fmtK(av)}`; if (rg > 0) return `dont régie CHF ${fmtK(rg)}`; return null; })(), couleur: C.primaire },
-                  { label: '🧾 Facturé', val: `CHF ${fmtK(montantFactureLie)}`, sub: `${pctFacture}% du devis`, couleur: pctFacture >= 100 ? C.secondaire : pctFacture > 0 ? C.info : '#78909c' },
+                  { label: 'CA signé', val: `CHF ${fmtK(devisTotal)}`, sub: (() => { const av = sommeAvenants(c); const rg = Array.isArray(devisSource?.heuresRegie) ? devisSource.heuresRegie.reduce((s,r) => s+(parseFloat(r.heures)||0)*(parseFloat(r.tarifHeure)||0),0) : 0; if (av > 0 && rg > 0) return `avenants ${fmtK(av)} + régie ${fmtK(rg)}`; if (av > 0) return `dont avenants CHF ${fmtK(av)}`; if (rg > 0) return `dont régie CHF ${fmtK(rg)}`; return null; })(), couleur: C.primaire },
+                  { label: 'Facturé', val: `CHF ${fmtK(montantFactureLie)}`, sub: `${pctFacture}% du devis`, couleur: pctFacture >= 100 ? C.secondaire : pctFacture > 0 ? C.info : '#78909c' },
                   { label: 'Encaissé', val: `CHF ${fmtK(montantPayeLie)}`, sub: `${pctEncaisse}% du devis`, couleur: pctEncaisse >= 100 ? C.secondaire : pctEncaisse > 0 ? C.warning : '#78909c' },
                 ].map(s => (
                   <div key={s.label} style={{ background: s.couleur + '12', border: `1px solid ${s.couleur}28`, borderRadius: 12, padding: '14px 16px' }}>
@@ -2871,7 +2871,7 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
               <input type="checkbox" checked={form.inclusSamedi || false} onChange={e => setForm({ ...form, inclusSamedi: e.target.checked })} />
               Inclure le samedi</label></div>
             <div>
-              <label style={labelStyle}>👥 Personnes prévues</label>
+              <label style={labelStyle}>Personnes prévues</label>
               <input type="number" min="1" placeholder="Ex: 3"
                 value={form.nombrePersonnes || ''}
                 onChange={e => setForm({ ...form, nombrePersonnes: e.target.value })}
@@ -2948,7 +2948,7 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
                     })}
                   </select>
                   {erreurs.devisId
-                    ? <div style={{ color: '#ef4444', fontSize: 12, marginTop: 5, fontWeight: 600 }}>⛔ {erreurs.devisId}</div>
+                    ? <div style={{ color: '#ef4444', fontSize: 12, marginTop: 5, fontWeight: 600 }}>{erreurs.devisId}</div>
                     : !form.devisId && <div style={{ color: '#ef4444', fontSize: 11, marginTop: 4, fontWeight: 600 }}>Un devis signé est obligatoire pour créer un chantier</div>
                   }
                   {devisAcceptes.length === 0 && (
@@ -3054,7 +3054,7 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
                     {nbAuj > 0 && (
                       <div style={{ background: C.secondaire + '10', border: `1px solid ${C.secondaire}30`, borderRadius: 8, padding: '8px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                         <span style={{ fontSize: 12, color: C.secondaire, fontWeight: 600 }}>
-                          ✓ Journée déclarée — {nbAuj} employé{nbAuj > 1 ? 's' : ''} · {totalHeuresAuj}h
+                          Journée déclarée — {nbAuj} employé{nbAuj > 1 ? 's' : ''} · {totalHeuresAuj}h
                         </span>
                         <button
                           onClick={() => chantierEnForm && ouvrirSaisieHeures(chantierEnForm)}
@@ -3180,7 +3180,7 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
         const getDecisionChantier = (etatC) => {
           // Incohérent — coûts saisis sans journées
           if (etatC.totalJoursReels === 0 && etatC.coutTotalReel > 0)
-            return { icone: '⚪', label: 'Incohérent', couleur: '#90a4ae', message: 'Activité sans suivi', sous: 'Des coûts sont saisis sans journées déclarées', niveau: 'warning', priorite: 4 };
+            return { icone: '', label: 'Incohérent', couleur: '#90a4ae', message: 'Activité sans suivi', sous: 'Des coûts sont saisis sans journées déclarées', niveau: 'warning', priorite: 4 };
           // Terminé — avec variantes retard/avance/finalisé + marge
           if (etatC.avancementPct >= 100) {
             const msgT = etatC.deriveJours > 0
@@ -3191,7 +3191,7 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
             const sousT = (etatC.projectionDisponible && etatC.margeEstimee !== null)
               ? etatC.margeEstimee >= 0 ? `+CHF ${fmtN(Math.round(etatC.margeEstimee))} de marge` : `Perte CHF ${fmtN(Math.abs(Math.round(etatC.margeEstimee)))}`
               : null;
-            return { icone: '⚫', label: 'Terminé', couleur: '#78909c', message: msgT, sous: sousT, niveau: 'ok', priorite: 5 };
+            return { icone: '', label: 'Terminé', couleur: '#78909c', message: msgT, sous: sousT, niveau: 'ok', priorite: 5 };
           }
           // Retard critique — sous-texte perte si les deux sont vrais
           if (etatC.deriveJours >= 5)
@@ -3268,7 +3268,7 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
           }
           return null;
         };
-        const DECISION_INVALIDE = { icone: '⚪', label: 'Données invalides', couleur: '#90a4ae', message: 'Impossible d\'analyser ce chantier', sous: 'Vérifier les données saisies', niveau: 'invalid', priorite: 0 };
+        const DECISION_INVALIDE = { icone: '', label: 'Données invalides', couleur: '#90a4ae', message: 'Impossible d\'analyser ce chantier', sous: 'Vérifier les données saisies', niveau: 'invalid', priorite: 0 };
         const scored = [...chantiersFiltres].map(c => {
           const etatC = calculerEtatChantier(c, parametres.employes, devis);
           const coherence = assertEtatCoherent(etatC);
@@ -3677,7 +3677,7 @@ function Devis({ devis, setDevis, clients, parametres, naviguer, setChantiers, c
                 <button
                   onClick={() => setForm({ ...form, heuresRegie: form.heuresRegie.filter((_, j) => j !== i) })}
                   style={{ ...DS.btnDanger, padding: '6px 10px', fontSize: 12 }}
-                >✕</button>
+                >×</button>
               </div>
             ))}
             {(form.heuresRegie || []).length > 0 && (() => {
@@ -3725,7 +3725,7 @@ function Devis({ devis, setDevis, clients, parametres, naviguer, setChantiers, c
                   <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '2px' }}>{client?.entreprise || 'Client inconnu'} — {client?.prenom} {client?.nom}</div>
                   <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '8px' }}>{d.notes?.split('\n')[0] || '—'}</div>
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                    <span onClick={() => client && naviguer('clients', { clientActif: client.id })} style={{ fontSize: '11px', fontWeight: 600, background: 'var(--bg-glass-2)', border: '1px solid var(--border-hover)', color: 'var(--text-secondary)', padding: '3px 10px', borderRadius: '20px', cursor: 'pointer' }}>👥 Voir client →</span>
+                    <span onClick={() => client && naviguer('clients', { clientActif: client.id })} style={{ fontSize: '11px', fontWeight: 600, background: 'var(--bg-glass-2)', border: '1px solid var(--border-hover)', color: 'var(--text-secondary)', padding: '3px 10px', borderRadius: '20px', cursor: 'pointer' }}>Voir client →</span>
                     {chantierLie && (
                       <span onClick={() => naviguer('chantiers', { chantierActif: chantierLie.id })} style={{ fontSize: '11px', fontWeight: 700, background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.3)', color: '#10b981', padding: '3px 10px', borderRadius: '20px', cursor: 'pointer' }}>{chantierLie.numero} →</span>
                     )}
@@ -3782,7 +3782,7 @@ function Clients({ clients, setClients, chantiers, devis = [], naviguer }) {
       </div>
       {ajout && (
         <div style={carteStyle}>
-          <div className="ds-card-title">{form.id ? '✏️ Modifier' : 'Nouveau'} client</div>
+          <div className="ds-card-title">{form.id ? 'Modifier' : 'Nouveau'} client</div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '15px', marginBottom: '15px' }}>
             {[['Prénom *', 'prenom', 'Marc'], ['Nom *', 'nom', 'Dupont'], ['Entreprise', 'entreprise', 'Dupont SA'], ['Téléphone', 'telephone', '022 000 00 00'], ['Email', 'email', 'email@example.ch'], ['Adresse', 'adresse', 'Rue...'], ['Ville', 'ville', 'Genève'], ['Canton', 'canton', 'GE']].map(([label, key, ph]) => (
               <div key={key}><label style={labelStyle}>{label}</label>
@@ -3825,8 +3825,8 @@ function Clients({ clients, setClients, chantiers, devis = [], naviguer }) {
               <div style={{ marginTop: '12px' }}>
                 <div style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)' }}>{c.prenom} {c.nom}</div>
                 <div style={{ color: 'var(--text-secondary)', fontSize: '12px', marginTop: '3px' }}>{c.entreprise}</div>
-                <div style={{ color: 'var(--text-muted)', fontSize: '12px' }}>📍 {c.adresse}, {c.ville}</div>
-                <div style={{ color: 'var(--text-muted)', fontSize: '12px' }}>📞 {c.telephone} · ✉️ {c.email}</div>
+                <div style={{ color: 'var(--text-muted)', fontSize: '12px' }}>{c.adresse}, {c.ville}</div>
+                <div style={{ color: 'var(--text-muted)', fontSize: '12px' }}>{c.telephone} · {c.email}</div>
               </div>
               <div style={{ marginTop: '14px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                 <div style={{ background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.18)', borderRadius: '10px', padding: '10px', textAlign: 'center' }}>
@@ -3933,8 +3933,8 @@ function Employes({ parametres, setParametres, chantiers, naviguer }) {
               </div>
               <div style={{ marginTop: '12px' }}>
                 <div style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)' }}>{e.nom}</div>
-                {e.telephone && <div style={{ color: 'var(--text-secondary)', fontSize: '12px', marginTop: '3px' }}>📞 {e.telephone}</div>}
-                {e.email && <div style={{ color: 'var(--text-muted)', fontSize: '12px' }}>✉️ {e.email}</div>}
+                {e.telephone && <div style={{ color: 'var(--text-secondary)', fontSize: '12px', marginTop: '3px' }}>{e.telephone}</div>}
+                {e.email && <div style={{ color: 'var(--text-muted)', fontSize: '12px' }}>{e.email}</div>}
               </div>
               <div style={{ marginTop: '14px', display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' }}>
                 {[
@@ -3995,8 +3995,8 @@ function EditEmployeRow({ e, parametres, sauv }) {
       <td style={tdStyle}><input value={ed.email || ''} onChange={ev => setEd({ ...ed, email: ev.target.value })} style={{ ...inputStyle, padding: '5px 8px' }} /></td>
       <td style={tdStyle}>
         <div style={{ display: 'flex', gap: 4 }}>
-          <button onClick={() => { sauv({ ...parametres, employes: parametres.employes.map(emp => emp.id === e.id ? { ...ed, tarifJour: parseFloat(ed.tarifJour) } : emp) }); setEditing(false); }} style={btnSucces}>✓</button>
-          <button onClick={() => setEditing(false)} style={btnDanger}>✕</button>
+          <button onClick={() => { sauv({ ...parametres, employes: parametres.employes.map(emp => emp.id === e.id ? { ...ed, tarifJour: parseFloat(ed.tarifJour) } : emp) }); setEditing(false); }} style={btnSucces}>OK</button>
+          <button onClick={() => setEditing(false)} style={btnDanger}>×</button>
         </div>
       </td>
     </tr>
@@ -4023,10 +4023,10 @@ function Parametres({ parametres, setParametres, clients = [], setClients = () =
     { id: 'chantiers', label: 'Chantiers', desc: 'Statuts et priorités' },
     { id: 'devis', label: 'Devis', desc: 'Marges et tarifs' },
     { id: 'employes', label: 'Employés', desc: 'Tarifs journaliers' },
-    { id: 'clients_param', label: '👥 Clients', desc: 'Carnet d\'adresses' },
-    { id: 'localites', label: '🚗 Localités', desc: 'Frais déplacement' },
+    { id: 'clients_param', label: 'Clients', desc: 'Carnet d\'adresses' },
+    { id: 'localites', label: 'Localités', desc: 'Frais déplacement' },
     { id: 'travaux', label: 'Travaux', desc: 'Types et tarifs' },
-    { id: 'zones', label: '📍 Zones géo.', desc: 'Tarifs par région' },
+    { id: 'zones', label: 'Zones géo.', desc: 'Tarifs par région' },
     { id: 'metrage', label: 'Métrage', desc: 'Rendements équipe' },
     { id: 'qualite', label: 'Qualité', desc: 'Checklists' },
     { id: 'paiements', label: 'Paiements', desc: 'Délais et rappels' },
@@ -4045,7 +4045,7 @@ function Parametres({ parametres, setParametres, clients = [], setClients = () =
           boxShadow: '0 8px 32px rgba(16,185,129,0.35)', backdropFilter: 'blur(12px)',
           animation: 'fadeIn 0.2s ease',
         }}>
-          <span style={{ fontSize: 18 }}>✓</span>
+          <span style={{ fontSize: 18 }}>✔</span>
           <span style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: 14 }}>Paramètres enregistrés</span>
         </div>
       )}
@@ -4264,12 +4264,12 @@ function Parametres({ parametres, setParametres, clients = [], setClients = () =
           <div className="ds-card-title" style={{ marginBottom: '20px' }}>Paramètres du Métrage</div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '20px' }}>
             {[
-              { label: '🔵 Rendement fp surélevé (m²/j)', key: 'rendementFPSureleve', defaut: 70 },
+              { label: 'Rendement fp surélevé (m²/j)', key: 'rendementFPSureleve', defaut: 70 },
               { label: 'Rendement fp non démontable', key: 'rendementFPNonDemo', defaut: 80 },
-              { label: '🟣 Rendement dallettes doubles', key: 'rendementDallettes', defaut: 40 },
+              { label: 'Rendement dallettes doubles', key: 'rendementDallettes', defaut: 40 },
               { label: 'Rendement moquette', key: 'rendementMoquette', defaut: 120 },
               { label: 'Rendement carrelage', key: 'rendementCarrelage', defaut: 35 },
-              { label: '🔸 Rendement joint (ml/j)', key: 'rendementJoint', defaut: 60 },
+              { label: 'Rendement joint (ml/j)', key: 'rendementJoint', defaut: 60 },
             ].map(s => (
               <div key={s.key} style={{ background: 'var(--bg-glass-2)', border: '1px solid var(--border)', borderRadius: '10px', padding: '12px' }}>
                 <label style={labelStyle}>{s.label}</label>
@@ -4281,7 +4281,7 @@ function Parametres({ parametres, setParametres, clients = [], setClients = () =
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '15px' }}>
             {[
-              ["💶 Tarif chef d'équipe (CHF/j)", 'tarifChefEquipe', 450],
+              ["Tarif chef d'équipe (CHF/j)", 'tarifChefEquipe', 450],
               ['Tarif ouvrier qualifié (CHF/j)', 'tarifOuvrier', 350],
               ["Tarif main d'œuvre (CHF/j)", 'tarifMainOeuvre', 280],
             ].map(([label, key, defaut]) => (

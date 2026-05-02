@@ -193,7 +193,7 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
     { id: 'rentabilite', label: 'Rentabilité nette' },
     { id: 'derive',      label: 'Dérive devis' },
     { id: 'chantiers',   label: 'Prévu vs Réel' },
-    { id: 'clients',     label: '👥 Clients' },
+    { id: 'clients',     label: 'Clients' },
     { id: 'employes',    label: 'Coût horaire' },
     { id: 'corps',       label: 'Corps de métier' },
     { id: 'projection',  label: 'Projections' },
@@ -229,7 +229,7 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
             <div className="ds-card-title">Paramètres fiscaux et sociaux</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px' }}>
               {[
-                { label: '👥 Charges sociales (%)', val: tauxChargesSociales, set: setTauxChargesSociales },
+                { label: 'Charges sociales (%)', val: tauxChargesSociales, set: setTauxChargesSociales },
                 { label: 'Frais généraux (%)', val: tauxFraisGeneraux, set: setTauxFraisGeneraux },
                 { label: 'Taux d\'imposition (%)', val: tauxImpots, set: setTauxImpots },
               ].map(s => (
@@ -259,12 +259,12 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               {[
                 { label: 'Chiffre d\'affaires total', val: caTotal, pct: 100, couleur: '#10b981', bg: 'rgba(16,185,129,0.08)', bold: false, big: false },
-                { label: '➖ Coûts directs chantiers', val: -coutsTotal, pct: -(coutsTotal / caTotal * 100).toFixed(1), couleur: '#ef4444', bg: 'rgba(239,68,68,0.08)', bold: false, big: false },
+                { label: 'Coûts directs chantiers', val: -coutsTotal, pct: -(coutsTotal / caTotal * 100).toFixed(1), couleur: '#ef4444', bg: 'rgba(239,68,68,0.08)', bold: false, big: false },
                 { label: '= Marge brute', val: margeAvantCharges, pct: (margeAvantCharges / caTotal * 100).toFixed(1), couleur: margeAvantCharges >= 0 ? '#10b981' : '#ef4444', bg: 'var(--bg-hover)', bold: true, big: false },
-                { label: '➖ Charges sociales', val: -chargesSociales, pct: -(chargesSociales / caTotal * 100).toFixed(1), couleur: '#f59e0b', bg: 'rgba(245,158,11,0.08)', bold: false, big: false },
-                { label: '➖ Frais généraux', val: -fraisGeneraux, pct: -(fraisGeneraux / caTotal * 100).toFixed(1), couleur: '#f59e0b', bg: 'rgba(245,158,11,0.08)', bold: false, big: false },
+                { label: 'Charges sociales', val: -chargesSociales, pct: -(chargesSociales / caTotal * 100).toFixed(1), couleur: '#f59e0b', bg: 'rgba(245,158,11,0.08)', bold: false, big: false },
+                { label: 'Frais généraux', val: -fraisGeneraux, pct: -(fraisGeneraux / caTotal * 100).toFixed(1), couleur: '#f59e0b', bg: 'rgba(245,158,11,0.08)', bold: false, big: false },
                 { label: '= Résultat avant impôts', val: margeAvantImpots, pct: (margeAvantImpots / caTotal * 100).toFixed(1), couleur: margeAvantImpots >= 0 ? '#10b981' : '#ef4444', bg: 'var(--bg-hover)', bold: true, big: false },
-                { label: '➖ Impôts estimés', val: -impots, pct: -(impots / caTotal * 100).toFixed(1), couleur: '#ef4444', bg: 'rgba(239,68,68,0.08)', bold: false, big: false },
+                { label: 'Impôts estimés', val: -impots, pct: -(impots / caTotal * 100).toFixed(1), couleur: '#ef4444', bg: 'rgba(239,68,68,0.08)', bold: false, big: false },
                 { label: '= MARGE NETTE', val: margeNette, pct: margeNettePct, couleur: margeNette >= 0 ? '#10b981' : '#ef4444', bg: margeNette >= 0 ? 'rgba(16,185,129,0.12)' : 'rgba(239,68,68,0.10)', bold: true, big: true },
               ].map((s) => (
                 <div key={s.label} style={{ background: s.bg, borderRadius: '10px', padding: s.big ? '18px 20px' : '12px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: s.bold ? `2px solid ${s.couleur}` : 'none' }}>
@@ -346,8 +346,8 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
                   sousEstime: { couleur: '#ef4444', bg: '#ef444410', label: 'Sous-estimé',   conseil: 'Augmente tes prix ou réduis la durée estimée sur ce type.' },
                   attention:  { couleur: '#f59e0b', bg: '#f59e0b10', label: 'À surveiller',  conseil: 'Légère tendance à dépasser — surveille les prochains devis.' },
                   surEstime:  { couleur: '#10b981', bg: '#10b98110', label: 'Sur-estimé',    conseil: 'Tu es conservateur — tu peux affiner tes prix pour être plus compétitif.' },
-                  ok:         { couleur: '#10b981', bg: '#10b98110', label: '✓ Bien estimé',    conseil: 'Bonne maîtrise de ce type de chantier.' },
-                  inconnu:    { couleur: '#6b7280', bg: '#6b728010', label: '⚪ Données insuffisantes', conseil: 'Ajoute plus de chantiers liés à des devis.' },
+                  ok:         { couleur: '#10b981', bg: '#10b98110', label: 'Bien estimé',    conseil: 'Bonne maîtrise de ce type de chantier.' },
+                  inconnu:    { couleur: '#6b7280', bg: '#6b728010', label: 'Données insuffisantes', conseil: 'Ajoute plus de chantiers liés à des devis.' },
                 }[d.signal];
                 const fmtPct  = (v, plus = true) => v === null ? '—' : `${plus && v > 0 ? '+' : ''}${v.toFixed(1)}%`;
                 const fmtJours = (v) => v === null ? '—' : `${v > 0 ? '+' : ''}${v.toFixed(0)}%`;
@@ -620,7 +620,7 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
                   const c = couleurMarge(t.margePct);
                   return (
                     <div key={t.nom} style={{ background: c + '10', border: `1px solid ${c}28`, borderRadius: '14px', padding: '20px', flex: 1, textAlign: 'center' }}>
-                      <div style={{ fontSize: '24px', marginBottom: '8px' }}>{['🥇', '🥈', '🥉'][i]}</div>
+                      <div style={{ fontSize: '24px', marginBottom: '8px' }}>{['1er', '2e', '3e'][i]}</div>
                       <div style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{t.nom}</div>
                       <div style={{ fontSize: '22px', fontWeight: 800, color: c, letterSpacing: '-0.3px', marginTop: '4px' }}>{t.margePct}%</div>
                       <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '3px' }}>CHF {t.margeParM2}/m²</div>
@@ -657,9 +657,9 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
             <div className="ds-section-label" style={{ marginTop: 20 }}>Projection marge nette annuelle</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '15px' }}>
               {[
-                { scenario: '📉 Pessimiste (-20%)', ca: projectionAnnuelle * 0.8 },
+                { scenario: 'Pessimiste (-20%)', ca: projectionAnnuelle * 0.8 },
                 { scenario: 'Réaliste', ca: projectionAnnuelle },
-                { scenario: '📈 Optimiste (+20%)', ca: projectionAnnuelle * 1.2 },
+                { scenario: 'Optimiste (+20%)', ca: projectionAnnuelle * 1.2 },
               ].map((s, i) => {
                 const couts = s.ca * (coutsTotal / caTotal || 0.6);
                 const chargesSoc = couts * (tauxChargesSociales / 100);
@@ -693,7 +693,7 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
         <div>
           {donneesClients.length === 0 ? (
             <div className="empty-state">
-              <div className="empty-state-icon">👥</div>
+              <div className="empty-state-icon" style={{ fontSize: 32, color: "var(--text-muted)" }}>—</div>
               <div className="empty-state-title">Aucun client avec données</div>
               <div className="empty-state-sub">Associez des clients à vos chantiers pour voir leur rentabilité</div>
             </div>
@@ -720,7 +720,7 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
                 <div style={{ display: 'flex', gap: 14, marginBottom: 20, flexWrap: 'wrap' }}>
                   {donneesClients.slice(0, 3).map((cl, i) => {
                     const couleurs = ['#f59e0b', '#94a3b8', '#cd7c2f'];
-                    const medailles = ['🥇', '🥈', '🥉'];
+                    const medailles = ['1er', '2e', '3e'];
                     const r = statutRentabilite(cl.margePct);
                     return (
                       <div key={cl.id} className="premium-card" style={{ flex: 1, minWidth: 180,
@@ -778,7 +778,7 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px,1fr))', gap: 20 }}>
               {[
                 { label: 'CA annuel cible (CHF)', key: 'caAnnuel', type: 'number' },
-                { label: '📈 Marge nette cible (%)', key: 'margeCible', type: 'number' },
+                { label: 'Marge nette cible (%)', key: 'margeCible', type: 'number' },
                 { label: 'Nb chantiers cible', key: 'nbChantiers', type: 'number' },
               ].map(f => (
                 <div key={f.key}>

@@ -95,14 +95,14 @@ function Tresorerie({ factures = [], chantiers = [], clients = [], devis = [] })
   const urgenceConfig = {
     retard:  { couleur: '#ef4444', bg: '#ef444410', label: 'En retard',    dot: 'red' },
     urgent:  { couleur: '#f59e0b', bg: '#f59e0b10', label: '≤ 7 jours',   dot: 'yellow' },
-    proche:  { couleur: '#3b82f6', bg: '#3b82f610', label: '≤ 30 jours',  dot: '🔵' },
-    normal:  { couleur: '#6b7280', bg: '#6b728010', label: '> 30 jours',  dot: '⚪' },
+    proche:  { couleur: '#3b82f6', bg: '#3b82f610', label: '≤ 30 jours',  dot: '●' },
+    normal:  { couleur: '#6b7280', bg: '#6b728010', label: '> 30 jours',  dot: '○' },
   };
 
   const signalConfig = {
     danger:  { couleur: '#ef4444', bg: '#ef444412', icone: 'danger', texte: 'Encaissements critiques en retard — relancer immédiatement' },
     warning: { couleur: '#f59e0b', bg: '#f59e0b12', icone: 'warning', texte: 'Des paiements arrivent bientôt — anticiper les relances' },
-    ok:      { couleur: '#10b981', bg: '#10b98112', icone: '✓',  texte: 'Situation cash saine — aucune urgence détectée' },
+    ok:      { couleur: '#10b981', bg: '#10b98112', icone: '',  texte: 'Situation cash saine — aucune urgence détectée' },
   };
   const signal = signalConfig[data.signalCash];
 
@@ -173,7 +173,7 @@ function Tresorerie({ factures = [], chantiers = [], clients = [], devis = [] })
             <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--text-muted)', fontWeight: 500 }}>{data.impayees.length} facture{data.impayees.length !== 1 ? 's' : ''}</span>
           </div>
           {data.impayees.length === 0 ? (
-            <div style={{ color: 'var(--text-muted)', fontSize: 13, textAlign: 'center', padding: '20px 0' }}>✓ Aucune facture en attente</div>
+            <div style={{ color: 'var(--text-muted)', fontSize: 13, textAlign: 'center', padding: '20px 0' }}>Aucune facture en attente</div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 380, overflowY: 'auto' }}>
               {data.impayees.map(f => {
@@ -209,7 +209,7 @@ function Tresorerie({ factures = [], chantiers = [], clients = [], devis = [] })
             <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--text-muted)', fontWeight: 500 }}>{data.aFacturer.length} chantier{data.aFacturer.length !== 1 ? 's' : ''}</span>
           </div>
           {data.aFacturer.length === 0 ? (
-            <div style={{ color: 'var(--text-muted)', fontSize: 13, textAlign: 'center', padding: '20px 0' }}>✓ Tous les chantiers sont à jour</div>
+            <div style={{ color: 'var(--text-muted)', fontSize: 13, textAlign: 'center', padding: '20px 0' }}>Tous les chantiers sont à jour</div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 380, overflowY: 'auto' }}>
               {data.aFacturer.map(c => (
@@ -274,8 +274,8 @@ export default function Finances({
   }, [facturesPeriode]);
 
   const tabs = [
-    { id: 'tresorerie', label: '📈 Trésorerie',          count: null },
-    { id: 'factures',   label: '🧾 Factures',            count: facturesPeriode.filter(f => f.statut !== 'annulee').length },
+    { id: 'tresorerie', label: 'Trésorerie',          count: null },
+    { id: 'factures',   label: 'Factures',            count: facturesPeriode.filter(f => f.statut !== 'annulee').length },
     { id: 'paiements',  label: 'Paiements chantiers', count: null },
   ];
 

@@ -7,14 +7,14 @@ const inputStyle = DS.input;
 const labelStyle = DS.label;
 
 const TYPES_POSTES = [
-  { id: 'fp_sureleve', nom: 'Faux-plancher surélevé démontable', unite: 'm²', couleur: '#2196F3', couleurBg: 'rgba(33,150,243,0.12)', icone: '🔵', tarifDefaut: 180, rendementEquipeDefaut: 70, description: 'LIGNA, FORBO Gateway, pose démontable', formats: ['600x600', '600x800', '800x800'] },
+  { id: 'fp_sureleve', nom: 'Faux-plancher surélevé démontable', unite: 'm²', couleur: '#2196F3', couleurBg: 'rgba(33,150,243,0.12)', icone: '■', tarifDefaut: 180, rendementEquipeDefaut: 70, description: 'LIGNA, FORBO Gateway, pose démontable', formats: ['600x600', '600x800', '800x800'] },
   { id: 'fp_non_demontable', nom: 'Faux-plancher non démontable', unite: 'm²', couleur: '#FF9800', couleurBg: 'rgba(255,152,0,0.12)', icone: 'warning', tarifDefaut: 150, rendementEquipeDefaut: 80, description: 'FLOOR and more, pose fixe', formats: ['600x600', '800x800'] },
-  { id: 'dallettes_doubles', nom: 'Dallettes doubles / Verbund', unite: 'm²', couleur: '#9C27B0', couleurBg: 'rgba(156,39,176,0.12)', icone: '🟣', tarifDefaut: 220, rendementEquipeDefaut: 40, description: 'Double dallettes, zones techniques', formats: ['600x600', '600x1200'] },
+  { id: 'dallettes_doubles', nom: 'Dallettes doubles / Verbund', unite: 'm²', couleur: '#9C27B0', couleurBg: 'rgba(156,39,176,0.12)', icone: '■', tarifDefaut: 220, rendementEquipeDefaut: 40, description: 'Double dallettes, zones techniques', formats: ['600x600', '600x1200'] },
   { id: 'revetement_moquette', nom: 'Revêtement moquette', unite: 'm²', couleur: '#4CAF50', couleurBg: 'rgba(76,175,80,0.12)', icone: 'ok', tarifDefaut: 45, rendementEquipeDefaut: 120, description: 'FORBO Girlles ADILA, pose collée', formats: ['Rouleau', 'Dalle 500x500'] },
   { id: 'revetement_carrelage', nom: 'Revêtement carrelage', unite: 'm²', couleur: '#F44336', couleurBg: 'rgba(244,67,54,0.12)', icone: 'danger', tarifDefaut: 85, rendementEquipeDefaut: 35, description: 'Carrelage sur faux-plancher', formats: ['600x600', '300x600', '300x300'] },
-  { id: 'portes_acces', nom: "Portes et trappes d'accès", unite: 'unité', couleur: '#795548', couleurBg: 'rgba(121,85,72,0.12)', icone: '🟤', tarifDefaut: 350, rendementEquipeDefaut: 8, description: "Trappes d'accès, joints de dilatation", formats: ['600x600', '600x1200'] },
-  { id: 'depose', nom: 'Dépose / démontage existant', unite: 'm²', couleur: '#607D8B', couleurBg: 'rgba(96,125,139,0.12)', icone: '⚫', tarifDefaut: 25, rendementEquipeDefaut: 150, description: 'Dépose faux-plancher existant', formats: ['-'] },
-  { id: 'joint_dilatation', nom: 'Joint de dilatation', unite: 'ml', couleur: '#FF5722', couleurBg: 'rgba(255,87,34,0.12)', icone: '🔸', tarifDefaut: 45, rendementEquipeDefaut: 60, description: 'Joints périphériques et de dilatation', formats: ['-'] },
+  { id: 'portes_acces', nom: "Portes et trappes d'accès", unite: 'unité', couleur: '#795548', couleurBg: 'rgba(121,85,72,0.12)', icone: '■', tarifDefaut: 350, rendementEquipeDefaut: 8, description: "Trappes d'accès, joints de dilatation", formats: ['600x600', '600x1200'] },
+  { id: 'depose', nom: 'Dépose / démontage existant', unite: 'm²', couleur: '#607D8B', couleurBg: 'rgba(96,125,139,0.12)', icone: '■', tarifDefaut: 25, rendementEquipeDefaut: 150, description: 'Dépose faux-plancher existant', formats: ['-'] },
+  { id: 'joint_dilatation', nom: 'Joint de dilatation', unite: 'ml', couleur: '#FF5722', couleurBg: 'rgba(255,87,34,0.12)', icone: '■', tarifDefaut: 45, rendementEquipeDefaut: 60, description: 'Joints périphériques et de dilatation', formats: ['-'] },
 ];
 
 const HAUTEURS_STANDARD = ['80mm', '100mm', '120mm', '128mm', '150mm', '180mm', '200mm', '250mm', '300mm', 'Autre'];
@@ -104,8 +104,8 @@ export default function MetragePlan({ parametres, onCreerChantier, onCreerDevis 
           <div className="page-title-sub">Saisie assistée avec visualisation du plan</div>
         </div>
         <div className="page-actions-group">
-          <button onClick={() => setAfficherTarifs(!afficherTarifs)} style={{ ...DS.btnGhost }}>⚙️ Tarifs</button>
-          <button onClick={() => fileRef.current?.click()} style={{ ...DS.btnPrimary }}>📄 Charger plan PDF/Image</button>
+          <button onClick={() => setAfficherTarifs(!afficherTarifs)} style={{ ...DS.btnGhost }}>Tarifs</button>
+          <button onClick={() => fileRef.current?.click()} style={{ ...DS.btnPrimary }}>Charger plan PDF/Image</button>
           <input ref={fileRef} type="file" accept=".pdf,.png,.jpg,.jpeg" style={{ display: 'none' }}
             onChange={e => e.target.files[0] && chargerPlan(e.target.files[0])} />
         </div>
@@ -138,7 +138,7 @@ export default function MetragePlan({ parametres, onCreerChantier, onCreerDevis 
           </div>
           {nomFichier && (
             <div style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '20px', padding: '6px 14px', fontSize: '12px', color: 'var(--text-secondary)', fontFamily: 'Inter, sans-serif' }}>
-              📄 {nomFichier}
+              {nomFichier}
             </div>
           )}
         </div>
@@ -216,8 +216,8 @@ export default function MetragePlan({ parametres, onCreerChantier, onCreerDevis 
               {[
                 { label: 'Rendement fp/jour', val: `${rendementFP} m²/jour`, couleur: '#10b981' },
                 { label: 'Coût équipe/jour', val: `CHF ${coutEquipeJour.toLocaleString()}`, couleur: C.warning },
-                { label: '📆 Pour 1000 m²', val: `${Math.ceil(1000 / rendementFP)} jours`, couleur: C.secondaire },
-                { label: '📆 Pour 1500 m²', val: `${Math.ceil(1500 / rendementFP)} jours`, couleur: C.violet },
+                { label: 'Pour 1000 m²', val: `${Math.ceil(1000 / rendementFP)} jours`, couleur: C.secondaire },
+                { label: 'Pour 1500 m²', val: `${Math.ceil(1500 / rendementFP)} jours`, couleur: C.violet },
               ].map(s => (
                 <div key={s.label} style={{ background: 'var(--bg-hover)', borderRadius: '8px', padding: '10px 15px', flex: 1, borderLeft: `3px solid ${s.couleur}` }}>
                   <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>{s.label}</div>
@@ -276,7 +276,7 @@ export default function MetragePlan({ parametres, onCreerChantier, onCreerDevis 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
               <div className="ds-card-title" style={{ margin: 0 }}>Plan — {echelle}</div>
               <button onClick={() => setAfficherPlan(false)}
-                style={{ background: 'var(--bg-hover)', border: '1px solid var(--border)', color: 'var(--text-primary)', padding: '5px 10px', borderRadius: '5px', cursor: 'pointer' }}>✕</button>
+                style={{ background: 'var(--bg-hover)', border: '1px solid var(--border)', color: 'var(--text-primary)', padding: '5px 10px', borderRadius: '5px', cursor: 'pointer' }}>×</button>
             </div>
             <img src={planImage} alt="Plan" style={{ width: '100%', borderRadius: '8px', border: '1px solid var(--border)' }} />
             <div style={{ marginTop: '15px' }}>
@@ -319,7 +319,7 @@ export default function MetragePlan({ parametres, onCreerChantier, onCreerDevis 
               </div>
               <button onClick={() => setAfficherTarifs(!afficherTarifs)}
                 style={{ background: '#3b82f6', color: 'white', border: 'none', padding: '8px 15px', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: 600 }}>
-                ✏️ Modifier
+                Modifier
               </button>
             </div>
           </div>
@@ -484,7 +484,7 @@ export default function MetragePlan({ parametres, onCreerChantier, onCreerDevis 
                 {[
                   { label: 'Prix minimum', val: Math.round(coutRevient * 1.1 / Math.max(surfaceTotale, 1)), total: Math.round(coutRevient * 1.1), desc: 'Marge 10% — Risqué', couleur: C.danger, bg: 'rgba(239,68,68,0.1)' },
                   { label: 'Prix conseillé', val: Math.round(prixVente / Math.max(surfaceTotale, 1)), total: Math.round(prixVente), desc: `Marge ${margeCible}% — Recommandé`, couleur: C.secondaire, bg: 'rgba(16,185,129,0.1)' },
-                  { label: '💎 Prix premium', val: Math.round(prixVente * 1.15 / Math.max(surfaceTotale, 1)), total: Math.round(prixVente * 1.15), desc: 'Marge +15% — Haut de gamme', couleur: C.violet, bg: 'rgba(139,92,246,0.1)' },
+                  { label: 'Prix premium', val: Math.round(prixVente * 1.15 / Math.max(surfaceTotale, 1)), total: Math.round(prixVente * 1.15), desc: 'Marge +15% — Haut de gamme', couleur: C.violet, bg: 'rgba(139,92,246,0.1)' },
                 ].map((s, i) => (
                   <div key={i} style={{ background: s.bg, border: `2px solid ${s.couleur}`, borderRadius: '10px', padding: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div>

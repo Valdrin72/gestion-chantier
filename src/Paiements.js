@@ -92,9 +92,9 @@ export default function Paiements({ chantiers, clients, paiementsData, setPaieme
             <div>
               <div className="page-title-main" style={{ fontSize: 20, marginBottom: 4 }}>{c.nom}</div>
               <div style={{ color: 'var(--text-secondary)', marginTop: '5px' }}>
-                👥 {client?.prenom} {client?.nom} — {client?.entreprise}
+                {client?.prenom} {client?.nom} — {client?.entreprise}
               </div>
-              <div style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>📞 {client?.telephone} · ✉️ {client?.email}</div>
+              <div style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>{client?.telephone} · {client?.email}</div>
             </div>
             <button onClick={() => setAjoutPaiement(!ajoutPaiement)}
               style={{ ...DS.btnPrimary }}>
@@ -264,7 +264,7 @@ export default function Paiements({ chantiers, clients, paiementsData, setPaieme
                       {isPaye(p) && (
                         <button onClick={() => modifierStatut(c.id, p.id, 'En attente')}
                           style={{ ...DS.btnWarning, padding: '6px 12px', fontSize: '12px' }}>
-                          ↩️ Annuler
+                          Annuler
                         </button>
                       )}
                       <button onClick={() => supprimerPaiement(c.id, p.id)}
@@ -349,7 +349,7 @@ export default function Paiements({ chantiers, clients, paiementsData, setPaieme
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: '17px', fontWeight: 'bold', color: 'var(--text-primary)' }}>{c.nom}</div>
                   <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '3px' }}>
-                    👥 {client?.entreprise || 'N/A'} · 📍 {c.ville} · {nbPaiements} paiement(s)
+                    {client?.entreprise || 'N/A'} · {c.ville} · {nbPaiements} paiement(s)
                   </div>
 
                   {/* BARRE PROGRESSION */}
@@ -371,7 +371,7 @@ export default function Paiements({ chantiers, clients, paiementsData, setPaieme
                   {montantRetard > 0 && (
                     <div style={{ fontSize: '13px', color: '#ef4444', fontWeight: 'bold' }}>CHF {fmtN(montantRetard)} retard</div>
                   )}
-                  <div style={{ marginTop: '8px', fontSize: '12px', color: '#22d3ee' }}>👁️ Voir détail →</div>
+                  <div style={{ marginTop: '8px', fontSize: '12px', color: '#22d3ee' }}>Voir détail →</div>
                 </div>
               </div>
             </div>

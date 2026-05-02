@@ -331,10 +331,10 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
 
       {/* KPIs */}
       <div style={{ display: 'flex', gap: 16, marginBottom: 24, flexWrap: 'wrap' }}>
-        <KpiCard label="Total facturé"  value={`${fmt(kpis.totalFacture)} CHF`}  couleur="#3b82f6" icon="📄" />
+        <KpiCard label="Total facturé"  value={`${fmt(kpis.totalFacture)} CHF`}  couleur="#3b82f6" icon="doc" />
         <KpiCard label="Encaissé"       value={`${fmt(kpis.totalEncaisse)} CHF`} couleur="#10b981" icon="" />
         <KpiCard label="En retard"      value={`${fmt(kpis.totalRetard)} CHF`}   couleur="#ef4444" icon="" />
-        <KpiCard label="Brouillons"     value={kpis.nbBrouillon}                 couleur="#8b5cf6" icon="✏️" />
+        <KpiCard label="Brouillons"     value={kpis.nbBrouillon}                 couleur="#8b5cf6" icon="edit" />
       </div>
 
       {/* Filtres */}
@@ -361,7 +361,7 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
       <div style={{ ...S.card, padding: 0, overflow: 'hidden' }}>
         {facturesFiltrees.length === 0 ? (
           <div className="empty-state">
-            <div className="empty-state-icon">🧾</div>
+            <div className="empty-state-icon" style={{ fontSize: 32, color: "var(--text-muted)" }}>—</div>
             <div className="empty-state-title">Aucune facture trouvée</div>
             <div className="empty-state-sub">Modifiez vos filtres ou créez une nouvelle facture</div>
           </div>
@@ -422,7 +422,7 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
                         {canEdit && (
                           <>
                             <button style={{ ...S.btnGhost, padding: '5px 10px', fontSize: 12 }}
-                              onClick={() => ouvrirForm(f)}>✏️ Modifier</button>
+                              onClick={() => ouvrirForm(f)}>Modifier</button>
                             {f.statut === 'brouillon' && (
                               <button style={{ ...S.btnSuccess, padding: '5px 10px', fontSize: 12 }}
                                 onClick={() => changerStatut(f.id, 'envoyee')}>Émettre</button>
@@ -509,7 +509,7 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
             <BadgeStatut statut={f.statut} />
           {canEdit && (
             <>
-              <button style={S.btnGhost} onClick={() => ouvrirForm(f)}>✏️ Modifier</button>
+              <button style={S.btnGhost} onClick={() => ouvrirForm(f)}>Modifier</button>
               {f.statut === 'brouillon' && (
                 <button style={S.btnSuccess} onClick={() => { changerStatut(f.id, 'envoyee'); setSelected({ ...f, statut: 'envoyee' }); }}>Émettre</button>
               )}
@@ -518,7 +518,7 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
                   <button style={S.btnPrimary} onClick={() => setPaiementModal(f)}>Paiement</button>
                   <button style={{ ...S.btnGhost, color: '#10b981', borderColor: 'rgba(16,185,129,0.4)' }}
                     onClick={() => { changerStatut(f.id, 'payee'); setSelected({ ...f, statut: 'payee' }); }}>
-                    ✓ Payée
+                    Payée
                   </button>
                 </>
               )}
@@ -610,7 +610,7 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
               display: 'flex', justifyContent: 'space-between', alignItems: 'center',
             }}>
               <span style={{ fontSize: 13, fontWeight: 600, color: restant <= 0.01 ? '#10b981' : '#f59e0b' }}>
-                {restant <= 0.01 ? '✓ Soldée' : 'Solde restant'}
+                {restant <= 0.01 ? 'Soldée' : 'Solde restant'}
               </span>
               <span style={{ fontSize: 22, fontWeight: 800, color: restant <= 0.01 ? '#10b981' : '#f59e0b' }}>
                 {fmt(Math.max(restant, 0))} CHF
@@ -900,10 +900,10 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
         {/* Actions */}
         <div style={{ display: 'flex', gap: 12 }}>
           <button style={S.btnGhost} onClick={() => sauvegarder('brouillon')}>
-            💾 Enregistrer brouillon
+            Enregistrer brouillon
           </button>
           <button style={S.btnSuccess} onClick={() => sauvegarder('envoyee')}>
-            ✉️ Émettre la facture
+            Émettre la facture
           </button>
           {!isNew && (
             <button style={S.btnDanger} onClick={() => {

@@ -531,7 +531,7 @@ export default function ImportPDF({ parametres, onCreerDevis, onCreerChantier, o
 
           <div onClick={() => fileRef.current?.click()}
             style={{ border: '3px dashed #3b82f6', borderRadius: '16px', padding: '50px', textAlign: 'center', cursor: 'pointer', background: 'var(--bg-hover)', transition: 'all 0.2s' }}>
-            <div style={{ fontSize: '50px', marginBottom: '15px' }}>📄</div>
+            <div style={{ fontSize: '40px', marginBottom: '15px', color: 'var(--text-muted)' }}>↑</div>
             <div style={{ fontSize: '18px', fontWeight: 'bold', color: 'var(--text-primary)', marginBottom: '8px' }}>Cliquez pour sélectionner un PDF</div>
             <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Ou glissez-déposez votre fichier ici</div>
             <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '10px' }}>Formats acceptés : PDF texte (pas scanné)</div>
@@ -595,7 +595,7 @@ export default function ImportPDF({ parametres, onCreerDevis, onCreerChantier, o
 
             {metres.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '30px', color: 'var(--text-secondary)' }}>
-                <div style={{ fontSize: '40px' }}>🔍</div>
+                <div style={{ fontSize: '32px', color: 'var(--text-muted)' }}>⋯</div>
                 <div>Aucun métré détecté automatiquement</div>
                 <div style={{ fontSize: '13px', marginTop: '5px' }}>Ajoutez manuellement vos métrés avec le bouton "+ Ajouter"</div>
               </div>
@@ -706,7 +706,7 @@ export default function ImportPDF({ parametres, onCreerDevis, onCreerChantier, o
 
             {montants.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '30px', color: 'var(--text-secondary)' }}>
-                <div style={{ fontSize: '40px' }}>🔍</div>
+                <div style={{ fontSize: '32px', color: 'var(--text-muted)' }}>⋯</div>
                 <div>Aucun montant détecté automatiquement</div>
                 <div style={{ fontSize: '13px', marginTop: '5px' }}>Ajoutez manuellement vos montants avec le bouton "+ Ajouter"</div>
               </div>
@@ -779,7 +779,7 @@ export default function ImportPDF({ parametres, onCreerDevis, onCreerChantier, o
         <div>
           <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
             <button onClick={() => setEtape(typePDF === 'devis' ? 'montants' : 'metres')} style={{ background: 'var(--bg-hover)', color: 'var(--text-primary)', border: 'none', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer' }}>← Retour</button>
-            <button onClick={() => setEtape('upload')} style={{ background: '#10b981', color: 'white', border: 'none', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer' }}>📄 Nouveau PDF</button>
+            <button onClick={() => setEtape('upload')} style={{ background: '#10b981', color: 'white', border: 'none', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer' }}>Nouveau PDF</button>
           </div>
 
           {/* RÉSULTAT PRINCIPAL */}
@@ -791,7 +791,7 @@ export default function ImportPDF({ parametres, onCreerDevis, onCreerChantier, o
             {analyse && (
               <div style={{ marginBottom: '20px', border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden' }}>
                 <div style={{ padding: '10px 16px', background: analyse.qualite === 'reussie' ? 'rgba(16,185,129,0.12)' : analyse.qualite === 'partielle' ? 'rgba(245,158,11,0.12)' : 'rgba(239,68,68,0.12)', display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <span style={{ fontSize: 18 }}>{analyse.qualite === 'reussie' ? '' : analyse.qualite === 'partielle' ? '' : '✗'}</span>
+                  <span style={{ fontSize: 18 }}>{analyse.qualite === 'reussie' ? '✓' : analyse.qualite === 'partielle' ? '~' : '✗'}</span>
                   <span style={{ fontWeight: 700, color: analyse.qualite === 'reussie' ? '#10b981' : analyse.qualite === 'partielle' ? '#f59e0b' : '#ef4444' }}>
                     Analyse {analyse.qualite === 'reussie' ? 'réussie' : analyse.qualite === 'partielle' ? 'partielle' : 'incomplète'}
                   </span>
@@ -819,7 +819,7 @@ export default function ImportPDF({ parametres, onCreerDevis, onCreerChantier, o
                 )}
                 {analyse.texteBrut && (
                   <div style={{ background: 'var(--bg-card)', padding: '10px 16px', borderTop: '1px solid var(--border)' }}>
-                    <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 4, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>📄 Extrait texte brut</div>
+                    <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 4, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Extrait texte brut</div>
                     <div style={{ fontSize: 11, color: 'var(--text-secondary)', fontFamily: 'monospace', whiteSpace: 'pre-wrap', maxHeight: 80, overflow: 'hidden', lineHeight: 1.5 }}>
                       {analyse.texteBrut.substring(0, 300)}{analyse.texteBrut.length > 300 ? '…' : ''}
                     </div>
@@ -871,7 +871,7 @@ export default function ImportPDF({ parametres, onCreerDevis, onCreerChantier, o
               {[
                 { label: 'Prix minimum', val: Math.round(calculs.coutRevient * 1.1), desc: 'Marge 10% — Risqué', couleur: C.danger, bg: 'rgba(239,68,68,0.09)' },
                 { label: 'Prix conseillé', val: Math.round(calculs.prixVente), desc: `Marge ${calculs.margePct}% — Recommandé`, couleur: C.secondaire, bg: 'rgba(16,185,129,0.12)' },
-                { label: '💎 Prix premium', val: Math.round(calculs.prixVente * 1.15), desc: 'Marge +15% — Haut de gamme', couleur: C.violet, bg: 'rgba(139,92,246,0.12)' },
+                { label: 'Prix premium', val: Math.round(calculs.prixVente * 1.15), desc: 'Marge +15% — Haut de gamme', couleur: C.violet, bg: 'rgba(139,92,246,0.12)' },
               ].map(s => (
                 <div key={s.label} style={{ background: s.bg, border: `3px solid ${s.couleur}`, borderRadius: '14px', padding: '20px', textAlign: 'center' }}>
                   <div style={{ fontWeight: 'bold', color: s.couleur, marginBottom: '8px' }}>{s.label}</div>

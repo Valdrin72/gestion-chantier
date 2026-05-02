@@ -59,9 +59,9 @@ const checklistsDefaut = {
 
 const TYPES_CONTROLE = [
   { id: 'demarrage', label: 'Démarrage', couleur: C.info, items: checklistsDefaut.demarrage },
-  { id: 'miParcours', label: '🔍 Mi-parcours', couleur: C.warning, items: checklistsDefaut.miParcours },
-  { id: 'reception', label: '🏁 Réception', couleur: C.secondaire, items: checklistsDefaut.reception },
-  { id: 'securite', label: '🦺 Sécurité', couleur: C.danger, items: checklistsDefaut.securite },
+  { id: 'miParcours', label: 'Mi-parcours', couleur: C.warning, items: checklistsDefaut.miParcours },
+  { id: 'reception', label: 'Réception', couleur: C.secondaire, items: checklistsDefaut.reception },
+  { id: 'securite', label: 'Sécurité', couleur: C.danger, items: checklistsDefaut.securite },
 ];
 
 export default function Qualite({ chantiers, setChantiers, qualiteData, setQualiteData }) {
@@ -136,7 +136,7 @@ export default function Qualite({ chantiers, setChantiers, qualiteData, setQuali
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div>
               <div className="page-title-main" style={{ fontSize: 20, marginBottom: 4 }}>{c.nom}</div>
-              <div style={{ color: 'var(--text-secondary)', marginTop: '5px' }}>📍 {c.ville} · {c.numero}</div>
+              <div style={{ color: 'var(--text-secondary)', marginTop: '5px' }}>{c.ville} · {c.numero}</div>
             </div>
             <div style={{ textAlign: 'center' }}>
               <div style={{ fontSize: '40px', fontWeight: 700, color: couleurScore(scoreGlobal) }}>{scoreGlobal}%</div>
@@ -241,7 +241,7 @@ export default function Qualite({ chantiers, setChantiers, qualiteData, setQuali
             newData[`${c.id}_${typeActif}`] = {};
             setQualiteData(newData);
           }} style={{ ...DS.btnDanger }}>
-            🔄 Réinitialiser
+            Réinitialiser
           </button>
         </div>
       </div>
@@ -300,7 +300,7 @@ export default function Qualite({ chantiers, setChantiers, qualiteData, setQuali
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div style={{ flex: 1 }}>
                     <div style={{ fontSize: '17px', fontWeight: 'bold', color: 'var(--text-primary)' }}>{c.nom}</div>
-                    <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '3px' }}>📍 {c.ville} · {c.statut} · {c.numero}</div>
+                    <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '3px' }}>{c.ville} · {c.statut} · {c.numero}</div>
                     <div style={{ display: 'flex', gap: '15px', marginTop: '12px', flexWrap: 'wrap' }}>
                       {scores.map(t => (
                         <div key={t.id} style={{ textAlign: 'center' }}>
@@ -321,7 +321,7 @@ export default function Qualite({ chantiers, setChantiers, qualiteData, setQuali
                         {scoreGlobal >= 80 ? 'Bon' : scoreGlobal >= 50 ? 'À améliorer' : 'Critique'}
                       </span>
                     </div>
-                    <div style={{ marginTop: '8px', fontSize: '12px', color: '#3b82f6' }}>👁️ Voir détail →</div>
+                    <div style={{ marginTop: '8px', fontSize: '12px', color: '#3b82f6' }}>Voir détail →</div>
                     <div style={{ marginTop: '8px' }}>
                       <button
                         onClick={(e) => supprimerChantier(e, c)}

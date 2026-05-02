@@ -57,7 +57,7 @@ function VueCharge({ chantiers, clients }) {
     surcharge: { couleur: '#ef4444', bg: '#ef444415', label: 'Surcharge',   icone: 'danger' },
     plein:     { couleur: '#f59e0b', bg: '#f59e0b15', label: 'Chargé',      icone: 'warning' },
     ok:        { couleur: '#10b981', bg: '#10b98115', label: 'OK',           icone: 'ok' },
-    creux:     { couleur: '#6b7280', bg: '#6b728015', label: 'Creux',        icone: '⚪' },
+    creux:     { couleur: '#6b7280', bg: '#6b728015', label: 'Creux',        icone: '' },
   };
 
   const alertes = semaines.filter(s => s.statut === 'surcharge' || s.statut === 'creux');
@@ -459,7 +459,7 @@ export default function Planning({ chantiers, setChantiers, clients, naviguer })
                     {al && j <= 5 && (
                       <div style={{ fontSize: '10px', color: al.couleur, fontWeight: 'bold' }}>{al.texte}</div>
                     )}
-                    <button onClick={() => ouvrirModal(c)} style={{ ...btnEdit, fontSize: 11, padding: '3px 10px' }}>✏️ Modifier</button>
+                    <button onClick={() => ouvrirModal(c)} style={{ ...btnEdit, fontSize: 11, padding: '3px 10px' }}>Modifier</button>
                   </div>
                 </div>
               );
@@ -555,7 +555,7 @@ export default function Planning({ chantiers, setChantiers, clients, naviguer })
                       </td>
                       <td style={{ padding: '10px 15px' }} onClick={e => e.stopPropagation()}>
                         <div style={{ display: 'flex', gap: 6 }}>
-                          <button onClick={() => ouvrirModal(c)} style={btnEdit}>✏️ Modifier</button>
+                          <button onClick={() => ouvrirModal(c)} style={btnEdit}>Modifier</button>
                           {naviguer && (
                             <button onClick={() => naviguer('chantiers', { chantierActif: c.id })} style={{ ...btnEdit, color: 'var(--text-secondary)', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}>Voir →</button>
                           )}
@@ -612,7 +612,7 @@ export default function Planning({ chantiers, setChantiers, clients, naviguer })
 
             {/* Titre */}
             <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--text-primary)', marginBottom: 6 }}>
-              ✏️ Modifier le planning
+              Modifier le planning
             </div>
             <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 24 }}>
               {modal.chantier.nom} · {modal.chantier.numero}
@@ -677,7 +677,7 @@ export default function Planning({ chantiers, setChantiers, clients, naviguer })
                 <button onClick={sauvegarderModal} style={{
                   ...DS.btnPrimary, borderRadius: 10, padding: '10px 20px', fontSize: 13,
                 }}>
-                  ✓ Sauvegarder
+                  Sauvegarder
                 </button>
               </div>
             </div>

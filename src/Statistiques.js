@@ -144,7 +144,7 @@ export default function Statistiques({ chantiers, clients, devis = [], parametre
           { titre: "CA Total", valeur: `CHF ${fmtN(caTotal)}`, couleur: COL_CA, icone: 'info' },
           { titre: "Total coûts", valeur: `CHF ${fmtN(coutsTotaux)}`, couleur: COL_COUT, icone: 'info' },
           { titre: "Rentabilité", valeur: `CHF ${fmtN(rentabilite)}`, couleur: rentabilite >= 0 ? '#10b981' : C.danger, icone: 'info' },
-          { titre: "Marge globale", valeur: `${margeGlobale}%`, couleur: couleurMarge(margeGlobale), icone: '📉' },
+          { titre: "Marge globale", valeur: `${margeGlobale}%`, couleur: couleurMarge(margeGlobale), icone: '' },
           { titre: "Chantiers", valeur: `${filtresAvecDevis.length} / ${chantiersFiltres.length}`, sub: nbSansDevis > 0 ? `${nbSansDevis} sans devis` : null, couleur: C.info, icone: 'info' },
           { titre: "Prévision 3 mois", valeur: `CHF ${fmtN(Math.round(prevision3Mois))}`, couleur: C.violet, icone: 'info' },
         ].map(s => (
@@ -166,13 +166,13 @@ export default function Statistiques({ chantiers, clients, devis = [], parametre
             }}>{s.icone}</div>
             <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--text-muted)', marginBottom: 8 }}>{s.titre}</div>
             <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1, letterSpacing: '-0.5px' }}>{s.valeur}</div>
-            {s.sub && <div style={{ fontSize: 10, fontWeight: 600, color: C.warning, marginTop: 5 }}>⚠ {s.sub}</div>}
+            {s.sub && <div style={{ fontSize: 10, fontWeight: 600, color: C.warning, marginTop: 5 }}>{s.sub}</div>}
           </div>
         ))}
       </div>
       {nbSansDevis > 0 && (
         <div style={{ background: 'rgba(245,158,11,0.07)', border: '1px solid rgba(245,158,11,0.2)', borderRadius: 10, padding: '10px 16px', marginBottom: 20, fontSize: 12, color: C.warning, fontWeight: 600 }}>
-          ⚠ {nbSansDevis} chantier{nbSansDevis > 1 ? 's' : ''} exclu{nbSansDevis > 1 ? 's' : ''} des totaux financiers — aucun devis lié.
+          {nbSansDevis} chantier{nbSansDevis > 1 ? 's' : ''} exclu{nbSansDevis > 1 ? 's' : ''} des totaux financiers — aucun devis lié.
         </div>
       )}
 
@@ -195,7 +195,7 @@ export default function Statistiques({ chantiers, clients, devis = [], parametre
 
       {/* GRAPHIQUE ÉVOLUTION MARGE */}
       <div style={carteStyle}>
-        <div className="ds-card-title" style={{ marginBottom: 16 }}>📈 Évolution de la marge (%)</div>
+        <div className="ds-card-title" style={{ marginBottom: 16 }}>Évolution de la marge (%)</div>
         <ResponsiveContainer width="100%" height={250}>
           <LineChart data={donneesMensuelles.filter(m => m.CA > 0)}>
             <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
@@ -252,7 +252,7 @@ export default function Statistiques({ chantiers, clients, devis = [], parametre
 
         {/* CAMEMBERT CLIENTS */}
         <div style={carteStyle}>
-          <div className="ds-card-title" style={{ marginBottom: 16 }}>👥 Répartition par client</div>
+          <div className="ds-card-title" style={{ marginBottom: 16 }}>Répartition par client</div>
           {donneesClients.length === 0 ? <p style={{ color: 'var(--text-secondary)' }}>Aucune donnée</p> : (
             <>
               <ResponsiveContainer width="100%" height={250}>
@@ -418,7 +418,7 @@ export default function Statistiques({ chantiers, clients, devis = [], parametre
                 <tbody>
                   {donneesEcarts.map((d) => {
                     const couleurEc = d.statut === 'en_retard' ? C.danger : d.statut === 'en_avance' ? C.secondaire : '#78909c';
-                    const statutLabel = { en_retard: 'Dépassement', en_avance: 'En avance', ok: '✓ Conforme' }[d.statut] || d.statut;
+                    const statutLabel = { en_retard: 'Dépassement', en_avance: 'En avance', ok: 'Conforme' }[d.statut] || d.statut;
                     return (
                       <tr key={d.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
                         <td style={{ padding: '10px 15px', fontWeight: 600 }}>{d.nom}</td>
@@ -457,7 +457,7 @@ export default function Statistiques({ chantiers, clients, devis = [], parametre
           <tbody>
             {donneesClients.map((c, i) => (
               <tr key={c.nom} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', background: i === 0 ? 'rgba(245,158,11,0.08)' : 'transparent' }}>
-                <td style={{ padding: '10px 15px' }}>{['🥇', '🥈', '🥉'][i] || `${i + 1}`}</td>
+                <td style={{ padding: '10px 15px' }}>{i === 0 ? '1er' : i === 1 ? '2e' : i === 2 ? '3e' : `${i + 1}`}</td>
                 <td style={{ padding: '10px 15px' }}><strong>{c.nom}</strong></td>
                 <td style={{ padding: '10px 15px' }}>{c.chantiers}</td>
                 <td style={{ padding: '10px 15px', fontWeight: 700, color: COL_CA }}>CHF {fmtN(c.CA)}</td>

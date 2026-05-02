@@ -5,7 +5,7 @@ const PROFILS = [
   {
     id: 'direction',
     nom: 'Direction',
-    icone: '👔',
+    icone: '◈',
     couleur: C.primaire,
     description: 'Accès complet à toutes les fonctionnalités',
     pages: ['dashboard', 'chantiers', 'devis', 'finances', 'clients', 'employes', 'planning', 'statistiques', 'qualite', 'parametres', 'rapport', 'analyse'],
@@ -13,7 +13,7 @@ const PROFILS = [
   {
     id: 'conducteur',
     nom: 'Conducteur de travaux',
-    icone: '🦺',
+    icone: '◉',
     couleur: C.warning,
     description: 'Chantiers, planning, qualité et équipes',
     pages: ['dashboard', 'chantiers', 'employes', 'planning', 'qualite'],

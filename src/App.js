@@ -111,10 +111,10 @@ function BadgeRentabilite({ ca, couts }) {
   const marge = ca - couts;
   const taux = marge / ca;
   const cfg = taux >= 0.2
-    ? { emoji: '🟢', label: 'Rentable',   couleur: '#22c55e' }
+    ? { label: 'Rentable',   couleur: '#22c55e' }
     : taux >= 0.1
-      ? { emoji: '🟠', label: 'Attention', couleur: '#f59e0b' }
-      : { emoji: '🔴', label: 'Danger',    couleur: '#ef4444' };
+      ? { label: 'Attention', couleur: '#f59e0b' }
+      : { label: 'Danger',    couleur: '#ef4444' };
   return (
     <span style={{
       display: 'inline-flex', alignItems: 'center', gap: 4,
@@ -124,7 +124,8 @@ function BadgeRentabilite({ ca, couts }) {
       padding: '3px 10px', borderRadius: 20,
       fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap',
     }}>
-      {cfg.emoji} {cfg.label}
+      <span style={{ width: 6, height: 6, borderRadius: '50%', background: cfg.couleur, display: 'inline-block', flexShrink: 0 }} />
+      {cfg.label}
     </span>
   );
 }
@@ -244,7 +245,7 @@ function App() {
       localStorage.setItem(cle, JSON.stringify(data));
     } catch (e) {
       if (e.name === 'QuotaExceededError' || e.name === 'NS_ERROR_DOM_QUOTA_REACHED') {
-        alert('⚠️ Espace de stockage plein. Supprimez des photos pour libérer de l\'espace.');
+        alert('Espace de stockage plein. Supprimez des photos pour libérer de l\'espace.');
       }
     }
   };
@@ -304,7 +305,7 @@ function App() {
       {/* ===== SIDEBAR ===== */}
       <aside className={`sidebar${sidebarOuvert ? ' sidebar-open' : ''}`}>
         <div className="sidebar-logo">
-          <div className="sidebar-logo-icon">🏗️</div>
+          <div className="sidebar-logo-icon"><HardHat size={18} strokeWidth={2} style={{ color: '#fff' }} /></div>
           <div>
             <div className="sidebar-logo-name">CYNA</div>
             <div className="sidebar-logo-sub">Gestion de chantiers · Genève</div>
@@ -513,10 +514,10 @@ function Dashboard({ chantiers, clients, factures, devis = [], parametres, navig
     const couverture = charges > 0 ? total / charges : null;
     const interpretation = couverture === null ? null
       : couverture < 0.7
-        ? { dot: '🔴', label: 'Trésorerie insuffisante — risque court terme', couleur: C.danger, action: 'Accélérer la facturation ou réduire les dépenses' }
+        ? { label: 'Trésorerie insuffisante — risque court terme', couleur: C.danger, action: 'Accélérer la facturation ou réduire les dépenses' }
         : couverture < 1
-          ? { dot: '🟠', label: 'Trésorerie juste — vigilance', couleur: C.warning, action: null }
-          : { dot: '🟢', label: 'Trésorerie sécurisée', couleur: C.secondaire, action: null };
+          ? { label: 'Trésorerie juste — vigilance', couleur: C.warning, action: null }
+          : { label: 'Trésorerie sécurisée', couleur: C.secondaire, action: null };
     const dateLimite = couverture !== null ? (() => {
       const d = new Date();
       d.setDate(d.getDate() + Math.round(couverture * 30));
@@ -1123,8 +1124,9 @@ function Dashboard({ chantiers, clients, factures, devis = [], parametres, navig
                   </div>
                 )}
                 {previsionTreso30j.interpretation && (
-                  <div style={{ fontSize: 13, fontWeight: 700, color: previsionTreso30j.interpretation.couleur, marginTop: 8 }}>
-                    {previsionTreso30j.interpretation.dot} {previsionTreso30j.interpretation.label}
+                  <div style={{ fontSize: 13, fontWeight: 700, color: previsionTreso30j.interpretation.couleur, marginTop: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: previsionTreso30j.interpretation.couleur, display: 'inline-block', flexShrink: 0 }} />
+                    {previsionTreso30j.interpretation.label}
                   </div>
                 )}
               </div>
@@ -1150,7 +1152,7 @@ function Dashboard({ chantiers, clients, factures, devis = [], parametres, navig
       {/* ── PRIORITÉS DU JOUR ────────────────────────────────────── */}
       {(alertes.length > 0 || top3.length > 0 || actionsRecommandees.length > 0) && (
         <div style={{ marginBottom: 28 }}>
-          <SectionLabel>🚨 Priorités du jour</SectionLabel>
+          <SectionLabel>Priorités du jour</SectionLabel>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
 
             {alertes.map((a) => (
@@ -1286,7 +1288,7 @@ function Dashboard({ chantiers, clients, factures, devis = [], parametres, navig
           {/* À traiter en priorité */}
           {analyseChantiers.length > 0 && (
             <div>
-              <SectionLabel>🎯 À traiter</SectionLabel>
+              <SectionLabel>À traiter</SectionLabel>
               <div style={{ ...carteStyle, padding: '8px 12px' }}>
                 {analyseChantiers.slice(0, 5).map(({ c, statut, probleme, marge, couleur }) => (
                   <div key={c.id} onClick={() => naviguer('chantiers', { chantierActif: c.id })}
@@ -1318,7 +1320,7 @@ function Dashboard({ chantiers, clients, factures, devis = [], parametres, navig
 
             {risqueFuturData.length > 0 && (
               <div style={{ ...carteStyle, marginBottom: 0, padding: '16px 20px' }}>
-                <div style={{ fontWeight: 700, fontSize: 12, color: C.warning, marginBottom: 12 }}>⚠️ Risque futur</div>
+                <div style={{ fontWeight: 700, fontSize: 12, color: C.warning, marginBottom: 12 }}>Risque futur</div>
                 {risqueFuturData.map(({ c, risque }) => (
                   <div key={c.id} onClick={() => naviguer('chantiers', { chantierActif: c.id })}
                     style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', padding: '8px 10px', borderRadius: 9, marginBottom: 4, cursor: 'pointer', background: 'var(--bg-hover)', border: '1px solid var(--border)', transition: 'background 0.15s' }}
@@ -1338,7 +1340,7 @@ function Dashboard({ chantiers, clients, factures, devis = [], parametres, navig
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               {aNesPasOublier.length > 0 && (
                 <div style={{ ...carteStyle, marginBottom: 0, padding: '16px 20px' }}>
-                  <div style={{ fontWeight: 700, fontSize: 12, color: C.secondaire, marginBottom: 10 }}>🧠 À ne pas oublier</div>
+                  <div style={{ fontWeight: 700, fontSize: 12, color: C.secondaire, marginBottom: 10 }}>À ne pas oublier</div>
                   {aNesPasOublier.map((a) => (
                     <ActionRow key={a.id} nom={a.nom} texte={a.probleme} btnLabel={a.btnLabel} btnCouleur={a.btnCouleur} onAction={() => naviguer(a.page, a.ctx)} />
                   ))}
@@ -1346,7 +1348,7 @@ function Dashboard({ chantiers, clients, factures, devis = [], parametres, navig
               )}
               {aAnticiper.length > 0 && (
                 <div style={{ ...carteStyle, marginBottom: 0, padding: '16px 20px' }}>
-                  <div style={{ fontWeight: 700, fontSize: 12, color: C.info, marginBottom: 10 }}>🔮 À anticiper</div>
+                  <div style={{ fontWeight: 700, fontSize: 12, color: C.info, marginBottom: 10 }}>À anticiper</div>
                   {aAnticiper.map((a) => (
                     <ActionRow key={a.id} nom={a.nom} texte={a.probleme} btnLabel={a.btnLabel} btnCouleur={a.btnCouleur} onAction={() => naviguer(a.page, a.ctx)} />
                   ))}
@@ -1370,9 +1372,9 @@ function renderTerrainVelocity(c, etat) {
   if (!v) return null;
   const gravite = v.retardEstime >= 5 ? 'critique' : v.retardEstime >= 2 ? 'attention' : 'ok';
   const graviteConfig = {
-    critique:  { icone: '🔴', couleur: C.danger,     titre: `+${v.retardEstime} jours de retard — action nécessaire` },
-    attention: { icone: '🟠', couleur: C.warning,    titre: `+${v.retardEstime} jour${v.retardEstime > 1 ? 's' : ''} de retard — action recommandée` },
-    ok:        { icone: '🟢', couleur: C.secondaire, titre: 'Dans les temps' },
+    critique:  { niveau: 'danger', couleur: C.danger,     titre: `+${v.retardEstime} jours de retard — action nécessaire` },
+    attention: { niveau: 'warning', couleur: C.warning,    titre: `+${v.retardEstime} jour${v.retardEstime > 1 ? 's' : ''} de retard — action recommandée` },
+    ok:        { niveau: 'ok', couleur: C.secondaire, titre: 'Dans les temps' },
   }[gravite];
   let reco = null;
   let impact = null;
@@ -1449,9 +1451,9 @@ function renderRecommandations(etat, couts) {
   if (couts.ratioEfficacite !== null && couts.ratioEfficacite < 0.85)
     recommandations.push({ icone: '📉', texte: 'Le chantier consomme plus vite qu\'il n\'avance' });
   if (etat.coutTotalReel > 0 && (etat.coutMOReel / etat.coutTotalReel) > 0.6)
-    recommandations.push({ icone: '👷', texte: 'Main d\'œuvre trop élevée — vérifier productivité ou dimensionnement équipe' });
+    recommandations.push({ icone: 'mo', texte: 'Main d\'œuvre trop élevée — vérifier productivité ou dimensionnement équipe' });
   if (couts.coutMaterielPrevu > 0 && etat.coutMateriel > couts.coutMaterielPrevu * 1.15)
-    recommandations.push({ icone: '🔧', texte: 'Dépassement matériel — contrôler commandes ou pertes chantier' });
+    recommandations.push({ icone: 'mat', texte: 'Dépassement matériel — contrôler commandes ou pertes chantier' });
   const affichees = recommandations.slice(0, 2);
   if (affichees.length === 0) return null;
   return (
@@ -1468,9 +1470,9 @@ function renderRecommandations(etat, couts) {
 
 function renderEcartTable(couts, fmtN) {
   const lignes = [
-    { label: '👷 Main d\'œuvre', prevu: couts.coutEquipePrevu, reel: couts.coutEquipeReel, ecart: couts.ecartEquipe, ecartPct: couts.ecartEquipePct },
-    { label: '🔧 Matériel', prevu: couts.coutMaterielPrevu, reel: couts.coutMaterielReel, ecart: couts.ecartMateriel, ecartPct: couts.ecartMaterielPct },
-    { label: '🏗️ Sous-traitance', prevu: couts.coutSousTraitancePrevu, reel: couts.coutSousTraitanceReel, ecart: couts.ecartSousTraitance, ecartPct: couts.ecartSousTraitancePct },
+    { label: 'Main d\'œuvre', prevu: couts.coutEquipePrevu, reel: couts.coutEquipeReel, ecart: couts.ecartEquipe, ecartPct: couts.ecartEquipePct },
+    { label: 'Matériel', prevu: couts.coutMaterielPrevu, reel: couts.coutMaterielReel, ecart: couts.ecartMateriel, ecartPct: couts.ecartMaterielPct },
+    { label: 'Sous-traitance', prevu: couts.coutSousTraitancePrevu, reel: couts.coutSousTraitanceReel, ecart: couts.ecartSousTraitance, ecartPct: couts.ecartSousTraitancePct },
     { label: '📦 Autres', prevu: couts.autresCoutsPrevu, reel: couts.autresCoutsReel, ecart: couts.ecartAutres, ecartPct: couts.ecartAutresPct },
   ].filter(l => l.prevu > 0 || l.reel > 0);
   const totalEcart = couts.totalCoutsReel - couts.totalCoutsPrevu;
@@ -1819,7 +1821,7 @@ function ModalSaisieHeures({ chantierSaisie, initialDate, onFermer, onSave, para
         {/* Équipe source */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, padding: '8px 14px', background: 'var(--bg-glass-2)', borderRadius: 8, border: '1px solid var(--border)' }}>
           <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)' }}>
-            👷 Équipe du chantier ({empsList.length})
+            Équipe du chantier ({empsList.length})
           </span>
           <button
             onClick={() => { onFermer(); ouvrirModification(chantierSaisie); }}
@@ -1850,7 +1852,7 @@ function ModalSaisieHeures({ chantierSaisie, initialDate, onFermer, onSave, para
               setHeures({ ...hierHeures });
             }}
             style={{ fontSize: 12, fontWeight: 700, color: C.info, background: C.info + '15', border: `1px solid ${C.info}35`, borderRadius: 8, padding: '7px 14px', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}
-          >📋 Remplir comme hier</button>
+          >Remplir comme hier</button>
           <button
             onClick={() => {
               const h = {};
@@ -1917,7 +1919,7 @@ function ModalSaisieHeures({ chantierSaisie, initialDate, onFermer, onSave, para
                   <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>h</span>
                 </div>
                 {/* Span toujours présent — visibility au lieu de montage/démontage conditionnel */}
-                <span style={{ fontSize: 10, color: C.danger, fontWeight: 700, whiteSpace: 'nowrap', visibility: isOver ? 'visible' : 'hidden' }}>⚠️ &gt;10h</span>
+                <span style={{ fontSize: 10, color: C.danger, fontWeight: 700, whiteSpace: 'nowrap', visibility: isOver ? 'visible' : 'hidden' }}>&gt;10h</span>
               </div>
             );
           })}
@@ -2095,10 +2097,10 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
       : null;
     const perfConfig = perfRatio === null ? null
       : perfRatio <= 0.9
-        ? { label: 'Dans les temps', couleur: C.secondaire, dot: '🟢' }
+        ? { label: 'Dans les temps', couleur: C.secondaire,  }
         : perfRatio <= 1.1
-          ? { label: 'À surveiller', couleur: C.warning, dot: '🟠' }
-          : { label: 'En retard', couleur: C.danger, dot: '🔴' };
+          ? { label: 'À surveiller', couleur: C.warning,  }
+          : { label: 'En retard', couleur: C.danger,  };
     const perfReco = etat.deriveJours <= 0 ? null
       : etat.deriveJours <= 2 ? 'surveiller'
       : etat.deriveJours <= 5 ? 'ajouter'
@@ -2127,7 +2129,7 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
       const conclusion = retardResiduel <= 0
         ? { icone: '✔', texte: 'Permet de revenir dans les délais', couleur: C.secondaire }
         : retardResiduel <= 2
-          ? { icone: '⚠️', texte: 'Réduit le retard mais reste sous contrôle', couleur: C.warning }
+          ? { icone: 'warning', texte: 'Réduit le retard mais reste sous contrôle', couleur: C.warning }
           : { icone: '❌', texte: 'Insuffisant — revoir le planning ou ajouter plus de ressources', couleur: C.danger };
       return { texte, conclusion };
     })();
@@ -2151,7 +2153,7 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
     const criticiteConfig = scoreCriticite >= 15
       ? { icone: '🔥', label: 'Chantier critique — action immédiate', couleur: C.danger, fond: 'radial-gradient(ellipse at 6% 50%, rgba(239,68,68,0.13) 0%, rgba(239,68,68,0.04) 100%)' }
       : scoreCriticite >= 8
-        ? { icone: '⚠️', label: 'Chantier à risque — à traiter aujourd\'hui', couleur: C.warning, fond: 'radial-gradient(ellipse at 6% 50%, rgba(245,158,11,0.13) 0%, rgba(245,158,11,0.04) 100%)' }
+        ? { icone: 'warning', label: 'Chantier à risque — à traiter aujourd\'hui', couleur: C.warning, fond: 'radial-gradient(ellipse at 6% 50%, rgba(245,158,11,0.13) 0%, rgba(245,158,11,0.04) 100%)' }
         : null;
 
     const al = getAlerteChantier(c);
@@ -2181,15 +2183,15 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
         const abs = Math.abs(j);
         list.push({ id: 'delai', texte: `Dépassement de délai — ${abs} jour${abs > 1 ? 's' : ''} de retard sur la planification`, gravite: 'critique', icone: '🔥' });
       } else if (j !== null && j <= 3 && j >= 0) {
-        list.push({ id: 'fin_proche', texte: `Fin imminente — ${j === 0 ? "dernier jour aujourd'hui" : `${j} jour${j > 1 ? 's' : ''} restant${j > 1 ? 's' : ''}`}`, gravite: 'warning', icone: '⚠️' });
+        list.push({ id: 'fin_proche', texte: `Fin imminente — ${j === 0 ? "dernier jour aujourd'hui" : `${j} jour${j > 1 ? 's' : ''} restant${j > 1 ? 's' : ''}`}`, gravite: 'warning', icone: 'warning' });
       }
 
       // Rentabilité — projection moteur uniquement (bloquée si < 20%)
       if (etat.projectionDisponible && etat.margeEstimeePct !== null) {
         if (etat.margeEstimee < 0) {
-          list.push({ id: 'perte', texte: `Chantier en perte — déficit estimé CHF ${fmtN(Math.abs(etat.margeEstimee))} (${etat.margeEstimeePct.toFixed(1)}%)`, gravite: 'critique', icone: '🚨' });
+          list.push({ id: 'perte', texte: `Chantier en perte — déficit estimé CHF ${fmtN(Math.abs(etat.margeEstimee))} (${etat.margeEstimeePct.toFixed(1)}%)`, gravite: 'critique', icone: 'danger' });
         } else if (etat.margeEstimeePct < 15) {
-          list.push({ id: 'marge_faible', texte: `Rentabilité faible — marge estimée ${etat.margeEstimeePct.toFixed(1)}% · seuil cible 15%`, gravite: 'warning', icone: '⚠️' });
+          list.push({ id: 'marge_faible', texte: `Rentabilité faible — marge estimée ${etat.margeEstimeePct.toFixed(1)}% · seuil cible 15%`, gravite: 'warning', icone: 'warning' });
         }
       }
 
@@ -2197,7 +2199,7 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
       if (etat.coutMOReel > 0 && etat.coutTotalReel > 0) {
         const pctMO = (etat.coutMOReel / etat.coutTotalReel) * 100;
         if (pctMO > 60) {
-          list.push({ id: 'mo_elevee', texte: `Main d'œuvre élevée — ${Math.round(pctMO)}% du coût total (seuil 60%)`, gravite: 'warning', icone: '⚠️' });
+          list.push({ id: 'mo_elevee', texte: `Main d'œuvre élevée — ${Math.round(pctMO)}% du coût total (seuil 60%)`, gravite: 'warning', icone: 'warning' });
         }
       }
 
@@ -2237,9 +2239,9 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
         {/* ── Onglets détail ── */}
         <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', marginBottom: 20 }}>
           {[
-            { id: 'vue',       label: '📋 Vue' },
+            { id: 'vue',       label: 'Vue' },
             { id: 'analyse',   label: '📈 Analyse' },
-            { id: 'financier', label: '💰 Financier' },
+            { id: 'financier', label: 'Financier' },
           ].map(o => (
             <button key={o.id} onClick={() => setDetailOnglet(o.id)} style={{
               background: 'transparent', border: 'none',
@@ -2316,19 +2318,19 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
           // ── Tuile 4 : Action recommandée ────────────────────
           const critAlert = alertesChantier.find(a => a.gravite === 'critique');
           const actionTile = (() => {
-            if (modeChantier === 'FINAL') return { icone: '📋', val: 'Facturer', label: 'Chantier quasi terminé', couleur: C.secondaire };
-            if (critAlert)                return { icone: '🚨', val: 'Action urgente', label: critAlert.texte.length > 50 ? critAlert.texte.slice(0, 48) + '…' : critAlert.texte, couleur: C.danger };
-            if (perfReco === 'renforcer') return { icone: '🔴', val: 'Renforcer l\'équipe', label: 'Retard important — revoir planning', couleur: C.danger };
-            if (perfReco === 'ajouter')  return { icone: '🟠', val: '+1 ouvrier', label: 'Réduire le retard en cours', couleur: C.warning };
+            if (modeChantier === 'FINAL') return { icone: 'info', val: 'Facturer', label: 'Chantier quasi terminé', couleur: C.secondaire };
+            if (critAlert)                return { icone: 'danger', val: 'Action urgente', label: critAlert.texte.length > 50 ? critAlert.texte.slice(0, 48) + '…' : critAlert.texte, couleur: C.danger };
+            if (perfReco === 'renforcer') return { niveau: 'danger', val: 'Renforcer l\'équipe', label: 'Retard important — revoir planning', couleur: C.danger };
+            if (perfReco === 'ajouter')  return { niveau: 'warning', val: '+1 ouvrier', label: 'Réduire le retard en cours', couleur: C.warning };
             if (perfReco === 'surveiller') return { icone: '👁', val: 'Surveiller', label: 'Possible rattrapage sans action', couleur: C.warning };
             if (modeChantier === 'INIT') return { icone: '▶', val: 'Saisir les heures', label: 'Aucune donnée terrain', couleur: '#78909c' };
             return { icone: '✓', val: 'RAS', label: 'Aucune action requise', couleur: C.secondaire };
           })();
 
           const tiles = [
-            { id: 'renta', icone: '💰', titre: 'RENTABILITÉ', ...margeTile },
-            { id: 'av',    icone: '📊', titre: 'AVANCEMENT',  ...avTile },
-            { id: 'plan',  icone: '📅', titre: 'PLANNING',    ...planTile },
+            { id: 'renta', icone: 'renta', titre: 'RENTABILITÉ', ...margeTile },
+            { id: 'av',    icone: 'av', titre: 'AVANCEMENT',  ...avTile },
+            { id: 'plan',  icone: 'plan', titre: 'PLANNING',    ...planTile },
             { id: 'act',   icone: actionTile.icone, titre: 'ACTION', val: actionTile.val, label: actionTile.label, couleur: actionTile.couleur },
           ];
 
@@ -2418,7 +2420,7 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
                     fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px',
                     background: col + '16', color: col, border: `1px solid ${col}30`,
                     borderRadius: 20, padding: '3px 11px', flexShrink: 0,
-                  }}>{isCritique ? '🚨 Critique' : '⚠️ Attention'}</span>
+                  }}>{isCritique ? 'Critique' : 'Attention'}</span>
                 </div>
               );
             })}
@@ -2447,7 +2449,7 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
                 {perfRecoLabel && (
                   <div style={{ marginTop: 8 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <span style={{ fontSize: 13 }}>💡</span>
+                      <span style={{ fontSize: 13 }}>·</span>
                       <span style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 500 }}>
                         Recommandation : {perfRecoLabel.toLowerCase()}
                       </span>
@@ -2513,12 +2515,12 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
           <div className="info-grid">
             {[
               ['Adresse', `${c.adresse || ''}${c.ville ? ', ' + c.ville : ''}${c.canton ? ' (' + c.canton + ')' : ''}`],
-              ['👷 Dir. travaux', directeurTravaux ? `${directeurTravaux.nom} — ${directeurTravaux.poste || ''}` : (c.conducteur || '—')],
-              ['📅 Début', c.dateDebut],
+              ['Dir. travaux', directeurTravaux ? `${directeurTravaux.nom} — ${directeurTravaux.poste || ''}` : (c.conducteur || '—')],
+              ['Début', c.dateDebut],
               ['🏁 Fin prévue', c.dateDebut && c.nombreJours ? calculerDateFinOuvrables(c.dateDebut, c.nombreJours, c.inclusSamedi) : '—'],
               ['⏱️ Jours prévus', c.nombreJours ? `${c.nombreJours} jours` : '—'],
               ['📐 Surface', c.surface ? `${c.surface} m²` : '—'],
-              ['🔧 Travaux', c.typesTravaux?.join(', ') || '—'],
+              ['Travaux', c.typesTravaux?.join(', ') || '—'],
             ].map(([label, val]) => (
               <div key={label} className="info-item">
                 <span className="info-label">{label}</span>
@@ -2526,7 +2528,7 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
               </div>
             ))}
           </div>
-          {c.notes && <div style={{ marginTop: '15px', background: 'rgba(245,158,11,0.07)', border: '1px solid rgba(245,158,11,0.2)', padding: '12px 16px', borderRadius: '10px', color: 'var(--text-secondary)', fontSize: 13 }}>📝 {c.notes}</div>}
+          {c.notes && <div style={{ marginTop: '15px', background: 'rgba(245,158,11,0.07)', border: '1px solid rgba(245,158,11,0.2)', padding: '12px 16px', borderRadius: '10px', color: 'var(--text-secondary)', fontSize: 13 }}>{c.notes}</div>}
         </div>
 
 
@@ -2534,7 +2536,7 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
         {etat.totalJoursReels === 0 && etat.coutTotalReel === 0 && (
           <div style={{ background: 'var(--bg-glass)', border: '1px solid var(--border-hover)', borderRadius: 14, padding: '20px 24px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-              <span style={{ fontSize: 28, lineHeight: 1 }}>🏗️</span>
+              <HardHat size={28} strokeWidth={1.5} style={{ color: "var(--text-muted)" }} />
               <div>
                 <div style={{ fontWeight: 700, color: 'var(--text-secondary)', fontSize: 15, marginBottom: 4 }}>Chantier non démarré</div>
                 <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>Déclarez la première journée pour activer le suivi et la projection.</div>
@@ -2546,7 +2548,7 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
         {/* ── Projection indisponible — chantier trop tôt ── */}
         {etat.totalJoursReels > 0 && !etat.projectionDisponible && (
           <div style={{ background: 'var(--bg-glass)', border: '1px solid var(--border)', borderRadius: 12, padding: '14px 18px', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 12 }}>
-            <span style={{ fontSize: 18, flexShrink: 0 }}>📊</span>
+            
             <div>
               <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-secondary)' }}>Projection indisponible — chantier trop tôt</div>
               <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 3 }}>
@@ -2578,14 +2580,14 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
                 style={{ fontSize: 11, fontWeight: 700, background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.3)', color: '#10b981', padding: '4px 12px', borderRadius: 20, cursor: 'pointer' }}
                 title={`CA issu du devis ${devisSource.numero}`}
               >
-                📋 {devisSource.numero} · CHF {fmtN(parseFloat(devisSource.montantHT) || 0)}
+                {devisSource.numero} · CHF {fmtN(parseFloat(devisSource.montantHT) || 0)}
               </span>
             ) : (
               <span
                 onClick={() => naviguer('devis')}
                 style={{ fontSize: 11, fontWeight: 700, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)', color: '#ef4444', padding: '4px 12px', borderRadius: 20, cursor: 'pointer' }}
               >
-                ⚠️ Aucun devis lié — Lier un devis →
+                Aucun devis lié — Lier un devis →
               </span>
             )}
           </div>
@@ -2593,7 +2595,7 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
           {/* ── Aucun devis lié ── */}
           {devisTotal === null && (
             <div style={{ background: 'rgba(239,68,68,0.05)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 10, padding: '14px 18px', marginBottom: 16 }}>
-              <div style={{ fontWeight: 700, color: '#ef4444', fontSize: 13, marginBottom: 4 }}>⚠️ Aucun devis lié</div>
+              <div style={{ fontWeight: 700, color: '#ef4444', fontSize: 13, marginBottom: 4 }}>Aucun devis lié</div>
               <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Le chiffre d'affaires est indisponible. Liez un devis accepté pour activer le suivi financier.</div>
               <button onClick={() => { setAjout(true); setForm({ ...c }); }} style={{ marginTop: 10, ...DS.btnGhost, fontSize: 12, padding: '5px 12px' }}>✏️ Modifier le chantier</button>
             </div>
@@ -2606,7 +2608,7 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
                 {[
                   { label: '📄 CA signé', val: `CHF ${fmtK(devisTotal)}`, sub: (() => { const av = sommeAvenants(c); const rg = Array.isArray(devisSource?.heuresRegie) ? devisSource.heuresRegie.reduce((s,r) => s+(parseFloat(r.heures)||0)*(parseFloat(r.tarifHeure)||0),0) : 0; if (av > 0 && rg > 0) return `avenants ${fmtK(av)} + régie ${fmtK(rg)}`; if (av > 0) return `dont avenants CHF ${fmtK(av)}`; if (rg > 0) return `dont régie CHF ${fmtK(rg)}`; return null; })(), couleur: C.primaire },
                   { label: '🧾 Facturé', val: `CHF ${fmtK(montantFactureLie)}`, sub: `${pctFacture}% du devis`, couleur: pctFacture >= 100 ? C.secondaire : pctFacture > 0 ? C.info : '#78909c' },
-                  { label: '✅ Encaissé', val: `CHF ${fmtK(montantPayeLie)}`, sub: `${pctEncaisse}% du devis`, couleur: pctEncaisse >= 100 ? C.secondaire : pctEncaisse > 0 ? C.warning : '#78909c' },
+                  { label: 'Encaissé', val: `CHF ${fmtK(montantPayeLie)}`, sub: `${pctEncaisse}% du devis`, couleur: pctEncaisse >= 100 ? C.secondaire : pctEncaisse > 0 ? C.warning : '#78909c' },
                 ].map(s => (
                   <div key={s.label} style={{ background: s.couleur + '12', border: `1px solid ${s.couleur}28`, borderRadius: 12, padding: '14px 16px' }}>
                     <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px', color: 'var(--text-muted)', marginBottom: 4 }}>{s.label}</div>
@@ -2632,7 +2634,7 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
           {/* ── Imprévus ── */}
           {c.imprevus?.length > 0 && (
             <div style={{ marginBottom: 16 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.7px', color: C.danger, marginBottom: 8 }}>⚠️ Coûts imprévus</div>
+              <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.7px', color: C.danger, marginBottom: 8 }}>Coûts imprévus</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {c.imprevus.map((imp) => (
                   <div key={`${imp.description}-${imp.montant}`} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: C.danger + '0a', border: `1px solid ${C.danger}22`, borderRadius: 8, padding: '8px 14px' }}>
@@ -2650,7 +2652,7 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
           {/* ── Alerte dépassement budget ── */}
           {couts.depassementBudget && (
             <div style={{ background: C.danger + '15', border: `1px solid ${C.danger}50`, borderRadius: 10, padding: '10px 16px', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 10 }}>
-              <span style={{ fontSize: 18 }}>🚨</span>
+              <AlertTriangle size={18} strokeWidth={2} style={{ color: "var(--color-danger, #ef4444)", flexShrink: 0 }} />
               <div>
                 <span style={{ fontWeight: 700, color: C.danger, fontSize: 13 }}>Dépassement budget</span>
                 <span style={{ fontSize: 12, color: 'var(--text-muted)', marginLeft: 8 }}>
@@ -2661,7 +2663,7 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
           )}
           {couts.alerteOrange && (
             <div style={{ background: C.warning + '15', border: `1px solid ${C.warning}50`, borderRadius: 10, padding: '10px 16px', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 10 }}>
-              <span style={{ fontSize: 18 }}>⚠️</span>
+              <AlertTriangle size={18} strokeWidth={2} style={{ color: "var(--color-warning, #f59e0b)", flexShrink: 0 }} />
               <div>
                 <span style={{ fontWeight: 700, color: C.warning, fontSize: 13 }}>Attention budget</span>
                 <span style={{ fontSize: 12, color: 'var(--text-muted)', marginLeft: 8 }}>
@@ -2674,7 +2676,7 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
           {/* Correction #4 — Alertes rythme / vélocité */}
           {couts.alerteRythmeRouge && (
             <div style={{ background: C.danger + '15', border: `1px solid ${C.danger}50`, borderRadius: 10, padding: '10px 16px', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 10 }}>
-              <span style={{ fontSize: 18 }}>🔴</span>
+              <AlertTriangle size={18} strokeWidth={2} style={{ color: "var(--color-danger, #ef4444)", flexShrink: 0 }} />
               <div>
                 <span style={{ fontWeight: 700, color: C.danger, fontSize: 13 }}>Rythme de dépense critique</span>
                 <span style={{ fontSize: 12, color: 'var(--text-muted)', marginLeft: 8 }}>
@@ -2685,7 +2687,7 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
           )}
           {!couts.alerteRythmeRouge && couts.alerteRythmeOrange && (
             <div style={{ background: C.warning + '15', border: `1px solid ${C.warning}50`, borderRadius: 10, padding: '10px 16px', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 10 }}>
-              <span style={{ fontSize: 18 }}>🟠</span>
+              <AlertTriangle size={18} strokeWidth={2} style={{ color: "var(--color-warning, #f59e0b)", flexShrink: 0 }} />
               <div>
                 <span style={{ fontWeight: 700, color: C.warning, fontSize: 13 }}>Rythme de dépense élevé</span>
                 <span style={{ fontSize: 12, color: 'var(--text-muted)', marginLeft: 8 }}>
@@ -2697,16 +2699,16 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
 
           {/* ── Coûts réels ── */}
           <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: '16px' }}>
-            <CoutBadge label="👷 Équipe réel" valeur={etat.coutMOReel} couleur={C.secondaire} />
-            <CoutBadge label="🔧 Matériel réel" valeur={etat.coutMateriel} couleur={C.violet} />
-            <CoutBadge label="⚡ Imprévus" valeur={etat.coutImprevus} couleur={C.danger} />
-            <CoutBadge label="💸 Total coûts" valeur={etat.coutTotalReel} couleur="#455a64" />
+            <CoutBadge label="Équipe réel" valeur={etat.coutMOReel} couleur={C.secondaire} />
+            <CoutBadge label="Matériel réel" valeur={etat.coutMateriel} couleur={C.violet} />
+            <CoutBadge label="Imprévus" valeur={etat.coutImprevus} couleur={C.danger} />
+            <CoutBadge label="Total coûts" valeur={etat.coutTotalReel} couleur="#455a64" />
           </div>
 
           {/* ── P8 Badge données incomplètes ── */}
           {couts.donneesIncompletes && (
             <div style={{ background: C.warning + '12', border: `1px solid ${C.warning}40`, borderRadius: 8, padding: '8px 14px', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-              <span style={{ fontSize: 15 }}>⚠️</span>
+              <AlertTriangle size={15} strokeWidth={2} style={{ color: "var(--color-warning, #f59e0b)", flexShrink: 0 }} />
               <span style={{ fontSize: 12, color: C.warning, fontWeight: 700 }}>Données incomplètes</span>
               <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Coûts réels manquants : {couts.champsManquants.join(', ')}</span>
               <span style={{ fontSize: 11, color: 'var(--text-muted)', fontStyle: 'italic' }}>— La marge calculée est indicative.</span>
@@ -2839,7 +2841,7 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
                 <option value="">Sélectionner...</option>
                 {clients.map(c => <option key={c.id} value={c.id}>{c.prenom} {c.nom} — {c.entreprise}</option>)}
               </select></div>
-            <div><label style={labelStyle}>👷 Directeur de travaux</label>
+            <div><label style={labelStyle}>Directeur de travaux</label>
               <select value={form.directeurTravauxId || ''} onChange={e => setForm({ ...form, directeurTravauxId: e.target.value })} style={inputStyle}>
                 <option value="">— Sélectionner —</option>
                 {parametres.employes.filter(e => e.actif !== false).map(e => <option key={e.id} value={e.id}>{e.nom} — {e.poste || 'Employé'}</option>)}
@@ -2898,7 +2900,7 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
 
           {/* Types de travaux */}
           <div style={{ marginBottom: '20px' }}>
-            <label style={labelStyle}>🔧 Types de travaux</label>
+            <label style={labelStyle}>Types de travaux</label>
             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
               {parametres.typesTravaux.map(t => (
                 <button key={t.id} onClick={() => toggleTravaux(t.nom)} style={{
@@ -2929,7 +2931,7 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
             return (
               <>
                 <div style={{ marginBottom: 14 }}>
-                  <label style={labelStyle}>📋 Devis lié <span style={{ color: C.danger }}>*</span></label>
+                  <label style={labelStyle}>Devis lié <span style={{ color: C.danger }}>*</span></label>
                   <select
                     value={form.devisId || ''}
                     onChange={e => {
@@ -2951,7 +2953,7 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
                   }
                   {devisAcceptes.length === 0 && (
                     <div style={{ marginTop: 8, padding: '10px 14px', background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.25)', borderRadius: 8, fontSize: 12, color: C.warning, fontWeight: 600 }}>
-                      ⚠️ Aucun devis accepté disponible — <span style={{ cursor: 'pointer', textDecoration: 'underline' }} onClick={() => naviguer('devis')}>Créer un devis →</span>
+                      Aucun devis accepté disponible — <span style={{ cursor: 'pointer', textDecoration: 'underline' }} onClick={() => naviguer('devis')}>Créer un devis →</span>
                     </div>
                   )}
                 </div>
@@ -2976,7 +2978,7 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
                   </div>
                 ) : (
                   <div style={{ background: 'rgba(239,68,68,0.05)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 12, padding: '14px 18px', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <span style={{ fontSize: 18 }}>⚠️</span>
+                    <AlertTriangle size={18} strokeWidth={2} style={{ color: "var(--color-warning, #f59e0b)", flexShrink: 0 }} />
                     <div>
                       <div style={{ fontSize: 12, fontWeight: 700, color: '#ef4444' }}>Aucun devis lié</div>
                       <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>Le CA sera indisponible tant qu'aucun devis accepté n'est sélectionné.</div>
@@ -3018,7 +3020,7 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
                   <div style={{ background: couleurAv + '10', border: `1px solid ${couleurAv}30`, borderRadius: 10, padding: '12px 16px', marginBottom: 16 }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
                       <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <span style={{ fontSize: 14 }}>📊</span>
+                        
                         <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
                           Avancement&nbsp;
                           <strong style={{ color: couleurAv, fontSize: 16 }}>{av}%</strong>
@@ -3029,7 +3031,7 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
                       </span>
                       {alerteTemps && (
                         <span style={{ fontSize: 11, fontWeight: 700, color: couleurAv, background: couleurAv + '18', border: `1px solid ${couleurAv}40`, padding: '3px 10px', borderRadius: 20 }}>
-                          {alerteTemps === 'rouge' ? '🔴 Dépassement temps critique' : '🟠 Dépassement temps élevé'}
+                          {alerteTemps === 'rouge' ? 'Dépassement temps critique' : 'Dépassement temps élevé'}
                           &nbsp;({Math.round(ratioTemps * 100)}%)
                         </span>
                       )}
@@ -3072,7 +3074,7 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
                         opacity: disabled ? 0.5 : 1,
                       }}
                     >
-                      <span style={{ fontSize: 20 }}>📅</span>
+                      
                       {nbAuj > 0 ? 'Modifier la journée' : 'Déclarer la journée du jour'}
                       {!disabled && <span style={{ fontSize: 11, fontWeight: 600, opacity: 0.7 }}>{dateLabel}</span>}
                     </button>
@@ -3161,7 +3163,7 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
 
               {/* Notes terrain */}
               <div style={{ marginBottom: '15px' }}>
-                <label style={labelStyle}>📝 Notes terrain</label>
+                <label style={labelStyle}>Notes terrain</label>
                 <textarea placeholder="Observations, problèmes rencontrés..." value={form.notes || ''} onChange={e => setForm({ ...form, notes: e.target.value })} style={{ ...inputStyle, height: '70px', resize: 'vertical' }} />
               </div>
             </>
@@ -3193,15 +3195,15 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
           }
           // Retard critique — sous-texte perte si les deux sont vrais
           if (etatC.deriveJours >= 5)
-            return { icone: '🔴', label: 'Retard critique', couleur: C.danger, message: `+${etatC.deriveJours} j de retard`, sous: (etatC.projectionDisponible && etatC.margeEstimee !== null && etatC.margeEstimee < 0) ? `Perte estimée CHF ${fmtN(Math.abs(Math.round(etatC.margeEstimee)))}` : null, niveau: 'critique', priorite: 1 };
+            return { niveau: 'danger', label: 'Retard critique', couleur: C.danger, message: `+${etatC.deriveJours} j de retard`, sous: (etatC.projectionDisponible && etatC.margeEstimee !== null && etatC.margeEstimee < 0) ? `Perte estimée CHF ${fmtN(Math.abs(Math.round(etatC.margeEstimee)))}` : null, niveau: 'critique', priorite: 1 };
           // Perte estimée seule (sans retard critique)
           if (etatC.projectionDisponible && etatC.margeEstimee !== null && etatC.margeEstimee < 0)
-            return { icone: '🔴', label: 'Perte estimée', couleur: C.danger, message: `Perte estimée CHF ${fmtN(Math.abs(Math.round(etatC.margeEstimee)))}`, sous: 'Basé sur tendance actuelle', niveau: 'critique', priorite: 2 };
+            return { niveau: 'danger', label: 'Perte estimée', couleur: C.danger, message: `Perte estimée CHF ${fmtN(Math.abs(Math.round(etatC.margeEstimee)))}`, sous: 'Basé sur tendance actuelle', niveau: 'critique', priorite: 2 };
           // Retard léger
           if (etatC.deriveJours >= 2)
-            return { icone: '🟠', label: 'À surveiller', couleur: C.warning, message: `Retard léger : +${etatC.deriveJours} j`, sous: null, niveau: 'warning', priorite: 3 };
+            return { niveau: 'warning', label: 'À surveiller', couleur: C.warning, message: `Retard léger : +${etatC.deriveJours} j`, sous: null, niveau: 'warning', priorite: 3 };
           // Tout va bien
-          return { icone: '🟢', label: 'Dans les temps', couleur: C.secondaire, message: 'Cadence normale', sous: null, niveau: 'ok', priorite: 6 };
+          return { niveau: 'ok', label: 'Dans les temps', couleur: C.secondaire, message: 'Cadence normale', sous: null, niveau: 'ok', priorite: 6 };
         };
         const getActionsChantier = (etat, chantier) => {
           if (!etat || etat.avancementPct == null) return [];
@@ -3292,7 +3294,7 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
           if (!estTermine && !deriveDejaExprimee && etatC.totalJoursReels > 0 && etatC.deriveJours >= 2 && !isNaN(etatC.deriveJours))
             ind.push({ type: 'derive', label: `+${etatC.deriveJours} j`,        couleur: C.warning, tooltip: 'Décalage entre prévu et réel' });
           if (!estTermine && isChantierActif(c) && etatC.totalJoursReels > 0 && !hasHeuresAuj)
-            ind.push({ type: 'no_hours', label: '⚠️ Aucune saisie aujourd\'hui', couleur: C.warning, tooltip: 'Aucune heure déclarée pour ce chantier aujourd\'hui' });
+            ind.push({ type: 'no_hours', label: 'Aucune saisie aujourd\'hui', couleur: C.warning, tooltip: 'Aucune heure déclarée pour ce chantier aujourd\'hui' });
           const PRIO_IND = { perte: 0, data: 1, derive: 2, no_hours: 3 };
           const indicateurs = ind.sort((a, b) => PRIO_IND[a.type] - PRIO_IND[b.type]).slice(0, 2);
           return { c, etatC, decision, indicateurs, actions: getActionsChantier(etatC, c) };
@@ -3318,7 +3320,7 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
                 padding: '13px 18px', borderRadius: 12, marginBottom: 16,
                 background: C.warning + '0f', border: `1px solid ${C.warning}30`, borderLeft: `4px solid ${C.warning}`,
               }}>
-                <span style={{ fontSize: 18, lineHeight: 1 }}>⚠️</span>
+                <AlertTriangle size={18} strokeWidth={2} style={{ color: "var(--color-warning, #f59e0b)", flexShrink: 0 }} />
                 <span style={{ fontSize: 14, fontWeight: 800, color: C.warning }}>
                   {nbWarning} chantier{nbWarning > 1 ? 's' : ''} à surveiller
                 </span>
@@ -3425,19 +3427,19 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
                                         borderRadius: 10, padding: '8px 12px', marginBottom: 4,
                                       }}>
                                         {justSimulatedId === c.id && (
-                                          <div className="simFeedback" style={{ color: '#9c4dcc' }}>✨ Simulation appliquée</div>
+                                          <div className="simFeedback" style={{ color: '#9c4dcc' }}>Simulation appliquée</div>
                                         )}
                                         {sim.type === 'gain_temps_multi' ? (
                                           <>
                                             <div style={{ display: 'flex', flexDirection: 'column', gap: 2, padding: '6px 8px', background: '#4ade8018', border: '1px solid #4ade8040', borderRadius: 8, marginBottom: 4 }}>
-                                              <span style={{ fontSize: 11, fontWeight: 800, color: '#4ade80' }}>✅ Recommandé : +{sim.recommande.nb} ouvrier{sim.recommande.nb > 1 ? 's' : ''}</span>
+                                              <span style={{ fontSize: 11, fontWeight: 800, color: '#4ade80' }}>Recommandé : +{sim.recommande.nb} ouvrier{sim.recommande.nb > 1 ? 's' : ''}</span>
                                               <span style={{ fontSize: 10, color: '#86efac' }}>→ {sim.recoRaison}</span>
-                                              <span style={{ fontSize: 10, color: 'rgba(134,239,172,0.65)' }}>💡 {sim.recoDetail}</span>
+                                              <span style={{ fontSize: 10, color: 'rgba(134,239,172,0.65)' }}>{sim.recoDetail}</span>
                                               <div className={`decisionBlock${justSimulatedId === c.id ? ' actionApplied' : ''}`} style={{
                                                 background: sim.finalColor + '18',
                                                 borderLeftColor: sim.finalColor,
                                                 color: sim.finalColor,
-                                              }}>🧠 {sim.finalMessage}</div>
+                                              }}>{sim.finalMessage}</div>
                                             </div>
                                             {sim.scenarios.map(s => {
                                               const isReco = s.nb === sim.recommande.nb;
@@ -3464,7 +3466,7 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
                                               <span className="simArrow">→</span>
                                               <span className="simAfter">CHF {fmtN(sim.apres)}</span>
                                             </div>
-                                            <span style={{ fontSize: 11, color: '#9c4dcc' }}>💰 {sim.gainLabel}</span>
+                                            <span style={{ fontSize: 11, color: '#9c4dcc' }}>{sim.gainLabel}</span>
                                           </>
                                         )}
                                       </div>
@@ -3581,7 +3583,7 @@ function Devis({ devis, setDevis, clients, parametres, naviguer, setChantiers, c
       autresCoutsPrevu: '', autresCoutsReels: '', imprevus: [], notes: `Créé depuis devis ${d.numero}`,
       journal: [],
     }]);
-    alert('✅ Chantier créé depuis le devis !');
+    alert('Chantier créé depuis le devis !');
     naviguer('chantiers');
   };
 
@@ -3621,7 +3623,7 @@ function Devis({ devis, setDevis, clients, parametres, naviguer, setChantiers, c
               </select></div>
           </div>
           <div style={{ background: 'rgba(16,185,129,0.04)', border: '1px solid rgba(16,185,129,0.15)', borderRadius: 12, padding: '20px', marginBottom: 20 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: '#10b981', marginBottom: 12 }}>💰 Montant signé HT</div>
+            <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: '#10b981', marginBottom: 12 }}>Montant signé HT</div>
             <input
               type="text" inputMode="numeric"
               placeholder="Ex : 45'000"
@@ -3691,11 +3693,11 @@ function Devis({ devis, setDevis, clients, parametres, naviguer, setChantiers, c
           </div>
 
           <div style={{ marginBottom: 20 }}>
-            <label style={labelStyle}>📝 Notes</label>
+            <label style={labelStyle}>Notes</label>
             <textarea placeholder="Observations, conditions particulières..." value={form.notes || ''} onChange={e => setForm({ ...form, notes: e.target.value })} style={{ ...inputStyle, height: '70px', resize: 'vertical' }} />
           </div>
           <div style={{ display: 'flex', gap: '10px' }}>
-            <button onClick={sauvegarder} style={btnSucces}>✅ Sauvegarder</button>
+            <button onClick={sauvegarder} style={btnSucces}>Sauvegarder</button>
             <button onClick={() => { setAjout(false); setForm(vide); }} style={btnDanger}>Annuler</button>
           </div>
         </div>
@@ -3725,7 +3727,7 @@ function Devis({ devis, setDevis, clients, parametres, naviguer, setChantiers, c
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                     <span onClick={() => client && naviguer('clients', { clientActif: client.id })} style={{ fontSize: '11px', fontWeight: 600, background: 'var(--bg-glass-2)', border: '1px solid var(--border-hover)', color: 'var(--text-secondary)', padding: '3px 10px', borderRadius: '20px', cursor: 'pointer' }}>👥 Voir client →</span>
                     {chantierLie && (
-                      <span onClick={() => naviguer('chantiers', { chantierActif: chantierLie.id })} style={{ fontSize: '11px', fontWeight: 700, background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.3)', color: '#10b981', padding: '3px 10px', borderRadius: '20px', cursor: 'pointer' }}>🏗️ {chantierLie.numero} →</span>
+                      <span onClick={() => naviguer('chantiers', { chantierActif: chantierLie.id })} style={{ fontSize: '11px', fontWeight: 700, background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.3)', color: '#10b981', padding: '3px 10px', borderRadius: '20px', cursor: 'pointer' }}>{chantierLie.numero} →</span>
                     )}
                     {totalRegie > 0 && (
                       <span style={{ fontSize: '11px', fontWeight: 700, background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.3)', color: '#f59e0b', padding: '3px 10px', borderRadius: '20px' }}>⏱ Régie +CHF {fmtN(Math.round(totalRegie))}</span>
@@ -3792,11 +3794,11 @@ function Clients({ clients, setClients, chantiers, devis = [], naviguer }) {
               </select></div>
           </div>
           <div style={{ marginBottom: '15px' }}>
-            <label style={labelStyle}>📝 Notes</label>
+            <label style={labelStyle}>Notes</label>
             <textarea placeholder="Informations complémentaires, préférences, historique..." value={form.notes || ''} onChange={e => setForm({ ...form, notes: e.target.value })} style={{ ...inputStyle, height: '80px', resize: 'vertical' }} />
           </div>
           <div style={{ display: 'flex', gap: '10px' }}>
-            <button onClick={sauvegarder} style={btnSucces}>✅ {form.id ? 'Enregistrer les modifications' : 'Créer le client'}</button>
+            <button onClick={sauvegarder} style={btnSucces}>{form.id ? 'Enregistrer les modifications' : 'Créer le client'}</button>
             <button onClick={() => { setAjout(false); setForm({ nom: '', prenom: '', entreprise: '', telephone: '', email: '', adresse: '', ville: '', canton: '', type: 'Entreprise', notes: '' }); }} style={btnDanger}>Annuler</button>
           </div>
         </div>
@@ -3838,7 +3840,7 @@ function Clients({ clients, setClients, chantiers, devis = [], naviguer }) {
               </div>
               {c.notes && (
                 <div style={{ marginTop: '10px', background: 'rgba(245,158,11,0.07)', border: '1px solid rgba(245,158,11,0.18)', borderRadius: '8px', padding: '8px 12px', fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-                  📝 {c.notes}
+                  {c.notes}
                 </div>
               )}
               <div style={{ marginTop: '12px', display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
@@ -3906,7 +3908,7 @@ function Employes({ parametres, setParametres, chantiers, naviguer }) {
             </div>
           </div>
           <div style={{ display: 'flex', gap: '10px' }}>
-            <button onClick={sauvegarder} style={btnSucces}>✅ Sauvegarder</button>
+            <button onClick={sauvegarder} style={btnSucces}>Sauvegarder</button>
             <button onClick={() => setAjout(false)} style={btnDanger}>Annuler</button>
           </div>
         </div>
@@ -3993,7 +3995,7 @@ function EditEmployeRow({ e, parametres, sauv }) {
       <td style={tdStyle}><input value={ed.email || ''} onChange={ev => setEd({ ...ed, email: ev.target.value })} style={{ ...inputStyle, padding: '5px 8px' }} /></td>
       <td style={tdStyle}>
         <div style={{ display: 'flex', gap: 4 }}>
-          <button onClick={() => { sauv({ ...parametres, employes: parametres.employes.map(emp => emp.id === e.id ? { ...ed, tarifJour: parseFloat(ed.tarifJour) } : emp) }); setEditing(false); }} style={btnSucces}>✅</button>
+          <button onClick={() => { sauv({ ...parametres, employes: parametres.employes.map(emp => emp.id === e.id ? { ...ed, tarifJour: parseFloat(ed.tarifJour) } : emp) }); setEditing(false); }} style={btnSucces}>✓</button>
           <button onClick={() => setEditing(false)} style={btnDanger}>✕</button>
         </div>
       </td>
@@ -4018,17 +4020,17 @@ function Parametres({ parametres, setParametres, clients = [], setClients = () =
 
   const onglets = [
     { id: 'dashboard', label: '🏠 Dashboard', desc: 'Alertes et affichage' },
-    { id: 'chantiers', label: '📋 Chantiers', desc: 'Statuts et priorités' },
-    { id: 'devis', label: '💰 Devis', desc: 'Marges et tarifs' },
-    { id: 'employes', label: '👷 Employés', desc: 'Tarifs journaliers' },
+    { id: 'chantiers', label: 'Chantiers', desc: 'Statuts et priorités' },
+    { id: 'devis', label: 'Devis', desc: 'Marges et tarifs' },
+    { id: 'employes', label: 'Employés', desc: 'Tarifs journaliers' },
     { id: 'clients_param', label: '👥 Clients', desc: 'Carnet d\'adresses' },
     { id: 'localites', label: '🚗 Localités', desc: 'Frais déplacement' },
-    { id: 'travaux', label: '🔧 Travaux', desc: 'Types et tarifs' },
+    { id: 'travaux', label: 'Travaux', desc: 'Types et tarifs' },
     { id: 'zones', label: '📍 Zones géo.', desc: 'Tarifs par région' },
     { id: 'metrage', label: '📐 Métrage', desc: 'Rendements équipe' },
-    { id: 'qualite', label: '✅ Qualité', desc: 'Checklists' },
+    { id: 'qualite', label: 'Qualité', desc: 'Checklists' },
     { id: 'paiements', label: '💳 Paiements', desc: 'Délais et rappels' },
-    { id: 'rapport', label: '📊 Rapport', desc: 'Alertes hebdo' },
+    { id: 'rapport', label: 'Rapport', desc: 'Alertes hebdo' },
   ];
 
   return (
@@ -4043,7 +4045,7 @@ function Parametres({ parametres, setParametres, clients = [], setClients = () =
           boxShadow: '0 8px 32px rgba(16,185,129,0.35)', backdropFilter: 'blur(12px)',
           animation: 'fadeIn 0.2s ease',
         }}>
-          <span style={{ fontSize: 18 }}>✅</span>
+          <span style={{ fontSize: 18 }}>✓</span>
           <span style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: 14 }}>Paramètres enregistrés</span>
         </div>
       )}
@@ -4054,7 +4056,7 @@ function Parametres({ parametres, setParametres, clients = [], setClients = () =
         </div>
         <div className="page-actions-group">
           <button onClick={() => sauv({ ...parametres })} style={btnSucces}>
-            ✅ Sauvegarder tout
+            Sauvegarder tout
           </button>
         </div>
       </div>
@@ -4079,7 +4081,7 @@ function Parametres({ parametres, setParametres, clients = [], setClients = () =
         <div style={carteStyle}>
           <div className="ds-card-title" style={{ marginBottom: '20px' }}>Paramètres du Dashboard</div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '15px' }}>
-            {[['⚠️ Alerte jours restants', 'joursAlerte'], ['📊 Nb chantiers affichés', 'nbChantiersAffiche'], ['📅 Période stats (mois)', 'periodeStats']].map(([label, key]) => (
+            {[['Alerte jours restants', 'joursAlerte'], ['Nb chantiers affichés', 'nbChantiersAffiche'], ['Période stats (mois)', 'periodeStats']].map(([label, key]) => (
               <div key={key} style={{ background: 'var(--bg-glass-2)', border: '1px solid var(--border)', borderRadius: '12px', padding: '15px' }}>
                 <label style={labelStyle}>{label}</label>
                 <input type="number" value={parametres.parametres?.[key] || ''} placeholder="5"
@@ -4263,10 +4265,10 @@ function Parametres({ parametres, setParametres, clients = [], setClients = () =
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '20px' }}>
             {[
               { label: '🔵 Rendement fp surélevé (m²/j)', key: 'rendementFPSureleve', defaut: 70 },
-              { label: '🟠 Rendement fp non démontable', key: 'rendementFPNonDemo', defaut: 80 },
+              { label: 'Rendement fp non démontable', key: 'rendementFPNonDemo', defaut: 80 },
               { label: '🟣 Rendement dallettes doubles', key: 'rendementDallettes', defaut: 40 },
-              { label: '🟢 Rendement moquette', key: 'rendementMoquette', defaut: 120 },
-              { label: '🔴 Rendement carrelage', key: 'rendementCarrelage', defaut: 35 },
+              { label: 'Rendement moquette', key: 'rendementMoquette', defaut: 120 },
+              { label: 'Rendement carrelage', key: 'rendementCarrelage', defaut: 35 },
               { label: '🔸 Rendement joint (ml/j)', key: 'rendementJoint', defaut: 60 },
             ].map(s => (
               <div key={s.key} style={{ background: 'var(--bg-glass-2)', border: '1px solid var(--border)', borderRadius: '10px', padding: '12px' }}>
@@ -4280,7 +4282,7 @@ function Parametres({ parametres, setParametres, clients = [], setClients = () =
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '15px' }}>
             {[
               ["💶 Tarif chef d'équipe (CHF/j)", 'tarifChefEquipe', 450],
-              ['🔧 Tarif ouvrier qualifié (CHF/j)', 'tarifOuvrier', 350],
+              ['Tarif ouvrier qualifié (CHF/j)', 'tarifOuvrier', 350],
               ["🪛 Tarif main d'œuvre (CHF/j)", 'tarifMainOeuvre', 280],
             ].map(([label, key, defaut]) => (
               <div key={key} style={{ background: 'var(--bg-glass-2)', border: '1px solid var(--border)', borderRadius: '12px', padding: '15px' }}>
@@ -4298,7 +4300,7 @@ function Parametres({ parametres, setParametres, clients = [], setClients = () =
         <div style={carteStyle}>
           <div className="ds-card-title" style={{ marginBottom: '20px' }}>Paramètres Qualité</div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
-            {[['🟢 Seuil score Bon (%)', 'qualiteSeuilBon', 80], ['🟡 Seuil score Moyen (%)', 'qualiteSeuilMoyen', 50]].map(([label, key, defaut]) => (
+            {[['Seuil score Bon (%)', 'qualiteSeuilBon', 80], ['Seuil score Moyen (%)', 'qualiteSeuilMoyen', 50]].map(([label, key, defaut]) => (
               <div key={key} style={{ background: 'var(--bg-glass-2)', border: '1px solid var(--border)', borderRadius: '12px', padding: '15px' }}>
                 <label style={labelStyle}>{label}</label>
                 <input type="number" value={parametres.parametres?.[key] || defaut}
@@ -4314,7 +4316,7 @@ function Parametres({ parametres, setParametres, clients = [], setClients = () =
         <div style={carteStyle}>
           <div className="ds-card-title" style={{ marginBottom: '20px' }}>Paramètres Paiements</div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '15px' }}>
-            {[['📅 Délai paiement (jours)', 'delaiPaiement', 30], ['⚠️ Alerte retard (jours)', 'alerteRetardPaiement', 7], ['💰 Acompte standard (%)', 'acompteStandard', 30]].map(([label, key, defaut]) => (
+            {[['Délai paiement (jours)', 'delaiPaiement', 30], ['Alerte retard (jours)', 'alerteRetardPaiement', 7], ['Acompte standard (%)', 'acompteStandard', 30]].map(([label, key, defaut]) => (
               <div key={key} style={{ background: 'var(--bg-glass-2)', border: '1px solid var(--border)', borderRadius: '12px', padding: '15px' }}>
                 <label style={labelStyle}>{label}</label>
                 <input type="number" value={parametres.parametres?.[key] || defaut}
@@ -4330,7 +4332,7 @@ function Parametres({ parametres, setParametres, clients = [], setClients = () =
         <div style={carteStyle}>
           <div className="ds-card-title" style={{ marginBottom: '20px' }}>Paramètres du Rapport</div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '15px' }}>
-            {[['⚠️ Seuil alerte chantier (jours)', 'joursAlerte', 5], ['📊 Marge minimale alerte (%)', 'margeMinAlerte', 15], ['💰 Montant retard alerte (CHF)', 'montantRetardAlerte', 1000]].map(([label, key, defaut]) => (
+            {[['Seuil alerte chantier (jours)', 'joursAlerte', 5], ['Marge minimale alerte (%)', 'margeMinAlerte', 15], ['Montant retard alerte (CHF)', 'montantRetardAlerte', 1000]].map(([label, key, defaut]) => (
               <div key={key} style={{ background: 'var(--bg-glass-2)', border: '1px solid var(--border)', borderRadius: '12px', padding: '15px' }}>
                 <label style={labelStyle}>{label}</label>
                 <input type="number" value={parametres.parametres?.[key] || defaut}

@@ -187,8 +187,8 @@
   /* DS tokens — light mode avec profondeur */
   --ds-card-bg: #ffffff;
   --ds-card-blur: none;
-  --ds-card-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 20px rgba(0,0,0,0.07);
-  --ds-card-border: transparent;
+  --ds-card-shadow: 0 1px 0 rgba(0,0,0,0.04), 0 2px 8px rgba(0,0,0,0.07), 0 8px 24px rgba(0,0,0,0.06);
+  --ds-card-border: #d1d9e0;
   --ds-card-compact-bg: #ffffff;
   --ds-card-compact-shadow: 0 1px 0 rgba(0,0,0,0.04), 0 2px 6px rgba(0,0,0,0.06);
   --ds-card-compact-border: #d1d9e0;
@@ -253,33 +253,32 @@
 .app-layout[data-theme="light"] .topbar {
   color: #0f172a;
 }
-/* Sidebar reste sombre en light mode — contraste sidebar dark / contenu clair */
 [data-theme="light"] .sidebar {
-  background: linear-gradient(180deg, #0d1525 0%, #0b0f18 100%);
-  border-right: 1px solid rgba(255,255,255,0.06);
-  box-shadow: 2px 0 20px rgba(0,0,0,0.25);
+  background: #ffffff;
+  border-right: 1px solid #e2e8f0;
+  box-shadow: 1px 0 8px rgba(0,0,0,0.05);
 }
 [data-theme="light"] .sidebar-logo {
   background: transparent;
-  border-bottom-color: rgba(255,255,255,0.06);
+  border-bottom-color: #e2e8f0;
 }
-[data-theme="light"] .sidebar-logo-name { color: #ffffff; }
-[data-theme="light"] .sidebar-logo-sub  { color: rgba(255,255,255,0.4); }
-[data-theme="light"] .sidebar-item { color: rgba(255,255,255,0.55); }
+[data-theme="light"] .sidebar-logo-name { color: #0f172a; }
+[data-theme="light"] .sidebar-logo-sub  { color: #64748b; }
+[data-theme="light"] .sidebar-item { color: #1e293b; }
 [data-theme="light"] .sidebar-item:hover {
-  background: rgba(255,255,255,0.07) !important;
-  color: #ffffff !important;
+  background: #f1f5f9 !important;
+  color: #0f172a !important;
   box-shadow: none !important;
 }
 [data-theme="light"] .sidebar-item.active {
-  background: rgba(59,130,246,0.22) !important;
-  color: #ffffff !important;
-  border-left-color: #60a5fa !important;
+  background: #eff6ff !important;
+  color: #2563eb !important;
+  border-left-color: #3b82f6 !important;
   box-shadow: none !important;
 }
 [data-theme="light"] .sidebar-profile {
   background: transparent;
-  border-top-color: rgba(255,255,255,0.06);
+  border-top-color: #e2e8f0;
 }
 
 /* ── Light mode : topbar blanche ── */
@@ -691,11 +690,24 @@ label { font-weight: 500; font-size: 12px; color: var(--text-secondary); }
   position: relative;
   animation: pageEnter 0.25s ease forwards;
 }
-.app-main > * { position: relative; }
+/* Couche lumière : spot bleu au-dessus des KPI */
+.app-main::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 520px;
+  background:
+    radial-gradient(ellipse at 55% 0%, rgba(59,130,246,0.11) 0%, transparent 55%),
+    radial-gradient(ellipse at 20% 0%, rgba(99,102,241,0.07) 0%, transparent 42%),
+    radial-gradient(ellipse at 85% 10%, rgba(139,92,246,0.06) 0%, transparent 38%);
+  pointer-events: none;
+  z-index: 0;
+}
+.app-main > * { position: relative; z-index: 1; }
 
 @keyframes pageEnter {
-  from { opacity: 0; transform: translateY(6px); }
-  to   { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; transform: translateY(8px); filter: blur(2px); }
+  to   { opacity: 1; transform: translateY(0);   filter: blur(0); }
 }
 @keyframes shimmerSlide {
   0%   { transform: translateX(-100%); }

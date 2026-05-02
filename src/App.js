@@ -1026,74 +1026,81 @@ function Dashboard({ chantiers, clients, factures, devis = [], parametres, navig
         </div>
       </div>
 
-      {/* ── KPI CARDS ──────────────────────────────────────────── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 16, marginBottom: 32 }}>
-        {(() => {
-          const rentaAccent = kpi.rentaMoyenne === null ? '#64748b'
-            : kpi.rentaMoyenne >= 15 ? '#10b981'
-            : kpi.rentaMoyenne >= 0  ? '#f59e0b'
-            : '#ef4444';
-          return [
-            {
-              label: 'CA en cours', page: 'devis', Icon: DollarSign,
-              valeur: `CHF ${fmtN(kpi.caEnCours)}`,
-              sous: kpi.nbChantiersActifs > 0
-                ? `${kpi.nbChantiersActifs - (kpi.nbActifsSansDevis || 0)}/${kpi.nbChantiersActifs} avec devis`
-                : 'Aucun chantier actif',
-              accent: '#2563eb', valeurColor: null,
-            },
-            {
-              label: 'Rentabilité moy.', page: 'analyse', Icon: TrendingUp,
-              valeur: kpi.rentaMoyenne !== null ? `${Math.round(kpi.rentaMoyenne)}%` : '—',
-              sous: kpi.nbChantiersRenta > 0
-                ? `${kpi.nbChantiersRenta} chantier${kpi.nbChantiersRenta > 1 ? 's' : ''} analysé${kpi.nbChantiersRenta > 1 ? 's' : ''}`
-                : 'Aucun coût saisi',
-              accent: rentaAccent, valeurColor: rentaAccent,
-            },
-            {
-              label: 'Cash en attente', page: 'finances', Icon: CreditCard,
-              valeur: `CHF ${fmtN(kpi.cashEnAttente)}`,
-              sous: kpi.nbFacturesRetard > 0
-                ? `${kpi.nbFacturesRetard} facture${kpi.nbFacturesRetard > 1 ? 's' : ''} en retard`
-                : kpi.nbFacturesEnAttente > 0
-                  ? `${kpi.nbFacturesEnAttente} à encaisser`
-                  : 'Aucune en attente',
-              accent: '#2563eb', valeurColor: null,
-            },
-            {
-              label: 'Heures engagées', page: 'planning', Icon: Clock,
-              valeur: kpi.heuresEngagees > 0 ? `${fmtN(kpi.heuresEngagees)}h` : '—',
-              sous: kpi.nbEmployes > 0
-                ? `${kpi.nbEmployes} employé${kpi.nbEmployes > 1 ? 's' : ''} mobilisé${kpi.nbEmployes > 1 ? 's' : ''}`
-                : 'Équipes non renseignées',
-              accent: '#2563eb', valeurColor: null,
-            },
-          ];
-        })().map(({ label, page, Icon, valeur, sous, accent, valeurColor }) => (
+      {/* ── KPI CARDS — gradients profonds ──────────────────────── */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 18, marginBottom: 32 }}>
+        {[
+          {
+            label: 'CA en cours', page: 'devis', Icon: DollarSign,
+            valeur: `CHF ${fmtN(kpi.caEnCours)}`,
+            sous: kpi.nbChantiersActifs > 0
+              ? `${kpi.nbChantiersActifs - (kpi.nbActifsSansDevis || 0)}/${kpi.nbChantiersActifs} avec devis`
+              : 'Aucun chantier actif',
+            gradient: 'linear-gradient(135deg, #1D4ED8 0%, #2563EB 45%, #60A5FA 100%)',
+            glow: 'rgba(29,78,216,0.35)',
+          },
+          {
+            label: 'Rentabilité moy.', page: 'analyse', Icon: TrendingUp,
+            valeur: kpi.rentaMoyenne !== null ? `${Math.round(kpi.rentaMoyenne)}%` : '—',
+            sous: kpi.nbChantiersRenta > 0
+              ? `${kpi.nbChantiersRenta} chantier${kpi.nbChantiersRenta > 1 ? 's' : ''} analysé${kpi.nbChantiersRenta > 1 ? 's' : ''}`
+              : 'Aucun coût saisi',
+            gradient: kpi.rentaMoyenne === null
+              ? 'linear-gradient(135deg, #475569 0%, #64748B 100%)'
+              : kpi.rentaMoyenne >= 15
+                ? 'linear-gradient(135deg, #059669 0%, #10B981 50%, #34D399 100%)'
+                : kpi.rentaMoyenne >= 0
+                  ? 'linear-gradient(135deg, #D97706 0%, #F59E0B 50%, #FCD34D 100%)'
+                  : 'linear-gradient(135deg, #DC2626 0%, #EF4444 100%)',
+            glow: kpi.rentaMoyenne !== null && kpi.rentaMoyenne >= 15
+              ? 'rgba(5,150,105,0.3)'
+              : kpi.rentaMoyenne !== null && kpi.rentaMoyenne >= 0
+                ? 'rgba(217,119,6,0.3)'
+                : 'rgba(220,38,38,0.3)',
+          },
+          {
+            label: 'Cash en attente', page: 'finances', Icon: CreditCard,
+            valeur: `CHF ${fmtN(kpi.cashEnAttente)}`,
+            sous: kpi.nbFacturesRetard > 0
+              ? `${kpi.nbFacturesRetard} facture${kpi.nbFacturesRetard > 1 ? 's' : ''} en retard`
+              : kpi.nbFacturesEnAttente > 0
+                ? `${kpi.nbFacturesEnAttente} à encaisser`
+                : 'Aucune en attente',
+            gradient: 'linear-gradient(135deg, #1D4ED8 0%, #2563EB 45%, #60A5FA 100%)',
+            glow: 'rgba(29,78,216,0.35)',
+          },
+          {
+            label: 'Heures engagées', page: 'planning', Icon: Clock,
+            valeur: kpi.heuresEngagees > 0 ? `${fmtN(kpi.heuresEngagees)}h` : '—',
+            sous: kpi.nbEmployes > 0
+              ? `${kpi.nbEmployes} employé${kpi.nbEmployes > 1 ? 's' : ''} mobilisé${kpi.nbEmployes > 1 ? 's' : ''}`
+              : 'Équipes non renseignées',
+            gradient: 'linear-gradient(135deg, #1D4ED8 0%, #2563EB 45%, #60A5FA 100%)',
+            glow: 'rgba(29,78,216,0.35)',
+          },
+        ].map(({ label, page, Icon, valeur, sous, gradient, glow }) => (
           <div key={label} onClick={() => naviguer(page)}
             style={{
-              background: 'var(--ds-card-bg)',
-              borderRadius: 20,
+              background: gradient,
+              borderRadius: 16,
               padding: '24px',
               cursor: 'pointer',
-              border: '1px solid var(--ds-card-border)',
-              boxShadow: 'var(--ds-card-shadow)',
-              position: 'relative',
-              overflow: 'hidden',
+              boxShadow: `0 4px 16px ${glow}`,
+              border: '1px solid rgba(255,255,255,0.15)',
               transition: 'transform 0.18s ease, box-shadow 0.18s ease',
             }}
-            onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 8px 28px rgba(0,0,0,0.11)'; }}
-            onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = 'var(--ds-card-shadow)'; }}
+            onMouseEnter={e => {
+              e.currentTarget.style.transform = 'translateY(-2px)';
+              e.currentTarget.style.boxShadow = `0 10px 28px ${glow}`;
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.transform = '';
+              e.currentTarget.style.boxShadow = `0 4px 16px ${glow}`;
+            }}
           >
-            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: accent }} />
-            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 20, marginTop: 8 }}>
-              <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.8px' }}>{label}</div>
-              <div style={{ width: 32, height: 32, borderRadius: 8, background: accent + '18', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                <Icon size={15} strokeWidth={2} style={{ color: accent }} />
-              </div>
-            </div>
-            <div style={{ fontSize: 44, fontWeight: 800, letterSpacing: '-2px', lineHeight: 1, color: valeurColor || 'var(--text-primary)', marginBottom: 8 }}>{valeur}</div>
-            <div style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 500 }}>{sous}</div>
+            <Icon size={18} strokeWidth={1.8} style={{ color: 'rgba(255,255,255,0.75)', marginBottom: 16, display: 'block' }} />
+            <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.65)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 6 }}>{label}</div>
+            <div style={{ fontSize: 32, fontWeight: 800, color: '#ffffff', letterSpacing: '-1px', lineHeight: 1, marginBottom: 8 }}>{valeur}</div>
+            <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.55)', fontWeight: 500 }}>{sous}</div>
           </div>
         ))}
       </div>
@@ -1101,8 +1108,7 @@ function Dashboard({ chantiers, clients, factures, devis = [], parametres, navig
       {/* ── TRÉSORERIE 30J ───────────────────────────────────────── */}
       {actifs.length > 0 && (
         <div style={{ marginBottom: 28 }}>
-          <div style={{ ...carteStyle, padding: '20px 24px', position: 'relative', overflow: 'hidden' }}>
-            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: previsionTreso30j.alerteFaible ? C.danger : C.secondaire }} />
+          <div style={{ ...carteStyle, borderLeft: `4px solid ${previsionTreso30j.alerteFaible ? C.danger : C.secondaire}`, padding: '20px 24px' }}>
             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 20, flexWrap: 'wrap' }}>
               <div>
                 <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--text-muted)', marginBottom: 6 }}>

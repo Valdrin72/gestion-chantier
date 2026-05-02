@@ -269,7 +269,7 @@ export default function Paiements({ chantiers, clients, paiementsData, setPaieme
                       )}
                       <button onClick={() => supprimerPaiement(c.id, p.id)}
                         style={{ ...DS.btnDanger, padding: '6px 10px', fontSize: '13px' }}>
-                        🗑️
+                        Suppr
                       </button>
                     </div>
                   </div>

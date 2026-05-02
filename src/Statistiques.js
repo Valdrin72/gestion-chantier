@@ -142,7 +142,7 @@ export default function Statistiques({ chantiers, clients, devis = [], parametre
       <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap', marginBottom: '30px' }}>
         {[
           { titre: "CA Total", valeur: `CHF ${fmtN(caTotal)}`, couleur: COL_CA, icone: 'info' },
-          { titre: "Total coûts", valeur: `CHF ${fmtN(coutsTotaux)}`, couleur: COL_COUT, icone: '💸' },
+          { titre: "Total coûts", valeur: `CHF ${fmtN(coutsTotaux)}`, couleur: COL_COUT, icone: 'info' },
           { titre: "Rentabilité", valeur: `CHF ${fmtN(rentabilite)}`, couleur: rentabilite >= 0 ? '#10b981' : C.danger, icone: 'info' },
           { titre: "Marge globale", valeur: `${margeGlobale}%`, couleur: couleurMarge(margeGlobale), icone: '📉' },
           { titre: "Chantiers", valeur: `${filtresAvecDevis.length} / ${chantiersFiltres.length}`, sub: nbSansDevis > 0 ? `${nbSansDevis} sans devis` : null, couleur: C.info, icone: 'info' },

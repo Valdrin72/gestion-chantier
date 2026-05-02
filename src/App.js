@@ -1194,7 +1194,7 @@ function Dashboard({ chantiers, clients, factures, devis = [], parametres, navig
 
             {actionsRecommandees.length > 0 && (
               <div style={{ ...carteStyle, marginBottom: 0, padding: '16px 20px' }}>
-                <div style={{ fontWeight: 700, fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1.2px', marginBottom: 10 }}>⚡ Actions recommandées</div>
+                <div style={{ fontWeight: 700, fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1.2px', marginBottom: 10 }}>Actions recommandées</div>
                 {actionsRecommandees.map((a) => (
                   <ActionRow key={a.id} nom={a.nom} texte={a.action} btnLabel={a.btnLabel} btnCouleur={a.btnCouleur} Icon={a.Icon}
                     onAction={() => { logAction({ type: a.type, chantierId: a.ctx?.chantierActif || null, label: a.nom, factureIds: a.factureIds || [] }); naviguer(a.page, a.ctx); }}
@@ -2151,7 +2151,7 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
       + (etat.projectionDisponible && etat.margeEstimeePct !== null && etat.margeEstimeePct < 0 ? 10 : 0)
       + (couts.ratioEfficacite !== null && couts.ratioEfficacite < 0.8 ? 5 : 0);
     const criticiteConfig = scoreCriticite >= 15
-      ? { icone: '🔥', label: 'Chantier critique — action immédiate', couleur: C.danger, fond: 'radial-gradient(ellipse at 6% 50%, rgba(239,68,68,0.13) 0%, rgba(239,68,68,0.04) 100%)' }
+      ? { icone: 'danger', label: 'Chantier critique — action immédiate', couleur: C.danger, fond: 'radial-gradient(ellipse at 6% 50%, rgba(239,68,68,0.13) 0%, rgba(239,68,68,0.04) 100%)' }
       : scoreCriticite >= 8
         ? { icone: 'warning', label: 'Chantier à risque — à traiter aujourd\'hui', couleur: C.warning, fond: 'radial-gradient(ellipse at 6% 50%, rgba(245,158,11,0.13) 0%, rgba(245,158,11,0.04) 100%)' }
         : null;
@@ -2168,9 +2168,9 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
     // ── Alerte trésorerie (depuis moteur) ────────────────────────────────
     const tresorerieEcart = devisTotal > 0 ? etat.avancementPct - pctFacture : 0;
     const tresorerieConfig = tresorerieEcart > 30
-      ? { icone: '💸', label: 'Travail non facturé — risque de trésorerie', couleur: C.danger }
+      ? { icone: 'warning', label: 'Travail non facturé — risque de trésorerie', couleur: C.danger }
       : tresorerieEcart > 15
-        ? { icone: '💸', label: 'Facturation en retard', couleur: C.warning }
+        ? { icone: 'warning', label: 'Facturation en retard', couleur: C.warning }
         : null;
     const pctEncaisse = devisTotal > 0 ? Math.min(Math.round((montantPayeLie / devisTotal) * 100), 100) : 0;
 
@@ -2181,7 +2181,7 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
       // Dépassement de délai (date-based)
       if (j !== null && j < 0) {
         const abs = Math.abs(j);
-        list.push({ id: 'delai', texte: `Dépassement de délai — ${abs} jour${abs > 1 ? 's' : ''} de retard sur la planification`, gravite: 'critique', icone: '🔥' });
+        list.push({ id: 'delai', texte: `Dépassement de délai — ${abs} jour${abs > 1 ? 's' : ''} de retard sur la planification`, gravite: 'critique', icone: 'danger' });
       } else if (j !== null && j <= 3 && j >= 0) {
         list.push({ id: 'fin_proche', texte: `Fin imminente — ${j === 0 ? "dernier jour aujourd'hui" : `${j} jour${j > 1 ? 's' : ''} restant${j > 1 ? 's' : ''}`}`, gravite: 'warning', icone: 'warning' });
       }
@@ -2485,7 +2485,7 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
               )}
             </div>
             <div style={{ display: 'flex', gap: '8px' }}>
-              <Badge texte={`⭐ ${c.priorite}`} couleur={c.priorite === 'Haute' ? C.danger : C.info} />
+              <Badge texte={c.priorite} couleur={c.priorite === 'Haute' ? C.danger : C.info} />
               <Badge texte={c.statut} couleur={couleurStatut(c.statut)} />
               {chantierStatusBadge && <Badge texte={chantierStatusBadge.label} couleur={chantierStatusBadge.couleur} glow />}
               {c.devisId && !isChantierActif(c) && !['Terminé', 'Facturé', 'Clôturé'].includes(c.statut) && (
@@ -3309,7 +3309,7 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
                 padding: '13px 18px', borderRadius: 12, marginBottom: 16,
                 background: C.danger + '0f', border: `1px solid ${C.danger}30`, borderLeft: `4px solid ${C.danger}`,
               }}>
-                <span style={{ fontSize: 18, lineHeight: 1 }}>🔥</span>
+                <AlertTriangle size={18} strokeWidth={2} style={{ color: "var(--text-muted)", flexShrink: 0 }} />
                 <span style={{ fontSize: 14, fontWeight: 800, color: C.danger }}>
                   {nbCritique} chantier{nbCritique > 1 ? 's' : ''} bloque{nbCritique > 1 ? 'nt' : ''} aujourd'hui
                 </span>
@@ -3824,7 +3824,7 @@ function Clients({ clients, setClients, chantiers, devis = [], naviguer }) {
               </div>
               <div style={{ marginTop: '12px' }}>
                 <div style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)' }}>{c.prenom} {c.nom}</div>
-                <div style={{ color: 'var(--text-secondary)', fontSize: '12px', marginTop: '3px' }}>🏢 {c.entreprise}</div>
+                <div style={{ color: 'var(--text-secondary)', fontSize: '12px', marginTop: '3px' }}>{c.entreprise}</div>
                 <div style={{ color: 'var(--text-muted)', fontSize: '12px' }}>📍 {c.adresse}, {c.ville}</div>
                 <div style={{ color: 'var(--text-muted)', fontSize: '12px' }}>📞 {c.telephone} · ✉️ {c.email}</div>
               </div>
@@ -3977,7 +3977,7 @@ function EditEmployeRow({ e, parametres, sauv }) {
       <td style={tdStyle}>
         <div style={{ display: 'flex', gap: 4 }}>
           <button onClick={() => setEditing(true)} style={{ ...DS.btnGhost, padding: '4px 10px', fontSize: 12 }}><Pencil size={12} /> Modifier</button>
-          <button onClick={() => { if (window.confirm(`Supprimer ${e.nom} ?`)) sauv({ ...parametres, employes: parametres.employes.filter(emp => emp.id !== e.id) }); }} style={{ ...btnDanger, padding: '4px 8px' }}>🗑️</button>
+          <button onClick={() => { if (window.confirm(`Supprimer ${e.nom} ?`)) sauv({ ...parametres, employes: parametres.employes.filter(emp => emp.id !== e.id) }); }} style={{ ...btnDanger, padding: '4px 8px' }}>Suppr</button>
         </div>
       </td>
     </tr>
@@ -4029,7 +4029,7 @@ function Parametres({ parametres, setParametres, clients = [], setClients = () =
     { id: 'zones', label: '📍 Zones géo.', desc: 'Tarifs par région' },
     { id: 'metrage', label: 'Métrage', desc: 'Rendements équipe' },
     { id: 'qualite', label: 'Qualité', desc: 'Checklists' },
-    { id: 'paiements', label: '💳 Paiements', desc: 'Délais et rappels' },
+    { id: 'paiements', label: 'Paiements', desc: 'Délais et rappels' },
     { id: 'rapport', label: 'Rapport', desc: 'Alertes hebdo' },
   ];
 
@@ -4109,7 +4109,7 @@ function Parametres({ parametres, setParametres, clients = [], setClients = () =
             <div>
               <div style={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', color: 'var(--text-muted)', marginBottom: '12px' }}>Priorités</div>
               {['Basse', 'Normale', 'Haute', 'Urgente'].map(p => (
-                <div key={p} style={{ padding: '8px 0', borderBottom: '1px solid var(--border)', fontSize: '14px', color: 'var(--text-secondary)' }}>⭐ {p}</div>
+                <div key={p} style={{ padding: '8px 0', borderBottom: '1px solid var(--border)', fontSize: '14px', color: 'var(--text-secondary)' }}>{p}</div>
               ))}
             </div>
           </div>
@@ -4176,7 +4176,7 @@ function Parametres({ parametres, setParametres, clients = [], setClients = () =
                 <tr key={l.id}>
                   <td style={tdStyle}><input value={l.nom} onChange={e => { const u = parametres.localites.map(loc => loc.id === l.id ? { ...loc, nom: e.target.value } : loc); sauv({ ...parametres, localites: u }); }} style={{ ...inputStyle, padding: '5px 8px' }} /></td>
                   <td style={tdStyle}><input type="text" inputMode="numeric" value={l.tarifJour ? fmtN(l.tarifJour) : ''} onChange={e => { const raw = e.target.value.replace(/'/g, '').replace(/[^0-9.]/g, ''); const u = parametres.localites.map(loc => loc.id === l.id ? { ...loc, tarifJour: parseFloat(raw) || 0 } : loc); sauv({ ...parametres, localites: u }); }} style={{ ...inputStyle, padding: '5px 8px', width: 100, color: C.primaire, fontWeight: 700 }} /></td>
-                  <td style={tdStyle}><button onClick={() => { if (window.confirm(`Supprimer ${l.nom} ?`)) sauv({ ...parametres, localites: parametres.localites.filter(loc => loc.id !== l.id) }); }} style={btnDanger}>🗑️</button></td>
+                  <td style={tdStyle}><button onClick={() => { if (window.confirm(`Supprimer ${l.nom} ?`)) sauv({ ...parametres, localites: parametres.localites.filter(loc => loc.id !== l.id) }); }} style={btnDanger}>Suppr</button></td>
                 </tr>
               ))}
             </tbody>
@@ -4208,7 +4208,7 @@ function Parametres({ parametres, setParametres, clients = [], setClients = () =
                   <td style={tdStyle}><input value={t.nom} onChange={e => { const u = parametres.typesTravaux.map(tr => tr.id === t.id ? { ...tr, nom: e.target.value } : tr); sauv({ ...parametres, typesTravaux: u }); }} style={{ ...inputStyle, width: '200px' }} /></td>
                   <td style={tdStyle}><select value={t.unite} onChange={e => { const u = parametres.typesTravaux.map(tr => tr.id === t.id ? { ...tr, unite: e.target.value } : tr); sauv({ ...parametres, typesTravaux: u }); }} style={{ ...inputStyle, width: '100px' }}>{['m²', 'ml', 'unité', 'forfait'].map(u => <option key={u}>{u}</option>)}</select></td>
                   <td style={tdStyle}><input type="text" inputMode="numeric" value={t.tarifBase ? fmtN(t.tarifBase) : ''} onChange={e => { const raw = e.target.value.replace(/'/g, '').replace(/[^0-9.]/g, ''); const u = parametres.typesTravaux.map(tr => tr.id === t.id ? { ...tr, tarifBase: parseFloat(raw) || 0 } : tr); sauv({ ...parametres, typesTravaux: u }); }} style={{ ...inputStyle, width: '100px' }} /></td>
-                  <td style={tdStyle}><button onClick={() => { if (window.confirm('Supprimer ce type de travaux ?')) sauv({ ...parametres, typesTravaux: parametres.typesTravaux.filter(tr => tr.id !== t.id) }); }} style={btnDanger}>🗑️</button></td>
+                  <td style={tdStyle}><button onClick={() => { if (window.confirm('Supprimer ce type de travaux ?')) sauv({ ...parametres, typesTravaux: parametres.typesTravaux.filter(tr => tr.id !== t.id) }); }} style={btnDanger}>Suppr</button></td>
                 </tr>
               ))}
             </tbody>
@@ -4283,7 +4283,7 @@ function Parametres({ parametres, setParametres, clients = [], setClients = () =
             {[
               ["💶 Tarif chef d'équipe (CHF/j)", 'tarifChefEquipe', 450],
               ['Tarif ouvrier qualifié (CHF/j)', 'tarifOuvrier', 350],
-              ["🪛 Tarif main d'œuvre (CHF/j)", 'tarifMainOeuvre', 280],
+              ["Tarif main d'œuvre (CHF/j)", 'tarifMainOeuvre', 280],
             ].map(([label, key, defaut]) => (
               <div key={key} style={{ background: 'var(--bg-glass-2)', border: '1px solid var(--border)', borderRadius: '12px', padding: '15px' }}>
                 <label style={labelStyle}>{label}</label>

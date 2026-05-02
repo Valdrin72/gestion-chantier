@@ -578,7 +578,7 @@ export default function ImportPDF({ parametres, onCreerDevis, onCreerChantier, o
                 { label: 'Rendement m²/jour', val: rendement, set: setRendement },
                 { label: 'Tarif jour (CHF)', val: tarifJour, set: setTarifJour },
                 { label: 'Marge cible (%)', val: margeCible, set: setMargeCible },
-                { label: '🏢 Frais généraux (%)', val: tauxFraisGen, set: setTauxFraisGen },
+                { label: 'Frais généraux (%)', val: tauxFraisGen, set: setTauxFraisGen },
               ].map(s => (
                 <div key={s.label}>
                   <label style={labelStyle}>{s.label}</label>
@@ -639,7 +639,7 @@ export default function ImportPDF({ parametres, onCreerDevis, onCreerChantier, o
                       </td>
                       <td style={{ padding: '8px 12px' }}>
                         <button onClick={() => setMetres(metres.filter(x => x.id !== m.id))}
-                          style={{ ...DS.btnDanger, padding: '4px 10px', fontSize: '12px' }}>🗑️</button>
+                          style={{ ...DS.btnDanger, padding: '4px 10px', fontSize: '12px' }}>Suppr</button>
                       </td>
                     </tr>
                   ))}
@@ -695,7 +695,7 @@ export default function ImportPDF({ parametres, onCreerDevis, onCreerChantier, o
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
               <div><label style={labelStyle}>Marge cible (%)</label>
                 <input type="number" value={margeCible} onChange={e => setMargeCible(parseFloat(e.target.value) || 0)} style={{ ...inputStyle, fontWeight: 'bold', color: '#10b981', borderColor: '#10b981' }} /></div>
-              <div><label style={labelStyle}>🏢 Frais généraux (%)</label>
+              <div><label style={labelStyle}>Frais généraux (%)</label>
                 <input type="number" value={tauxFraisGen} onChange={e => setTauxFraisGen(parseFloat(e.target.value) || 0)} style={{ ...inputStyle, fontWeight: 'bold', color: '#10b981', borderColor: '#10b981' }} /></div>
             </div>
           </div>
@@ -747,7 +747,7 @@ export default function ImportPDF({ parametres, onCreerDevis, onCreerChantier, o
                       </td>
                       <td style={{ padding: '8px 12px' }}>
                         <button onClick={() => setMontants(montants.filter(x => x.id !== m.id))}
-                          style={{ ...DS.btnDanger, padding: '4px 10px', fontSize: '12px' }}>🗑️</button>
+                          style={{ ...DS.btnDanger, padding: '4px 10px', fontSize: '12px' }}>Suppr</button>
                       </td>
                     </tr>
                   ))}
@@ -857,11 +857,11 @@ export default function ImportPDF({ parametres, onCreerDevis, onCreerChantier, o
                 </div>
               )}
               <div className="alert-banner alert-banner-warning" style={{ justifyContent: 'space-between' }}>
-                <span>🏢 Frais généraux ({tauxFraisGen}%)</span>
+                <span>Frais généraux ({tauxFraisGen}%)</span>
                 <strong style={{ color: C.danger }}>CHF {Math.round(calculs.fraisGen).toLocaleString()}</strong>
               </div>
               <div className="alert-banner alert-banner-danger" style={{ justifyContent: 'space-between' }}>
-                <strong>💸 Prix de revient total</strong>
+                <strong>Prix de revient total</strong>
                 <strong style={{ color: C.danger, fontSize: '18px' }}>CHF {Math.round(calculs.coutRevient).toLocaleString()}</strong>
               </div>
             </div>

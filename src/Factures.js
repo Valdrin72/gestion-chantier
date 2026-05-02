@@ -431,14 +431,14 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
                         )}
                         {(f.statut === 'envoyee' || f.statut === 'partielle') && (
                           <button style={{ ...S.btnPrimary, padding: '5px 10px', fontSize: 12 }}
-                            onClick={() => setPaiementModal(f)}>💳 Payer</button>
+                            onClick={() => setPaiementModal(f)}>Payer</button>
                         )}
                         {canEdit && (
                           <button
                             style={{ ...S.btnDanger, padding: '5px 10px', fontSize: 12, opacity: 0.75 }}
                             onMouseEnter={e => e.currentTarget.style.opacity = '1'}
                             onMouseLeave={e => e.currentTarget.style.opacity = '0.75'}
-                            onClick={() => supprimerFacture(f.id)}>🗑</button>
+                            onClick={() => supprimerFacture(f.id)}>Suppr</button>
                         )}
                       </div>
                     </td>
@@ -455,7 +455,7 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}
           onClick={e => { if (e.target === e.currentTarget) setPaiementModal(null); }}>
           <div style={{ background: 'linear-gradient(145deg, rgba(255,255,255,0.07) 0%, rgba(255,255,255,0.03) 100%)', backdropFilter: 'blur(20px) saturate(1.8)', WebkitBackdropFilter: 'blur(20px) saturate(1.8)', borderRadius: 18, padding: 28, width: 420, boxShadow: '0 24px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.1), inset 0 1px 0 rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.1)' }}>
-            <div className="ds-card-title" style={{ marginBottom: 6 }}>💳 Enregistrer un paiement</div>
+            <div className="ds-card-title" style={{ marginBottom: 6 }}>Enregistrer un paiement</div>
             <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 20 }}>
               {paiementModal.numero} — Solde restant : <strong style={{ color: '#f59e0b' }}>{fmt((paiementModal.montantTTC ?? 0) - (paiementModal.montantPaye ?? 0))} CHF</strong>
             </div>
@@ -515,7 +515,7 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
               )}
               {(f.statut === 'envoyee' || f.statut === 'partielle') && (
                 <>
-                  <button style={S.btnPrimary} onClick={() => setPaiementModal(f)}>💳 Paiement</button>
+                  <button style={S.btnPrimary} onClick={() => setPaiementModal(f)}>Paiement</button>
                   <button style={{ ...S.btnGhost, color: '#10b981', borderColor: 'rgba(16,185,129,0.4)' }}
                     onClick={() => { changerStatut(f.id, 'payee'); setSelected({ ...f, statut: 'payee' }); }}>
                     ✓ Payée
@@ -525,7 +525,7 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
               <button
                 style={{ ...S.btnDanger, marginLeft: 8 }}
                 onClick={() => supprimerFacture(f.id, true)}>
-                🗑 Supprimer
+                Supprimer
               </button>
             </>
           )}
@@ -661,7 +661,7 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
         {/* Historique des paiements */}
         {(f.paiementsHistorique || []).length > 0 && (
           <div style={{ ...S.card, marginTop: 16 }}>
-            <div className="ds-card-title" style={{ marginBottom: 14 }}>💳 Historique des paiements</div>
+            <div className="ds-card-title" style={{ marginBottom: 14 }}>Historique des paiements</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {[...(f.paiementsHistorique || [])].sort((a, b) => a.date.localeCompare(b.date)).map((p, i) => (
                 <div key={p.id || `paiement-${i}`} className="ds-animate-in" style={{
@@ -705,7 +705,7 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
           <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}
             onClick={e => { if (e.target === e.currentTarget) setPaiementModal(null); }}>
             <div style={{ background: 'linear-gradient(145deg, rgba(255,255,255,0.07) 0%, rgba(255,255,255,0.03) 100%)', backdropFilter: 'blur(20px) saturate(1.8)', WebkitBackdropFilter: 'blur(20px) saturate(1.8)', borderRadius: 18, padding: 28, width: 420, boxShadow: '0 24px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.1), inset 0 1px 0 rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.1)' }}>
-              <div className="ds-card-title" style={{ marginBottom: 6 }}>💳 Enregistrer un paiement</div>
+              <div className="ds-card-title" style={{ marginBottom: 6 }}>Enregistrer un paiement</div>
               <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 20 }}>
                 {paiementModal.numero} — Solde restant : <strong style={{ color: '#f59e0b' }}>{fmt((paiementModal.montantTTC ?? 0) - (paiementModal.montantPaye ?? 0))} CHF</strong>
               </div>

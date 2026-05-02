@@ -665,7 +665,7 @@ export default function Planning({ chantiers, setChantiers, clients, naviguer })
                 padding: '10px 16px', cursor: 'pointer', fontSize: 13, fontWeight: 600,
                 fontFamily: 'Inter, sans-serif',
               }}>
-                🗑 Retirer du planning
+                Retirer du planning
               </button>
               <div style={{ display: 'flex', gap: 8 }}>
                 <button onClick={() => setModal(null)} style={{

@@ -164,7 +164,7 @@ export default function MetragePlan({ parametres, onCreerChantier, onCreerDevis 
                 {[
                   { key: 'chefEquipe', label: "Chef d'équipe", couleur: '#10b981' },
                   { key: 'ouvrier', label: 'Ouvrier qualifié', couleur: C.secondaire },
-                  { key: 'mainOeuvre', label: "🪛 Main d'œuvre", couleur: C.warning },
+                  { key: 'mainOeuvre', label: "Main d'œuvre", couleur: C.warning },
                 ].map(r => (
                   <tr key={r.key} style={{ borderBottom: '1px solid var(--border)' }}>
                     <td style={{ padding: '12px 15px', fontWeight: 'bold', color: r.couleur }}>{r.label}</td>
@@ -202,7 +202,7 @@ export default function MetragePlan({ parametres, onCreerChantier, onCreerDevis 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
               {[
                 { label: 'Marge cible (%)', val: margeCible, set: setMargeCible },
-                { label: '🏢 Frais généraux (%)', val: tauxFraisGen, set: setTauxFraisGen },
+                { label: 'Frais généraux (%)', val: tauxFraisGen, set: setTauxFraisGen },
               ].map(s => (
                 <div key={s.label} style={{ background: 'var(--bg-card)', borderRadius: '10px', padding: '15px' }}>
                   <label style={labelStyle}>{s.label}</label>
@@ -356,7 +356,7 @@ export default function MetragePlan({ parametres, onCreerChantier, onCreerDevis 
                           <span style={{ fontWeight: 'bold', color: type.couleur }}>{type.icone} {type.nom}</span>
                         </div>
                         <button onClick={() => supprimerZone(zone.id)}
-                          style={{ ...DS.btnDanger, padding: '3px 8px', fontSize: '12px' }}>🗑️</button>
+                          style={{ ...DS.btnDanger, padding: '3px 8px', fontSize: '12px' }}>Suppr</button>
                       </div>
                       <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr', gap: '10px' }}>
                         <div>
@@ -465,7 +465,7 @@ export default function MetragePlan({ parametres, onCreerChantier, onCreerDevis 
                   { label: 'Coûts matériaux', val: totalMateriel, couleur: C.info, bg: 'rgba(59,130,246,0.1)' },
                   { label: `Main d'œuvre (${nbOuvriers} pers. × CHF ${Math.round(tarifJourMO)}/j moy.)`, val: totalMO, couleur: C.warning, bg: 'rgba(245,158,11,0.1)' },
                   { label: '= Coûts directs', val: totalCouts, couleur: '#455a64', bg: 'var(--bg-hover)', bold: true },
-                  { label: `🏢 Frais généraux (${tauxFraisGen}%)`, val: fraisGen, couleur: C.violet, bg: 'rgba(139,92,246,0.1)' },
+                  { label: `Frais généraux (${tauxFraisGen}%)`, val: fraisGen, couleur: C.violet, bg: 'rgba(139,92,246,0.1)' },
                   { label: '= Prix de revient', val: coutRevient, couleur: C.danger, bg: 'rgba(239,68,68,0.1)', bold: true },
                   { label: `Marge (${margeCible}%)`, val: marge, couleur: C.secondaire, bg: 'rgba(16,185,129,0.1)' },
                   { label: '= PRIX DE VENTE HT', val: prixVente, couleur: '#10b981', bg: 'rgba(16,185,129,0.1)', bold: true, big: true },

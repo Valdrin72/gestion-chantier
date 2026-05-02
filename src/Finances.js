@@ -276,7 +276,7 @@ export default function Finances({
   const tabs = [
     { id: 'tresorerie', label: '📈 Trésorerie',          count: null },
     { id: 'factures',   label: '🧾 Factures',            count: facturesPeriode.filter(f => f.statut !== 'annulee').length },
-    { id: 'paiements',  label: '💳 Paiements chantiers', count: null },
+    { id: 'paiements',  label: 'Paiements chantiers', count: null },
   ];
 
   return (

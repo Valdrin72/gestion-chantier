@@ -230,8 +230,8 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px' }}>
               {[
                 { label: '👥 Charges sociales (%)', val: tauxChargesSociales, set: setTauxChargesSociales },
-                { label: '🏢 Frais généraux (%)', val: tauxFraisGeneraux, set: setTauxFraisGeneraux },
-                { label: '💸 Taux d\'imposition (%)', val: tauxImpots, set: setTauxImpots },
+                { label: 'Frais généraux (%)', val: tauxFraisGeneraux, set: setTauxFraisGeneraux },
+                { label: 'Taux d\'imposition (%)', val: tauxImpots, set: setTauxImpots },
               ].map(s => (
                 <div key={s.label}>
                   <label style={{ fontSize: '13px', color: 'var(--text-secondary)', display: 'block', marginBottom: '5px' }}>{s.label}</label>

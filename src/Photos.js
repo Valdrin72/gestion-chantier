@@ -201,7 +201,7 @@ export default function Photos({ chantiers, photosData, setPhotosData }) {
                 <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>{photoSelectionnee.date} à {photoSelectionnee.heure} · {photoSelectionnee.taille}</div>
                 <button onClick={(e) => { e.stopPropagation(); supprimerPhoto(c.id, photoSelectionnee.id); }}
                   style={{ ...DS.btnDanger, marginTop: '8px' }}>
-                  🗑️ Supprimer
+                  Supprimer
                 </button>
               </div>
               <button onClick={() => setPhotoSelectionnee(null)}

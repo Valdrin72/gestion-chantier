@@ -210,6 +210,26 @@ export const DS = {
     gap: '6px',
   },
 
+  // ── Brand tokens ────────────────────────────────────────────
+  brand: {
+    primary:      '#3B82F6',
+    primaryDeep:  '#1E40AF',
+    secondary:    '#4F46E5',
+    soft:         '#EEF2FF',
+    tint:         '#EFF6FF',
+    gradient:     'linear-gradient(135deg, #3B82F6 0%, #4F46E5 100%)',
+    gradientDeep: 'linear-gradient(135deg, #1E40AF 0%, #3B82F6 100%)',
+  },
+
+  // ── KPI Gradients (source: CYNA App.html KpiCard) ───────────
+  kpiGradients: {
+    blue:   { bg: 'linear-gradient(135deg, #1E40AF 0%, #3B82F6 100%)', glow: 'rgba(59,130,246,0.32)' },
+    green:  { bg: 'linear-gradient(135deg, #065F46 0%, #10B981 100%)', glow: 'rgba(16,185,129,0.32)' },
+    amber:  { bg: 'linear-gradient(135deg, #92400E 0%, #F59E0B 100%)', glow: 'rgba(245,158,11,0.32)' },
+    purple: { bg: 'linear-gradient(135deg, #4C1D95 0%, #8B5CF6 100%)', glow: 'rgba(139,92,246,0.32)' },
+    red:    { bg: 'linear-gradient(135deg, #991B1B 0%, #EF4444 100%)', glow: 'rgba(239,68,68,0.32)' },
+  },
+
   // ── KPI Gradients (source: CYNA App.html KpiCard) ───────────
   kpi: {
     blue:   { gradient: 'linear-gradient(135deg, #1E40AF 0%, #3B82F6 100%)', glow: 'rgba(59,130,246,0.32)' },
@@ -217,6 +237,17 @@ export const DS = {
     amber:  { gradient: 'linear-gradient(135deg, #92400E 0%, #F59E0B 100%)', glow: 'rgba(245,158,11,0.32)' },
     purple: { gradient: 'linear-gradient(135deg, #4C1D95 0%, #8B5CF6 100%)', glow: 'rgba(139,92,246,0.32)' },
     red:    { gradient: 'linear-gradient(135deg, #991B1B 0%, #EF4444 100%)', glow: 'rgba(239,68,68,0.32)' },
+  },
+
+  // ── Badges sémantiques (Section 9 DESIGN_TOKENS.md) ─────────
+  badges: {
+    success : { bg: '#D1FAE5', color: '#065F46' },
+    warning : { bg: '#FEF3C7', color: '#92400E' },
+    danger  : { bg: '#FEE2E2', color: '#991B1B' },
+    info    : { bg: '#DBEAFE', color: '#1E40AF' },
+    neutral : { bg: '#F1F5F9', color: '#475569' },
+    purple  : { bg: '#EDE9FE', color: '#5B21B6' },
+    indigo  : { bg: '#E0E7FF', color: '#3730A3' },
   },
 
   // ── Statuts badges (source: CYNA App.html STATUT_COL) ───────

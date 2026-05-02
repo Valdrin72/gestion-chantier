@@ -95,6 +95,33 @@
   --bottom-nav-bg:   var(--bg-sidebar);
   --bottom-nav-border: var(--border);
 
+  /* Radius tokens */
+  --r-sm  : 5px;
+  --r-md  : 7px;
+  --r-lg  : 9px;
+  --r-xl  : 10px;
+  --r-2xl : 11px;
+  --r-card: 16px;
+  --r-pill: 20px;
+
+  /* Brand / accent */
+  --brand         : #3B82F6;
+  --brand-deep    : #1E40AF;
+  --brand-2       : #4F46E5;
+  --brand-soft    : #EEF2FF;
+  --brand-tint    : #EFF6FF;
+  --brand-gradient: linear-gradient(135deg, #3B82F6 0%, #4F46E5 100%);
+
+  /* Semantic surface aliases (dark default) */
+  --surface       : var(--bg-card);
+  --surface-2     : var(--bg-hover);
+  --border-soft   : var(--border);
+  --text          : var(--text-primary);
+  --text-2        : var(--text-secondary);
+  --text-3        : var(--text-muted);
+  --text-mute     : var(--text-muted);
+  --text-faint    : #475569;
+
   /* DS tokens — dark mode par défaut */
   --ds-card-bg: linear-gradient(145deg, rgba(255,255,255,0.055) 0%, rgba(255,255,255,0.028) 50%, rgba(255,255,255,0.038) 100%);
   --ds-card-blur: blur(14px) saturate(1.6);
@@ -183,6 +210,16 @@
   --red-bg: rgba(239,68,68,0.08);
   --blue-bg: rgba(59,130,246,0.08);
   --purple-bg: rgba(139,92,246,0.08);
+
+  /* Semantic surface aliases (light) */
+  --surface       : #FFFFFF;
+  --surface-2     : #F8FAFC;
+  --border-soft   : #F1F5F9;
+  --text          : #0F172A;
+  --text-2        : #475569;
+  --text-3        : #64748B;
+  --text-mute     : #94A3B8;
+  --text-faint    : #CBD5E1;
 
   /* DS tokens light — source de vérité CYNA App.html */
   --ds-card-bg: #FFFFFF;

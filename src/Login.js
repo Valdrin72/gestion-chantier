@@ -8,7 +8,7 @@ const PROFILS = [
     icone: '◈',
     couleur: C.primaire,
     description: 'Accès complet à toutes les fonctionnalités',
-    pages: ['dashboard', 'chantiers', 'devis', 'finances', 'clients', 'employes', 'planning', 'statistiques', 'qualite', 'parametres', 'rapport', 'analyse'],
+    pages: ['dashboard', 'chantiers', 'devis', 'finances', 'clients', 'employes', 'planning', 'statistiques', 'qualite', 'parametres', 'rapport', 'analyse', 'agents'],
   },
   {
     id: 'conducteur',

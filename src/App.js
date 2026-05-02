@@ -4,7 +4,7 @@ import {
   BarChart2, CheckSquare, ClipboardList, TrendingUp,
   Settings, Moon, Sun, LogOut,
   Menu, X, Plus, Pencil, Trash2, AlertTriangle,
-  ChevronRight, CheckCircle, DollarSign, Bell, Clock, CreditCard,
+  ChevronRight, CheckCircle, DollarSign, Bell, Clock, CreditCard, Bot,
 } from 'lucide-react';
 import { LineChart, Line, PieChart, Pie, Cell, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 import { donneesInitiales, fmtN, calculerDateFinOuvrables, joursOuvrableRestants, getAlerte, getAlerteChantier, estRetardJustifie, getChantierStatus, calculerCoutsChantier, statutRentabilite, C, getIntervallesPeriode, getPeriodeLabel, chantiersInPeriode, facturesInPeriode, calculerJoursRestants, calculerRentabiliteReelle, calculerEcartChantier, calculerEtatChantier, assertEtatValide, assertEtatCoherent, calculerVitesseChantier, migrerJournal, migrerDevisId, heuresEmploye, heuresJour, sommeAvenants, calculerCA, isChantierActif } from './donnees';
@@ -16,6 +16,8 @@ import Rapport from './Rapport';
 import Analyse from './Analyse';
 import Login, { PROFILS } from './Login';
 import { DS } from './ds';
+import useAgents from './useAgents';
+import Agents from './Agents';
 
 // Supprime les balises HTML des champs texte avant sauvegarde (protection XSS dans PDF)
 const sanitiser = (obj) => {
@@ -279,6 +281,8 @@ function App() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // run once on mount
 
+  const agentState = useAgents({ chantiers, devis, factures, clients, parametres });
+
   const navItems = [
     { id: 'dashboard',  label: 'Dashboard',   Icon: LayoutDashboard, labelCourt: 'Accueil' },
     { id: 'chantiers',  label: 'Chantiers',   Icon: HardHat,         labelCourt: 'Chantiers' },
@@ -286,6 +290,7 @@ function App() {
     { id: 'finances',   label: 'Finances',    Icon: DollarSign,      labelCourt: 'Finances' },
     { id: 'planning',   label: 'Planning',    Icon: Calendar,        labelCourt: 'Planning' },
     { id: 'analyse',    label: 'Analyse',     Icon: TrendingUp,      labelCourt: 'Analyse' },
+    { id: 'agents',     label: 'Agents IA',   Icon: Bot,             labelCourt: 'Agents' },
     { id: 'parametres', label: 'Paramètres',  Icon: Settings,        labelCourt: 'Config' },
   ];
 
@@ -377,7 +382,7 @@ function App() {
 
         {/* ===== CONTENU PRINCIPAL ===== */}
         <main className="app-main">
-          {page === 'dashboard'    && <Dashboard chantiers={chantiers} clients={clients} factures={factures} devis={devis} parametres={parametres} naviguer={naviguer} actionsLog={actionsLog} logAction={logAction} periodeGlobale={periodeGlobale} setPeriodeGlobale={setPeriodeGlobale} profil={profil} />}
+          {page === 'dashboard'    && <Dashboard chantiers={chantiers} clients={clients} factures={factures} devis={devis} parametres={parametres} naviguer={naviguer} actionsLog={actionsLog} logAction={logAction} periodeGlobale={periodeGlobale} setPeriodeGlobale={setPeriodeGlobale} profil={profil} agentAlertes={agentState.alertes} nbAgentAlertes={agentState.nbNonLues} agentPredictions={agentState.predictions} marquerLu={agentState.marquerLu} naviguerAgents={() => naviguer('agents')} />}
           {page === 'chantiers'    && <Chantiers chantiers={chantiers} setChantiers={setChantiers} factures={factures} clients={clients} devis={devis} parametres={parametres} naviguer={naviguer} contexte={contexte} />}
           {page === 'devis'        && <Devis devis={devis} setDevis={setDevis} clients={clients} parametres={parametres} setParametres={setParametres} naviguer={naviguer} setChantiers={setChantiers} chantiers={chantiers} contexte={contexte} />}
           {page === 'finances'     && <Finances factures={factures} onSave={setFactures} clients={clients} chantiers={chantiers} devis={devis} paiementsData={paiementsData} setPaiementsData={setPaiementsData} naviguer={naviguer} contexte={contexte} profil={profil} periodeGlobale={periodeGlobale} />}
@@ -388,6 +393,7 @@ function App() {
           {page === 'qualite'      && <Qualite chantiers={chantiers} setChantiers={setChantiers} qualiteData={qualiteData} setQualiteData={setQualiteData} contexte={contexte} naviguer={naviguer} />}
           {page === 'rapport'      && <Rapport chantiers={chantiers} clients={clients} devis={devis} parametres={parametres} paiementsData={paiementsData} qualiteData={qualiteData} naviguer={naviguer} />}
           {page === 'analyse'      && <Analyse chantiers={chantiers} clients={clients} devis={devis} parametres={parametres} setParametres={setParametres} paiementsData={paiementsData} qualiteData={qualiteData} />}
+          {page === 'agents'       && <Agents {...agentState} />}
           {page === 'parametres'   && <Parametres parametres={parametres} setParametres={setParametres} clients={clients} setClients={setClients} chantiers={chantiers} devis={devis} naviguer={naviguer} />}
         </main>
 
@@ -434,7 +440,7 @@ function App() {
   );
 }
 
-function Dashboard({ chantiers, clients, factures, devis = [], parametres, naviguer, actionsLog = [], logAction = () => {}, periodeGlobale = 'mois', setPeriodeGlobale = () => {}, profil = null }) {
+function Dashboard({ chantiers, clients, factures, devis = [], parametres, naviguer, actionsLog = [], logAction = () => {}, periodeGlobale = 'mois', setPeriodeGlobale = () => {}, profil = null, agentAlertes = [], nbAgentAlertes = 0, agentPredictions = {}, marquerLu = () => {}, naviguerAgents = () => {} }) {
   const facturesSafe = factures || [];
   const [insightsFerme, setInsightsFerme] = useState(false);
 
@@ -1082,14 +1088,14 @@ function Dashboard({ chantiers, clients, factures, devis = [], parametres, navig
               >{p.label}</button>
             ))}
           </div>
-          {alertes.length > 0 && (
-            <div style={{ position: 'relative' }}>
-              <button style={{ background: 'var(--bg-glass-2)', border: '1px solid var(--border)', borderRadius: 10, width: 38, height: 38, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)' }}>
-                <Bell size={16} strokeWidth={2} />
-              </button>
-              <span style={{ position: 'absolute', top: -5, right: -5, background: '#ef4444', color: 'white', borderRadius: '50%', width: 18, height: 18, fontSize: 10, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{alertes.length}</span>
-            </div>
-          )}
+          <div style={{ position: 'relative' }}>
+            <button onClick={naviguerAgents} title="Alertes Agents IA" style={{ background: 'var(--bg-glass-2)', border: '1px solid var(--border)', borderRadius: 10, width: 38, height: 38, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: nbAgentAlertes > 0 ? '#f59e0b' : 'var(--text-secondary)' }}>
+              <Bell size={16} strokeWidth={2} />
+            </button>
+            {nbAgentAlertes > 0 && (
+              <span style={{ position: 'absolute', top: -5, right: -5, background: '#ef4444', color: 'white', borderRadius: '50%', width: 18, height: 18, fontSize: 10, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>{nbAgentAlertes}</span>
+            )}
+          </div>
         </div>
       </div>
 
@@ -1227,37 +1233,36 @@ function Dashboard({ chantiers, clients, factures, devis = [], parametres, navig
           </div>
         </div>
 
-        {/* ── COLONNE DROITE : Rappels & alertes ── */}
+        {/* ── COLONNE DROITE : Alertes agents IA ── */}
         <div style={CARD}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-            <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-primary)' }}>Alertes intelligentes</div>
-            <button onClick={() => naviguer('chantiers')} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 11, color: '#2563eb', fontWeight: 600, padding: 0, fontFamily: 'inherit' }}>Tout voir →</button>
+            <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 7 }}>
+              <Bot size={15} strokeWidth={2} style={{ color: '#8b5cf6' }} />
+              Alertes intelligentes
+            </div>
+            <button onClick={naviguerAgents} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 11, color: '#2563eb', fontWeight: 600, padding: 0, fontFamily: 'inherit' }}>Tout voir →</button>
           </div>
-          {(alertes.length === 0 && analyseChantiers.length === 0 && aNesPasOublier.length === 0 && !previsionTreso30j.alerteFaible) ? (
+          {agentAlertes.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '28px 0', color: 'var(--text-muted)', fontSize: 13 }}>
               <CheckCircle size={28} strokeWidth={1.5} style={{ color: '#10b981', marginBottom: 8, display: 'block', margin: '0 auto 8px' }} />
               Aucune alerte active
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 9, maxHeight: 340, overflowY: 'auto' }}>
-              {[
-                ...alertes.slice(0, 2).map(a => ({ id: a.id, titre: a.message.split(' — ')[0] || a.message, desc: a.message.split(' — ').slice(1).join(' — ') || '', type: a.critique ? 'danger' : 'warning', action: () => naviguer(a.page, a.ctx) })),
-                ...analyseChantiers.slice(0, 2).map(a => ({ id: 'ac-' + a.c.id, titre: a.c.nom || a.c.numero, desc: a.probleme, type: a.statut === 'perte' ? 'danger' : 'warning', action: () => naviguer('chantiers', { chantierActif: a.c.id }) })),
-                ...aNesPasOublier.slice(0, 1).map(a => ({ id: a.id, titre: a.nom, desc: a.probleme, type: 'info', action: () => naviguer(a.page, a.ctx) })),
-                ...(previsionTreso30j.alerteFaible ? [{ id: 'treso', titre: 'Trésorerie basse', desc: `CHF ${fmtN(Math.round(previsionTreso30j.total))} prévu`, type: 'danger', action: () => naviguer('finances') }] : []),
-              ].slice(0, 7).map((a, idx) => {
-                const DOTS = { danger: '#EF4444', warning: '#F59E0B', info: '#3B82F6', success: '#10B981' };
-                const dot = DOTS[a.type] || DOTS.info;
+              {agentAlertes.slice(0, 7).map((a) => {
+                const DOTS = { DANGER: '#EF4444', CRITIQUE: '#ef4444', ATTENTION: '#F59E0B', INFO: '#3B82F6' };
+                const dot = DOTS[a.niveau] || '#3B82F6';
+                const handleClick = () => { marquerLu(a.id); if (a.action?.page) naviguer(a.action.page, a.action.ctx); else naviguerAgents(); };
                 return (
-                  <div key={a.id + idx} onClick={a.action}
-                    style={{ padding: '9px 11px', borderRadius: 10, border: '1px solid var(--dash-border)', cursor: 'pointer', background: 'var(--bg-glass)', transition: 'all 0.15s', display: 'flex', alignItems: 'flex-start', gap: 9 }}
+                  <div key={a.id} onClick={handleClick}
+                    style={{ padding: '9px 11px', borderRadius: 10, border: `1px solid ${a.lu ? 'var(--dash-border)' : dot + '40'}`, cursor: 'pointer', background: a.lu ? 'var(--bg-glass)' : dot + '08', transition: 'all 0.15s', display: 'flex', alignItems: 'flex-start', gap: 9 }}
                     onMouseEnter={e => { e.currentTarget.style.borderColor = dot; e.currentTarget.style.background = 'var(--bg-hover)'; }}
-                    onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--dash-border)'; e.currentTarget.style.background = 'var(--bg-glass)'; }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor = a.lu ? 'var(--dash-border)' : dot + '40'; e.currentTarget.style.background = a.lu ? 'var(--bg-glass)' : dot + '08'; }}
                   >
                     <div style={{ width: 7, height: 7, borderRadius: '50%', background: dot, marginTop: 4, flexShrink: 0 }} />
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontWeight: 600, fontSize: 12, color: 'var(--text-primary)', marginBottom: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.titre}</div>
-                      {a.desc && <div style={{ fontSize: 11, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.desc}</div>}
+                      <div style={{ fontWeight: a.lu ? 500 : 700, fontSize: 12, color: 'var(--text-primary)', marginBottom: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.message}</div>
+                      {a.detail && <div style={{ fontSize: 11, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.detail}</div>}
                     </div>
                     <ChevronRight size={12} style={{ color: 'var(--text-muted)', flexShrink: 0, marginTop: 2 }} />
                   </div>

@@ -546,11 +546,11 @@ label { font-weight: 500; font-size: 12px; color: var(--text-secondary); }
 .sidebar-avatar {
   width: 36px; height: 36px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #3b82f6 0%, #6366f1 100%);
+  background: linear-gradient(135deg, #FCA5A5 0%, #F472B6 100%);
   display: flex; align-items: center; justify-content: center;
   color: white; font-weight: 700; font-size: 13px;
   flex-shrink: 0;
-  box-shadow: 0 0 0 2px rgba(59,130,246,0.25), 0 4px 12px rgba(59,130,246,0.3);
+  box-shadow: 0 0 0 2px rgba(244,114,182,0.25), 0 4px 12px rgba(244,114,182,0.3);
 }
 .sidebar-profile-info { flex: 1; min-width: 0; }
 .sidebar-profile-name {
@@ -755,13 +755,13 @@ label { font-weight: 500; font-size: 12px; color: var(--text-secondary); }
 
 .topbar-avatar {
   width: 32px; height: 32px;
-  background: linear-gradient(135deg, #3b82f6 0%, #6366f1 100%);
+  background: linear-gradient(135deg, #FCA5A5 0%, #F472B6 100%);
   border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
   color: white; font-weight: 700; font-size: 12px;
   cursor: pointer;
   flex-shrink: 0;
-  box-shadow: 0 0 0 2px rgba(59,130,246,0.25), 0 3px 10px rgba(59,130,246,0.3);
+  box-shadow: 0 0 0 2px rgba(244,114,182,0.25), 0 3px 10px rgba(244,114,182,0.3);
 }
 
 /* ============================================================
@@ -2128,4 +2128,19 @@ table tbody tr:hover { background: var(--bg-hover) !important; }
   color: #0f172a !important;
   box-shadow: 0 4px 24px rgba(0,0,0,0.12) !important;
   border: 1px solid #e2e8f0 !important;
+}
+
+/* ── IA Banner — bande notifications agents (light: indigo tint, dark: glass) ── */
+.ia-banner {
+  background: var(--ds-btn-ghost-bg);
+  border: 1px solid var(--ds-btn-ghost-border);
+  border-radius: 14px;
+  padding: 14px 20px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+[data-theme="light"] .ia-banner {
+  background: linear-gradient(90deg, #EEF2FF 0%, #F0F9FF 100%);
+  border: 1px solid #C7D2FE;
 }

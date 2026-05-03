@@ -293,18 +293,19 @@ export default function Planning({ chantiers, setChantiers, clients, naviguer })
     const today = new Date(); today.setHours(0,0,0,0);
     const limit = new Date(today); limit.setDate(today.getDate() + 60);
     const list = [];
-    chantiers.forEach(c => {
+    chantiers.forEach((c, idx) => {
+      const color = PALETTE[idx % PALETTE.length];
       if (c.dateDebut) {
         const d = new Date(c.dateDebut); d.setHours(0,0,0,0);
         if (d >= today && d <= limit)
-          list.push({ label: c.nom || c.numero, type: 'Début', date: d, color: '#3b82f6' });
+          list.push({ label: c.nom || c.numero, type: 'Début', date: d, color });
       }
       if (c.dateDebut && c.nombreJours) {
         const finStr = calculerDateFinOuvrables(c.dateDebut, parseInt(c.nombreJours) || 0, c.inclusSamedi);
         if (finStr) {
           const d = new Date(finStr); d.setHours(0,0,0,0);
           if (d >= today && d <= limit)
-            list.push({ label: c.nom || c.numero, type: 'Fin prévue', date: d, color: '#10b981' });
+            list.push({ label: c.nom || c.numero, type: 'Fin prévue', date: d, color });
         }
       }
     });
@@ -312,6 +313,13 @@ export default function Planning({ chantiers, setChantiers, clients, naviguer })
   }, [chantiers]);
 
   const btnNav = { background: 'var(--ds-btn-ghost-bg)', border: '1px solid var(--ds-btn-ghost-border)', borderRadius: 8, padding: '6px 12px', cursor: 'pointer', fontSize: 14, fontWeight: 700, color: 'var(--text-secondary)', fontFamily: 'inherit' };
+
+  const PALETTE = ['#3b82f6','#10b981','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#f97316','#ec4899'];
+  const chantierColors = useMemo(() => {
+    const map = {};
+    chantiersDuMois.forEach((c, i) => { map[c.id] = PALETTE[i % PALETTE.length]; });
+    return map;
+  }, [chantiersDuMois]);
 
   return (
     <div>
@@ -451,35 +459,45 @@ export default function Planning({ chantiers, setChantiers, clients, naviguer })
             {/* Cellules */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2 }}>
               {cellules.map((jour, i) => {
-                const busy = jour ? (chantiersParJour[jour] || []).length : 0;
+                const busyChantiers = jour ? (chantiersParJour[jour] || []) : [];
                 const isToday = estAujourdhui(jour);
                 return (
                   <div key={i} style={{
-                    aspectRatio: '1', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                    fontSize: 11, fontWeight: isToday ? 700 : 400, borderRadius: 6, position: 'relative',
-                    background: isToday ? '#3b82f6' : busy > 1 ? 'rgba(59,130,246,0.25)' : busy === 1 ? 'rgba(59,130,246,0.10)' : 'transparent',
-                    color: isToday ? '#fff' : busy > 0 ? '#1e40af' : jour ? 'var(--text-muted)' : 'transparent',
+                    aspectRatio: '1', display: 'flex', flexDirection: 'column', alignItems: 'center',
+                    justifyContent: 'center', gap: 2, borderRadius: 6, padding: '2px 1px',
+                    background: isToday ? '#3b82f6' : 'transparent',
                   }}>
-                    {jour}
-                    {busy > 1 && !isToday && (
-                      <span style={{ fontSize: 8, fontWeight: 800, lineHeight: 1, color: '#1e40af', opacity: 0.8 }}>{busy}×</span>
+                    <span style={{
+                      fontSize: 11, fontWeight: isToday ? 700 : 400, lineHeight: 1,
+                      color: isToday ? '#fff' : jour ? 'var(--text-primary)' : 'transparent',
+                    }}>{jour}</span>
+                    {busyChantiers.length > 0 && !isToday && (
+                      <div style={{ display: 'flex', gap: 2, flexWrap: 'wrap', justifyContent: 'center' }}>
+                        {busyChantiers.slice(0, 3).map(c => (
+                          <div key={c.id} style={{ width: 6, height: 6, borderRadius: 2, background: chantierColors[c.id] || '#3b82f6', flexShrink: 0 }} />
+                        ))}
+                        {busyChantiers.length > 3 && (
+                          <span style={{ fontSize: 7, fontWeight: 700, color: 'var(--text-muted)', lineHeight: '6px' }}>+{busyChantiers.length - 3}</span>
+                        )}
+                      </div>
                     )}
                   </div>
                 );
               })}
             </div>
 
-            {/* Légende */}
-            <div style={{ display: 'flex', gap: 14, marginTop: 12 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, color: 'var(--text-muted)' }}>
-                <div style={{ width: 10, height: 10, background: 'rgba(59,130,246,0.2)', borderRadius: 2 }} />
-                Chantier
+            {/* Légende chantiers */}
+            {chantiersDuMois.length > 0 && (
+              <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-muted)', marginBottom: 2 }}>Légende</div>
+                {chantiersDuMois.map(c => (
+                  <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <div style={{ width: 10, height: 10, borderRadius: 3, background: chantierColors[c.id] || '#3b82f6', flexShrink: 0 }} />
+                    <span style={{ fontSize: 12, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.nom || c.numero}</span>
+                  </div>
+                ))}
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, color: 'var(--text-muted)' }}>
-                <div style={{ width: 10, height: 10, background: '#3b82f6', borderRadius: '50%' }} />
-                Aujourd'hui
-              </div>
-            </div>
+            )}
           </div>
 
           {/* Prochains jalons */}

@@ -264,21 +264,16 @@ function App() {
   const agentState = useAgents({ chantiers, devis, factures, clients, parametres });
 
   const navItems = [
-    { id: 'dashboard',    label: 'Dashboard',        Icon: LayoutDashboard, labelCourt: 'Accueil' },
-    { id: 'chantiers',    label: 'Chantiers',        Icon: HardHat,         labelCourt: 'Chantiers' },
-    { id: 'devis',        label: 'Devis',            Icon: FileText,        labelCourt: 'Devis' },
-    { id: 'employes',     label: 'Employés',         Icon: Users,           labelCourt: 'Équipe' },
-    { id: 'heures',       label: 'Heures',           Icon: Clock,           labelCourt: 'Heures' },
-    { id: 'finances',     label: 'Coûts & finances', Icon: DollarSign,      labelCourt: 'Finances' },
-    { id: 'rapport',      label: 'Rapports',         Icon: ClipboardList,   labelCourt: 'Rapports' },
-    { id: 'calendrier',   label: 'Calendrier',       Icon: Calendar,        labelCourt: 'Calendrier' },
-    { id: 'documents',    label: 'Documents',        Icon: FolderOpen,      labelCourt: 'Docs' },
-    { id: 'planning',     label: 'Planning',         Icon: BarChart2,       labelCourt: 'Planning' },
-    { id: 'statistiques', label: 'Statistiques',     Icon: TrendingUp,      labelCourt: 'Stats' },
-    { id: 'qualite',      label: 'Qualité',          Icon: CheckSquare,     labelCourt: 'Qualité' },
-    { id: 'analyse',      label: 'Analyse',          Icon: TrendingUp,      labelCourt: 'Analyse' },
-    { id: 'agents',       label: 'Agents IA',        Icon: Bot,             labelCourt: 'Agents' },
-    { id: 'parametres',   label: 'Paramètres',       Icon: Settings,        labelCourt: 'Config' },
+    { id: 'dashboard',  label: 'Dashboard',   Icon: LayoutDashboard, labelCourt: 'Accueil' },
+    { id: 'chantiers',  label: 'Chantiers',   Icon: HardHat,         labelCourt: 'Chantiers' },
+    { id: 'devis',      label: 'Devis',       Icon: FileText,        labelCourt: 'Devis' },
+    { id: 'heures',     label: 'Heures',      Icon: Clock,           labelCourt: 'Heures' },
+    { id: 'finances',   label: 'Finances',    Icon: DollarSign,      labelCourt: 'Finances' },
+    { id: 'planning',   label: 'Planning',    Icon: Calendar,        labelCourt: 'Planning' },
+    { id: 'rapport',    label: 'Rapports',    Icon: ClipboardList,   labelCourt: 'Rapports' },
+    { id: 'documents',  label: 'Documents',   Icon: FolderOpen,      labelCourt: 'Docs' },
+    { id: 'agents',     label: 'Agents IA',   Icon: Bot,             labelCourt: 'Agents' },
+    { id: 'parametres', label: 'Paramètres',  Icon: Settings,        labelCourt: 'Config' },
   ];
 
   if (!profil) {
@@ -382,16 +377,12 @@ function App() {
           {page === 'finances'     && <Finances factures={factures} onSave={setFactures} clients={clients} chantiers={chantiers} devis={devis} paiementsData={paiementsData} setPaiementsData={setPaiementsData} naviguer={naviguer} contexte={contexte} profil={profil} periodeGlobale={periodeGlobale} />}
           {page === 'clients'      && <Clients clients={clients} setClients={setClients} chantiers={chantiers} devis={devis} naviguer={naviguer} />}
           {page === 'employes'     && <Employes parametres={parametres} setParametres={setParametres} chantiers={chantiers} naviguer={naviguer} />}
-          {page === 'planning'     && <Planning chantiers={chantiers} setChantiers={setChantiers} clients={clients} naviguer={naviguer} />}
-          {page === 'statistiques' && <Statistiques chantiers={chantiers} clients={clients} devis={devis} parametres={parametres} periodeGlobale={periodeGlobale} />}
-          {page === 'qualite'      && <Qualite chantiers={chantiers} setChantiers={setChantiers} qualiteData={qualiteData} setQualiteData={setQualiteData} contexte={contexte} naviguer={naviguer} />}
-          {page === 'rapport'      && <Rapport chantiers={chantiers} clients={clients} devis={devis} parametres={parametres} paiementsData={paiementsData} qualiteData={qualiteData} naviguer={naviguer} />}
-          {page === 'analyse'      && <Analyse chantiers={chantiers} clients={clients} devis={devis} parametres={parametres} setParametres={setParametres} paiementsData={paiementsData} qualiteData={qualiteData} />}
-          {page === 'agents'       && <Agents {...agentState} />}
-          {page === 'parametres'   && <Parametres parametres={parametres} setParametres={setParametres} clients={clients} setClients={setClients} chantiers={chantiers} devis={devis} naviguer={naviguer} />}
-          {page === 'calendrier'   && <Calendrier chantiers={chantiers} clients={clients} devis={devis} factures={factures} />}
-          {page === 'documents'    && <Documents chantiers={chantiers} devis={devis} factures={factures} clients={clients} />}
-          {page === 'heures'       && <Heures chantiers={chantiers} parametres={parametres} setChantiers={setChantiers} />}
+          {page === 'planning'    && <PlanningPage chantiers={chantiers} setChantiers={setChantiers} clients={clients} devis={devis} factures={factures} naviguer={naviguer} />}
+          {page === 'rapport'     && <RapportsPage chantiers={chantiers} clients={clients} devis={devis} parametres={parametres} setParametres={setParametres} paiementsData={paiementsData} qualiteData={qualiteData} periodeGlobale={periodeGlobale} naviguer={naviguer} />}
+          {page === 'agents'      && <Agents {...agentState} />}
+          {page === 'parametres'  && <Parametres parametres={parametres} setParametres={setParametres} clients={clients} setClients={setClients} chantiers={chantiers} devis={devis} naviguer={naviguer} />}
+          {page === 'documents'   && <Documents chantiers={chantiers} devis={devis} factures={factures} clients={clients} />}
+          {page === 'heures'      && <Heures chantiers={chantiers} parametres={parametres} setChantiers={setChantiers} />}
         </main>
 
         {/* ===== NAVIGATION MOBILE BAS ===== */}
@@ -4158,6 +4149,51 @@ function EditEmployeRow({ e, parametres, sauv }) {
         </div>
       </td>
     </tr>
+  );
+}
+
+// ── Planning + Calendrier ─────────────────────────────────────────────────
+function PlanningPage({ chantiers, setChantiers, clients, devis, factures, naviguer }) {
+  const [onglet, setOnglet] = useState('planning');
+  const tabs = [{ id: 'planning', label: 'Planning' }, { id: 'calendrier', label: 'Calendrier' }];
+  const pillActive = { background: '#EEF2FF', color: '#4F46E5', border: '1px solid transparent' };
+  const pillInactive = { background: 'transparent', color: 'var(--text-muted)', border: '1px solid var(--border)' };
+  return (
+    <div>
+      <div style={{ display: 'flex', gap: 6, marginBottom: 20 }}>
+        {tabs.map(t => (
+          <button key={t.id} onClick={() => setOnglet(t.id)}
+            style={{ ...onglet === t.id ? pillActive : pillInactive, borderRadius: 20, padding: '6px 16px', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s' }}>
+            {t.label}
+          </button>
+        ))}
+      </div>
+      {onglet === 'planning'   && <Planning chantiers={chantiers} setChantiers={setChantiers} clients={clients} naviguer={naviguer} />}
+      {onglet === 'calendrier' && <Calendrier chantiers={chantiers} clients={clients} devis={devis} factures={factures} />}
+    </div>
+  );
+}
+
+// ── Rapport + Statistiques + Analyse ─────────────────────────────────────
+function RapportsPage({ chantiers, clients, devis, parametres, setParametres, paiementsData, qualiteData, periodeGlobale, naviguer }) {
+  const [onglet, setOnglet] = useState('rapport');
+  const tabs = [{ id: 'rapport', label: 'Rapport' }, { id: 'statistiques', label: 'Statistiques' }, { id: 'analyse', label: 'Analyse' }];
+  const pillActive = { background: '#EEF2FF', color: '#4F46E5', border: '1px solid transparent' };
+  const pillInactive = { background: 'transparent', color: 'var(--text-muted)', border: '1px solid var(--border)' };
+  return (
+    <div>
+      <div style={{ display: 'flex', gap: 6, marginBottom: 20 }}>
+        {tabs.map(t => (
+          <button key={t.id} onClick={() => setOnglet(t.id)}
+            style={{ ...onglet === t.id ? pillActive : pillInactive, borderRadius: 20, padding: '6px 16px', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s' }}>
+            {t.label}
+          </button>
+        ))}
+      </div>
+      {onglet === 'rapport'      && <Rapport chantiers={chantiers} clients={clients} devis={devis} parametres={parametres} paiementsData={paiementsData} qualiteData={qualiteData} naviguer={naviguer} />}
+      {onglet === 'statistiques' && <Statistiques chantiers={chantiers} clients={clients} devis={devis} parametres={parametres} periodeGlobale={periodeGlobale} />}
+      {onglet === 'analyse'      && <Analyse chantiers={chantiers} clients={clients} devis={devis} parametres={parametres} setParametres={setParametres} paiementsData={paiementsData} qualiteData={qualiteData} />}
+    </div>
   );
 }
 

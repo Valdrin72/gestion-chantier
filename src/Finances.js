@@ -291,30 +291,27 @@ export default function Finances({
         </div>
       </div>
 
-      {/* ── KPIs résumé ── */}
-      <div style={{ display: 'flex', gap: 14, marginBottom: 28, flexWrap: 'wrap' }}>
+      {/* ── KPIs résumé — gradients saturés (identiques Dashboard) ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 28 }}>
         {[
-          { label: 'Total facturé',  val: `CHF ${fmt(kpis.totalFacture)}`,  couleur: '#3b82f6', Icon: FileText },
-          { label: 'Total encaissé', val: `CHF ${fmt(kpis.totalPaye)}`,     couleur: '#10b981', Icon: DollarSign },
-          { label: 'En attente',     val: `CHF ${fmt(kpis.enAttente)}`,     couleur: '#f59e0b', Icon: Clock },
-          { label: 'En retard',      val: `CHF ${fmt(kpis.enRetard)}`,      couleur: '#ef4444', Icon: AlertTriangle },
+          { label: 'Total facturé',  val: `CHF ${fmt(kpis.totalFacture)}`,  gradient: 'linear-gradient(135deg, #1E40AF 0%, #3B82F6 100%)', glow: 'rgba(59,130,246,0.32)',   Icon: FileText },
+          { label: 'Total encaissé', val: `CHF ${fmt(kpis.totalPaye)}`,     gradient: 'linear-gradient(135deg, #065F46 0%, #10B981 100%)', glow: 'rgba(16,185,129,0.32)',  Icon: DollarSign },
+          { label: 'En attente',     val: `CHF ${fmt(kpis.enAttente)}`,     gradient: 'linear-gradient(135deg, #92400E 0%, #F59E0B 100%)', glow: 'rgba(245,158,11,0.32)', Icon: Clock },
+          { label: 'En retard',      val: `CHF ${fmt(kpis.enRetard)}`,      gradient: 'linear-gradient(135deg, #991B1B 0%, #EF4444 100%)', glow: 'rgba(239,68,68,0.32)',   Icon: AlertTriangle },
         ].map(k => (
-          <div key={k.label} className="premium-card" style={{
-            flex: 1, minWidth: 180,
-            background: `linear-gradient(145deg, ${k.couleur}14 0%, ${k.couleur}07 60%, var(--surface-glass) 100%)`,
-            backdropFilter: 'blur(14px) saturate(1.6)',
-            WebkitBackdropFilter: 'blur(14px) saturate(1.6)',
-            border: `1px solid ${k.couleur}30`,
-            borderRadius: 16, padding: '20px 22px',
-            boxShadow: `0 2px 8px rgba(0,0,0,0.3), 0 8px 28px rgba(0,0,0,0.4)`,
+          <div key={k.label} style={{
+            background: k.gradient, borderRadius: 16, padding: '22px 20px', minHeight: 130,
+            boxShadow: `0 4px 20px ${k.glow}, 0 1px 4px rgba(0,0,0,0.12)`,
+            border: '1px solid rgba(255,255,255,0.15)',
             position: 'relative', overflow: 'hidden',
           }}>
-            <div style={{ position: 'absolute', top: 0, left: 16, right: 16, height: 1, background: `linear-gradient(90deg, transparent, ${k.couleur}50 50%, transparent)` }} />
-            <div style={{ width: 38, height: 38, borderRadius: 10, background: k.couleur + '22', border: `1px solid ${k.couleur}33`, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
-              <k.Icon size={17} style={{ color: k.couleur }} strokeWidth={2} />
+            <div style={{ position: 'absolute', right: -18, top: -18, width: 80, height: 80, borderRadius: '50%', background: 'rgba(255,255,255,0.1)' }} />
+            <div style={{ position: 'absolute', right: -32, bottom: -32, width: 100, height: 100, borderRadius: '50%', background: 'rgba(255,255,255,0.06)' }} />
+            <div style={{ background: 'rgba(255,255,255,0.18)', borderRadius: 10, width: 38, height: 38, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16, position: 'relative' }}>
+              <k.Icon size={18} strokeWidth={2} style={{ color: '#ffffff' }} />
             </div>
-            <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.6px', lineHeight: 1, marginBottom: 5 }}>{k.val}</div>
-            <div style={{ fontSize: 10, color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px' }}>{k.label}</div>
+            <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.72)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 6 }}>{k.label}</div>
+            <div style={{ fontSize: 26, fontWeight: 900, color: '#ffffff', letterSpacing: '-0.8px', lineHeight: 1, position: 'relative' }}>{k.val}</div>
           </div>
         ))}
       </div>

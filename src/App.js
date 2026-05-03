@@ -4,7 +4,7 @@ import {
   BarChart2, CheckSquare, ClipboardList, TrendingUp,
   Settings, Moon, Sun, LogOut,
   Menu, X, Plus, Pencil, Trash2, AlertTriangle,
-  ChevronRight, CheckCircle, DollarSign, Bell, Clock, CreditCard, Bot,
+  ChevronRight, CheckCircle, DollarSign, Bell, Clock, CreditCard, Bot, Eye,
 } from 'lucide-react';
 import { LineChart, Line, PieChart, Pie, Cell, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 import { donneesInitiales, fmtN, calculerDateFinOuvrables, joursOuvrableRestants, getAlerte, getAlerteChantier, estRetardJustifie, getChantierStatus, calculerCoutsChantier, statutRentabilite, C, getIntervallesPeriode, getPeriodeLabel, chantiersInPeriode, facturesInPeriode, calculerJoursRestants, calculerRentabiliteReelle, calculerEcartChantier, calculerEtatChantier, assertEtatValide, assertEtatCoherent, calculerVitesseChantier, migrerJournal, migrerDevisId, heuresEmploye, heuresJour, sommeAvenants, calculerCA, isChantierActif } from './donnees';
@@ -332,7 +332,7 @@ function App() {
             <button className="burger-btn" onClick={() => setSidebarOuvert(v => !v)}>
               <Menu size={20} strokeWidth={1.8} />
             </button>
-            {canGoBack && (
+            {canGoBack && page !== 'dashboard' && (
               <button
                 onClick={revenirArriere}
                 style={{
@@ -1103,7 +1103,7 @@ function Dashboard({ chantiers, clients, factures, devis = [], parametres, navig
             gradient: 'linear-gradient(135deg, #4C1D95 0%, #8B5CF6 100%)', glow: 'rgba(139,92,246,0.32)' },
         ].map(({ label, Icon, page: dest, valeur, sous, gradient, glow, badge }) => (
           <div key={label} onClick={() => naviguer(dest)}
-            style={{ background: gradient, borderRadius: 16, padding: '22px 20px', cursor: 'pointer', boxShadow: `0 4px 20px ${glow}, 0 1px 4px rgba(0,0,0,0.12)`, border: '1px solid rgba(255,255,255,0.15)', transition: 'transform 0.18s, box-shadow 0.18s', position: 'relative', overflow: 'hidden' }}
+            style={{ background: gradient, borderRadius: 16, padding: '22px 20px', minHeight: 130, cursor: 'pointer', boxShadow: `0 4px 20px ${glow}, 0 1px 4px rgba(0,0,0,0.12)`, border: '1px solid rgba(255,255,255,0.15)', transition: 'transform 0.18s, box-shadow 0.18s', position: 'relative', overflow: 'hidden' }}
             onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = `0 10px 30px ${glow}, 0 2px 8px rgba(0,0,0,0.18)`; }}
             onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = `0 4px 20px ${glow}, 0 1px 4px rgba(0,0,0,0.12)`; }}
           >
@@ -3330,7 +3330,7 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
                 padding: '13px 18px', borderRadius: 12, marginBottom: 16,
                 background: C.danger + '0f', border: `1px solid ${C.danger}30`, borderLeft: `4px solid ${C.danger}`,
               }}>
-                <AlertTriangle size={18} strokeWidth={2} style={{ color: "var(--text-muted)", flexShrink: 0 }} />
+                <AlertTriangle size={18} strokeWidth={2} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
                 <span style={{ fontSize: 14, fontWeight: 800, color: C.danger }}>
                   {nbCritique} chantier{nbCritique > 1 ? 's' : ''} bloque{nbCritique > 1 ? 'nt' : ''} aujourd'hui
                 </span>
@@ -3341,189 +3341,104 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
                 padding: '13px 18px', borderRadius: 12, marginBottom: 16,
                 background: C.warning + '0f', border: `1px solid ${C.warning}30`, borderLeft: `4px solid ${C.warning}`,
               }}>
-                <AlertTriangle size={18} strokeWidth={2} style={{ color: "var(--text-muted)", flexShrink: 0 }} />
+                <AlertTriangle size={18} strokeWidth={2} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
                 <span style={{ fontSize: 14, fontWeight: 800, color: C.warning }}>
                   {nbWarning} chantier{nbWarning > 1 ? 's' : ''} à surveiller
                 </span>
               </div>
             ) : null}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {scored.map(({ c, etatC, decision, indicateurs, actions }) => {
-                const al = getAlerteChantier(c);
-                const client = clients.find(cl => cl.id === c.clientId);
-                const sc = couleurStatut(c.statut);
-                return (
-                  <div key={c.id} className="ds-animate-in" style={{
-                    ...carteStyle,
-                    borderLeft: `4px solid ${decision.couleur}`,
-                    padding: '0', overflow: 'hidden', marginBottom: 0,
-                    transition: 'transform 0.2s cubic-bezier(0.4,0,0.2,1), box-shadow 0.2s ease',
-                  }}
-                    onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-3px) scale(1.002)'; e.currentTarget.style.boxShadow = `0 8px 36px rgba(0,0,0,0.6), 0 0 0 1px ${decision.couleur}35`; }}
-                    onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = carteStyle.boxShadow; }}
-                  >
-                    {al?.banniere && c.statut !== 'Terminé' && (
-                      <div className={`alert-banner alert-banner-${al.banniere}`} style={{ borderRadius: 0, margin: 0 }}>
-                        <Bell size={13} /> {al.texte}
-                      </div>
-                    )}
-                    <div style={{ padding: '16px 20px' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px' }}>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.5px', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '3px' }}>{c.numero}</div>
-                          <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '3px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.nom}</div>
-                          <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '10px' }}>{client?.entreprise || '—'} · {c.ville}</div>
-                          <div style={{ maxWidth: '280px', marginBottom: '8px' }}>
-                            <BarreAvancement valeur={etatC.avancementPct} couleur={decision.couleur} />
-                          </div>
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-                            {/* L1–L3 : décision principale */}
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                              <span style={{
-                                fontSize: 12, fontWeight: 800, color: decision.couleur,
-                                background: decision.couleur + '18', border: `1px solid ${decision.couleur}40`,
-                                borderRadius: 20, padding: '3px 12px', whiteSpace: 'nowrap',
-                              }}>{decision.icone} {decision.label}</span>
-                              <span style={{ fontSize: 12, fontWeight: 600, color: decision.niveau === 'ok' ? 'var(--text-muted)' : decision.couleur }}>
-                                {decision.message}
-                              </span>
-                              {decision.sous && (
-                                <span style={{ fontSize: 11, color: 'var(--text-muted)', fontStyle: 'italic' }}>
-                                  {decision.sous}
-                                </span>
-                              )}
-                            </div>
-                            {/* L4 : indicateurs secondaires */}
-                            {indicateurs.length > 0 && (
-                              <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
-                                {indicateurs.map(ind => (
-                                  <span key={ind.type} title={ind.tooltip} style={{
-                                    fontSize: 10, fontWeight: 700, color: ind.couleur,
-                                    background: ind.couleur + '15', border: `1px solid ${ind.couleur}35`,
-                                    borderRadius: 20, padding: '2px 9px', whiteSpace: 'nowrap',
-                                    cursor: 'help',
-                                  }}>{ind.label}</span>
-                                ))}
-                              </div>
-                            )}
-                            {/* L5 : action principale + simulation */}
-                            {actions[0] && (() => {
-                              const act = actions[0];
-                              const sim = simulations[c.id] || null;
-                              const isSimulable = act.type === 'ajout_ouvrier' || act.type === 'optimisation';
-                              return (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: 3, marginTop: 8, paddingTop: 8, borderTop: `1px solid ${act.couleur}20` }}>
-                                  {!sim ? (
-                                    <>
-                                      <button
-                                        disabled={!isSimulable}
-                                        title={!isSimulable ? 'Action informative — pas de simulation disponible' : undefined}
-                                        onClick={() => {
-                                          if (!isSimulable) return;
-                                          const s = simulerAction(act, etatC, c);
-                                          if (!s) return;
-                                          setSimulations(prev => ({ ...prev, [c.id]: s }));
-                                          setJustSimulatedId(c.id);
-                                          setTimeout(() => setJustSimulatedId(null), 1200);
-                                        }}
-                                        style={{
-                                          alignSelf: 'flex-start',
-                                          cursor: isSimulable ? 'pointer' : 'not-allowed',
-                                          opacity: isSimulable ? 1 : 0.45,
-                                          fontSize: 12, fontWeight: 700, color: act.couleur,
-                                          background: act.couleur + '15', border: `1px solid ${act.couleur}50`,
-                                          borderRadius: 20, padding: '4px 14px', whiteSpace: 'nowrap',
-                                          transition: 'opacity 0.15s, transform 0.15s',
-                                        }}
-                                        onMouseEnter={e => { if (isSimulable) { e.currentTarget.style.opacity = '0.75'; e.currentTarget.style.transform = 'scale(1.03)'; } }}
-                                        onMouseLeave={e => { e.currentTarget.style.opacity = isSimulable ? '1' : '0.45'; e.currentTarget.style.transform = 'scale(1)'; }}
-                                      >{act.label}</button>
-                                      <span style={{ fontSize: 11, color: 'var(--text-muted)', paddingLeft: 4 }}>{act.impact}</span>
-                                    </>
-                                  ) : (
-                                    <div className={`simulationFade${justSimulatedId === c.id ? ' simulationPulse' : ''}`}>
-                                      <div style={{
-                                        display: 'flex', flexDirection: 'column', gap: 5,
-                                        background: '#6a1b9a10', border: '1px solid #6a1b9a30',
-                                        borderRadius: 10, padding: '8px 12px', marginBottom: 4,
-                                      }}>
-                                        {justSimulatedId === c.id && (
-                                          <div className="simFeedback" style={{ color: '#9c4dcc' }}>Simulation appliquée</div>
-                                        )}
-                                        {sim.type === 'gain_temps_multi' ? (
-                                          <>
-                                            <div style={{ display: 'flex', flexDirection: 'column', gap: 2, padding: '6px 8px', background: '#4ade8018', border: '1px solid #4ade8040', borderRadius: 8, marginBottom: 4 }}>
-                                              <span style={{ fontSize: 11, fontWeight: 800, color: '#4ade80' }}>Recommandé : +{sim.recommande.nb} ouvrier{sim.recommande.nb > 1 ? 's' : ''}</span>
-                                              <span style={{ fontSize: 10, color: '#86efac' }}>→ {sim.recoRaison}</span>
-                                              <span style={{ fontSize: 10, color: 'rgba(134,239,172,0.65)' }}>{sim.recoDetail}</span>
-                                              <div className={`decisionBlock${justSimulatedId === c.id ? ' actionApplied' : ''}`} style={{
-                                                background: sim.finalColor + '18',
-                                                borderLeftColor: sim.finalColor,
-                                                color: sim.finalColor,
-                                              }}>{sim.finalMessage}</div>
-                                            </div>
-                                            {sim.scenarios.map(s => {
-                                              const isReco = s.nb === sim.recommande.nb;
-                                              return (
-                                                <div key={s.nb} style={{
-                                                  display: 'flex', alignItems: 'center', gap: 6,
-                                                  padding: '3px 6px', borderRadius: 6,
-                                                  background: isReco ? '#4ade8010' : 'transparent',
-                                                  border: isReco ? '1px solid #4ade8030' : '1px solid transparent',
-                                                }}>
-                                                  <span style={{ fontSize: 11, fontWeight: 700, color: isReco ? '#4ade80' : 'var(--text-secondary)', minWidth: 76 }}>+{s.nb} ouvrier{s.nb > 1 ? 's' : ''}</span>
-                                                  <span style={{ fontSize: 10, opacity: 0.35, textDecoration: 'line-through' }}>{s.avant} j</span>
-                                                  <span style={{ fontSize: 10, opacity: 0.4 }}>→</span>
-                                                  <span style={{ fontSize: 11, fontWeight: 700, color: isReco ? '#4ade80' : 'var(--text-secondary)' }}>{s.apres <= 0 ? 'dans les temps' : `${s.apres} j`}</span>
-                                                  <span style={{ fontSize: 10, color: 'var(--text-muted)', marginLeft: 'auto' }}>CHF {fmtN(s.coutAjout)}</span>
-                                                </div>
-                                              );
-                                            })}
-                                          </>
-                                        ) : (
-                                          <>
-                                            <div className="simCompare">
-                                              <span className="simBefore">CHF {fmtN(sim.avant)}</span>
-                                              <span className="simArrow">→</span>
-                                              <span className="simAfter">CHF {fmtN(sim.apres)}</span>
-                                            </div>
-                                            <span style={{ fontSize: 11, color: '#9c4dcc' }}>{sim.gainLabel}</span>
-                                          </>
-                                        )}
-                                      </div>
-                                      <button
-                                        onClick={() => setSimulations(prev => { const n = { ...prev }; delete n[c.id]; return n; })}
-                                        style={{
-                                          cursor: 'pointer', fontSize: 10, color: 'var(--text-muted)',
-                                          background: 'transparent', border: 'none', padding: '0 4px',
-                                          textDecoration: 'underline',
-                                        }}
-                                      >Annuler simulation</button>
-                                    </div>
-                                  )}
+            <div style={{ ...DS.card, padding: 0, overflow: 'hidden' }}>
+              {scored.length === 0 ? (
+                <div style={{ padding: '40px 24px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 14 }}>
+                  Aucun chantier à afficher
+                </div>
+              ) : (
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <thead>
+                      <tr>
+                        {['Référence', 'Chantier', 'Client', 'Avancement', 'Marge', 'Statut', 'Actions'].map(col => (
+                          <th key={col} style={DS.th}>{col}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {scored.map(({ c, etatC, decision }) => {
+                        const client = clients.find(cl => cl.id === c.clientId);
+                        const sc = couleurStatut(c.statut);
+                        const initiales = (c.nom || '').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+                        const avancePct = Math.min(100, Math.max(0, etatC.avancementPct || 0));
+                        return (
+                          <tr
+                            key={c.id}
+                            style={{ cursor: 'pointer', transition: 'background 0.15s' }}
+                            onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-hover)'}
+                            onMouseLeave={e => e.currentTarget.style.background = ''}
+                            onClick={() => { setSelected(c); setVue('detail'); setDetailOnglet('vue'); }}
+                          >
+                            <td style={DS.td}>
+                              <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.4px' }}>{c.numero}</span>
+                            </td>
+                            <td style={{ ...DS.td, maxWidth: 240 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                <div style={{
+                                  width: 36, height: 36, borderRadius: 8, flexShrink: 0,
+                                  background: decision.couleur + '22',
+                                  border: `1px solid ${decision.couleur}40`,
+                                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                  fontSize: 12, fontWeight: 800, color: decision.couleur,
+                                }}>{initiales}</div>
+                                <div style={{ minWidth: 0 }}>
+                                  <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.nom}</div>
+                                  <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 1 }}>{c.ville}</div>
                                 </div>
-                              );
-                            })()}
-                          </div>
-                        </div>
-                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexShrink: 0 }}>
-                          <BadgeRentabilite ca={etatC.devisTotal} couts={etatC.coutTotalReel} />
-                          <Badge texte={c.statut} couleur={sc} />
-                          {isChantierActif(c) && (
-                            <button
-                              onClick={() => ouvrirSaisieHeures(c)}
-                              title="Saisir les heures du jour"
-                              style={{ ...DS.btnGhost, padding: '7px 10px', color: '#7c3aed', border: '1px solid #7c3aed40' }}
-                            ><Clock size={14} /></button>
-                          )}
-                          <button onClick={() => ouvrirModification(c)} style={{ ...DS.btnGhost, padding: '7px 10px' }}><Pencil size={14} /></button>
-                          <button onClick={() => { setSelected(c); setVue('detail'); }} style={{ ...btnPrimaire, padding: '7px 14px' }}>Voir →</button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
+                              </div>
+                            </td>
+                            <td style={DS.td}>
+                              <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{client?.entreprise || '—'}</span>
+                            </td>
+                            <td style={{ ...DS.td, minWidth: 140 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <div style={{ width: 100, height: 5, borderRadius: 3, background: 'var(--border)', flexShrink: 0, overflow: 'hidden' }}>
+                                  <div style={{ height: '100%', width: `${avancePct}%`, background: decision.couleur, borderRadius: 3, transition: 'width 0.3s' }} />
+                                </div>
+                                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)', minWidth: 30 }}>{avancePct}%</span>
+                              </div>
+                            </td>
+                            <td style={DS.td}>
+                              <span style={{
+                                fontSize: 11, fontWeight: 700, color: decision.couleur,
+                                background: decision.couleur + '18', border: `1px solid ${decision.couleur}40`,
+                                borderRadius: 20, padding: '3px 10px', whiteSpace: 'nowrap', display: 'inline-block',
+                              }}>{decision.label}</span>
+                            </td>
+                            <td style={DS.td}>
+                              <span style={{
+                                fontSize: 11, fontWeight: 700, color: sc.color, background: sc.bg,
+                                borderRadius: 20, padding: '3px 10px', whiteSpace: 'nowrap', display: 'inline-block',
+                              }}>{c.statut}</span>
+                            </td>
+                            <td style={{ ...DS.td, whiteSpace: 'nowrap' }} onClick={e => e.stopPropagation()}>
+                              <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                                <button
+                                  onClick={() => { setSelected(c); setVue('detail'); setDetailOnglet('vue'); }}
+                                  style={DS.iconBtn}
+                                  title="Voir le détail"
+                                ><Eye size={14} /></button>
+                                <button
+                                  onClick={() => ouvrirModification(c)}
+                                  style={DS.iconBtn}
+                                  title="Modifier"
+                                ><Pencil size={14} /></button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           </>
         );
@@ -3725,55 +3640,98 @@ function Devis({ devis, setDevis, clients, parametres, naviguer, setChantiers, c
       )}
 
       {/* ── Liste des devis ── */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-        {devis.map(d => {
-          const client = clients.find(c => c.id === d.clientId);
-          const cs = STATUTS_COULEUR[d.statut] || C.primaire;
-          const montant = parseFloat(d.montantHT || d.prixPropose) || 0;
-          const totalRegie = Array.isArray(d.heuresRegie)
-            ? d.heuresRegie.reduce((s, r) => s + (parseFloat(r.heures) || 0) * (parseFloat(r.tarifHeure) || 0), 0)
-            : 0;
-          const chantierLie = chantiers.find(ch => String(ch.devisId) === String(d.id));
-          const isAccepte = ['accepté', 'Validé', 'Signé'].includes(d.statut);
-          return (
-            <div key={d.id} className="ds-animate-in" style={{ ...carteStyle, borderLeft: `4px solid ${cs}`, marginBottom: 0, transition: 'transform 0.2s cubic-bezier(0.4,0,0.2,1), box-shadow 0.2s ease' }}
-              onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-3px) scale(1.002)'; e.currentTarget.style.boxShadow = `0 8px 36px rgba(0,0,0,0.6), 0 0 0 1px ${cs}30`; }}
-              onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = carteStyle.boxShadow; }}
-            >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px' }}>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.5px', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 3 }}>{d.numero} · {formatDateCH(d.date)}</div>
-                  <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '2px' }}>{client?.entreprise || 'Client inconnu'} — {client?.prenom} {client?.nom}</div>
-                  <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '8px' }}>{d.notes?.split('\n')[0] || '—'}</div>
-                  <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                    <span onClick={() => client && naviguer('clients', { clientActif: client.id })} style={{ fontSize: '11px', fontWeight: 600, background: 'var(--bg-glass-2)', border: '1px solid var(--border-hover)', color: 'var(--text-secondary)', padding: '3px 10px', borderRadius: '20px', cursor: 'pointer' }}>Voir client →</span>
-                    {chantierLie && (
-                      <span onClick={() => naviguer('chantiers', { chantierActif: chantierLie.id })} style={{ fontSize: '11px', fontWeight: 700, background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.3)', color: '#10b981', padding: '3px 10px', borderRadius: '20px', cursor: 'pointer' }}>{chantierLie.numero} →</span>
-                    )}
-                    {totalRegie > 0 && (
-                      <span style={{ fontSize: '11px', fontWeight: 700, background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.3)', color: '#f59e0b', padding: '3px 10px', borderRadius: '20px' }}>⏱ Régie +CHF {fmtN(Math.round(totalRegie))}</span>
-                    )}
-                  </div>
-                </div>
-                <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexShrink: 0 }}>
-                  {montant > 0 && (
-                    <div style={{ textAlign: 'right' }}>
-                      <div style={{ fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-muted)', marginBottom: '2px' }}>{totalRegie > 0 ? 'CA total HT' : 'CA signé HT'}</div>
-                      <div style={{ fontWeight: 800, fontSize: '15px', color: isAccepte ? '#10b981' : 'var(--text-primary)' }}>CHF {fmtN(montant + totalRegie)}</div>
-                      {totalRegie > 0 && <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>dont CHF {fmtN(Math.round(totalRegie))} régie</div>}
-                    </div>
-                  )}
-                  <Badge texte={d.statut} couleur={cs} />
-                  <div style={{ display: 'flex', gap: '6px' }}>
-                    {!chantierLie && isAccepte && <button onClick={() => convertirEnChantier(d)} style={btnSucces}><HardHat size={14} /> Chantier</button>}
-                    <button onClick={() => { setForm({ ...d, montantHT: d.montantHT || d.prixPropose || '' }); setAjout(true); }} style={{ ...DS.btnGhost, padding: '7px 10px' }}><Pencil size={14} /></button>
-                    <button onClick={() => { if (window.confirm(`Supprimer le devis "${d.numero}" ?`)) setDevis(devis.filter(dv => dv.id !== d.id)); }} style={{ ...btnDanger, padding: '7px 10px' }}><Trash2 size={14} /> Supprimer</button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          );
-        })}
+      <div style={{ ...DS.card, padding: 0, overflow: 'hidden' }}>
+        {devis.length === 0 ? (
+          <div style={{ padding: '40px 24px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 14 }}>
+            Aucun devis à afficher
+          </div>
+        ) : (
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr>
+                  {['Référence', 'Date', 'Client', 'Chantier lié', 'CA HT', 'Statut', 'Actions'].map(col => (
+                    <th key={col} style={DS.th}>{col}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {devis.map(d => {
+                  const client = clients.find(c => c.id === d.clientId);
+                  const montant = parseFloat(d.montantHT || d.prixPropose) || 0;
+                  const totalRegie = Array.isArray(d.heuresRegie)
+                    ? d.heuresRegie.reduce((s, r) => s + (parseFloat(r.heures) || 0) * (parseFloat(r.tarifHeure) || 0), 0)
+                    : 0;
+                  const chantierLie = chantiers.find(ch => String(ch.devisId) === String(d.id));
+                  const isAccepte = ['accepté', 'Validé', 'Signé'].includes(d.statut);
+                  const statutStyle = DS.statuts[d.statut] || { bg: '#F1F5F9', color: '#475569' };
+                  return (
+                    <tr
+                      key={d.id}
+                      style={{ transition: 'background 0.15s' }}
+                      onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-hover)'}
+                      onMouseLeave={e => e.currentTarget.style.background = ''}
+                    >
+                      <td style={DS.td}>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.4px' }}>{d.numero}</span>
+                      </td>
+                      <td style={DS.td}>
+                        <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{formatDateCH(d.date)}</span>
+                      </td>
+                      <td style={{ ...DS.td, maxWidth: 200 }}>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{client?.entreprise || 'Client inconnu'}</div>
+                        <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 1 }}>{client?.prenom} {client?.nom}</div>
+                      </td>
+                      <td style={DS.td}>
+                        {chantierLie ? (
+                          <span
+                            onClick={() => naviguer('chantiers', { chantierActif: chantierLie.id })}
+                            style={{ fontSize: 11, fontWeight: 700, background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.3)', color: '#10b981', padding: '3px 10px', borderRadius: 20, cursor: 'pointer', display: 'inline-block' }}
+                          >{chantierLie.numero} →</span>
+                        ) : (
+                          <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>—</span>
+                        )}
+                      </td>
+                      <td style={DS.td}>
+                        <span style={{ fontSize: 13, fontWeight: 800, color: isAccepte ? '#10b981' : 'var(--text-primary)' }}>
+                          CHF {fmtN(montant + totalRegie)}
+                        </span>
+                        {totalRegie > 0 && (
+                          <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 1 }}>dont CHF {fmtN(Math.round(totalRegie))} régie</div>
+                        )}
+                      </td>
+                      <td style={DS.td}>
+                        <span style={{
+                          fontSize: 11, fontWeight: 700, color: statutStyle.color, background: statutStyle.bg,
+                          borderRadius: 20, padding: '3px 10px', whiteSpace: 'nowrap', display: 'inline-block',
+                        }}>{d.statut}</span>
+                      </td>
+                      <td style={{ ...DS.td, whiteSpace: 'nowrap' }}>
+                        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                          {!chantierLie && isAccepte && (
+                            <button onClick={() => convertirEnChantier(d)} style={{ ...DS.btnSuccess, padding: '6px 10px', fontSize: 12 }} title="Convertir en chantier">
+                              <HardHat size={13} />
+                            </button>
+                          )}
+                          <button
+                            onClick={() => { setForm({ ...d, montantHT: d.montantHT || d.prixPropose || '' }); setAjout(true); }}
+                            style={DS.iconBtn}
+                            title="Modifier"
+                          ><Pencil size={14} /></button>
+                          <button
+                            onClick={() => { if (window.confirm(`Supprimer le devis "${d.numero}" ?`)) setDevis(devis.filter(dv => dv.id !== d.id)); }}
+                            style={{ ...DS.iconBtn, color: '#EF4444' }}
+                            title="Supprimer"
+                          ><Trash2 size={14} /></button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   );

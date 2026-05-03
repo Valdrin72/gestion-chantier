@@ -122,15 +122,15 @@ function Tresorerie({ factures = [], chantiers = [], clients = [], devis = [] })
           { label: 'Cette semaine',       val: `CHF ${fmt(data.totalCetteSemaine)}`,couleur: '#f59e0b', Icon: Zap,          sub: 'Échéance dans 7j' },
           { label: 'À facturer (potentiel)',val: `CHF ${fmt(data.totalAFacturer)}`,couleur: '#10b981', Icon: TrendingUp,   sub: `${data.aFacturer.length} chantier${data.aFacturer.length !== 1 ? 's' : ''}` },
         ].map(k => (
-          <div key={k.label} style={{ background: `linear-gradient(145deg, ${k.couleur}14, ${k.couleur}06)`, border: `1px solid ${k.couleur}28`, borderRadius: 14, padding: '18px 20px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-              <div style={{ width: 32, height: 32, borderRadius: 8, background: k.couleur + '20', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <k.Icon size={15} style={{ color: k.couleur }} strokeWidth={2} />
+          <div key={k.label} style={{ background: 'var(--ds-card-bg)', border: '1px solid var(--ds-card-border)', borderRadius: 14, padding: '18px 20px', boxShadow: 'var(--ds-card-shadow)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+              <div style={{ width: 36, height: 36, borderRadius: 10, background: k.couleur + '14', border: `1px solid ${k.couleur}28`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <k.Icon size={16} style={{ color: k.couleur }} strokeWidth={2} />
               </div>
               <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px', color: 'var(--text-muted)' }}>{k.label}</div>
             </div>
-            <div style={{ fontSize: 20, fontWeight: 900, color: 'var(--text-primary)', letterSpacing: '-0.5px' }}>{k.val}</div>
-            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>{k.sub}</div>
+            <div style={{ fontSize: 22, fontWeight: 900, color: 'var(--text-primary)', letterSpacing: '-0.5px', lineHeight: 1.1 }}>{k.val}</div>
+            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 5 }}>{k.sub}</div>
           </div>
         ))}
       </div>

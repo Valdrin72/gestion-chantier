@@ -105,6 +105,32 @@ export default function Agents({
         </button>
       </div>
 
+      {/* ── KPI GRID ── */}
+      {(() => {
+        const nbActifs = Object.values(agentsActifs).filter(Boolean).length;
+        const nbAlertes = alertes.length;
+        const nbNonLuesCount = nbNonLues || 0;
+        const lastRun = dernierRun ? fmtDiff(dernierRun) : 'Jamais';
+        const kpiItems = [
+          { label: 'AGENTS ACTIFS',  val: `${nbActifs}/${AGENTS_META.length}`, gradient: 'linear-gradient(135deg, #1E40AF 0%, #3B82F6 100%)', glow: 'rgba(59,130,246,0.32)' },
+          { label: 'ALERTES TOTALES',val: nbAlertes,          gradient: nbAlertes > 0 ? 'linear-gradient(135deg, #991B1B 0%, #EF4444 100%)' : 'linear-gradient(135deg, #065F46 0%, #10B981 100%)', glow: nbAlertes > 0 ? 'rgba(239,68,68,0.32)' : 'rgba(16,185,129,0.32)', badge: nbNonLuesCount > 0 ? `${nbNonLuesCount} non lues` : null },
+          { label: 'DERNIÈRE EXÉC.', val: lastRun,            gradient: 'linear-gradient(135deg, #92400E 0%, #F59E0B 100%)', glow: 'rgba(245,158,11,0.32)' },
+          { label: 'AGENTS TOTAUX',  val: AGENTS_META.length, gradient: 'linear-gradient(135deg, #4C1D95 0%, #8B5CF6 100%)', glow: 'rgba(139,92,246,0.32)' },
+        ];
+        return (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24 }}>
+            {kpiItems.map(k => (
+              <div key={k.label} style={{ background: k.gradient, borderRadius: 16, padding: '20px', minHeight: 110, boxShadow: `0 4px 20px ${k.glow}, 0 1px 4px rgba(0,0,0,0.12)`, border: '1px solid rgba(255,255,255,0.15)', position: 'relative', overflow: 'hidden' }}>
+                <div style={{ position: 'absolute', right: -18, top: -18, width: 80, height: 80, borderRadius: '50%', background: 'rgba(255,255,255,0.1)' }} />
+                <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.7)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 8, position: 'relative' }}>{k.label}</div>
+                <div style={{ fontSize: 24, fontWeight: 900, color: '#fff', letterSpacing: '-0.5px', lineHeight: 1, position: 'relative' }}>{k.val}</div>
+                {k.badge && <span style={{ display: 'inline-block', marginTop: 7, background: 'rgba(255,255,255,0.22)', color: '#fff', borderRadius: 20, padding: '1px 8px', fontSize: 10, fontWeight: 700, position: 'relative' }}>{k.badge}</span>}
+              </div>
+            ))}
+          </div>
+        );
+      })()}
+
       {/* Onglets */}
       <div style={{ display: 'flex', gap: 2, background: 'var(--bg-glass-2)', border: '1px solid var(--border)', borderRadius: 10, padding: 3, marginBottom: 24, width: 'fit-content' }}>
         {[['agents', 'Agents'], ['alertes', `Alertes ${nbNonLues > 0 ? `(${nbNonLues})` : ''}`], ['predictions', 'Prédictions'], ['memoire', 'Mémoire'], ['rapports', 'Rapports']].map(([id, label]) => (

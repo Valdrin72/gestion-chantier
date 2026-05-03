@@ -339,6 +339,33 @@ export default function Planning({ chantiers, setChantiers, clients, naviguer })
         </div>
       </div>
 
+      {/* ── KPI GRID ── */}
+      {(() => {
+        const nbEnCours = chantiersDuMois.filter(c => c.statut === 'En cours').length;
+        const dureeTotal = chantiersDuMois.reduce((s, c) => s + (parseInt(c.nombreJours) || 0), 0);
+        const nbNonPlanifies = chantiersNonPlanifies.length;
+        const nbTermines = chantiersDuMois.filter(c => c.statut === 'Terminé').length;
+        const kpiItems = [
+          { label: 'CHANTIERS CE MOIS', val: chantiersDuMois.length, gradient: 'linear-gradient(135deg, #1E40AF 0%, #3B82F6 100%)', glow: 'rgba(59,130,246,0.32)', badge: `${nbEnCours} en cours` },
+          { label: 'DURÉE TOTALE',      val: `${dureeTotal}j`,        gradient: 'linear-gradient(135deg, #065F46 0%, #10B981 100%)', glow: 'rgba(16,185,129,0.32)', badge: `${nbTermines} terminés` },
+          { label: 'NON PLANIFIÉS',     val: nbNonPlanifies,          gradient: nbNonPlanifies > 0 ? 'linear-gradient(135deg, #92400E 0%, #F59E0B 100%)' : 'linear-gradient(135deg, #065F46 0%, #10B981 100%)', glow: nbNonPlanifies > 0 ? 'rgba(245,158,11,0.32)' : 'rgba(16,185,129,0.32)' },
+          { label: 'TOTAL CHANTIERS',   val: chantiers.length,        gradient: 'linear-gradient(135deg, #4C1D95 0%, #8B5CF6 100%)', glow: 'rgba(139,92,246,0.32)' },
+        ];
+        return (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 20 }}>
+            {kpiItems.map(k => (
+              <div key={k.label} style={{ background: k.gradient, borderRadius: 16, padding: '22px 20px', minHeight: 110, boxShadow: `0 4px 20px ${k.glow}, 0 1px 4px rgba(0,0,0,0.12)`, border: '1px solid rgba(255,255,255,0.15)', position: 'relative', overflow: 'hidden' }}>
+                <div style={{ position: 'absolute', right: -18, top: -18, width: 80, height: 80, borderRadius: '50%', background: 'rgba(255,255,255,0.1)' }} />
+                <div style={{ position: 'absolute', right: -32, bottom: -32, width: 100, height: 100, borderRadius: '50%', background: 'rgba(255,255,255,0.06)' }} />
+                <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.7)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 8, position: 'relative' }}>{k.label}</div>
+                <div style={{ fontSize: 28, fontWeight: 900, color: '#fff', letterSpacing: '-0.8px', lineHeight: 1, position: 'relative' }}>{k.val}</div>
+                {k.badge && <span style={{ display: 'inline-block', marginTop: 7, background: 'rgba(255,255,255,0.22)', color: '#fff', borderRadius: 20, padding: '1px 8px', fontSize: 10, fontWeight: 700, position: 'relative' }}>{k.badge}</span>}
+              </div>
+            ))}
+          </div>
+        );
+      })()}
+
       {/* ── CHANTIERS NON PLANIFIÉS ─────────────────────────────── */}
       {chantiersNonPlanifies.length > 0 && (
         <div style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.25)', borderRadius: 12, padding: '14px 18px', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>

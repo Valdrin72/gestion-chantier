@@ -138,32 +138,21 @@ export default function Statistiques({ chantiers, clients, devis = [], parametre
         </div>
       </div>
 
-      {/* KPIs GLOBAUX */}
-      <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap', marginBottom: '30px' }}>
+      {/* KPIs GLOBAUX — gradients saturés */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24 }}>
         {[
-          { titre: "CA Total", valeur: `CHF ${fmtN(caTotal)}`, couleur: COL_CA, icone: 'info' },
-          { titre: "Total coûts", valeur: `CHF ${fmtN(coutsTotaux)}`, couleur: COL_COUT, icone: 'info' },
-          { titre: "Rentabilité", valeur: `CHF ${fmtN(rentabilite)}`, couleur: rentabilite >= 0 ? '#10b981' : C.danger, icone: 'info' },
-          { titre: "Marge globale", valeur: `${margeGlobale}%`, couleur: couleurMarge(margeGlobale), icone: '' },
-          { titre: "Chantiers", valeur: `${filtresAvecDevis.length} / ${chantiersFiltres.length}`, sub: nbSansDevis > 0 ? `${nbSansDevis} sans devis` : null, couleur: C.info, icone: 'info' },
-          { titre: "Prévision 3 mois", valeur: `CHF ${fmtN(Math.round(prevision3Mois))}`, couleur: C.violet, icone: 'info' },
-        ].map(s => (
-          <div key={s.titre} style={{
-            ...DS.card,
-            border: `1px solid ${s.couleur}28`,
-            flex: 1, minWidth: 150, padding: '22px',
-            position: 'relative', overflow: 'hidden',
-          }}>
-            <div style={{ width: 38, height: 38, borderRadius: 10,
-              background: `linear-gradient(135deg, ${s.couleur}28 0%, ${s.couleur}14 100%)`,
-              border: `1px solid ${s.couleur}30`,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 18, marginBottom: 14,
-              boxShadow: `0 0 18px ${s.couleur}28`,
-            }}>{s.icone}</div>
-            <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--text-muted)', marginBottom: 8 }}>{s.titre}</div>
-            <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1, letterSpacing: '-0.5px' }}>{s.valeur}</div>
-            {s.sub && <div style={{ fontSize: 10, fontWeight: 600, color: C.warning, marginTop: 5 }}>{s.sub}</div>}
+          { label: 'CA ANNÉE',          val: `CHF ${fmtN(caTotal)}`,     gradient: 'linear-gradient(135deg, #1E40AF 0%, #3B82F6 100%)', glow: 'rgba(59,130,246,0.32)',  icon: '📈' },
+          { label: 'MARGE NETTE',       val: `${margeGlobale}%`,          gradient: rentabilite >= 0 ? 'linear-gradient(135deg, #065F46 0%, #10B981 100%)' : 'linear-gradient(135deg, #991B1B 0%, #EF4444 100%)', glow: rentabilite >= 0 ? 'rgba(16,185,129,0.32)' : 'rgba(239,68,68,0.32)', icon: '💹', badge: `CHF ${fmtN(rentabilite)}` },
+          { label: 'CHANTIERS',         val: chantiersFiltres.length,     gradient: 'linear-gradient(135deg, #92400E 0%, #F59E0B 100%)', glow: 'rgba(245,158,11,0.32)', icon: '🏗️', badge: nbSansDevis > 0 ? `${nbSansDevis} sans devis` : `${filtresAvecDevis.length} avec devis` },
+          { label: 'PRÉVISION 3 MOIS',  val: `CHF ${fmtN(Math.round(prevision3Mois))}`, gradient: 'linear-gradient(135deg, #4C1D95 0%, #8B5CF6 100%)', glow: 'rgba(139,92,246,0.32)', icon: '🔮' },
+        ].map(k => (
+          <div key={k.label} style={{ background: k.gradient, borderRadius: 16, padding: '22px 20px', minHeight: 120, boxShadow: `0 4px 20px ${k.glow}, 0 1px 4px rgba(0,0,0,0.12)`, border: '1px solid rgba(255,255,255,0.15)', position: 'relative', overflow: 'hidden' }}>
+            <div style={{ position: 'absolute', right: -18, top: -18, width: 80, height: 80, borderRadius: '50%', background: 'rgba(255,255,255,0.1)' }} />
+            <div style={{ position: 'absolute', right: -32, bottom: -32, width: 100, height: 100, borderRadius: '50%', background: 'rgba(255,255,255,0.06)' }} />
+            <div style={{ background: 'rgba(255,255,255,0.18)', borderRadius: 10, width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 14, fontSize: 17, position: 'relative' }}>{k.icon}</div>
+            <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.7)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 5, position: 'relative' }}>{k.label}</div>
+            <div style={{ fontSize: 24, fontWeight: 900, color: '#fff', letterSpacing: '-0.8px', lineHeight: 1, position: 'relative' }}>{k.val}</div>
+            {k.badge && <span style={{ display: 'inline-block', marginTop: 7, background: 'rgba(255,255,255,0.22)', color: '#fff', borderRadius: 20, padding: '1px 8px', fontSize: 10, fontWeight: 700, position: 'relative' }}>{k.badge}</span>}
           </div>
         ))}
       </div>

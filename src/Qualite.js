@@ -250,31 +250,37 @@ export default function Qualite({ chantiers, setChantiers, qualiteData, setQuali
 
   return (
     <div>
-      <div className="page-title-main" style={{ marginBottom: 24 }}>Contrôle qualité</div>
-
-      <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap', marginBottom: '25px' }}>
-        {[
-          { label: 'Chantiers suivis', val: chantiers.length, couleur: '#10b981' },
-          { label: 'Score moyen', val: `${chantiers.length > 0 ? Math.round(chantiers.reduce((s, c) => s + getScoreGlobal(c.id), 0) / chantiers.length) : 0}%`, couleur: '#10b981' },
-          { label: 'À compléter', val: chantiers.filter(c => getScoreGlobal(c.id) < 80).length, couleur: C.warning },
-          { label: 'Critiques', val: chantiers.filter(c => getScoreGlobal(c.id) < 50).length, couleur: C.danger },
-        ].map(s => (
-          <div key={s.label} className="premium-card" style={{
-            background: `linear-gradient(145deg, ${s.couleur}14 0%, ${s.couleur}07 60%, rgba(255,255,255,0.02) 100%)`,
-            backdropFilter: 'blur(14px) saturate(1.6)',
-            WebkitBackdropFilter: 'blur(14px) saturate(1.6)',
-            border: `1px solid ${s.couleur}2e`,
-            borderRadius: 16, padding: '22px 24px',
-            boxShadow: `0 2px 8px rgba(0,0,0,0.3), 0 8px 28px rgba(0,0,0,0.4)`,
-            flex: 1, minWidth: 150, position: 'relative', overflow: 'hidden',
-          }}>
-            <div style={{ position: 'absolute', top: 0, left: 16, right: 16, height: 1, background: `linear-gradient(90deg, transparent, ${s.couleur}40 50%, transparent)` }} />
-            <div style={{ width: 40, height: 40, borderRadius: '10px', background: s.couleur + '22', border: `1px solid ${s.couleur}33`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, marginBottom: 14 }}>{s.label.split(' ')[0]}</div>
-            <div style={{ fontSize: 36, fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1, marginBottom: 6, letterSpacing: '-1px' }}>{s.val}</div>
-            <div style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>{s.label.substring(s.label.indexOf(' ') + 1)}</div>
-          </div>
-        ))}
+      <div className="page-header-row">
+        <div className="page-title-block">
+          <div className="page-title-main">Contrôle qualité</div>
+          <div className="page-title-sub">{chantiers.length} chantier{chantiers.length !== 1 ? 's' : ''} suivis</div>
+        </div>
       </div>
+
+      {/* ── KPI GRID ── */}
+      {(() => {
+        const scoreMoyen = chantiers.length > 0 ? Math.round(chantiers.reduce((s, c) => s + getScoreGlobal(c.id), 0) / chantiers.length) : 0;
+        const aCompleter = chantiers.filter(c => getScoreGlobal(c.id) < 80).length;
+        const critiques = chantiers.filter(c => getScoreGlobal(c.id) < 50).length;
+        const kpiItems = [
+          { label: 'CHANTIERS SUIVIS', val: chantiers.length,  gradient: 'linear-gradient(135deg, #1E40AF 0%, #3B82F6 100%)', glow: 'rgba(59,130,246,0.32)' },
+          { label: 'SCORE MOYEN',      val: `${scoreMoyen}%`,  gradient: scoreMoyen >= 80 ? 'linear-gradient(135deg, #065F46 0%, #10B981 100%)' : scoreMoyen >= 50 ? 'linear-gradient(135deg, #92400E 0%, #F59E0B 100%)' : 'linear-gradient(135deg, #991B1B 0%, #EF4444 100%)', glow: scoreMoyen >= 80 ? 'rgba(16,185,129,0.32)' : scoreMoyen >= 50 ? 'rgba(245,158,11,0.32)' : 'rgba(239,68,68,0.32)' },
+          { label: 'À COMPLÉTER',      val: aCompleter,        gradient: 'linear-gradient(135deg, #92400E 0%, #F59E0B 100%)', glow: 'rgba(245,158,11,0.32)' },
+          { label: 'CRITIQUES',        val: critiques,         gradient: 'linear-gradient(135deg, #991B1B 0%, #EF4444 100%)', glow: 'rgba(239,68,68,0.32)' },
+        ];
+        return (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 20 }}>
+            {kpiItems.map(k => (
+              <div key={k.label} style={{ background: k.gradient, borderRadius: 16, padding: '22px 20px', minHeight: 110, boxShadow: `0 4px 20px ${k.glow}, 0 1px 4px rgba(0,0,0,0.12)`, border: '1px solid rgba(255,255,255,0.15)', position: 'relative', overflow: 'hidden' }}>
+                <div style={{ position: 'absolute', right: -18, top: -18, width: 80, height: 80, borderRadius: '50%', background: 'rgba(255,255,255,0.1)' }} />
+                <div style={{ position: 'absolute', right: -32, bottom: -32, width: 100, height: 100, borderRadius: '50%', background: 'rgba(255,255,255,0.06)' }} />
+                <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.7)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 8, position: 'relative' }}>{k.label}</div>
+                <div style={{ fontSize: 28, fontWeight: 900, color: '#fff', letterSpacing: '-0.8px', lineHeight: 1, position: 'relative' }}>{k.val}</div>
+              </div>
+            ))}
+          </div>
+        );
+      })()}
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
         {chantiers.length === 0 ? (

@@ -2819,14 +2819,53 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
         </div>
       </div>
 
+      {/* ── KPI GRID ── */}
+      {(() => {
+        const nbEnCours = chantiers.filter(c => c.statut === 'En cours').length;
+        const nbEnRetard = chantiersFiltres.filter(c => { const j = joursParChantier[c.id]; return j !== null && j < 0; }).length;
+        const caTotal = chantiersFiltres.reduce((t, c) => t + (calculerCA(c, devis) || 0), 0);
+        const joursPlanifies = chantiersFiltres.reduce((t, c) => t + (parseInt(c.nombreJours) || 0), 0);
+        const chantiersAvecData = chantiersFiltres.filter(c => { const ca = calculerCA(c, devis); return ca !== null && ca > 0; });
+        let margeMoyenne = null;
+        if (chantiersAvecData.length > 0) {
+          const sum = chantiersAvecData.reduce((s, c) => {
+            const couts = calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis);
+            return s + (couts.totalCoutsReel > 0 ? parseFloat(couts.margeReelPct) : 0);
+          }, 0);
+          margeMoyenne = Math.round(sum / chantiersAvecData.length);
+        }
+        const kpiItems = [
+          { label: 'EN COURS',       val: nbEnCours,  Icon: HardHat,    gradient: 'linear-gradient(135deg, #1E40AF 0%, #3B82F6 100%)', glow: 'rgba(59,130,246,0.32)', badge: nbEnRetard > 0 ? `${nbEnRetard} en retard` : null },
+          { label: 'CA TOTAL',       val: `CHF ${fmtN(caTotal)}`, Icon: DollarSign, gradient: 'linear-gradient(135deg, #065F46 0%, #10B981 100%)', glow: 'rgba(16,185,129,0.32)' },
+          { label: 'MARGE MOYENNE',  val: margeMoyenne !== null ? `${margeMoyenne}%` : '—', Icon: TrendingUp, gradient: 'linear-gradient(135deg, #92400E 0%, #F59E0B 100%)', glow: 'rgba(245,158,11,0.32)' },
+          { label: 'JOURS PLANIFIÉS',val: `${fmtN(joursPlanifies)}j`, Icon: Clock, gradient: 'linear-gradient(135deg, #4C1D95 0%, #8B5CF6 100%)', glow: 'rgba(139,92,246,0.32)' },
+        ];
+        return (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 20 }}>
+            {kpiItems.map(k => (
+              <div key={k.label} style={{ background: k.gradient, borderRadius: 16, padding: '22px 20px', minHeight: 120, boxShadow: `0 4px 20px ${k.glow}, 0 1px 4px rgba(0,0,0,0.12)`, border: '1px solid rgba(255,255,255,0.15)', position: 'relative', overflow: 'hidden' }}>
+                <div style={{ position: 'absolute', right: -18, top: -18, width: 80, height: 80, borderRadius: '50%', background: 'rgba(255,255,255,0.1)' }} />
+                <div style={{ position: 'absolute', right: -32, bottom: -32, width: 100, height: 100, borderRadius: '50%', background: 'rgba(255,255,255,0.06)' }} />
+                <div style={{ background: 'rgba(255,255,255,0.18)', borderRadius: 10, width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 14, position: 'relative' }}>
+                  <k.Icon size={17} strokeWidth={2} style={{ color: '#fff' }} />
+                </div>
+                <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.7)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 5, position: 'relative' }}>{k.label}</div>
+                <div style={{ fontSize: 26, fontWeight: 900, color: '#fff', letterSpacing: '-0.8px', lineHeight: 1, position: 'relative' }}>{k.val}</div>
+                {k.badge && <span style={{ display: 'inline-block', marginTop: 7, background: 'rgba(239,68,68,0.85)', color: '#fff', borderRadius: 20, padding: '1px 8px', fontSize: 10, fontWeight: 700, position: 'relative' }}>{k.badge}</span>}
+              </div>
+            ))}
+          </div>
+        );
+      })()}
+
       <div style={{ display: 'flex', gap: '6px', marginBottom: '20px', flexWrap: 'wrap' }}>
         {statuts.map(s => (
           <button key={s} onClick={() => setFiltre(s)} style={{
-            background: filtre === s ? 'rgba(59,130,246,0.18)' : 'var(--bg-glass-2)',
-            color: filtre === s ? C.primaire : 'var(--text-secondary)',
-            border: filtre === s ? '1px solid rgba(59,130,246,0.4)' : '1px solid var(--border)',
+            background: filtre === s ? '#EEF2FF' : 'transparent',
+            color: filtre === s ? '#4F46E5' : 'var(--text-muted)',
+            border: '1px solid transparent',
             padding: '5px 14px', borderRadius: '20px', cursor: 'pointer', fontSize: '13px',
-            fontWeight: filtre === s ? 700 : 500, fontFamily: 'inherit',
+            fontWeight: filtre === s ? 600 : 400, fontFamily: 'inherit',
             transition: 'all 0.18s',
           }}>{s}</button>
         ))}
@@ -3466,6 +3505,7 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
 
 function Devis({ devis, setDevis, clients, parametres, naviguer, setChantiers, chantiers, contexte = {} }) {
   const [ajout, setAjout] = useState(false);
+  const [filtreDevis, setFiltreDevis] = useState('Tous');
   const vide = {
     numero: `DEV-${new Date().getFullYear()}-00${devis.length + 1}`,
     clientId: '', date: new Date().toISOString().split('T')[0], statut: 'brouillon',
@@ -3533,12 +3573,68 @@ function Devis({ devis, setDevis, clients, parametres, naviguer, setChantiers, c
       <div className="page-header-row">
         <div className="page-title-block">
           <div className="page-title-main">Devis</div>
-          <div className="page-title-sub">{devis.length} devis · {devis.filter(d => ['accepté', 'Validé', 'Signé'].includes(d.statut)).length} acceptés</div>
+          <div className="page-title-sub">{devis.length} devis · {devis.filter(d => ['accepté', 'Validé', 'Signé'].includes(d.statut)).length} acceptés ce mois</div>
         </div>
         <div className="page-actions-group">
           <button onClick={() => { setForm(vide); setAjout(!ajout); }} style={btnPrimaire}><Plus size={14} /> Nouveau devis</button>
         </div>
       </div>
+
+      {/* ── KPI GRID ── */}
+      {(() => {
+        const ACCEPTES = ['accepté', 'Validé', 'Signé'];
+        const ATTENTE  = ['envoyé', 'Envoyé'];
+        const montantTotal = devis.reduce((s, d) => s + (parseFloat(d.montantHT || d.prixPropose) || 0), 0);
+        const nbAcceptes = devis.filter(d => ACCEPTES.includes(d.statut)).length;
+        const tauxAcceptation = devis.length > 0 ? Math.round((nbAcceptes / devis.length) * 100) : 0;
+        const enAttente = devis.filter(d => ATTENTE.includes(d.statut));
+        const montantAttente = enAttente.reduce((s, d) => s + (parseFloat(d.montantHT || d.prixPropose) || 0), 0);
+        const now = Date.now();
+        const delaisMoyen = enAttente.length > 0
+          ? Math.round(enAttente.reduce((s, d) => { const dt = d.dateEmission || d.date || 0; return s + Math.floor((now - new Date(dt)) / 86400000); }, 0) / enAttente.length)
+          : null;
+        const kpiItems = [
+          { label: 'MONTANT TOTAL',       val: `CHF ${fmtN(montantTotal)}`, Icon: DollarSign, gradient: 'linear-gradient(135deg, #1E40AF 0%, #3B82F6 100%)', glow: 'rgba(59,130,246,0.32)' },
+          { label: "TAUX D'ACCEPTATION",  val: `${tauxAcceptation}%`,        Icon: TrendingUp, gradient: 'linear-gradient(135deg, #065F46 0%, #10B981 100%)', glow: 'rgba(16,185,129,0.32)' },
+          { label: 'EN ATTENTE',          val: enAttente.length,              Icon: Clock,      gradient: 'linear-gradient(135deg, #92400E 0%, #F59E0B 100%)', glow: 'rgba(245,158,11,0.32)', badge: montantAttente > 0 ? `CHF ${fmtN(montantAttente)}` : null },
+          { label: 'DÉLAI MOYEN',         val: delaisMoyen !== null ? `${delaisMoyen}j` : '—', Icon: FileText, gradient: 'linear-gradient(135deg, #4C1D95 0%, #8B5CF6 100%)', glow: 'rgba(139,92,246,0.32)' },
+        ];
+        return (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 20 }}>
+            {kpiItems.map(k => (
+              <div key={k.label} style={{ background: k.gradient, borderRadius: 16, padding: '22px 20px', minHeight: 120, boxShadow: `0 4px 20px ${k.glow}, 0 1px 4px rgba(0,0,0,0.12)`, border: '1px solid rgba(255,255,255,0.15)', position: 'relative', overflow: 'hidden' }}>
+                <div style={{ position: 'absolute', right: -18, top: -18, width: 80, height: 80, borderRadius: '50%', background: 'rgba(255,255,255,0.1)' }} />
+                <div style={{ position: 'absolute', right: -32, bottom: -32, width: 100, height: 100, borderRadius: '50%', background: 'rgba(255,255,255,0.06)' }} />
+                <div style={{ background: 'rgba(255,255,255,0.18)', borderRadius: 10, width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 14, position: 'relative' }}>
+                  <k.Icon size={17} strokeWidth={2} style={{ color: '#fff' }} />
+                </div>
+                <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.7)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 5, position: 'relative' }}>{k.label}</div>
+                <div style={{ fontSize: 26, fontWeight: 900, color: '#fff', letterSpacing: '-0.8px', lineHeight: 1, position: 'relative' }}>{k.val}</div>
+                {k.badge && <span style={{ display: 'inline-block', marginTop: 7, background: 'rgba(255,255,255,0.22)', color: '#fff', borderRadius: 20, padding: '1px 8px', fontSize: 10, fontWeight: 700, position: 'relative' }}>{k.badge}</span>}
+              </div>
+            ))}
+          </div>
+        );
+      })()}
+
+      {/* ── Filter pills ── */}
+      {(() => {
+        const STATUTS_DEVIS = ['Tous', 'brouillon', 'envoyé', 'accepté', 'refusé'];
+        return (
+          <div style={{ display: 'flex', gap: '6px', marginBottom: '20px', flexWrap: 'wrap' }}>
+            {STATUTS_DEVIS.map(s => (
+              <button key={s} onClick={() => setFiltreDevis(s)} style={{
+                background: filtreDevis === s ? '#EEF2FF' : 'transparent',
+                color: filtreDevis === s ? '#4F46E5' : 'var(--text-muted)',
+                border: '1px solid transparent',
+                padding: '5px 14px', borderRadius: '20px', cursor: 'pointer', fontSize: '13px',
+                fontWeight: filtreDevis === s ? 600 : 400, fontFamily: 'inherit',
+                textTransform: 'capitalize',
+              }}>{s}</button>
+            ))}
+          </div>
+        );
+      })()}
 
       {ajout && (
         <div style={carteStyle}>
@@ -3640,8 +3736,11 @@ function Devis({ devis, setDevis, clients, parametres, naviguer, setChantiers, c
       )}
 
       {/* ── Liste des devis ── */}
+      {(() => {
+        const devisFiltres = filtreDevis === 'Tous' ? devis : devis.filter(d => d.statut === filtreDevis);
+        return (
       <div style={{ ...DS.card, padding: 0, overflow: 'hidden' }}>
-        {devis.length === 0 ? (
+        {devisFiltres.length === 0 ? (
           <div style={{ padding: '40px 24px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 14 }}>
             Aucun devis à afficher
           </div>
@@ -3656,7 +3755,7 @@ function Devis({ devis, setDevis, clients, parametres, naviguer, setChantiers, c
                 </tr>
               </thead>
               <tbody>
-                {devis.map(d => {
+                {devisFiltres.map(d => {
                   const client = clients.find(c => c.id === d.clientId);
                   const montant = parseFloat(d.montantHT || d.prixPropose) || 0;
                   const totalRegie = Array.isArray(d.heuresRegie)
@@ -3733,6 +3832,8 @@ function Devis({ devis, setDevis, clients, parametres, naviguer, setChantiers, c
           </div>
         )}
       </div>
+        );
+      })()}
     </div>
   );
 }
@@ -3759,6 +3860,37 @@ function Clients({ clients, setClients, chantiers, devis = [], naviguer }) {
           <button onClick={() => { setForm({ nom: '', prenom: '', entreprise: '', telephone: '', email: '', adresse: '', ville: '', canton: '', type: 'Entreprise', notes: '' }); setAjout(true); }} style={btnPrimaire}><Plus size={14}/> Nouveau client</button>
         </div>
       </div>
+
+      {/* ── KPI GRID ── */}
+      {(() => {
+        const caTotal = clients.reduce((s, c) => { const ch = chantiers.filter(ch => ch.clientId === c.id); return s + ch.reduce((t, ch) => t + (calculerCA(ch, devis) || 0), 0); }, 0);
+        const nbAvecChantier = clients.filter(c => chantiers.some(ch => ch.clientId === c.id)).length;
+        const nbActifs = clients.filter(c => chantiers.some(ch => ch.clientId === c.id && ch.statut === 'En cours')).length;
+        const entreprises = clients.filter(c => c.type === 'Entreprise').length;
+        const kpiItems = [
+          { label: 'TOTAL CLIENTS',    val: clients.length,      Icon: Users,      gradient: 'linear-gradient(135deg, #1E40AF 0%, #3B82F6 100%)', glow: 'rgba(59,130,246,0.32)', badge: `${nbActifs} actifs` },
+          { label: 'CA TOTAL',         val: `CHF ${fmtN(caTotal)}`, Icon: DollarSign, gradient: 'linear-gradient(135deg, #065F46 0%, #10B981 100%)', glow: 'rgba(16,185,129,0.32)' },
+          { label: 'AVEC CHANTIER',    val: nbAvecChantier,       Icon: HardHat,    gradient: 'linear-gradient(135deg, #92400E 0%, #F59E0B 100%)', glow: 'rgba(245,158,11,0.32)' },
+          { label: 'ENTREPRISES',       val: entreprises,           Icon: FileText,   gradient: 'linear-gradient(135deg, #4C1D95 0%, #8B5CF6 100%)', glow: 'rgba(139,92,246,0.32)' },
+        ];
+        return (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 20 }}>
+            {kpiItems.map(k => (
+              <div key={k.label} style={{ background: k.gradient, borderRadius: 16, padding: '22px 20px', minHeight: 120, boxShadow: `0 4px 20px ${k.glow}, 0 1px 4px rgba(0,0,0,0.12)`, border: '1px solid rgba(255,255,255,0.15)', position: 'relative', overflow: 'hidden' }}>
+                <div style={{ position: 'absolute', right: -18, top: -18, width: 80, height: 80, borderRadius: '50%', background: 'rgba(255,255,255,0.1)' }} />
+                <div style={{ position: 'absolute', right: -32, bottom: -32, width: 100, height: 100, borderRadius: '50%', background: 'rgba(255,255,255,0.06)' }} />
+                <div style={{ background: 'rgba(255,255,255,0.18)', borderRadius: 10, width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 14, position: 'relative' }}>
+                  <k.Icon size={17} strokeWidth={2} style={{ color: '#fff' }} />
+                </div>
+                <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.7)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 5, position: 'relative' }}>{k.label}</div>
+                <div style={{ fontSize: 26, fontWeight: 900, color: '#fff', letterSpacing: '-0.8px', lineHeight: 1, position: 'relative' }}>{k.val}</div>
+                {k.badge && <span style={{ display: 'inline-block', marginTop: 7, background: 'rgba(255,255,255,0.22)', color: '#fff', borderRadius: 20, padding: '1px 8px', fontSize: 10, fontWeight: 700, position: 'relative' }}>{k.badge}</span>}
+              </div>
+            ))}
+          </div>
+        );
+      })()}
+
       {ajout && (
         <div style={carteStyle}>
           <div className="ds-card-title">{form.id ? 'Modifier' : 'Nouveau'} client</div>
@@ -3857,12 +3989,44 @@ function Employes({ parametres, setParametres, chantiers, naviguer }) {
       <div className="page-header-row">
         <div className="page-title-block">
           <div className="page-title-main">Équipe</div>
-          <div className="page-title-sub">{(parametres.employes || []).length} employé{(parametres.employes || []).length !== 1 ? 's' : ''}</div>
+          <div className="page-title-sub">{(parametres.employes || []).length} employé{(parametres.employes || []).length !== 1 ? 's' : ''} · {(parametres.employes || []).filter(e => e.actif !== false).length} actifs sur le terrain</div>
         </div>
         <div className="page-actions-group">
           <button onClick={() => setAjout(!ajout)} style={btnPrimaire}><Plus size={14}/> Nouvel employé</button>
         </div>
       </div>
+
+      {/* ── KPI GRID ── */}
+      {(() => {
+        const employes = parametres.employes || [];
+        const nbActifs = employes.filter(e => e.actif !== false).length;
+        const heuresTotal = chantiers.reduce((s, c) => s + (c.journal || []).reduce((js, j) => js + (j.employes || []).reduce((es, e) => es + (parseFloat(e.heuresTravaillees) || 0), 0), 0), 0);
+        const coutMensuel = employes.filter(e => e.actif !== false).reduce((s, e) => s + (parseFloat(e.tarifJour) || 0) * 20, 0);
+        const tarifMoyen = nbActifs > 0 ? Math.round(employes.filter(e => e.actif !== false).reduce((s, e) => s + (parseFloat(e.tarifJour) || 0), 0) / nbActifs) : 0;
+        const kpiItems = [
+          { label: 'EFFECTIF',      val: employes.length, Icon: Users,      gradient: 'linear-gradient(135deg, #1E40AF 0%, #3B82F6 100%)', glow: 'rgba(59,130,246,0.32)', badge: `${nbActifs} actifs` },
+          { label: 'HEURES TOTALES',val: `${fmtN(Math.round(heuresTotal))}h`, Icon: Clock, gradient: 'linear-gradient(135deg, #065F46 0%, #10B981 100%)', glow: 'rgba(16,185,129,0.32)' },
+          { label: 'COÛT MENSUEL',  val: `CHF ${fmtN(coutMensuel)}`, Icon: DollarSign, gradient: 'linear-gradient(135deg, #92400E 0%, #F59E0B 100%)', glow: 'rgba(245,158,11,0.32)' },
+          { label: 'TARIF MOYEN',   val: `CHF ${fmtN(tarifMoyen)}/j`, Icon: TrendingUp, gradient: 'linear-gradient(135deg, #4C1D95 0%, #8B5CF6 100%)', glow: 'rgba(139,92,246,0.32)' },
+        ];
+        return (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 20 }}>
+            {kpiItems.map(k => (
+              <div key={k.label} style={{ background: k.gradient, borderRadius: 16, padding: '22px 20px', minHeight: 120, boxShadow: `0 4px 20px ${k.glow}, 0 1px 4px rgba(0,0,0,0.12)`, border: '1px solid rgba(255,255,255,0.15)', position: 'relative', overflow: 'hidden' }}>
+                <div style={{ position: 'absolute', right: -18, top: -18, width: 80, height: 80, borderRadius: '50%', background: 'rgba(255,255,255,0.1)' }} />
+                <div style={{ position: 'absolute', right: -32, bottom: -32, width: 100, height: 100, borderRadius: '50%', background: 'rgba(255,255,255,0.06)' }} />
+                <div style={{ background: 'rgba(255,255,255,0.18)', borderRadius: 10, width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 14, position: 'relative' }}>
+                  <k.Icon size={17} strokeWidth={2} style={{ color: '#fff' }} />
+                </div>
+                <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.7)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 5, position: 'relative' }}>{k.label}</div>
+                <div style={{ fontSize: 26, fontWeight: 900, color: '#fff', letterSpacing: '-0.8px', lineHeight: 1, position: 'relative' }}>{k.val}</div>
+                {k.badge && <span style={{ display: 'inline-block', marginTop: 7, background: 'rgba(255,255,255,0.22)', color: '#fff', borderRadius: 20, padding: '1px 8px', fontSize: 10, fontWeight: 700, position: 'relative' }}>{k.badge}</span>}
+              </div>
+            ))}
+          </div>
+        );
+      })()}
+
       {ajout && (
         <div style={carteStyle}>
           <div className="ds-card-title">{form.id ? 'Modifier' : 'Nouvel'} employé</div>

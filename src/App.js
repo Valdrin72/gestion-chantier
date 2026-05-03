@@ -381,7 +381,7 @@ function App() {
           {page === 'rapport'     && <RapportsPage chantiers={chantiers} clients={clients} devis={devis} parametres={parametres} setParametres={setParametres} paiementsData={paiementsData} qualiteData={qualiteData} periodeGlobale={periodeGlobale} naviguer={naviguer} />}
           {page === 'agents'      && <Agents {...agentState} />}
           {page === 'parametres'  && <Parametres parametres={parametres} setParametres={setParametres} clients={clients} setClients={setClients} chantiers={chantiers} devis={devis} naviguer={naviguer} />}
-          {page === 'documents'   && <Documents chantiers={chantiers} devis={devis} factures={factures} clients={clients} />}
+          {page === 'documents'   && <Documents chantiers={chantiers} devis={devis} factures={factures} clients={clients} naviguer={naviguer} />}
           {page === 'heures'      && <Heures chantiers={chantiers} parametres={parametres} setChantiers={setChantiers} />}
         </main>
 

@@ -3520,6 +3520,7 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
 function Devis({ devis, setDevis, clients, parametres, naviguer, setChantiers, chantiers, contexte = {} }) {
   const [ajout, setAjout] = useState(false);
   const [filtreDevis, setFiltreDevis] = useState('Tous');
+  const [confirmConversion, setConfirmConversion] = useState(null); // { devis, nomChantier }
   const vide = {
     numero: `DEV-${new Date().getFullYear()}-00${devis.length + 1}`,
     clientId: '', date: new Date().toISOString().split('T')[0], statut: 'brouillon',
@@ -3556,25 +3557,39 @@ function Devis({ devis, setDevis, clients, parametres, naviguer, setChantiers, c
     setAjout(false); setForm(vide);
   };
 
-  const convertirEnChantier = (d) => {
+  const ouvrirConfirmConversion = (d) => {
     const client = clients.find(c => c.id === d.clientId);
-    setChantiers([...chantiers, {
-      id: Date.now(),
+    const nomSuggere = client?.entreprise
+      ? `${client.entreprise} — ${d.numero}`
+      : `Chantier ${d.numero}`;
+    setConfirmConversion({ devis: d, nomChantier: nomSuggere });
+  };
+
+  const confirmerConversion = () => {
+    if (!confirmConversion) return;
+    const { devis: d, nomChantier } = confirmConversion;
+    const newId = Date.now();
+    setChantiers(prev => [...prev, {
+      id: newId,
       devisId: d.id,
-      nom: `Chantier — ${client?.entreprise || 'Nouveau'}`,
-      numero: `CH-${new Date().getFullYear()}-00${chantiers.length + 1}`,
-      clientId: d.clientId, montantDevis: parseFloat(d.montantHT || d.prixPropose) || 0, surface: 0,
-      statut: 'Planifié', priorite: 'Normale', avancement: 0, dateDebut: '', nombreJours: d.dureeEstimee || '',
+      nom: nomChantier.trim() || `Chantier ${d.numero}`,
+      numero: `CH-${new Date().getFullYear()}-${String(chantiers.length + 1).padStart(3, '0')}`,
+      clientId: d.clientId,
+      montantDevis: parseFloat(d.montantHT || d.prixPropose) || 0,
+      surface: 0,
+      statut: 'Planifié', priorite: 'Normale', avancement: 0,
+      dateDebut: '', nombreJours: d.dureeEstimee || '',
       inclusSamedi: false, avenants: [], montantFacture: 0,
       typesTravaux: [], ville: '', canton: '', adresse: '',
       conducteur: '', directeurTravauxId: '', equipe: [], employes: [],
       coutMaterielPrevu: '', materielReel: '',
       coutSousTraitancePrevu: '', sousTraitanceReelle: '',
-      autresCoutsPrevu: '', autresCoutsReels: '', imprevus: [], notes: `Créé depuis devis ${d.numero}`,
+      autresCoutsPrevu: '', autresCoutsReels: '', imprevus: [],
+      notes: `Créé depuis devis ${d.numero}`,
       journal: [],
     }]);
-    alert('Chantier créé depuis le devis !');
-    naviguer('chantiers');
+    setConfirmConversion(null);
+    naviguer('chantiers', { chantierActif: newId });
   };
 
   const STATUTS_COULEUR = {
@@ -3841,8 +3856,8 @@ function Devis({ devis, setDevis, clients, parametres, naviguer, setChantiers, c
                       <td style={{ ...DS.td, whiteSpace: 'nowrap' }}>
                         <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                           {!chantierLie && isAccepte && (
-                            <button onClick={() => convertirEnChantier(d)} style={{ ...DS.btnSuccess, padding: '6px 10px', fontSize: 12 }} title="Convertir en chantier">
-                              <HardHat size={13} />
+                            <button onClick={() => ouvrirConfirmConversion(d)} style={{ ...DS.btnSuccess, padding: '6px 12px', fontSize: 12, gap: 5 }}>
+                              <HardHat size={13} /> Créer le chantier
                             </button>
                           )}
                           <button
@@ -3865,6 +3880,72 @@ function Devis({ devis, setDevis, clients, parametres, naviguer, setChantiers, c
           </div>
         )}
       </div>
+        );
+      })()}
+
+      {/* ── Modale confirmation conversion devis → chantier ── */}
+      {confirmConversion && (() => {
+        const d = confirmConversion.devis;
+        const client = clients.find(c => c.id === d.clientId);
+        const montant = parseFloat(d.montantHT || d.prixPropose) || 0;
+        return (
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(4px)' }}
+            onClick={() => setConfirmConversion(null)}>
+            <div style={{ background: 'var(--bg-card)', border: '1px solid var(--ds-card-border)', borderRadius: 18, padding: 28, width: '100%', maxWidth: 460, boxShadow: '0 20px 60px rgba(0,0,0,0.4)' }}
+              onClick={e => e.stopPropagation()}>
+
+              {/* Header */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
+                <div style={{ width: 42, height: 42, borderRadius: 12, background: 'linear-gradient(135deg,#065F46,#10b981)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <HardHat size={20} strokeWidth={2} style={{ color: '#fff' }} />
+                </div>
+                <div>
+                  <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--text-primary)' }}>Créer le chantier</div>
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Depuis le devis {d.numero}</div>
+                </div>
+              </div>
+
+              {/* Récap devis */}
+              <div style={{ background: 'var(--bg-glass)', border: '1px solid var(--ds-card-border)', borderRadius: 12, padding: '12px 16px', marginBottom: 20, display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+                <div>
+                  <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 3 }}>Client</div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>{client?.entreprise || client?.nom || '—'}</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 3 }}>Montant HT</div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: '#10b981' }}>CHF {fmtN(montant)}</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 3 }}>Durée estimée</div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: d.dureeEstimee ? '#3b82f6' : 'var(--text-muted)' }}>
+                    {d.dureeEstimee ? `${d.dureeEstimee}j ouvrables` : 'Non renseignée'}
+                  </div>
+                </div>
+              </div>
+
+              {/* Nom du chantier */}
+              <div style={{ marginBottom: 24 }}>
+                <label style={DS.label}>Nom du chantier</label>
+                <input
+                  autoFocus
+                  value={confirmConversion.nomChantier}
+                  onChange={e => setConfirmConversion({ ...confirmConversion, nomChantier: e.target.value })}
+                  onKeyDown={e => e.key === 'Enter' && confirmerConversion()}
+                  style={DS.input}
+                />
+                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 5 }}>
+                  Statut initial : <strong>Planifié</strong> · Vous pourrez ajouter la date dans le Planning
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+                <button onClick={() => setConfirmConversion(null)} style={DS.btnGhost}>Annuler</button>
+                <button onClick={confirmerConversion} style={DS.btnSuccess}>
+                  <HardHat size={14} /> Créer le chantier
+                </button>
+              </div>
+            </div>
+          </div>
         );
       })()}
     </div>

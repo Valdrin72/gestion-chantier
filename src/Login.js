@@ -8,7 +8,7 @@ const PROFILS = [
     icone: '◈',
     couleur: C.primaire,
     description: 'Accès complet à toutes les fonctionnalités',
-    pages: ['dashboard', 'chantiers', 'devis', 'finances', 'clients', 'employes', 'planning', 'statistiques', 'qualite', 'parametres', 'rapport', 'analyse', 'agents'],
+    pages: ['dashboard', 'chantiers', 'devis', 'finances', 'clients', 'employes', 'heures', 'planning', 'statistiques', 'qualite', 'parametres', 'rapport', 'analyse', 'agents', 'calendrier', 'documents'],
   },
   {
     id: 'conducteur',
@@ -16,7 +16,7 @@ const PROFILS = [
     icone: '◉',
     couleur: C.warning,
     description: 'Chantiers, planning, qualité et équipes',
-    pages: ['dashboard', 'chantiers', 'employes', 'planning', 'qualite'],
+    pages: ['dashboard', 'chantiers', 'employes', 'heures', 'planning', 'qualite', 'calendrier'],
   },
   {
     id: 'administratif',
@@ -24,7 +24,7 @@ const PROFILS = [
     icone: '',
     couleur: C.info,
     description: 'Clients, devis, paiements et statistiques',
-    pages: ['dashboard', 'clients', 'devis', 'finances', 'statistiques', 'rapport', 'analyse'],
+    pages: ['dashboard', 'clients', 'devis', 'finances', 'statistiques', 'rapport', 'analyse', 'documents', 'calendrier'],
     
   },
   {

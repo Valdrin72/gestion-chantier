@@ -1,0 +1,39 @@
+/*
+ * CYNA DESIGN SYSTEM — Theme tokens
+ * Light/dark CSS variables defined in index.css via [data-theme="light/dark"]
+ * This file adds utility classes and semantic aliases.
+ */
+
+/* ── KPI Card gradients ── */
+.kpi-blue   { background: linear-gradient(135deg, #1E40AF 0%, #3B82F6 100%); }
+.kpi-green  { background: linear-gradient(135deg, #065F46 0%, #10B981 100%); }
+.kpi-amber  { background: linear-gradient(135deg, #92400E 0%, #F59E0B 100%); }
+.kpi-purple { background: linear-gradient(135deg, #4C1D95 0%, #8B5CF6 100%); }
+.kpi-red    { background: linear-gradient(135deg, #991B1B 0%, #EF4444 100%); }
+
+/* ── Status badges ── */
+.badge { display: inline-block; padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; line-height: 1.4; }
+.badge-success  { background: #d1fae5; color: #065f46; }
+.badge-info     { background: #dbeafe; color: #1e40af; }
+.badge-warning  { background: #fef3c7; color: #92400e; }
+.badge-danger   { background: #fee2e2; color: #991b1b; }
+.badge-neutral  { background: #f3f4f6; color: #4b5563; }
+.badge-purple   { background: #ede9fe; color: #5b21b6; }
+
+/* ── Progress bar ── */
+.progress-track { background: var(--bg-hover); border-radius: 6px; height: 6px; overflow: hidden; }
+.progress-fill  { height: 100%; border-radius: 6px; transition: width 0.4s ease; }
+
+/* ── Toggle iOS style ── */
+.toggle-track { width: 44px; height: 24px; border-radius: 12px; background: #d1d5db; position: relative; cursor: pointer; transition: background 0.2s; }
+.toggle-track.on { background: #3b82f6; }
+.toggle-thumb { width: 20px; height: 20px; border-radius: 50%; background: #fff; position: absolute; top: 2px; left: 2px; transition: transform 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
+.toggle-track.on .toggle-thumb { transform: translateX(20px); }
+
+/* ── Page layout helpers ── */
+.page-grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+.page-grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 20px; }
+.page-grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
+
+/* ── Avatar ── */
+.avatar { border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; color: #fff; flex-shrink: 0; }

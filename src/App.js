@@ -5,6 +5,7 @@ import {
   Settings, Moon, Sun, LogOut,
   Menu, X, Plus, Pencil, Trash2, AlertTriangle,
   ChevronRight, CheckCircle, DollarSign, Bell, Clock, CreditCard, Bot, Eye,
+  FolderOpen,
 } from 'lucide-react';
 import { LineChart, Line, PieChart, Pie, Cell, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 import { donneesInitiales, fmtN, calculerDateFinOuvrables, joursOuvrableRestants, getAlerte, getAlerteChantier, estRetardJustifie, getChantierStatus, calculerCoutsChantier, statutRentabilite, C, getIntervallesPeriode, getPeriodeLabel, chantiersInPeriode, facturesInPeriode, calculerJoursRestants, calculerRentabiliteReelle, calculerEcartChantier, calculerEtatChantier, assertEtatValide, assertEtatCoherent, calculerVitesseChantier, migrerJournal, migrerDevisId, heuresEmploye, heuresJour, sommeAvenants, calculerCA, isChantierActif } from './donnees';
@@ -18,6 +19,9 @@ import Login, { PROFILS } from './Login';
 import { DS } from './ds';
 import useAgents from './useAgents';
 import Agents from './Agents';
+import Calendrier from './Calendrier';
+import Documents from './Documents';
+import Heures from './Heures';
 
 // Supprime les balises HTML des champs texte avant sauvegarde (protection XSS dans PDF)
 const sanitiser = (obj) => {
@@ -125,7 +129,9 @@ const NAV_FALLBACK = {
 function App() {
   const [page, setPage] = useState('dashboard');
   const [contexte, setContexte] = useState({});
-  const [darkMode, setDarkMode] = useState(false);
+  const [darkMode, setDarkMode] = useState(() => {
+    try { return localStorage.getItem('cyna_theme') === 'dark'; } catch { return false; }
+  });
   const [mobileMenuOuvert, setMobileMenuOuvert] = useState(false);
   const [sidebarOuvert, setSidebarOuvert] = useState(false);
 
@@ -258,14 +264,21 @@ function App() {
   const agentState = useAgents({ chantiers, devis, factures, clients, parametres });
 
   const navItems = [
-    { id: 'dashboard',  label: 'Dashboard',   Icon: LayoutDashboard, labelCourt: 'Accueil' },
-    { id: 'chantiers',  label: 'Chantiers',   Icon: HardHat,         labelCourt: 'Chantiers' },
-    { id: 'devis',      label: 'Devis',       Icon: FileText,        labelCourt: 'Devis' },
-    { id: 'finances',   label: 'Finances',    Icon: DollarSign,      labelCourt: 'Finances' },
-    { id: 'planning',   label: 'Planning',    Icon: Calendar,        labelCourt: 'Planning' },
-    { id: 'analyse',    label: 'Analyse',     Icon: TrendingUp,      labelCourt: 'Analyse' },
-    { id: 'agents',     label: 'Agents IA',   Icon: Bot,             labelCourt: 'Agents' },
-    { id: 'parametres', label: 'Paramètres',  Icon: Settings,        labelCourt: 'Config' },
+    { id: 'dashboard',    label: 'Dashboard',        Icon: LayoutDashboard, labelCourt: 'Accueil' },
+    { id: 'chantiers',    label: 'Chantiers',        Icon: HardHat,         labelCourt: 'Chantiers' },
+    { id: 'devis',        label: 'Devis',            Icon: FileText,        labelCourt: 'Devis' },
+    { id: 'employes',     label: 'Employés',         Icon: Users,           labelCourt: 'Équipe' },
+    { id: 'heures',       label: 'Heures',           Icon: Clock,           labelCourt: 'Heures' },
+    { id: 'finances',     label: 'Coûts & finances', Icon: DollarSign,      labelCourt: 'Finances' },
+    { id: 'rapport',      label: 'Rapports',         Icon: ClipboardList,   labelCourt: 'Rapports' },
+    { id: 'calendrier',   label: 'Calendrier',       Icon: Calendar,        labelCourt: 'Calendrier' },
+    { id: 'documents',    label: 'Documents',        Icon: FolderOpen,      labelCourt: 'Docs' },
+    { id: 'planning',     label: 'Planning',         Icon: BarChart2,       labelCourt: 'Planning' },
+    { id: 'statistiques', label: 'Statistiques',     Icon: TrendingUp,      labelCourt: 'Stats' },
+    { id: 'qualite',      label: 'Qualité',          Icon: CheckSquare,     labelCourt: 'Qualité' },
+    { id: 'analyse',      label: 'Analyse',          Icon: TrendingUp,      labelCourt: 'Analyse' },
+    { id: 'agents',       label: 'Agents IA',        Icon: Bot,             labelCourt: 'Agents' },
+    { id: 'parametres',   label: 'Paramètres',       Icon: Settings,        labelCourt: 'Config' },
   ];
 
   if (!profil) {
@@ -376,6 +389,9 @@ function App() {
           {page === 'analyse'      && <Analyse chantiers={chantiers} clients={clients} devis={devis} parametres={parametres} setParametres={setParametres} paiementsData={paiementsData} qualiteData={qualiteData} />}
           {page === 'agents'       && <Agents {...agentState} />}
           {page === 'parametres'   && <Parametres parametres={parametres} setParametres={setParametres} clients={clients} setClients={setClients} chantiers={chantiers} devis={devis} naviguer={naviguer} />}
+          {page === 'calendrier'   && <Calendrier chantiers={chantiers} clients={clients} devis={devis} factures={factures} />}
+          {page === 'documents'    && <Documents chantiers={chantiers} devis={devis} factures={factures} clients={clients} />}
+          {page === 'heures'       && <Heures chantiers={chantiers} parametres={parametres} setChantiers={setChantiers} />}
         </main>
 
         {/* ===== NAVIGATION MOBILE BAS ===== */}

@@ -22,6 +22,7 @@ import Agents from './Agents';
 import Calendrier from './Calendrier';
 import Documents from './Documents';
 import Heures from './Heures';
+import Marges from './Marges';
 
 // Supprime les balises HTML des champs texte avant sauvegarde (protection XSS dans PDF)
 const sanitiser = (obj) => {
@@ -4183,8 +4184,13 @@ function PlanningPage({ chantiers, setChantiers, clients, devis, factures, navig
 
 // ── Rapport + Statistiques + Analyse ─────────────────────────────────────
 function RapportsPage({ chantiers, clients, devis, parametres, setParametres, paiementsData, qualiteData, periodeGlobale, naviguer }) {
-  const [onglet, setOnglet] = useState('rapport');
-  const tabs = [{ id: 'rapport', label: 'Rapport' }, { id: 'statistiques', label: 'Statistiques' }, { id: 'analyse', label: 'Analyse' }];
+  const [onglet, setOnglet] = useState('marges');
+  const tabs = [
+    { id: 'marges',       label: 'Marges' },
+    { id: 'rapport',      label: 'Rapport' },
+    { id: 'statistiques', label: 'Statistiques' },
+    { id: 'analyse',      label: 'Analyse' },
+  ];
   const pillActive = { background: '#EEF2FF', color: '#4F46E5', border: '1px solid transparent' };
   const pillInactive = { background: 'transparent', color: 'var(--text-muted)', border: '1px solid var(--border)' };
   return (
@@ -4197,6 +4203,7 @@ function RapportsPage({ chantiers, clients, devis, parametres, setParametres, pa
           </button>
         ))}
       </div>
+      {onglet === 'marges'       && <Marges chantiers={chantiers} clients={clients} devis={devis} parametres={parametres} />}
       {onglet === 'rapport'      && <Rapport chantiers={chantiers} clients={clients} devis={devis} parametres={parametres} paiementsData={paiementsData} qualiteData={qualiteData} naviguer={naviguer} />}
       {onglet === 'statistiques' && <Statistiques chantiers={chantiers} clients={clients} devis={devis} parametres={parametres} periodeGlobale={periodeGlobale} />}
       {onglet === 'analyse'      && <Analyse chantiers={chantiers} clients={clients} devis={devis} parametres={parametres} setParametres={setParametres} paiementsData={paiementsData} qualiteData={qualiteData} />}

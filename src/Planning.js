@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useCallback } from 'react';
-import { calculerDateFinOuvrables, joursOuvrableRestants, getAlerte, C } from './donnees';
-import { DS, couleurStatut } from './ds';
+import { calculerDateFinOuvrables, joursOuvrableRestants, getAlerte } from './donnees';
+import { DS } from './ds';
 
 const MOIS = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
 const JOURS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
@@ -175,7 +175,6 @@ function VueCharge({ chantiers, clients }) {
 }
 
 export default function Planning({ chantiers, setChantiers, clients, naviguer }) {
-  const [vue, setVue] = useState('timeline');
   const [moisActuel, setMoisActuel] = useState(new Date().getMonth());
   const [anneeActuelle, setAnneeActuelle] = useState(new Date().getFullYear());
   const [modal, setModal] = useState(null); // null ou { chantier, form }
@@ -236,11 +235,6 @@ export default function Planning({ chantiers, setChantiers, clients, naviguer })
     [anneeActuelle, moisActuel]
   );
 
-  const jours = useMemo(
-    () => Array.from({ length: nbJoursMois }, (_, i) => i + 1),
-    [nbJoursMois]
-  );
-
   const chantiersDuMois = useMemo(() => chantiers.filter(c => {
     if (!c.dateDebut || !c.nombreJours) return false;
     const debut = new Date(c.dateDebut);
@@ -254,20 +248,6 @@ export default function Planning({ chantiers, setChantiers, clients, naviguer })
     () => chantiers.filter(c => !c.dateDebut && c.statut !== 'Terminé' && c.statut !== 'Clôturé' && c.statut !== 'Facturé'),
     [chantiers]
   );
-
-  const getPositionChantier = useCallback((chantier) => {
-    const debut = new Date(chantier.dateDebut);
-    const fin = new Date(calculerDateFinOuvrables(chantier.dateDebut, (chantier.nombreJours || 0), chantier.inclusSamedi));
-    const debutMois = new Date(anneeActuelle, moisActuel, 1);
-    const finMois = new Date(anneeActuelle, moisActuel + 1, 0);
-    const debutVisible = debut < debutMois ? debutMois : debut;
-    const finVisible = fin > finMois ? finMois : fin;
-    const startDay = debutVisible.getDate();
-    const endDay = finVisible.getDate();
-    const left = ((startDay - 1) / nbJoursMois) * 100;
-    const width = ((endDay - startDay + 1) / nbJoursMois) * 100;
-    return { left: `${left}%`, width: `${Math.max(width, 2)}%` };
-  }, [anneeActuelle, moisActuel, nbJoursMois]);
 
   // ── Calendrier ─────────────────────────────────────────────────
   const cellules = useMemo(() => {
@@ -308,397 +288,267 @@ export default function Planning({ chantiers, setChantiers, clients, naviguer })
     fontFamily: 'inherit', transition: 'all 0.15s',
   };
 
+  // ── Prochains jalons ──────────────────────────────────────────
+  const prochainsJalons = useMemo(() => {
+    const today = new Date(); today.setHours(0,0,0,0);
+    const limit = new Date(today); limit.setDate(today.getDate() + 60);
+    const list = [];
+    chantiers.forEach(c => {
+      if (c.dateDebut) {
+        const d = new Date(c.dateDebut); d.setHours(0,0,0,0);
+        if (d >= today && d <= limit)
+          list.push({ label: c.nom || c.numero, type: 'Début', date: d, color: '#3b82f6' });
+      }
+      if (c.dateDebut && c.nombreJours) {
+        const finStr = calculerDateFinOuvrables(c.dateDebut, parseInt(c.nombreJours) || 0, c.inclusSamedi);
+        if (finStr) {
+          const d = new Date(finStr); d.setHours(0,0,0,0);
+          if (d >= today && d <= limit)
+            list.push({ label: c.nom || c.numero, type: 'Fin prévue', date: d, color: '#10b981' });
+        }
+      }
+    });
+    return list.sort((a, b) => a.date - b.date).slice(0, 6);
+  }, [chantiers]);
+
+  const btnNav = { background: 'var(--ds-btn-ghost-bg)', border: '1px solid var(--ds-btn-ghost-border)', borderRadius: 8, padding: '6px 12px', cursor: 'pointer', fontSize: 14, fontWeight: 700, color: 'var(--text-secondary)', fontFamily: 'inherit' };
+
   return (
     <div>
-      {/* ── EN-TÊTE ─────────────────────────────────────────────── */}
+      {/* ── HEADER ──────────────────────────────────────────────── */}
       <div className="page-header-row">
         <div className="page-title-block">
-          <div className="page-title-main">Planning des chantiers</div>
-          <div className="page-title-sub">{chantiersDuMois.length} chantier{chantiersDuMois.length !== 1 ? 's' : ''} ce mois · {chantiersNonPlanifies.length} non planifié{chantiersNonPlanifies.length !== 1 ? 's' : ''}</div>
+          <div className="page-title-main">Planning</div>
+          <div className="page-title-sub">
+            {chantiersDuMois.length} chantier{chantiersDuMois.length !== 1 ? 's' : ''} ce mois
+            {chantiersNonPlanifies.length > 0 && ` · ${chantiersNonPlanifies.length} sans date`}
+          </div>
         </div>
         <div className="page-actions-group">
-          {['timeline', 'calendrier', 'liste', 'charge'].map(v => (
-            <button key={v} onClick={() => setVue(v)} style={{
-              background: vue === v ? 'rgba(59,130,246,0.18)' : 'var(--surface-glass)',
-              color: vue === v ? '#3b82f6' : 'var(--text-secondary)',
-              border: vue === v ? '1px solid rgba(59,130,246,0.4)' : '1px solid var(--border-glass)',
-              padding: '6px 14px', borderRadius: '20px', cursor: 'pointer',
-              fontSize: '13px', fontWeight: vue === v ? 700 : 500,
-              fontFamily: 'inherit', transition: 'all 0.18s',
-            }}>
-              {{ timeline: 'Timeline', calendrier: 'Calendrier', liste: 'Liste', charge: 'Charge' }[v]}
-            </button>
-          ))}
+          <button onClick={moisPrecedent} style={btnNav}>←</button>
+          <button onClick={() => { setMoisActuel(new Date().getMonth()); setAnneeActuelle(new Date().getFullYear()); }} style={btnNav}>Aujourd'hui</button>
+          <button onClick={moisSuivant} style={btnNav}>→</button>
         </div>
       </div>
 
-      {/* ── KPI GRID ── */}
-      {(() => {
-        const nbEnCours = chantiersDuMois.filter(c => c.statut === 'En cours').length;
-        const dureeTotal = chantiersDuMois.reduce((s, c) => s + (parseInt(c.nombreJours) || 0), 0);
-        const nbNonPlanifies = chantiersNonPlanifies.length;
-        const nbTermines = chantiersDuMois.filter(c => c.statut === 'Terminé').length;
-        const kpiItems = [
-          { label: 'CHANTIERS CE MOIS', val: chantiersDuMois.length, gradient: 'linear-gradient(135deg, #1E40AF 0%, #3B82F6 100%)', glow: 'rgba(59,130,246,0.32)', badge: `${nbEnCours} en cours` },
-          { label: 'DURÉE TOTALE',      val: `${dureeTotal}j`,        gradient: 'linear-gradient(135deg, #065F46 0%, #10B981 100%)', glow: 'rgba(16,185,129,0.32)', badge: `${nbTermines} terminés` },
-          { label: 'NON PLANIFIÉS',     val: nbNonPlanifies,          gradient: nbNonPlanifies > 0 ? 'linear-gradient(135deg, #92400E 0%, #F59E0B 100%)' : 'linear-gradient(135deg, #065F46 0%, #10B981 100%)', glow: nbNonPlanifies > 0 ? 'rgba(245,158,11,0.32)' : 'rgba(16,185,129,0.32)' },
-          { label: 'TOTAL CHANTIERS',   val: chantiers.length,        gradient: 'linear-gradient(135deg, #4C1D95 0%, #8B5CF6 100%)', glow: 'rgba(139,92,246,0.32)' },
-        ];
-        return (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 20 }}>
-            {kpiItems.map(k => (
-              <div key={k.label} style={{ background: k.gradient, borderRadius: 16, padding: '22px 20px', minHeight: 110, boxShadow: `0 4px 20px ${k.glow}, 0 1px 4px rgba(0,0,0,0.12)`, border: '1px solid rgba(255,255,255,0.15)', position: 'relative', overflow: 'hidden' }}>
-                <div style={{ position: 'absolute', right: -18, top: -18, width: 80, height: 80, borderRadius: '50%', background: 'rgba(255,255,255,0.1)' }} />
-                <div style={{ position: 'absolute', right: -32, bottom: -32, width: 100, height: 100, borderRadius: '50%', background: 'rgba(255,255,255,0.06)' }} />
-                <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.7)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 8, position: 'relative' }}>{k.label}</div>
-                <div style={{ fontSize: 28, fontWeight: 900, color: '#fff', letterSpacing: '-0.8px', lineHeight: 1, position: 'relative' }}>{k.val}</div>
-                {k.badge && <span style={{ display: 'inline-block', marginTop: 7, background: 'rgba(255,255,255,0.22)', color: '#fff', borderRadius: 20, padding: '1px 8px', fontSize: 10, fontWeight: 700, position: 'relative' }}>{k.badge}</span>}
-              </div>
-            ))}
-          </div>
-        );
-      })()}
+      {/* ── LAYOUT 2 COLONNES ───────────────────────────────────── */}
+      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 20, alignItems: 'start' }}>
 
-      {/* ── CHANTIERS NON PLANIFIÉS ─────────────────────────────── */}
-      {chantiersNonPlanifies.length > 0 && (
-        <div style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.25)', borderRadius: 12, padding: '14px 18px', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
-          <span style={{ color: C.warning, fontWeight: 700, fontSize: 13 }}>{chantiersNonPlanifies.length} chantier{chantiersNonPlanifies.length > 1 ? 's' : ''} sans date :</span>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            {chantiersNonPlanifies.map(c => (
-              <button key={c.id} onClick={() => ouvrirModal(c)} style={{ background: 'rgba(245,158,11,0.14)', color: C.warning, border: '1px solid rgba(245,158,11,0.3)', borderRadius: 8, padding: '4px 12px', cursor: 'pointer', fontSize: 12, fontWeight: 600, fontFamily: 'inherit' }}>
-                + Planifier {c.nom}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
+        {/* ── COLONNE GAUCHE : liste chantiers ── */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
 
-      {/* ── NAVIGATION MOIS ─────────────────────────────────────── */}
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '16px', marginBottom: '24px' }}>
-        <button onClick={moisPrecedent} style={{ ...DS.btnPrimary, padding: '8px 14px', fontSize: '16px' }}>←</button>
-        <div style={{ fontWeight: 800, fontSize: '18px', color: 'var(--text-primary)', minWidth: '200px', textAlign: 'center', letterSpacing: '-0.3px' }}>{MOIS[moisActuel]} {anneeActuelle}</div>
-        <button onClick={moisSuivant} style={{ ...DS.btnPrimary, padding: '8px 14px', fontSize: '16px' }}>→</button>
-        <button onClick={() => { setMoisActuel(new Date().getMonth()); setAnneeActuelle(new Date().getFullYear()); }}
-          style={{ ...DS.btnPrimary }}>
-          Aujourd'hui
-        </button>
-      </div>
+          {/* Chantiers sans date */}
+          {chantiersNonPlanifies.length > 0 && (
+            <div style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.25)', borderRadius: 12, padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+              <span style={{ color: '#f59e0b', fontWeight: 700, fontSize: 13, flexShrink: 0 }}>
+                {chantiersNonPlanifies.length} sans date :
+              </span>
+              {chantiersNonPlanifies.map(c => (
+                <button key={c.id} onClick={() => ouvrirModal(c)}
+                  style={{ background: 'rgba(245,158,11,0.15)', color: '#f59e0b', border: '1px solid rgba(245,158,11,0.35)', borderRadius: 8, padding: '4px 12px', cursor: 'pointer', fontSize: 12, fontWeight: 600, fontFamily: 'inherit' }}>
+                  + Planifier {c.nom || c.numero}
+                </button>
+              ))}
+            </div>
+          )}
 
-      {/* ===== VUE TIMELINE ===================================== */}
-      {vue === 'timeline' && (
-        <div style={DS.card}>
-          {/* EN-TÊTE JOURS */}
-          <div style={{ display: 'flex', marginBottom: '10px', marginLeft: '200px' }}>
-            {jours.map(j => {
-              const date = new Date(anneeActuelle, moisActuel, j);
-              const jourSemaine = date.getDay();
-              const estWeekend = jourSemaine === 0 || jourSemaine === 6;
-              const estToday = estAujourdhui(j);
-              return (
-                <div key={j} style={{
-                  flex: 1, textAlign: 'center', fontSize: '11px',
-                  color: estToday ? C.danger : estWeekend ? 'var(--border)' : 'var(--text-secondary)',
-                  fontWeight: estToday ? 'bold' : 'normal',
-                  borderLeft: estToday ? `2px solid ${C.danger}` : '1px solid var(--border)',
-                  paddingBottom: '5px'
-                }}>
-                  {j}
-                  <div style={{ fontSize: '9px', color: estWeekend ? 'var(--border)' : 'var(--text-secondary)' }}>
-                    {JOURS[jourSemaine === 0 ? 6 : jourSemaine - 1]}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* LIGNES CHANTIERS */}
+          {/* Chantiers du mois */}
           {chantiersDuMois.length === 0 ? (
-            <div style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '40px' }}>
-              Aucun chantier ce mois
+            <div style={{ ...DS.card, textAlign: 'center', padding: '48px 24px', color: 'var(--text-muted)' }}>
+              <div style={{ fontSize: 32, marginBottom: 12 }}>📅</div>
+              <div style={{ fontWeight: 600, fontSize: 15 }}>Aucun chantier ce mois</div>
+              <div style={{ fontSize: 13, marginTop: 6 }}>Changez de mois ou planifiez un chantier</div>
             </div>
           ) : (
             chantiersDuMois.map(c => {
-              const pos = getPositionChantier(c);
-              const j = joursOuvrableRestants(c.dateDebut, c.nombreJours, c.inclusSamedi);
-              const al = getAlerte(j);
+              const jours = joursOuvrableRestants(c.dateDebut, parseInt(c.nombreJours) || 0, c.inclusSamedi);
+              const progress = Math.max(0, Math.min(100, parseFloat(c.avancement) || 0));
+              const dateFin = calculerDateFinOuvrables(c.dateDebut, parseInt(c.nombreJours) || 0, c.inclusSamedi);
+              const barColor = jours === null ? '#94a3b8' : jours < 0 ? '#ef4444' : jours <= 3 ? '#f59e0b' : '#10b981';
+              const cs = DS.statuts[c.statut] || { bg: '#F1F5F9', color: '#475569' };
               const client = clients.find(cl => cl.id === c.clientId);
-
+              const alerte = getAlerte(jours);
               return (
-                <div key={c.id} style={{ display: 'flex', alignItems: 'center', marginBottom: '12px', position: 'relative' }}>
-                  {/* NOM CHANTIER */}
-                  <div style={{ width: '200px', minWidth: '200px', paddingRight: '10px', cursor: 'pointer' }}
-                    onClick={() => ouvrirModal(c)}>
-                    <div style={{ fontSize: '13px', fontWeight: 700, color: '#60a5fa', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textDecoration: 'underline' }}>{c.nom}</div>
-                    <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>{client?.entreprise || c.ville}</div>
-                  </div>
-
-                  {/* BARRE TIMELINE */}
-                  <div style={{ flex: 1, position: 'relative', height: '35px', background: 'var(--bg-hover)', borderRadius: '4px', overflow: 'hidden' }}>
-                    {/* GRILLE WEEKEND */}
-                    {jours.filter(j => {
-                      const d = new Date(anneeActuelle, moisActuel, j).getDay();
-                      return d === 0 || d === 6;
-                    }).map(j => (
-                        <div key={j} style={{
-                          position: 'absolute', top: 0, bottom: 0,
-                          left: `${((j - 1) / nbJoursMois) * 100}%`,
-                          width: `${(1 / nbJoursMois) * 100}%`,
-                          background: 'var(--surface-glass)'
-                        }} />
-                    ))}
-
-                    {/* LIGNE AUJOURD'HUI */}
-                    {moisActuel === aujourdhui.getMonth() && anneeActuelle === aujourdhui.getFullYear() && (
-                      <div style={{
-                        position: 'absolute', top: 0, bottom: 0,
-                        left: `${((aujourdhui.getDate() - 1) / nbJoursMois) * 100}%`,
-                        width: '2px', background: C.danger, zIndex: 2
-                      }} />
-                    )}
-
-                    {/* BARRE CHANTIER (cliquable) */}
-                    <div onClick={() => ouvrirModal(c)} style={{
-                      position: 'absolute', top: '4px', bottom: '4px',
-                      left: pos.left, width: pos.width,
-                      background: al ? al.couleur : couleurStatut(c.statut),
-                      borderRadius: '4px', display: 'flex', alignItems: 'center',
-                      paddingLeft: '8px', overflow: 'hidden', zIndex: 1,
-                      boxShadow: '0 2px 4px rgba(0,0,0,0.2)', cursor: 'pointer',
-                    }}>
-                      <span style={{ color: 'white', fontSize: '11px', fontWeight: 'bold', whiteSpace: 'nowrap' }}>
-                        {c.nom}
-                      </span>
+                <div key={c.id} style={{ ...DS.card, transition: 'box-shadow 0.15s' }}
+                  onMouseEnter={e => { e.currentTarget.style.boxShadow = 'var(--shadow-hover)'; }}
+                  onMouseLeave={e => { e.currentTarget.style.boxShadow = 'var(--ds-card-shadow)'; }}
+                >
+                  {/* Ligne 1 : nom + statut + bouton */}
+                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 14, gap: 10 }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--text-primary)', marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {c.nom || c.numero}
+                      </div>
+                      <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                        {[client?.nom, c.ville, c.canton].filter(Boolean).join(' · ')}
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
+                      <span style={{ background: cs.bg, color: cs.color, borderRadius: 6, padding: '3px 10px', fontSize: 11, fontWeight: 600 }}>{c.statut}</span>
+                      <button onClick={() => ouvrirModal(c)} style={btnEdit}>Modifier</button>
                     </div>
                   </div>
 
-                  {/* STATUT + BOUTON MODIFIER */}
-                  <div style={{ marginLeft: '10px', minWidth: '120px', display: 'flex', flexDirection: 'column', gap: 4 }}>
-                    <span style={{ background: couleurStatut(c.statut) + '18', color: couleurStatut(c.statut), padding: '3px 10px', borderRadius: '12px', fontSize: '11px', fontWeight: 600 }}>
-                      {c.statut}
-                    </span>
-                    {al && j <= 5 && (
-                      <div style={{ fontSize: '10px', color: al.couleur, fontWeight: 'bold' }}>{al.texte}</div>
+                  {/* Ligne 2 : dates + jours restants */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: 12, marginBottom: 14 }}>
+                    {[
+                      { lbl: 'Début', val: c.dateDebut ? new Date(c.dateDebut).toLocaleDateString('fr-CH') : '—' },
+                      { lbl: 'Fin prévue', val: dateFin ? new Date(dateFin).toLocaleDateString('fr-CH') : '—' },
+                      { lbl: 'Durée', val: c.nombreJours ? `${c.nombreJours}j` : '—' },
+                    ].map(item => (
+                      <div key={item.lbl}>
+                        <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-muted)', marginBottom: 3 }}>{item.lbl}</div>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>{item.val}</div>
+                      </div>
+                    ))}
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-muted)', marginBottom: 3 }}>Restant</div>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: barColor }}>
+                        {jours === null ? '—' : jours < 0 ? `${Math.abs(jours)}j retard` : jours === 0 ? "Fin auj." : `${jours}j`}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Ligne 3 : barre de progression */}
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                      <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Avancement</span>
+                      <span style={{ fontSize: 12, fontWeight: 700, color: barColor }}>{progress}%</span>
+                    </div>
+                    <div style={{ background: 'var(--bg-hover)', borderRadius: 6, height: 7, overflow: 'hidden' }}>
+                      <div style={{ background: barColor, width: `${progress}%`, height: '100%', borderRadius: 6, transition: 'width 0.4s ease' }} />
+                    </div>
+                    {alerte && alerte.banniere && (
+                      <div style={{ marginTop: 8, fontSize: 11, fontWeight: 600, color: alerte.couleur }}>
+                        {alerte.texte}
+                      </div>
                     )}
-                    <button onClick={() => ouvrirModal(c)} style={{ ...btnEdit, fontSize: 11, padding: '3px 10px' }}>Modifier</button>
                   </div>
                 </div>
               );
             })
           )}
         </div>
-      )}
 
-      {/* ===== VUE CALENDRIER ==================================== */}
-      {vue === 'calendrier' && (
-        <div style={DS.card}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '4px', marginBottom: '4px' }}>
-            {JOURS.map(j => (
-              <div key={j} style={{ textAlign: 'center', fontWeight: 700, color: 'var(--text-secondary)', padding: '8px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{j}</div>
-            ))}
+        {/* ── COLONNE DROITE : mini calendrier + jalons ── */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+
+          {/* Mini calendrier */}
+          <div style={DS.card}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+              <button onClick={moisPrecedent} style={btnNav}>‹</button>
+              <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-primary)' }}>{MOIS[moisActuel]} {anneeActuelle}</div>
+              <button onClick={moisSuivant} style={btnNav}>›</button>
+            </div>
+
+            {/* En-têtes jours */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', marginBottom: 4 }}>
+              {JOURS.map(j => (
+                <div key={j} style={{ textAlign: 'center', fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', paddingBottom: 6 }}>{j[0]}</div>
+              ))}
+            </div>
+
+            {/* Cellules */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2 }}>
+              {cellules.map((jour, i) => {
+                const busy = jour ? (chantiersParJour[jour] || []).length : 0;
+                const isToday = estAujourdhui(jour);
+                return (
+                  <div key={i} style={{
+                    aspectRatio: '1', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 11, fontWeight: isToday ? 700 : 400, borderRadius: 6,
+                    background: isToday ? '#3b82f6' : busy > 0 ? 'rgba(59,130,246,0.12)' : 'transparent',
+                    color: isToday ? '#fff' : busy > 0 ? '#1e40af' : jour ? 'var(--text-muted)' : 'transparent',
+                    cursor: busy > 0 ? 'default' : 'default',
+                    position: 'relative',
+                  }}>
+                    {jour}
+                    {busy > 1 && !isToday && (
+                      <span style={{ position: 'absolute', bottom: 1, right: 2, width: 5, height: 5, borderRadius: '50%', background: '#3b82f6', display: 'block' }} />
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Légende */}
+            <div style={{ display: 'flex', gap: 14, marginTop: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, color: 'var(--text-muted)' }}>
+                <div style={{ width: 10, height: 10, background: 'rgba(59,130,246,0.2)', borderRadius: 2 }} />
+                Chantier
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, color: 'var(--text-muted)' }}>
+                <div style={{ width: 10, height: 10, background: '#3b82f6', borderRadius: '50%' }} />
+                Aujourd'hui
+              </div>
+            </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '4px' }}>
-            {cellules.map((jour, i) => {
-              const chantiersJour = chantiersParJour[jour] || [];
-              const estWE = i % 7 >= 5;
-              const estToday = estAujourdhui(jour);
-              return (
-                <div key={`${anneeActuelle}-${moisActuel}-${i}`} style={{
-                  minHeight: '90px',
-                  background: jour
-                    ? (estToday ? 'rgba(59,130,246,0.12)' : estWE ? 'var(--bg-hover)' : 'var(--bg-card)')
-                    : 'var(--bg-hover)',
-                  border: `1px solid ${estToday ? '#3b82f6' : 'var(--border)'}`,
-                  borderRadius: '6px', padding: '5px', overflow: 'hidden'
-                }}>
-                  {jour && (
-                    <>
-                      <div key="day" style={{
-                        fontSize: '13px', fontWeight: estToday ? 'bold' : 'normal',
-                        color: estToday ? '#3b82f6' : estWE ? 'var(--text-secondary)' : 'var(--text-primary)',
-                        marginBottom: '3px'
-                      }}>{jour}</div>
-                      {chantiersJour.slice(0, 2).map(c => (
-                        <div key={c.id} onClick={() => ouvrirModal(c)} style={{
-                          background: couleurStatut(c.statut) + '18', color: couleurStatut(c.statut),
-                          fontSize: '10px', padding: '2px 5px', borderRadius: '3px',
-                          marginBottom: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                          fontWeight: 600, cursor: 'pointer',
-                        }}>
-                          {c.nom}
-                        </div>
-                      ))}
-                      {chantiersJour.length > 2 && (
-                        <div key="more" style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>+{chantiersJour.length - 2} autres</div>
-                      )}
-                    </>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* ===== VUE LISTE ========================================= */}
-      {vue === 'liste' && (
-        <div style={DS.card}>
-          {chantiersDuMois.length === 0 ? (
-            <p style={{ color: 'var(--text-secondary)', textAlign: 'center' }}>Aucun chantier ce mois</p>
-          ) : (
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr>
-                  {['Chantier', 'Client', 'Début', 'Fin prévue', 'Jours', 'Statut', 'Alerte', ''].map(h => (
-                    <th key={h} style={DS.th}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {chantiersDuMois.map((c) => {
-                  const j = joursOuvrableRestants(c.dateDebut, c.nombreJours, c.inclusSamedi);
-                  const al = getAlerte(j);
-                  const client = clients.find(cl => cl.id === c.clientId);
+          {/* Prochains jalons */}
+          <div style={DS.card}>
+            <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-primary)', marginBottom: 14 }}>Prochains jalons</div>
+            {prochainsJalons.length === 0 ? (
+              <div style={{ color: 'var(--text-muted)', fontSize: 13, textAlign: 'center', padding: '16px 0' }}>Aucun jalon dans les 60 prochains jours</div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {prochainsJalons.map((ev, i) => {
+                  const today = new Date(); today.setHours(0,0,0,0);
+                  const diffJ = Math.round((ev.date - today) / 86400000);
+                  const quand = diffJ === 0 ? "Aujourd'hui" : diffJ === 1 ? 'Demain' : `Dans ${diffJ}j`;
                   return (
-                    <tr key={c.id} style={{ borderBottom: '1px solid var(--border-glass)', cursor: 'pointer' }}
-                      onClick={() => ouvrirModal(c)}>
-                      <td style={{ padding: '10px 15px', color: 'var(--text-primary)' }}><strong>{c.nom}</strong><div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>{c.numero}</div></td>
-                      <td style={{ padding: '10px 15px', color: 'var(--text-primary)' }}>{client?.entreprise || '-'}</td>
-                      <td style={{ padding: '10px 15px', color: 'var(--text-primary)' }}>{c.dateDebut}</td>
-                      <td style={{ padding: '10px 15px', color: 'var(--text-primary)' }}>{calculerDateFinOuvrables(c.dateDebut, (c.nombreJours || 0), c.inclusSamedi)}</td>
-                      <td style={{ padding: '10px 15px', color: 'var(--text-primary)' }}>{c.nombreJours}j</td>
-                      <td style={{ padding: '10px 15px' }}>
-                        <span style={{ background: couleurStatut(c.statut) + '18', color: couleurStatut(c.statut), padding: '3px 10px', borderRadius: '12px', fontSize: '12px', fontWeight: 600 }}>{c.statut}</span>
-                      </td>
-                      <td style={{ padding: '10px 15px' }}>
-                        {al && <span style={{ color: al.couleur, fontWeight: 'bold', fontSize: '12px' }}>{al.texte}</span>}
-                      </td>
-                      <td style={{ padding: '10px 15px' }} onClick={e => e.stopPropagation()}>
-                        <div style={{ display: 'flex', gap: 6 }}>
-                          <button onClick={() => ouvrirModal(c)} style={btnEdit}>Modifier</button>
-                          {naviguer && (
-                            <button onClick={() => naviguer('chantiers', { chantierActif: c.id })} style={{ ...btnEdit, color: 'var(--text-secondary)', background: 'var(--border-glass)', border: '1px solid var(--border-glass-strong)' }}>Voir →</button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <div style={{ width: 3, height: 36, background: ev.color, borderRadius: 2, flexShrink: 0 }} />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ev.label}</div>
+                        <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{ev.type}</div>
+                      </div>
+                      <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                        <div style={{ fontSize: 12, fontWeight: 700, color: ev.color }}>{quand}</div>
+                        <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>{ev.date.toLocaleDateString('fr-CH')}</div>
+                      </div>
+                    </div>
                   );
                 })}
-              </tbody>
-            </table>
-          )}
-        </div>
-      )}
-
-      {/* ── VUE CHARGE ─────────────────────────────────────────── */}
-      {vue === 'charge' && <VueCharge chantiers={chantiers} clients={clients} />}
-
-      {/* ── LÉGENDE ────────────────────────────────────────────── */}
-      <div style={{ ...DS.card, padding: '15px 25px', marginTop: '20px' }}>
-        <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', alignItems: 'center' }}>
-          <strong style={{ color: 'var(--text-secondary)', fontSize: '12px' }}>Légende :</strong>
-          {[
-            { label: 'En cours', couleur: C.warning },
-            { label: 'Planifié', couleur: C.info },
-            { label: 'Terminé', couleur: C.secondaire },
-            { label: 'Suspendu', couleur: C.danger },
-            { label: 'Alerte < 5j', couleur: C.orange },
-          ].map(l => (
-            <div key={l.label} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <div style={{ width: '14px', height: '14px', borderRadius: '3px', background: l.couleur }} />
-              <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>{l.label}</span>
-            </div>
-          ))}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <div style={{ width: '3px', height: '14px', background: C.danger }} />
-            <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Aujourd'hui</span>
+              </div>
+            )}
           </div>
-          <span style={{ fontSize: '12px', color: 'var(--text-secondary)', marginLeft: 'auto' }}>Cliquer sur un chantier pour modifier</span>
         </div>
       </div>
 
-      {/* ===== MODAL ÉDITION ===================================== */}
+      {/* ── MODAL ÉDITION ───────────────────────────────────────── */}
       {modal && (
-        <div style={{
-          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', zIndex: 1000,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          backdropFilter: 'blur(4px)',
-        }} onClick={() => setModal(null)}>
-          <div style={{
-            background: 'var(--bg-card)', border: '1px solid var(--border-glass-strong)',
-            borderRadius: 18, padding: 32, minWidth: 420, maxWidth: 520, width: '100%',
-            boxShadow: '0 24px 64px rgba(0,0,0,0.6)',
-          }} onClick={e => e.stopPropagation()}>
-
-            {/* Titre */}
-            <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--text-primary)', marginBottom: 6 }}>
-              Modifier le planning
-            </div>
-            <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 24 }}>
-              {modal.chantier.nom} · {modal.chantier.numero}
-            </div>
-
-            {/* Date de début */}
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(4px)' }} onClick={() => setModal(null)}>
+          <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-glass-strong)', borderRadius: 18, padding: 32, minWidth: 420, maxWidth: 520, width: '100%', boxShadow: '0 24px 64px rgba(0,0,0,0.6)' }} onClick={e => e.stopPropagation()}>
+            <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--text-primary)', marginBottom: 6 }}>Modifier le planning</div>
+            <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 24 }}>{modal.chantier.nom} · {modal.chantier.numero}</div>
             <div style={{ marginBottom: 18 }}>
               <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Date de début</label>
-              <input type="date" value={modal.form.dateDebut}
-                onChange={e => setModal({ ...modal, form: { ...modal.form, dateDebut: e.target.value } })}
-                style={{ ...DS.input, width: '100%' }} />
+              <input type="date" value={modal.form.dateDebut} onChange={e => setModal({ ...modal, form: { ...modal.form, dateDebut: e.target.value } })} style={{ ...DS.input, width: '100%' }} />
             </div>
-
-            {/* Nombre de jours */}
             <div style={{ marginBottom: 18 }}>
-              <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Durée prévue (jours ouvrables)</label>
-              <input type="number" min="1" value={modal.form.nombreJours}
-                onChange={e => setModal({ ...modal, form: { ...modal.form, nombreJours: e.target.value } })}
-                style={{ ...DS.input, width: '100%' }} />
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Durée (jours ouvrables)</label>
+              <input type="number" min="1" value={modal.form.nombreJours} onChange={e => setModal({ ...modal, form: { ...modal.form, nombreJours: e.target.value } })} style={{ ...DS.input, width: '100%' }} />
               {modal.form.dateDebut && modal.form.nombreJours && (
                 <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 6 }}>
-                  Fin prévue : <strong style={{ color: 'var(--text-primary)' }}>{calculerDateFinOuvrables(modal.form.dateDebut, (modal.form.nombreJours || 0), modal.form.inclusSamedi)}</strong>
+                  Fin prévue : <strong style={{ color: 'var(--text-primary)' }}>{calculerDateFinOuvrables(modal.form.dateDebut, modal.form.nombreJours || 0, modal.form.inclusSamedi)}</strong>
                 </div>
               )}
             </div>
-
-            {/* Inclure samedi */}
             <div style={{ marginBottom: 18, display: 'flex', alignItems: 'center', gap: 10 }}>
-              <input type="checkbox" id="inclus-samedi" checked={!!modal.form.inclusSamedi}
-                onChange={e => setModal({ ...modal, form: { ...modal.form, inclusSamedi: e.target.checked } })}
-                style={{ width: 16, height: 16, cursor: 'pointer' }} />
-              <label htmlFor="inclus-samedi" style={{ fontSize: 13, color: 'var(--text-secondary)', cursor: 'pointer' }}>Inclure le samedi comme jour ouvrable</label>
+              <input type="checkbox" id="inclus-samedi" checked={!!modal.form.inclusSamedi} onChange={e => setModal({ ...modal, form: { ...modal.form, inclusSamedi: e.target.checked } })} style={{ width: 16, height: 16, cursor: 'pointer' }} />
+              <label htmlFor="inclus-samedi" style={{ fontSize: 13, color: 'var(--text-secondary)', cursor: 'pointer' }}>Inclure le samedi</label>
             </div>
-
-            {/* Statut */}
             <div style={{ marginBottom: 28 }}>
               <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Statut</label>
-              <select value={modal.form.statut}
-                onChange={e => setModal({ ...modal, form: { ...modal.form, statut: e.target.value } })}
-                style={{ ...DS.input, width: '100%' }}>
+              <select value={modal.form.statut} onChange={e => setModal({ ...modal, form: { ...modal.form, statut: e.target.value } })} style={{ ...DS.input, width: '100%' }}>
                 {STATUTS.map(s => <option key={s} value={s}>{s}</option>)}
               </select>
             </div>
-
-            {/* Actions */}
             <div style={{ display: 'flex', gap: 10, justifyContent: 'space-between' }}>
-              <button onClick={supprimerDuPlanning} style={{
-                background: 'rgba(239,68,68,0.12)', color: C.danger,
-                border: '1px solid rgba(239,68,68,0.3)', borderRadius: 10,
-                padding: '10px 16px', cursor: 'pointer', fontSize: 13, fontWeight: 600,
-                fontFamily: 'inherit',
-              }}>
-                Retirer du planning
-              </button>
+              <button onClick={supprimerDuPlanning} style={{ background: 'rgba(239,68,68,0.12)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 10, padding: '10px 16px', cursor: 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'inherit' }}>Retirer du planning</button>
               <div style={{ display: 'flex', gap: 8 }}>
-                <button onClick={() => setModal(null)} style={{
-                  background: 'var(--border-glass)', color: 'var(--text-secondary)',
-                  border: '1px solid var(--border-glass-strong)', borderRadius: 10,
-                  padding: '10px 20px', cursor: 'pointer', fontSize: 13, fontWeight: 600,
-                  fontFamily: 'inherit',
-                }}>Annuler</button>
-                <button onClick={sauvegarderModal} style={{
-                  ...DS.btnPrimary, borderRadius: 10, padding: '10px 20px', fontSize: 13,
-                }}>
-                  Sauvegarder
-                </button>
+                <button onClick={() => setModal(null)} style={{ background: 'var(--border-glass)', color: 'var(--text-secondary)', border: '1px solid var(--border-glass-strong)', borderRadius: 10, padding: '10px 20px', cursor: 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'inherit' }}>Annuler</button>
+                <button onClick={sauvegarderModal} style={{ ...DS.btnPrimary, borderRadius: 10, padding: '10px 20px', fontSize: 13 }}>Sauvegarder</button>
               </div>
             </div>
           </div>

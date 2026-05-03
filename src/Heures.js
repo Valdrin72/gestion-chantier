@@ -1,8 +1,10 @@
 import React, { useState, useMemo } from 'react';
-import { Clock } from 'lucide-react';
+import { Clock, X } from 'lucide-react';
 import { DS } from './ds';
 import { fmtN } from './donnees';
 import KpiCard from './components/ui/KpiCard';
+
+const FORM_VIDE = { employeId: '', chantierId: '', date: '', heures: '8' };
 
 function getWeekStart(date) {
   const d = new Date(date);
@@ -29,6 +31,37 @@ export default function Heures({ chantiers = [], parametres = {}, setChantiers }
   const employes = parametres.employes || [];
   const today = new Date();
   const [weekStart, setWeekStart] = useState(() => getWeekStart(today));
+  const [modal, setModal] = useState(null);
+
+  const ouvrirModal = () => {
+    const dateDefaut = isoDate(today);
+    setModal({ form: { ...FORM_VIDE, date: dateDefaut, employeId: employes[0]?.id || '', chantierId: chantiers[0]?.id || '' } });
+  };
+
+  const sauvegarder = () => {
+    const { employeId, chantierId, date, heures } = modal.form;
+    if (!employeId || !chantierId || !date || !heures) return;
+    const h = parseFloat(heures);
+    if (!h || h <= 0) return;
+
+    setChantiers(prev => prev.map(c => {
+      if (String(c.id) !== String(chantierId)) return c;
+      const journal = c.journal ? [...c.journal] : [];
+      const idx = journal.findIndex(e => e.date === date);
+      if (idx >= 0) {
+        const entry = { ...journal[idx] };
+        const employes2 = entry.employes ? [...entry.employes] : [];
+        const ei = employes2.findIndex(e => String(e.employeId) === String(employeId));
+        if (ei >= 0) employes2[ei] = { ...employes2[ei], heuresTravaillees: String(employes2[ei].heuresTravaillees * 1 + h) };
+        else employes2.push({ employeId, heuresTravaillees: String(h) });
+        journal[idx] = { ...entry, employes: employes2 };
+      } else {
+        journal.push({ date, employes: [{ employeId, heuresTravaillees: String(h) }] });
+      }
+      return { ...c, journal };
+    }));
+    setModal(null);
+  };
 
   const weekDays = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)), [weekStart]);
 
@@ -115,7 +148,7 @@ export default function Heures({ chantiers = [], parametres = {}, setChantiers }
           <div className="page-title-sub">{weekLabel}</div>
         </div>
         <div className="page-actions-group">
-          <button style={{ ...DS.btnPrimary, display: 'flex', alignItems: 'center', gap: 6 }}>
+          <button onClick={ouvrirModal} style={{ ...DS.btnPrimary, display: 'flex', alignItems: 'center', gap: 6 }}>
             <Clock size={14} strokeWidth={2.5} /> Saisir des heures
           </button>
         </div>
@@ -222,6 +255,64 @@ export default function Heures({ chantiers = [], parametres = {}, setChantiers }
           </div>
         )}
       </div>
+
+      {/* Modal saisie heures */}
+      {modal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(4px)' }}
+          onClick={() => setModal(null)}>
+          <div style={{ background: 'var(--bg-card)', border: '1px solid var(--ds-card-border)', borderRadius: 18, padding: 28, width: '100%', maxWidth: 420, boxShadow: '0 20px 60px rgba(0,0,0,0.4)' }}
+            onClick={e => e.stopPropagation()}>
+
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+              <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--text-primary)' }}>Saisir des heures</div>
+              <button onClick={() => setModal(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 4 }}>
+                <X size={18} />
+              </button>
+            </div>
+
+            <div style={{ marginBottom: 14 }}>
+              <label style={DS.label}>Employé</label>
+              <select value={modal.form.employeId} onChange={e => setModal({ ...modal, form: { ...modal.form, employeId: e.target.value } })} style={DS.input}>
+                <option value="">— Sélectionner —</option>
+                {employes.filter(e => e.actif !== false).map(e => (
+                  <option key={e.id} value={e.id}>{e.nom}{e.poste ? ` · ${e.poste}` : ''}</option>
+                ))}
+              </select>
+            </div>
+
+            <div style={{ marginBottom: 14 }}>
+              <label style={DS.label}>Chantier</label>
+              <select value={modal.form.chantierId} onChange={e => setModal({ ...modal, form: { ...modal.form, chantierId: e.target.value } })} style={DS.input}>
+                <option value="">— Sélectionner —</option>
+                {chantiers.filter(c => !['Terminé','Clôturé','Facturé'].includes(c.statut)).map(c => (
+                  <option key={c.id} value={c.id}>{c.nom || c.numero}</option>
+                ))}
+              </select>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 24 }}>
+              <div>
+                <label style={DS.label}>Date</label>
+                <input type="date" value={modal.form.date} onChange={e => setModal({ ...modal, form: { ...modal.form, date: e.target.value } })} style={DS.input} />
+              </div>
+              <div>
+                <label style={DS.label}>Heures travaillées</label>
+                <input type="number" min="0.5" max="24" step="0.5" value={modal.form.heures} onChange={e => setModal({ ...modal, form: { ...modal.form, heures: e.target.value } })} style={DS.input} />
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+              <button onClick={() => setModal(null)} style={DS.btnGhost}>Annuler</button>
+              <button
+                onClick={sauvegarder}
+                disabled={!modal.form.employeId || !modal.form.chantierId || !modal.form.date || !modal.form.heures}
+                style={{ ...DS.btnPrimary, opacity: (!modal.form.employeId || !modal.form.chantierId || !modal.form.date || !modal.form.heures) ? 0.5 : 1 }}>
+                Enregistrer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

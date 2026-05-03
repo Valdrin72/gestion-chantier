@@ -68,32 +68,6 @@ function CoutBadge({ label, valeur, couleur }) {
   );
 }
 
-function StatCard({ titre, valeur, couleur, Icon }) {
-  return (
-    <div style={{
-      background: 'var(--ds-card-bg)',
-      borderRadius: '14px',
-      padding: '20px',
-      minWidth: '150px',
-      flex: 1,
-      border: '1px solid var(--ds-card-border)',
-      boxShadow: 'var(--ds-card-shadow)',
-    }}>
-      <div style={{
-        width: 36, height: 36, borderRadius: 9,
-        background: couleur + '15',
-        border: `1px solid ${couleur}25`,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        marginBottom: 14,
-      }}>
-        {Icon && <Icon size={17} strokeWidth={2} style={{ color: couleur }} />}
-      </div>
-      <div style={{ fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.6px', color: 'var(--text-muted)', marginBottom: '6px' }}>{titre}</div>
-      <div style={{ fontSize: '26px', fontWeight: 800, letterSpacing: '-0.5px', lineHeight: 1.1, color: 'var(--text-primary)' }}>{valeur}</div>
-    </div>
-  );
-}
-
 function BarreAvancement({ valeur, couleur }) {
   const progress = Math.max(0, Math.min(100, Number(valeur ?? 0)));
   let auto = '#ef4444';
@@ -311,11 +285,8 @@ function App() {
       {/* ===== SIDEBAR ===== */}
       <aside className={`sidebar${sidebarOuvert ? ' sidebar-open' : ''}`}>
         <div className="sidebar-logo">
-          <div className="sidebar-logo-icon"><HardHat size={18} strokeWidth={2} style={{ color: '#fff' }} /></div>
-          <div>
-            <div className="sidebar-logo-name">CYNA</div>
-            <div className="sidebar-logo-sub">Gestion de chantiers · Genève</div>
-          </div>
+          <div className="sidebar-logo-icon"><BarChart2 size={17} strokeWidth={1.8} style={{ color: '#fff' }} /></div>
+          <div className="sidebar-logo-name">CYNA</div>
         </div>
         <button className="sidebar-cta" onClick={() => { naviguer('chantiers'); setSidebarOuvert(false); }}>
           <Plus size={16} strokeWidth={2.6} /> Nouveau chantier
@@ -328,11 +299,18 @@ function App() {
               data-label={item.label}
               onClick={() => { naviguer(item.id); setSidebarOuvert(false); }}
             >
-              <item.Icon size={16} strokeWidth={1.8} />
+              <item.Icon size={17} strokeWidth={page === item.id ? 2.2 : 1.8} />
               <span>{item.label}</span>
             </button>
           ))}
         </nav>
+        <button className="sidebar-theme-toggle" onClick={toggleDarkMode} title={darkMode ? 'Mode clair' : 'Mode sombre'}>
+          <div className={`sidebar-toggle-track${darkMode ? ' on' : ''}`}>
+            <div className="sidebar-toggle-thumb" />
+          </div>
+          {darkMode ? <Sun size={14} strokeWidth={2} /> : <Moon size={14} strokeWidth={2} />}
+          <span>{darkMode ? 'Mode clair' : 'Mode sombre'}</span>
+        </button>
         <div className="sidebar-profile">
           <div className="sidebar-avatar">{profil.nom.substring(0, 2).toUpperCase()}</div>
           <div className="sidebar-profile-info">
@@ -1072,7 +1050,7 @@ function Dashboard({ chantiers, clients, factures, devis = [], parametres, navig
   const CARD = { background: 'var(--dash-card)', border: '1px solid var(--dash-border)', borderRadius: 16, padding: '20px', boxShadow: 'var(--ds-card-shadow)' };
 
   return (
-    <div style={{ fontFamily: "'DM Sans', 'Inter', sans-serif" }}>
+    <div>
 
       {/* ── HEADER ──────────────────────────────────────────────── */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 28, flexWrap: 'wrap', gap: 14 }}>
@@ -1936,7 +1914,7 @@ function ModalSaisieHeures({ chantierSaisie, initialDate, onFermer, onSave, para
                         fontSize: 11, fontWeight: 700,
                         color: h === v ? '#ffffff' : 'var(--text-muted)',
                         background: h === v ? C.primaire : 'var(--bg-hover)',
-                        border: `1px solid ${h === v ? C.primaire : 'rgba(255,255,255,0.1)'}`,
+                        border: `1px solid ${h === v ? C.primaire : 'var(--border-glass-strong)'}`,
                         borderRadius: 6, padding: '4px 7px', cursor: 'pointer', fontFamily: 'inherit',
                       }}
                     >{v}h</button>
@@ -2385,7 +2363,7 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
                   border: `1px solid ${t.couleur}30`,
                   borderTop: `3px solid ${t.couleur}`,
                   borderRadius: 12, padding: '16px 18px',
-                  boxShadow: `0 2px 12px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.06)`,
+                  boxShadow: `0 2px 12px rgba(0,0,0,0.25), inset 0 1px 0 var(--border-glass)`,
                 }}>
                   <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', color: 'var(--text-muted)', marginBottom: 8 }}>
                     {t.icone} {t.titre}
@@ -2767,7 +2745,7 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
               { label: 'Coût/m² réel', valeur: couts.coutParM2Reel !== null ? `CHF ${couts.coutParM2Reel}` : '—', couleur: couts.coutParM2Reel !== null ? C.violet : 'var(--text-muted)' },
               { label: 'Prix/m² devis', valeur: couts.prixParM2Devis !== null ? `CHF ${couts.prixParM2Devis}` : '—', couleur: couts.prixParM2Devis !== null ? C.info : 'var(--text-muted)' },
             ].map(s => (
-              <div key={s.label} style={{ background: (typeof s.couleur === 'string' && s.couleur.startsWith('#')) ? s.couleur + '12' : 'var(--bg-glass-2)', border: `1px solid ${(typeof s.couleur === 'string' && s.couleur.startsWith('#')) ? s.couleur + '30' : 'rgba(255,255,255,0.08)'}`, borderRadius: '12px', padding: '16px', textAlign: 'center', backdropFilter: 'blur(8px)' }}>
+              <div key={s.label} style={{ background: (typeof s.couleur === 'string' && s.couleur.startsWith('#')) ? s.couleur + '12' : 'var(--bg-glass-2)', border: `1px solid ${(typeof s.couleur === 'string' && s.couleur.startsWith('#')) ? s.couleur + '30' : 'var(--border-glass)'}`, borderRadius: '12px', padding: '16px', textAlign: 'center', backdropFilter: 'blur(8px)' }}>
                 <div style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px', color: 'var(--text-muted)', marginBottom: '6px' }}>{s.label}</div>
                 <div style={{ fontSize: '20px', fontWeight: 800, color: s.couleur, letterSpacing: '-0.3px' }}>{s.valeur}</div>
                 {s.sub && <div style={{ fontSize: 10, color: s.couleur, opacity: 0.7, marginTop: 3 }}>{s.sub}</div>}
@@ -3110,7 +3088,7 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
                       style={{
                         width: '100%', padding: '14px', borderRadius: 12, cursor: disabled ? 'not-allowed' : 'pointer',
                         background: disabled ? 'var(--bg-glass-2)' : `linear-gradient(135deg, ${C.secondaire}22, ${C.secondaire}10)`,
-                        border: `1px solid ${disabled ? 'rgba(255,255,255,0.1)' : C.secondaire + '40'}`,
+                        border: `1px solid ${disabled ? 'var(--border-glass-strong)' : C.secondaire + '40'}`,
                         color: disabled ? 'var(--text-muted)' : C.secondaire,
                         fontSize: 15, fontWeight: 700, fontFamily: 'inherit',
                         display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,

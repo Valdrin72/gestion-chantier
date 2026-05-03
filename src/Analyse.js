@@ -675,7 +675,7 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
                     <div style={{ fontWeight: 'bold', color: couleurs[i], marginBottom: '10px' }}>{s.scenario}</div>
                     <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>CA projeté</div>
                     <div style={{ fontSize: '18px', fontWeight: 'bold', color: couleurs[i] }}>CHF {fmtN(Math.round(s.ca))}</div>
-                    <div style={{ margin: '10px 0', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '10px' }}>
+                    <div style={{ margin: '10px 0', borderTop: '1px solid var(--border-glass-strong)', paddingTop: '10px' }}>
                       <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Marge nette</div>
                       <div style={{ fontSize: '22px', fontWeight: 'bold', color: nette >= 0 ? '#10b981' : '#ef4444' }}>CHF {fmtN(Math.round(nette))}</div>
                       <div style={{ fontSize: '14px', color: nette >= 0 ? '#10b981' : '#ef4444' }}>({pct}%)</div>

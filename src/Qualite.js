@@ -124,7 +124,7 @@ export default function Qualite({ chantiers, setChantiers, qualiteData, setQuali
         </button>
 
         <div style={{
-            background: `linear-gradient(145deg, ${couleurScore(scoreGlobal)}12 0%, rgba(255,255,255,0.03) 60%, rgba(255,255,255,0.04) 100%)`,
+            background: `linear-gradient(145deg, ${couleurScore(scoreGlobal)}12 0%, var(--surface-glass) 60%, var(--surface-glass) 100%)`,
             backdropFilter: 'blur(14px) saturate(1.6)',
             WebkitBackdropFilter: 'blur(14px) saturate(1.6)',
             borderRadius: '16px', padding: '24px', marginBottom: '24px',
@@ -152,11 +152,11 @@ export default function Qualite({ chantiers, setChantiers, qualiteData, setQuali
                     flex: 1,
                     background: typeActif === t.id
                       ? `linear-gradient(145deg, ${t.couleur}18 0%, ${t.couleur}08 100%)`
-                      : 'rgba(255,255,255,0.025)',
+                      : 'var(--surface-glass)',
                     backdropFilter: 'blur(12px)',
                     WebkitBackdropFilter: 'blur(12px)',
                     borderRadius: '12px', padding: '12px', textAlign: 'center',
-                    border: `1px solid ${typeActif === t.id ? t.couleur + '55' : 'rgba(255,255,255,0.07)'}`,
+                    border: `1px solid ${typeActif === t.id ? t.couleur + '55' : 'var(--border-glass)'}`,
                     boxShadow: typeActif === t.id ? `0 0 20px ${t.couleur}22, 0 4px 12px rgba(0,0,0,0.3)` : 'none',
                     cursor: 'pointer', transition: 'all 0.2s cubic-bezier(0.4,0,0.2,1)',
                   }}
@@ -179,7 +179,7 @@ export default function Qualite({ chantiers, setChantiers, qualiteData, setQuali
             <div style={{ display: 'flex', gap: '8px' }}>
               {TYPES_CONTROLE.map(t => (
                 <button key={t.id} onClick={() => setTypeActif(t.id)} style={{
-                  background: typeActif === t.id ? t.couleur + 'cc' : 'rgba(255,255,255,0.04)',
+                  background: typeActif === t.id ? t.couleur + 'cc' : 'var(--surface-glass)',
                   color: typeActif === t.id ? 'white' : t.couleur,
                   border: `1px solid ${typeActif === t.id ? t.couleur + '80' : t.couleur + '44'}`,
                   padding: '6px 16px', borderRadius: '20px', cursor: 'pointer',
@@ -206,7 +206,7 @@ export default function Qualite({ chantiers, setChantiers, qualiteData, setQuali
               </div>
               {items.map(item => (
                 <div key={item.id} onClick={() => toggleItem(c.id, typeActif, item.id)}
-                  style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 12px', borderRadius: '8px', marginBottom: '5px', cursor: 'pointer', background: data[item.id] ? 'rgba(16,185,129,0.1)' : 'rgba(255,255,255,0.025)', border: `1px solid ${data[item.id] ? 'rgba(16,185,129,0.35)' : 'rgba(255,255,255,0.07)'}`, transition: 'all 0.2s' }}>
+                  style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 12px', borderRadius: '8px', marginBottom: '5px', cursor: 'pointer', background: data[item.id] ? 'rgba(16,185,129,0.1)' : 'var(--surface-glass)', border: `1px solid ${data[item.id] ? 'rgba(16,185,129,0.35)' : 'var(--border-glass)'}`, transition: 'all 0.2s' }}>
                   <div style={{ width: '22px', height: '22px', borderRadius: '50%', border: `2px solid ${data[item.id] ? '#3b82f6' : 'var(--border)'}`, background: data[item.id] ? '#3b82f6' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                     {data[item.id] && <span style={{ color: 'white', fontSize: '12px' }}>✓</span>}
                   </div>

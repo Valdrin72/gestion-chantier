@@ -136,7 +136,7 @@ function Tresorerie({ factures = [], chantiers = [], clients = [], devis = [] })
       </div>
 
       {/* ── Timeline 8 semaines ── */}
-      <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 16, padding: '22px 24px', marginBottom: 24 }}>
+      <div style={{ background: 'var(--surface-glass)', border: '1px solid var(--border-glass)', borderRadius: 16, padding: '22px 24px', marginBottom: 24 }}>
         <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 8 }}>
           <Calendar size={15} style={{ color: '#3b82f6' }} />
           Encaissements prévus — 8 semaines
@@ -152,7 +152,7 @@ function Tresorerie({ factures = [], chantiers = [], clients = [], devis = [] })
                   <div style={{ fontSize: 9, fontWeight: 700, color: '#3b82f6' }}>{fmtK(s.montant)}</div>
                 )}
                 <div style={{ width: '100%', flex: 1, display: 'flex', alignItems: 'flex-end' }}>
-                  <div style={{ width: '100%', height: hasData ? `${Math.max(pct, 6)}%` : '4px', background: hasData ? `linear-gradient(180deg, #3b82f6, #1d4ed8)` : 'rgba(255,255,255,0.06)', borderRadius: '4px 4px 0 0', transition: 'height 0.3s', minHeight: 4 }} />
+                  <div style={{ width: '100%', height: hasData ? `${Math.max(pct, 6)}%` : '4px', background: hasData ? `linear-gradient(180deg, #3b82f6, #1d4ed8)` : 'var(--border-glass)', borderRadius: '4px 4px 0 0', transition: 'height 0.3s', minHeight: 4 }} />
                 </div>
                 <div style={{ fontSize: 9, color: 'var(--text-muted)', textAlign: 'center', fontWeight: 600, whiteSpace: 'nowrap' }}>{s.label}</div>
               </div>
@@ -166,7 +166,7 @@ function Tresorerie({ factures = [], chantiers = [], clients = [], devis = [] })
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
         {/* ── Factures à encaisser ── */}
-        <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 16, padding: '20px 22px' }}>
+        <div style={{ background: 'var(--surface-glass)', border: '1px solid var(--border-glass)', borderRadius: 16, padding: '20px 22px' }}>
           <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
             <CreditCard size={14} style={{ color: '#f59e0b' }} />
             Factures à encaisser
@@ -202,7 +202,7 @@ function Tresorerie({ factures = [], chantiers = [], clients = [], devis = [] })
         </div>
 
         {/* ── Chantiers à facturer ── */}
-        <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 16, padding: '20px 22px' }}>
+        <div style={{ background: 'var(--surface-glass)', border: '1px solid var(--border-glass)', borderRadius: 16, padding: '20px 22px' }}>
           <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
             <TrendingUp size={14} style={{ color: '#10b981' }} />
             Chantiers à facturer
@@ -229,7 +229,7 @@ function Tresorerie({ factures = [], chantiers = [], clients = [], devis = [] })
                       <span>Avancement {c.avancement}%</span>
                       <span>CA {fmt(c.ca)}</span>
                     </div>
-                    <div style={{ height: 4, background: 'rgba(255,255,255,0.08)', borderRadius: 4 }}>
+                    <div style={{ height: 4, background: 'var(--border-glass)', borderRadius: 4 }}>
                       <div style={{ height: '100%', width: `${c.avancement}%`, background: 'linear-gradient(90deg, #10b981, #059669)', borderRadius: 4 }} />
                     </div>
                   </div>
@@ -301,7 +301,7 @@ export default function Finances({
         ].map(k => (
           <div key={k.label} className="premium-card" style={{
             flex: 1, minWidth: 180,
-            background: `linear-gradient(145deg, ${k.couleur}14 0%, ${k.couleur}07 60%, rgba(255,255,255,0.025) 100%)`,
+            background: `linear-gradient(145deg, ${k.couleur}14 0%, ${k.couleur}07 60%, var(--surface-glass) 100%)`,
             backdropFilter: 'blur(14px) saturate(1.6)',
             WebkitBackdropFilter: 'blur(14px) saturate(1.6)',
             border: `1px solid ${k.couleur}30`,
@@ -328,7 +328,7 @@ export default function Finances({
       )}
 
       {/* ── Navigation onglets ── */}
-      <div style={{ display: 'flex', gap: 0, marginBottom: 24, borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+      <div style={{ display: 'flex', gap: 0, marginBottom: 24, borderBottom: '1px solid var(--border-glass)' }}>
         {tabs.map(t => (
           <button key={t.id} onClick={() => setOnglet(t.id)} style={{
             background: 'transparent', border: 'none',
@@ -341,7 +341,7 @@ export default function Finances({
           }}>
             {t.label}
             {t.count !== null && (
-              <span style={{ background: 'rgba(255,255,255,0.1)', borderRadius: 20, padding: '1px 8px', fontSize: 11, fontWeight: 600 }}>
+              <span style={{ background: 'var(--border-glass-strong)', borderRadius: 20, padding: '1px 8px', fontSize: 11, fontWeight: 600 }}>
                 {t.count}
               </span>
             )}

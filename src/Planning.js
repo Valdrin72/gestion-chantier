@@ -66,12 +66,12 @@ function VueCharge({ chantiers, clients }) {
   return (
     <div>
       {/* ── Config capacité ── */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 24, padding: '14px 20px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 24, padding: '14px 20px', background: 'var(--surface-glass)', border: '1px solid var(--border-glass)', borderRadius: 12 }}>
         <span style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 600 }}>Capacité équipe :</span>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <button onClick={() => setCapacite(Math.max(1, capacite - 1))} style={{ width: 28, height: 28, borderRadius: 8, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)', color: 'var(--text-primary)', cursor: 'pointer', fontSize: 16, fontFamily: 'inherit' }}>−</button>
+          <button onClick={() => setCapacite(Math.max(1, capacite - 1))} style={{ width: 28, height: 28, borderRadius: 8, background: 'var(--border-glass)', border: '1px solid var(--border-glass-strong)', color: 'var(--text-primary)', cursor: 'pointer', fontSize: 16, fontFamily: 'inherit' }}>−</button>
           <span style={{ fontSize: 20, fontWeight: 900, color: 'var(--text-primary)', minWidth: 24, textAlign: 'center' }}>{capacite}</span>
-          <button onClick={() => setCapacite(capacite + 1)} style={{ width: 28, height: 28, borderRadius: 8, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)', color: 'var(--text-primary)', cursor: 'pointer', fontSize: 16, fontFamily: 'inherit' }}>+</button>
+          <button onClick={() => setCapacite(capacite + 1)} style={{ width: 28, height: 28, borderRadius: 8, background: 'var(--border-glass)', border: '1px solid var(--border-glass-strong)', color: 'var(--text-primary)', cursor: 'pointer', fontSize: 16, fontFamily: 'inherit' }}>+</button>
           <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>personnes disponibles · {capacite * 5} jours-homme / semaine</span>
         </div>
       </div>
@@ -116,7 +116,7 @@ function VueCharge({ chantiers, clients }) {
                   {/* Ligne capacité */}
                   <div style={{ position: 'absolute', bottom: `${pctCapacite}%`, left: 0, right: 0, height: 1, background: 'rgba(255,255,255,0.2)', borderRadius: 1 }} />
                   {/* Barre besoin */}
-                  <div style={{ width: '100%', height: `${Math.max(pctBesoin, 3)}%`, background: s.besoin === 0 ? 'rgba(255,255,255,0.06)' : `linear-gradient(180deg, ${cfg.couleur}, ${cfg.couleur}99)`, borderRadius: '4px 4px 0 0', minHeight: 3 }} />
+                  <div style={{ width: '100%', height: `${Math.max(pctBesoin, 3)}%`, background: s.besoin === 0 ? 'var(--border-glass)' : `linear-gradient(180deg, ${cfg.couleur}, ${cfg.couleur}99)`, borderRadius: '4px 4px 0 0', minHeight: 3 }} />
                 </div>
                 <div style={{ fontSize: 8, color: 'var(--text-muted)', textAlign: 'center', fontWeight: 600 }}>{s.label}</div>
               </div>
@@ -149,7 +149,7 @@ function VueCharge({ chantiers, clients }) {
                     <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>{Math.round(s.ratio * 100)}% de capacité</div>
                   </div>
                   {/* Mini barre */}
-                  <div style={{ width: 80, height: 6, background: 'rgba(255,255,255,0.08)', borderRadius: 4, overflow: 'hidden' }}>
+                  <div style={{ width: 80, height: 6, background: 'var(--border-glass)', borderRadius: 4, overflow: 'hidden' }}>
                     <div style={{ height: '100%', width: `${Math.min(s.ratio * 100, 100)}%`, background: cfg.couleur, borderRadius: 4 }} />
                   </div>
                 </div>
@@ -159,7 +159,7 @@ function VueCharge({ chantiers, clients }) {
                   {s.chantiersActifs.map(c => {
                     const client = clients.find(cl => String(cl.id) === String(c.clientId));
                     return (
-                      <span key={c.id} style={{ fontSize: 11, background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 20, padding: '3px 10px', color: 'var(--text-secondary)' }}>
+                      <span key={c.id} style={{ fontSize: 11, background: 'var(--border-glass)', border: '1px solid var(--border-glass-strong)', borderRadius: 20, padding: '3px 10px', color: 'var(--text-secondary)' }}>
                         {c.nom || c.numero} · {parseInt(c.nombrePersonnes) || 1} pers.
                       </span>
                     );
@@ -326,9 +326,9 @@ export default function Planning({ chantiers, setChantiers, clients, naviguer })
         <div className="page-actions-group">
           {['timeline', 'calendrier', 'liste', 'charge'].map(v => (
             <button key={v} onClick={() => setVue(v)} style={{
-              background: vue === v ? 'rgba(59,130,246,0.18)' : 'rgba(255,255,255,0.04)',
+              background: vue === v ? 'rgba(59,130,246,0.18)' : 'var(--surface-glass)',
               color: vue === v ? '#3b82f6' : 'var(--text-secondary)',
-              border: vue === v ? '1px solid rgba(59,130,246,0.4)' : '1px solid rgba(255,255,255,0.08)',
+              border: vue === v ? '1px solid rgba(59,130,246,0.4)' : '1px solid var(--border-glass)',
               padding: '6px 14px', borderRadius: '20px', cursor: 'pointer',
               fontSize: '13px', fontWeight: vue === v ? 700 : 500,
               fontFamily: 'inherit', transition: 'all 0.18s',
@@ -423,7 +423,7 @@ export default function Planning({ chantiers, setChantiers, clients, naviguer })
                           position: 'absolute', top: 0, bottom: 0,
                           left: `${((j - 1) / nbJoursMois) * 100}%`,
                           width: `${(1 / nbJoursMois) * 100}%`,
-                          background: 'rgba(255,255,255,0.03)'
+                          background: 'var(--surface-glass)'
                         }} />
                     ))}
 
@@ -540,7 +540,7 @@ export default function Planning({ chantiers, setChantiers, clients, naviguer })
                   const al = getAlerte(j);
                   const client = clients.find(cl => cl.id === c.clientId);
                   return (
-                    <tr key={c.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.06)', cursor: 'pointer' }}
+                    <tr key={c.id} style={{ borderBottom: '1px solid var(--border-glass)', cursor: 'pointer' }}
                       onClick={() => ouvrirModal(c)}>
                       <td style={{ padding: '10px 15px', color: 'var(--text-primary)' }}><strong>{c.nom}</strong><div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>{c.numero}</div></td>
                       <td style={{ padding: '10px 15px', color: 'var(--text-primary)' }}>{client?.entreprise || '-'}</td>
@@ -557,7 +557,7 @@ export default function Planning({ chantiers, setChantiers, clients, naviguer })
                         <div style={{ display: 'flex', gap: 6 }}>
                           <button onClick={() => ouvrirModal(c)} style={btnEdit}>Modifier</button>
                           {naviguer && (
-                            <button onClick={() => naviguer('chantiers', { chantierActif: c.id })} style={{ ...btnEdit, color: 'var(--text-secondary)', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}>Voir →</button>
+                            <button onClick={() => naviguer('chantiers', { chantierActif: c.id })} style={{ ...btnEdit, color: 'var(--text-secondary)', background: 'var(--border-glass)', border: '1px solid var(--border-glass-strong)' }}>Voir →</button>
                           )}
                         </div>
                       </td>
@@ -605,7 +605,7 @@ export default function Planning({ chantiers, setChantiers, clients, naviguer })
           backdropFilter: 'blur(4px)',
         }} onClick={() => setModal(null)}>
           <div style={{
-            background: 'var(--bg-card)', border: '1px solid rgba(255,255,255,0.12)',
+            background: 'var(--bg-card)', border: '1px solid var(--border-glass-strong)',
             borderRadius: 18, padding: 32, minWidth: 420, maxWidth: 520, width: '100%',
             boxShadow: '0 24px 64px rgba(0,0,0,0.6)',
           }} onClick={e => e.stopPropagation()}>
@@ -669,8 +669,8 @@ export default function Planning({ chantiers, setChantiers, clients, naviguer })
               </button>
               <div style={{ display: 'flex', gap: 8 }}>
                 <button onClick={() => setModal(null)} style={{
-                  background: 'rgba(255,255,255,0.06)', color: 'var(--text-secondary)',
-                  border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10,
+                  background: 'var(--border-glass)', color: 'var(--text-secondary)',
+                  border: '1px solid var(--border-glass-strong)', borderRadius: 10,
                   padding: '10px 20px', cursor: 'pointer', fontSize: 13, fontWeight: 600,
                   fontFamily: 'inherit',
                 }}>Annuler</button>

@@ -178,7 +178,7 @@ export default function Statistiques({ chantiers, clients, devis = [], parametre
         <div className="ds-card-title">Chiffre d'affaires mensuel {periode}</div>
         <ResponsiveContainer width="100%" height={300}>
           <BarChart data={donneesMensuelles} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--border-glass)" />
             <XAxis dataKey="mois" tick={{ fill: '#8892a4' }} />
             <YAxis tickFormatter={v => `${(v/1000).toFixed(0)}k`} tick={{ fill: '#8892a4' }} />
             <Tooltip content={() => null} />
@@ -195,7 +195,7 @@ export default function Statistiques({ chantiers, clients, devis = [], parametre
         <div className="ds-card-title" style={{ marginBottom: 16 }}>Évolution de la marge (%)</div>
         <ResponsiveContainer width="100%" height={250}>
           <LineChart data={donneesMensuelles.filter(m => m.CA > 0)}>
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--border-glass)" />
             <XAxis dataKey="mois" tick={{ fill: '#8892a4' }} />
             <YAxis tickFormatter={v => `${v}%`} tick={{ fill: '#8892a4' }} />
             <Tooltip content={() => null} />
@@ -296,7 +296,7 @@ export default function Statistiques({ chantiers, clients, devis = [], parametre
             ...donneesMensuelles.slice(0, moisActuel + 1).map(m => ({ ...m, type: 'Réalisé' })),
             ...donneesMensuelles.slice(moisActuel + 1).map(m => ({ ...m, CA: Math.round(moyenneMensuelle), type: 'Prévision' }))
           ]}>
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--border-glass)" />
             <XAxis dataKey="mois" tick={{ fill: '#8892a4' }} />
             <YAxis tickFormatter={v => `${(v / 1000).toFixed(0)}k`} tick={{ fill: '#8892a4' }} />
             <Tooltip content={() => null} />
@@ -390,7 +390,7 @@ export default function Statistiques({ chantiers, clients, devis = [], parametre
             {/* Graphique barres groupées : Prévus vs Réalisés */}
             <ResponsiveContainer width="100%" height={260}>
               <BarChart data={donneesEcarts} margin={{ top: 5, right: 20, left: 0, bottom: 30 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border-glass)" />
                 <XAxis dataKey="nom" tick={{ fill: '#8892a4', fontSize: 11 }} angle={-30} textAnchor="end" interval={0} />
                 <YAxis tick={{ fill: '#8892a4' }} unit="j" />
                 <Tooltip content={() => null} />

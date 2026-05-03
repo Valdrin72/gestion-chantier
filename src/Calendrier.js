@@ -1,10 +1,21 @@
 import React, { useState, useMemo } from 'react';
-import { ChevronLeft, ChevronRight, Plus, Clock, Calendar } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, Clock, Calendar, X } from 'lucide-react';
 import { DS } from './ds';
+
+const CATEGORIES = [
+  { id: 'reunion',    label: 'Réunion',    bg: '#ede9fe', color: '#5b21b6' },
+  { id: 'livraison',  label: 'Livraison',  bg: '#fef3c7', color: '#92400e' },
+  { id: 'rdv_client', label: 'RDV Client', bg: '#dbeafe', color: '#1e40af' },
+  { id: 'autre',      label: 'Autre',      bg: '#f1f5f9', color: '#475569' },
+];
+
+const FORM_VIDE = { titre: '', date: '', categorie: 'reunion' };
 
 export default function Calendrier({ chantiers = [], clients = [], devis = [], factures = [] }) {
   const today = new Date();
   const [viewDate, setViewDate] = useState(new Date(today.getFullYear(), today.getMonth(), 1));
+  const [customEvents, setCustomEvents] = useState([]);
+  const [modal, setModal] = useState(null); // null | { form }
 
   const year = viewDate.getFullYear();
   const month = viewDate.getMonth();
@@ -17,10 +28,29 @@ export default function Calendrier({ chantiers = [], clients = [], devis = [], f
   const prevMonth = () => setViewDate(new Date(year, month - 1, 1));
   const nextMonth = () => setViewDate(new Date(year, month + 1, 1));
 
-  const firstDayDow = (new Date(year, month, 1).getDay() + 6) % 7; // 0=Mon
+  const ouvrirModal = (dateISO = '') => {
+    setModal({ form: { ...FORM_VIDE, date: dateISO } });
+  };
+
+  const sauvegarder = () => {
+    if (!modal.form.titre.trim() || !modal.form.date) return;
+    const cat = CATEGORIES.find(c => c.id === modal.form.categorie);
+    setCustomEvents(prev => [...prev, {
+      id: Date.now(),
+      label: modal.form.titre.trim(),
+      date: modal.form.date,
+      bg: cat.bg,
+      color: cat.color,
+      sub: cat.label,
+    }]);
+    setModal(null);
+  };
+
+  const supprimerEvent = (id) => setCustomEvents(prev => prev.filter(e => e.id !== id));
+
+  const firstDayDow = (new Date(year, month, 1).getDay() + 6) % 7;
   const daysInMonth = new Date(year, month + 1, 0).getDate();
 
-  // Gather events for this month
   const eventsByDay = useMemo(() => {
     const map = {};
     const add = (day, evt) => { if (!map[day]) map[day] = []; map[day].push(evt); };
@@ -29,12 +59,12 @@ export default function Calendrier({ chantiers = [], clients = [], devis = [], f
       if (c.dateDebut) {
         const d = new Date(c.dateDebut);
         if (d.getFullYear() === year && d.getMonth() === month)
-          add(d.getDate(), { label: c.nom || c.numero, color: '#dbeafe', textColor: '#1e40af' });
+          add(d.getDate(), { label: c.nom || c.numero, bg: '#dbeafe', color: '#1e40af' });
       }
       if (c.dateFin) {
         const d = new Date(c.dateFin);
         if (d.getFullYear() === year && d.getMonth() === month)
-          add(d.getDate(), { label: `Fin: ${c.nom || c.numero}`, color: '#d1fae5', textColor: '#065f46' });
+          add(d.getDate(), { label: `Fin: ${c.nom || c.numero}`, bg: '#d1fae5', color: '#065f46' });
       }
     });
 
@@ -42,21 +72,25 @@ export default function Calendrier({ chantiers = [], clients = [], devis = [], f
       if (f.dateEcheance) {
         const d = new Date(f.dateEcheance);
         if (d.getFullYear() === year && d.getMonth() === month)
-          add(d.getDate(), { label: `Éch. ${f.numero || 'Facture'}`, color: '#fee2e2', textColor: '#991b1b' });
+          add(d.getDate(), { label: `Éch. ${f.numero || 'Facture'}`, bg: '#fee2e2', color: '#991b1b' });
       }
     });
 
-    return map;
-  }, [chantiers, factures, year, month]);
+    customEvents.forEach(e => {
+      const d = new Date(e.date);
+      if (d.getFullYear() === year && d.getMonth() === month)
+        add(d.getDate(), { label: e.label, bg: e.bg, color: e.color, id: e.id, custom: true });
+    });
 
-  // Build 42-cell grid
+    return map;
+  }, [chantiers, factures, customEvents, year, month]);
+
   const cells = [];
   for (let i = 0; i < 42; i++) {
     const day = i - firstDayDow + 1;
     cells.push(day >= 1 && day <= daysInMonth ? { day, events: eventsByDay[day] || [] } : { day: null, events: [] });
   }
 
-  // Upcoming events (next 45 days)
   const upcoming = useMemo(() => {
     const now = new Date(); now.setHours(0,0,0,0);
     const limit = new Date(now); limit.setDate(now.getDate() + 45);
@@ -65,7 +99,7 @@ export default function Calendrier({ chantiers = [], clients = [], devis = [], f
     chantiers.forEach(c => {
       if (c.dateDebut) {
         const d = new Date(c.dateDebut); d.setHours(0,0,0,0);
-        if (d >= now && d <= limit) list.push({ date: d, label: c.nom || c.numero, sub: `Début de chantier`, color: '#3b82f6' });
+        if (d >= now && d <= limit) list.push({ date: d, label: c.nom || c.numero, sub: 'Début de chantier', color: '#3b82f6' });
       }
       if (c.dateFin) {
         const d = new Date(c.dateFin); d.setHours(0,0,0,0);
@@ -83,14 +117,25 @@ export default function Calendrier({ chantiers = [], clients = [], devis = [], f
       }
     });
 
+    customEvents.forEach(e => {
+      const d = new Date(e.date); d.setHours(0,0,0,0);
+      if (d >= now && d <= limit) list.push({ date: d, label: e.label, sub: e.sub, color: e.color, id: e.id, custom: true });
+    });
+
     return list.sort((a, b) => a.date - b.date).slice(0, 8);
-  }, [chantiers, factures]);
+  }, [chantiers, factures, customEvents]);
 
   const isToday = (day) => day !== null && today.getFullYear() === year && today.getMonth() === month && today.getDate() === day;
 
   const JOURS = ['LUN', 'MAR', 'MER', 'JEU', 'VEN', 'SAM', 'DIM'];
-
   const btnStyle = { background: 'var(--ds-btn-ghost-bg)', border: '1px solid var(--ds-btn-ghost-border)', borderRadius: 8, padding: '8px 14px', cursor: 'pointer', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', fontFamily: 'inherit', transition: 'all 0.15s' };
+
+  const isoFromCell = (day) => {
+    if (!day) return '';
+    const m = String(month + 1).padStart(2, '0');
+    const d = String(day).padStart(2, '0');
+    return `${year}-${m}-${d}`;
+  };
 
   return (
     <div>
@@ -104,7 +149,7 @@ export default function Calendrier({ chantiers = [], clients = [], devis = [], f
           <button onClick={prevMonth} style={btnStyle}>← {prevMonthLabel}</button>
           <button onClick={goToday} style={btnStyle}>Aujourd'hui</button>
           <button onClick={nextMonth} style={btnStyle}>{nextMonthLabel} →</button>
-          <button style={{ ...DS.btnPrimary, display: 'flex', alignItems: 'center', gap: 6 }}>
+          <button onClick={() => ouvrirModal()} style={{ ...DS.btnPrimary, display: 'flex', alignItems: 'center', gap: 6 }}>
             <Plus size={14} strokeWidth={2.5} /> Nouvel événement
           </button>
         </div>
@@ -114,22 +159,26 @@ export default function Calendrier({ chantiers = [], clients = [], devis = [], f
 
         {/* Calendar grid */}
         <div style={{ ...DS.card, padding: 0, overflow: 'hidden' }}>
-          {/* Day headers */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', borderBottom: '1px solid var(--ds-card-border)' }}>
             {JOURS.map(j => (
               <div key={j} style={{ padding: '12px 0', textAlign: 'center', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{j}</div>
             ))}
           </div>
-          {/* Day cells */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)' }}>
             {cells.map((cell, i) => (
-              <div key={i} style={{
-                minHeight: 88,
-                padding: '8px',
-                borderRight: (i + 1) % 7 !== 0 ? '1px solid var(--ds-card-border)' : 'none',
-                borderBottom: i < 35 ? '1px solid var(--ds-card-border)' : 'none',
-                background: cell.day === null ? 'var(--bg-glass)' : 'transparent',
-              }}>
+              <div key={i}
+                onClick={() => cell.day && ouvrirModal(isoFromCell(cell.day))}
+                style={{
+                  minHeight: 88, padding: '8px',
+                  borderRight: (i + 1) % 7 !== 0 ? '1px solid var(--ds-card-border)' : 'none',
+                  borderBottom: i < 35 ? '1px solid var(--ds-card-border)' : 'none',
+                  background: cell.day === null ? 'var(--bg-glass)' : 'transparent',
+                  cursor: cell.day ? 'pointer' : 'default',
+                  transition: 'background 0.1s',
+                }}
+                onMouseEnter={e => { if (cell.day) e.currentTarget.style.background = 'var(--bg-hover)'; }}
+                onMouseLeave={e => { if (cell.day) e.currentTarget.style.background = 'transparent'; }}
+              >
                 {cell.day !== null && (
                   <>
                     <div style={{
@@ -137,19 +186,26 @@ export default function Calendrier({ chantiers = [], clients = [], devis = [], f
                       width: 26, height: 26, borderRadius: '50%',
                       background: isToday(cell.day) ? '#3b82f6' : 'transparent',
                       color: isToday(cell.day) ? '#fff' : 'var(--text-primary)',
-                      fontSize: 13, fontWeight: isToday(cell.day) ? 700 : 500,
-                      marginBottom: 4,
+                      fontSize: 13, fontWeight: isToday(cell.day) ? 700 : 500, marginBottom: 4,
                     }}>
                       {cell.day}
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                       {cell.events.slice(0, 2).map((ev, ei) => (
-                        <div key={ei} style={{
-                          background: ev.color, color: ev.textColor,
-                          borderRadius: 4, padding: '2px 5px',
-                          fontSize: 10, fontWeight: 600,
-                          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                        }}>{ev.label}</div>
+                        <div key={ei}
+                          onClick={ev.custom ? (e) => { e.stopPropagation(); supprimerEvent(ev.id); } : undefined}
+                          title={ev.custom ? 'Cliquer pour supprimer' : ev.label}
+                          style={{
+                            background: ev.bg, color: ev.color,
+                            borderRadius: 4, padding: '2px 5px',
+                            fontSize: 10, fontWeight: 600,
+                            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                            cursor: ev.custom ? 'pointer' : 'default',
+                            display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 3,
+                          }}>
+                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{ev.label}</span>
+                          {ev.custom && <X size={8} strokeWidth={3} style={{ flexShrink: 0 }} />}
+                        </div>
                       ))}
                       {cell.events.length > 2 && (
                         <div style={{ fontSize: 9, color: 'var(--text-muted)', fontWeight: 600 }}>
@@ -170,7 +226,6 @@ export default function Calendrier({ chantiers = [], clients = [], devis = [], f
             <Calendar size={15} strokeWidth={2} style={{ color: '#3b82f6' }} />
             Prochains événements
           </div>
-
           {upcoming.length === 0 ? (
             <div style={{ color: 'var(--text-muted)', fontSize: 13, textAlign: 'center', padding: '24px 0' }}>
               Aucun événement à venir
@@ -205,6 +260,11 @@ export default function Calendrier({ chantiers = [], clients = [], devis = [], f
                       <div style={{ fontSize: 11, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 4 }}>
                         <Clock size={10} /> {ev.sub}
                       </div>
+                      {ev.custom && (
+                        <button onClick={() => supprimerEvent(ev.id)} style={{ marginTop: 4, background: 'none', border: 'none', color: '#ef4444', fontSize: 11, cursor: 'pointer', padding: 0, fontFamily: 'inherit' }}>
+                          Supprimer
+                        </button>
+                      )}
                     </div>
                   </div>
                 );
@@ -213,6 +273,74 @@ export default function Calendrier({ chantiers = [], clients = [], devis = [], f
           )}
         </div>
       </div>
+
+      {/* Modal nouvel événement */}
+      {modal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(4px)' }}
+          onClick={() => setModal(null)}>
+          <div style={{ background: 'var(--bg-card)', border: '1px solid var(--ds-card-border)', borderRadius: 18, padding: 28, width: '100%', maxWidth: 420, boxShadow: '0 20px 60px rgba(0,0,0,0.4)' }}
+            onClick={e => e.stopPropagation()}>
+
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+              <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--text-primary)' }}>Nouvel événement</div>
+              <button onClick={() => setModal(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 4 }}>
+                <X size={18} />
+              </button>
+            </div>
+
+            <div style={{ marginBottom: 16 }}>
+              <label style={DS.label}>Titre</label>
+              <input
+                autoFocus
+                value={modal.form.titre}
+                onChange={e => setModal({ ...modal, form: { ...modal.form, titre: e.target.value } })}
+                onKeyDown={e => e.key === 'Enter' && sauvegarder()}
+                placeholder="Ex : Réunion de chantier..."
+                style={DS.input}
+              />
+            </div>
+
+            <div style={{ marginBottom: 16 }}>
+              <label style={DS.label}>Date</label>
+              <input
+                type="date"
+                value={modal.form.date}
+                onChange={e => setModal({ ...modal, form: { ...modal.form, date: e.target.value } })}
+                style={DS.input}
+              />
+            </div>
+
+            <div style={{ marginBottom: 24 }}>
+              <label style={DS.label}>Catégorie</label>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 2 }}>
+                {CATEGORIES.map(cat => (
+                  <button key={cat.id}
+                    onClick={() => setModal({ ...modal, form: { ...modal.form, categorie: cat.id } })}
+                    style={{
+                      background: modal.form.categorie === cat.id ? cat.bg : 'var(--bg-glass)',
+                      color: modal.form.categorie === cat.id ? cat.color : 'var(--text-secondary)',
+                      border: `1px solid ${modal.form.categorie === cat.id ? cat.color + '60' : 'var(--ds-card-border)'}`,
+                      borderRadius: 8, padding: '6px 12px', cursor: 'pointer',
+                      fontSize: 12, fontWeight: 600, fontFamily: 'inherit', transition: 'all 0.15s',
+                    }}>
+                    {cat.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+              <button onClick={() => setModal(null)} style={DS.btnGhost}>Annuler</button>
+              <button
+                onClick={sauvegarder}
+                disabled={!modal.form.titre.trim() || !modal.form.date}
+                style={{ ...DS.btnPrimary, opacity: (!modal.form.titre.trim() || !modal.form.date) ? 0.5 : 1 }}>
+                Ajouter
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

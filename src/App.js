@@ -228,17 +228,26 @@ function App() {
       localStorage.setItem(cle, JSON.stringify(data));
     } catch (e) {
       if (e.name === 'QuotaExceededError' || e.name === 'NS_ERROR_DOM_QUOTA_REACHED') {
-        alert('Espace de stockage plein. Supprimez des photos pour libérer de l\'espace.');
+        alert('Espace de stockage plein. Supprimez des données pour libérer de l\'espace.');
       }
     }
   };
-  const setParametres = (data) => { setParametresState(data); sauvegarderLocal('cyna_parametres', data); };
-  const setFactures = (data) => { setFacturesState(data); sauvegarderLocal('cyna_factures', data); };
-  const setChantiers = (data) => { setChantiersState(data); sauvegarderLocal('cyna_chantiers', data); };
-  const setClients = (data) => { setClientsState(data); sauvegarderLocal('cyna_clients', data); };
-  const setDevis = (data) => { setDevisState(data); sauvegarderLocal('cyna_devis', data); };
-  const setQualiteData = (data) => { setQualiteDataState(data); sauvegarderLocal('cyna_qualite', data); };
-  const setPaiementsData = (data) => { setPaiementsDataState(data); sauvegarderLocal('cyna_paiements', data); };
+
+  // Setters directs (passage par valeur)
+  const setParametres    = (data) => { setParametresState(data);    sauvegarderLocal('cyna_parametres', data); };
+  const setFactures      = (data) => { setFacturesState(data);      sauvegarderLocal('cyna_factures',   data); };
+  const setClients       = (data) => { setClientsState(data);       sauvegarderLocal('cyna_clients',    data); };
+  const setDevis         = (data) => { setDevisState(data);         sauvegarderLocal('cyna_devis',      data); };
+  const setQualiteData   = (data) => { setQualiteDataState(data);   sauvegarderLocal('cyna_qualite',    data); };
+  const setPaiementsData = (data) => { setPaiementsDataState(data); sauvegarderLocal('cyna_paiements',  data); };
+
+  // setChantiers accepte valeur directe ou updater fonctionnel (Planning, Heures utilisent prev =>)
+  const setChantiers = useCallback((updater) => {
+    setChantiersState(updater);
+  }, []);
+
+  // Sync chantiers → localStorage à chaque changement (couvre les updaters fonctionnels)
+  useEffect(() => { sauvegarderLocal('cyna_chantiers', chantiers); }, [chantiers]);
 
   const logAction = useCallback(({ type, chantierId = null, label = '', factureIds = [] }) => {
     setActionsLogState(prev => {

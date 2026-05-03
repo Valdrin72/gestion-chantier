@@ -455,12 +455,15 @@ export default function Planning({ chantiers, setChantiers, clients, naviguer })
                 const isToday = estAujourdhui(jour);
                 return (
                   <div key={i} style={{
-                    aspectRatio: '1', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: 11, fontWeight: isToday ? 700 : 400, borderRadius: 6,
-                    background: isToday ? '#3b82f6' : busy > 0 ? 'rgba(59,130,246,0.12)' : 'transparent',
+                    aspectRatio: '1', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 11, fontWeight: isToday ? 700 : 400, borderRadius: 6, position: 'relative',
+                    background: isToday ? '#3b82f6' : busy > 1 ? 'rgba(59,130,246,0.25)' : busy === 1 ? 'rgba(59,130,246,0.10)' : 'transparent',
                     color: isToday ? '#fff' : busy > 0 ? '#1e40af' : jour ? 'var(--text-muted)' : 'transparent',
                   }}>
                     {jour}
+                    {busy > 1 && !isToday && (
+                      <span style={{ fontSize: 8, fontWeight: 800, lineHeight: 1, color: '#1e40af', opacity: 0.8 }}>{busy}×</span>
+                    )}
                   </div>
                 );
               })}

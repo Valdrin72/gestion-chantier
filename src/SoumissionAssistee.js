@@ -28,7 +28,7 @@ const btnDng = {
   border: '1px solid rgba(239,68,68,0.28)',
   borderRadius: '8px', padding: '5px 9px', cursor: 'pointer', fontSize: '12px',
   display: 'inline-flex', alignItems: 'center', gap: '4px',
-  fontFamily: 'Inter, sans-serif',
+  fontFamily: 'inherit',
 };
 
 // ── Table des métiers : mots-clés → { rendement (u/jour), unite }

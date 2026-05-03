@@ -164,7 +164,7 @@ export default function Qualite({ chantiers, setChantiers, qualiteData, setQuali
                   <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>{t.label}</div>
                   <div style={{ fontSize: '22px', fontWeight: 'bold', color: couleurScore(s.pct) }}>{s.pct}%</div>
                   <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>{s.coches}/{s.total} points</div>
-                  <div style={{ marginTop: '6px', background: 'rgba(255,255,255,0.09)', borderRadius: '10px', height: '6px' }}>
+                  <div style={{ marginTop: '6px', background: 'var(--border)', borderRadius: '10px', height: '6px' }}>
                     <div style={{ background: `linear-gradient(90deg, #3b82f6, #6366f1)`, width: `${s.pct}%`, height: '6px', borderRadius: '10px', boxShadow: '0 0 6px rgba(59,130,246,0.4)' }} />
                   </div>
                 </div>
@@ -194,7 +194,7 @@ export default function Qualite({ chantiers, setChantiers, qualiteData, setQuali
               <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Progression</span>
               <span style={{ fontWeight: 'bold', color: couleurScore(scoreType.pct) }}>{scoreType.coches}/{scoreType.total} — {scoreType.pct}%</span>
             </div>
-            <div style={{ background: 'rgba(255,255,255,0.09)', borderRadius: '10px', height: '10px' }}>
+            <div style={{ background: 'var(--border)', borderRadius: '10px', height: '10px' }}>
               <div style={{ background: 'linear-gradient(90deg, #3b82f6, #6366f1)', width: `${scoreType.pct}%`, height: '10px', borderRadius: '10px', transition: 'width 0.3s', boxShadow: '0 0 10px rgba(59,130,246,0.45)' }} />
             </div>
           </div>
@@ -287,14 +287,9 @@ export default function Qualite({ chantiers, setChantiers, qualiteData, setQuali
             const scores = TYPES_CONTROLE.map(t => ({ ...t, score: getScore(c.id, t.id) }));
             return (
               <div key={c.id} className="premium-card" style={{
-                  background: `linear-gradient(145deg, rgba(255,255,255,0.055) 0%, rgba(255,255,255,0.025) 50%, rgba(255,255,255,0.038) 100%)`,
-                  backdropFilter: 'blur(14px) saturate(1.6)',
-                  WebkitBackdropFilter: 'blur(14px) saturate(1.6)',
-                  borderRadius: '14px',
-                  boxShadow: 'var(--shadow-card)',
-                  border: `1px solid rgba(255,255,255,0.08)`,
+                  ...DS.cardCompact,
                   borderLeft: `4px solid ${couleurScore(scoreGlobal)}`,
-                  padding: '20px', cursor: 'pointer',
+                  cursor: 'pointer',
                 }}
                 onClick={() => setChantierSelectionne(c)}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -306,7 +301,7 @@ export default function Qualite({ chantiers, setChantiers, qualiteData, setQuali
                         <div key={t.id} style={{ textAlign: 'center' }}>
                           <div style={{ fontSize: '11px', color: 'var(--text-secondary)', textTransform: 'uppercase' }}>{t.label}</div>
                           <div style={{ fontSize: '15px', fontWeight: 'bold', color: couleurScore(t.score.pct) }}>{t.score.pct}%</div>
-                          <div style={{ background: 'rgba(255,255,255,0.09)', borderRadius: '10px', height: '4px', width: '60px', marginTop: '3px' }}>
+                          <div style={{ background: 'var(--border)', borderRadius: '10px', height: '4px', width: '60px', marginTop: '3px' }}>
                             <div style={{ background: 'linear-gradient(90deg, #3b82f6, #6366f1)', width: `${t.score.pct}%`, height: '4px', borderRadius: '10px', boxShadow: '0 0 5px rgba(59,130,246,0.4)' }} />
                           </div>
                         </div>

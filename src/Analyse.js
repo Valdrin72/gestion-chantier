@@ -371,7 +371,7 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
                         { label: 'Marge devisée',  val: fmtPct(d.margePrevuMoyenne, false), couleur: '#3b82f6', sub: 'marge prévue moyenne' },
                         { label: 'Marge réelle',   val: fmtPct(d.margeReelMoyenne, false),  couleur: d.margeReelMoyenne !== null && d.margeReelMoyenne < 10 ? '#ef4444' : d.margeReelMoyenne !== null && d.margeReelMoyenne < 20 ? '#f59e0b' : '#10b981', sub: 'marge réelle moyenne' },
                       ].map(m => (
-                        <div key={m.label} style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 10, padding: '12px 14px' }}>
+                        <div key={m.label} style={{ ...DS.cardInset, padding: '12px 14px' }}>
                           <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-muted)', marginBottom: 6 }}>{m.label}</div>
                           <div style={{ fontSize: 18, fontWeight: 900, color: m.couleur }}>{m.val}</div>
                           <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 3 }}>{m.sub}</div>
@@ -380,7 +380,7 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
                     </div>
 
                     {/* Conseil */}
-                    <div style={{ fontSize: 12, color: 'var(--text-muted)', background: 'rgba(255,255,255,0.03)', borderRadius: 8, padding: '10px 14px', borderLeft: `3px solid ${signalCfg.couleur}50` }}>
+                    <div style={{ fontSize: 12, color: 'var(--text-muted)', background: 'var(--ds-card-inset-bg)', borderRadius: 8, padding: '10px 14px', border: '1px solid var(--ds-card-inset-border)', borderLeft: `3px solid ${signalCfg.couleur}50` }}>
                       {signalCfg.conseil}
                     </div>
 
@@ -390,7 +390,7 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
                         <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-muted)', marginBottom: 8 }}>Détail par chantier</div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                           {d.lignes.map(l => (
-                            <div key={l.c.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: 'rgba(255,255,255,0.02)', borderRadius: 8, flexWrap: 'wrap' }}>
+                            <div key={l.c.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: 'var(--ds-card-inset-bg)', borderRadius: 8, border: '1px solid var(--ds-card-inset-border)', flexWrap: 'wrap' }}>
                               <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)', flex: 1, minWidth: 120 }}>{l.c.nom || l.c.numero}</span>
                               <span style={{ fontSize: 11, color: 'var(--text-muted)', minWidth: 80 }}>{l.joursPrevu}j → {l.joursReel}j{l.ecartJours !== null ? <span style={{ color: l.ecartJours > 15 ? '#ef4444' : 'var(--text-muted)', fontWeight: 700 }}> ({l.ecartJours > 0 ? '+' : ''}{l.ecartJours?.toFixed(0)}%)</span> : ''}</span>
                               {l.margeReelPct !== null && (
@@ -438,7 +438,7 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
               </thead>
               <tbody>
                 {donneesChantiers.map((c, i) => (
-                  <tr key={c.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                  <tr key={c.id} style={{ borderBottom: '1px solid var(--ds-td-border)' }}>
                     <td style={{ padding: '10px 12px' }}>
                       <strong style={{ color: 'var(--text-primary)' }}>{c.nom}</strong>
                       <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>{c.statut}</div>
@@ -484,7 +484,7 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
                 {donneesChantiers.filter(c => c.heuresPrevu > 0 || c.heuresRealise > 0).map((c, i) => {
                   const margeParHeure = c.heuresRealise > 0 ? (c.couts.margeReel / c.heuresRealise).toFixed(0) : 0;
                   return (
-                    <tr key={c.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                    <tr key={c.id} style={{ borderBottom: '1px solid var(--ds-td-border)' }}>
                       <td style={{ padding: '10px 12px' }}><strong style={{ color: 'var(--text-primary)' }}>{c.nom}</strong></td>
                       <td style={{ padding: '10px 12px', color: 'var(--text-primary)' }}>{c.heuresPrevu}h</td>
                       <td style={{ padding: '10px 12px', fontWeight: 'bold', color: 'var(--text-primary)' }}>{c.heuresRealise}h</td>
@@ -523,7 +523,7 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
                 </thead>
                 <tbody>
                   {donneesEmployes.map((e, i) => (
-                    <tr key={e.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                    <tr key={e.id} style={{ borderBottom: '1px solid var(--ds-td-border)' }}>
                       <td style={{ padding: '10px 12px' }}>
                         <div style={{ width: '32px', height: '32px', background: 'var(--bg-hover)', border: '1px solid var(--border)', borderRadius: '50%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-primary)', fontWeight: 'bold', marginRight: '8px', fontSize: '14px' }}>
                           {e.nom.charAt(0)}
@@ -591,7 +591,7 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
                 </thead>
                 <tbody>
                   {donneesMetres.sort((a, b) => parseFloat(b.margePct) - parseFloat(a.margePct)).map((t) => (
-                    <tr key={t.nom} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                    <tr key={t.nom} style={{ borderBottom: '1px solid var(--ds-td-border)' }}>
                       <td style={{ padding: '12px 15px' }}><strong style={{ color: 'var(--text-primary)' }}>{t.nom}</strong></td>
                       <td style={{ padding: '12px 15px', color: 'var(--text-primary)' }}>{t.count}</td>
                       <td style={{ padding: '12px 15px', color: 'var(--text-primary)' }}>{t.surface} m²</td>
@@ -724,8 +724,8 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
                     const r = statutRentabilite(cl.margePct);
                     return (
                       <div key={cl.id} className="premium-card" style={{ flex: 1, minWidth: 180,
-                        background: `linear-gradient(145deg, ${couleurs[i]}12 0%, rgba(255,255,255,0.025) 100%)`,
-                        border: `1px solid ${couleurs[i]}30`, borderRadius: 14, padding: '20px', textAlign: 'center' }}>
+                        ...DS.cardCompact,
+                        border: `1px solid ${couleurs[i]}30`, padding: '20px', textAlign: 'center' }}>
                         <div style={{ fontSize: 28, marginBottom: 4 }}>{medailles[i]}</div>
                         <div style={{ fontWeight: 700, color: 'var(--text-primary)', marginBottom: 2 }}>{cl.nom}</div>
                         <div style={{ fontSize: 18, fontWeight: 800, color: couleurs[i], letterSpacing: '-0.3px' }}>CHF {fmtN(Math.round(cl.ca))}</div>
@@ -809,8 +809,8 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
                 { label: 'Chantiers', cible: `${objectifs.nbChantiers}`, reel: `${nbChantiersReel}`, pct: pctNb, couleur: pctNb >= 80 ? '#10b981' : pctNb >= 50 ? '#f59e0b' : '#ef4444' },
               ].map(item => (
                 <div key={item.label} className="premium-card" style={{
-                  background: `linear-gradient(145deg, ${item.couleur}12 0%, rgba(255,255,255,0.025) 100%)`,
-                  border: `1px solid ${item.couleur}28`, borderRadius: 14, padding: '22px', position: 'relative', overflow: 'hidden',
+                  ...DS.cardCompact,
+                  border: `1px solid ${item.couleur}28`, padding: '22px', position: 'relative', overflow: 'hidden',
                 }}>
                   <div style={{ position: 'absolute', top: 0, left: 16, right: 16, height: 1, background: `linear-gradient(90deg, transparent, ${item.couleur}45 50%, transparent)` }} />
                   <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px', color: 'var(--text-muted)', marginBottom: 8 }}>{item.label}</div>
@@ -818,7 +818,7 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
                     <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.4px' }}>{item.reel}</div>
                     <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Cible: {item.cible}</div>
                   </div>
-                  <div style={{ background: 'rgba(255,255,255,0.07)', borderRadius: 8, height: 10, overflow: 'hidden' }}>
+                  <div style={{ background: 'var(--border-soft)', borderRadius: 8, height: 10, overflow: 'hidden' }}>
                     <div style={{ background: `linear-gradient(90deg, ${item.couleur}, ${item.couleur}cc)`, width: `${item.pct}%`, height: '100%', borderRadius: 8, boxShadow: `0 0 8px ${item.couleur}55`, transition: 'width 0.5s ease' }} />
                   </div>
                   <div style={{ fontSize: 12, color: item.couleur, fontWeight: 700, marginTop: 6 }}>{item.pct.toFixed(0)}% de l'objectif atteint</div>
@@ -853,9 +853,9 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
                       const r = statutRentabilite(c.couts.margeReelPct);
                       return (
                         <div key={c.id} className="premium-card" style={{
-                          background: `linear-gradient(135deg, ${r.couleur}0a 0%, rgba(255,255,255,0.025) 100%)`,
+                          ...DS.cardCompact,
                           border: `1px solid ${r.couleur}28`, borderLeft: `3px solid ${r.couleur}`,
-                          borderRadius: 10, padding: '14px 18px',
+                          padding: '14px 18px',
                           display: 'flex', alignItems: 'center', gap: 16,
                         }}>
                           <span style={{ background: r.couleur + '22', color: r.couleur, border: `1px solid ${r.couleur}44`, borderRadius: 20, padding: '3px 10px', fontSize: 11, fontWeight: 700, flexShrink: 0 }}>{r.label}</span>

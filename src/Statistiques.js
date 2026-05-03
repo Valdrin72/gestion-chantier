@@ -149,12 +149,9 @@ export default function Statistiques({ chantiers, clients, devis = [], parametre
           { titre: "Prévision 3 mois", valeur: `CHF ${fmtN(Math.round(prevision3Mois))}`, couleur: C.violet, icone: 'info' },
         ].map(s => (
           <div key={s.titre} style={{
-            background: `linear-gradient(145deg, ${s.couleur}0a 0%, rgba(255,255,255,0.028) 60%, rgba(255,255,255,0.02) 100%)`,
-            backdropFilter: 'blur(14px) saturate(1.6)',
-            WebkitBackdropFilter: 'blur(14px) saturate(1.6)',
+            ...DS.card,
             border: `1px solid ${s.couleur}28`,
-            borderRadius: 16, padding: '22px', flex: 1, minWidth: 150,
-            boxShadow: `0 2px 8px rgba(0,0,0,0.3), 0 8px 28px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.08)`,
+            flex: 1, minWidth: 150, padding: '22px',
             position: 'relative', overflow: 'hidden',
           }}>
             <div style={{ width: 38, height: 38, borderRadius: 10,
@@ -321,7 +318,7 @@ export default function Statistiques({ chantiers, clients, devis = [], parametre
             </tr></thead>
             <tbody>
               {donneesTravaux.map((t) => (
-                <tr key={t.nom} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                <tr key={t.nom} style={{ borderBottom: '1px solid var(--ds-td-border)' }}>
                   <td style={{ padding: '10px 15px' }}><strong>{t.nom}</strong></td>
                   <td style={{ padding: '10px 15px' }}>{t.count}</td>
                   <td style={{ padding: '10px 15px' }}>{t.m2} m²</td>
@@ -420,7 +417,7 @@ export default function Statistiques({ chantiers, clients, devis = [], parametre
                     const couleurEc = d.statut === 'en_retard' ? C.danger : d.statut === 'en_avance' ? C.secondaire : '#78909c';
                     const statutLabel = { en_retard: 'Dépassement', en_avance: 'En avance', ok: 'Conforme' }[d.statut] || d.statut;
                     return (
-                      <tr key={d.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                      <tr key={d.id} style={{ borderBottom: '1px solid var(--ds-td-border)' }}>
                         <td style={{ padding: '10px 15px', fontWeight: 600 }}>{d.nom}</td>
                         <td style={{ padding: '10px 15px', color: C.primaire, fontWeight: 700 }}>{d.Prévus}j</td>
                         <td style={{ padding: '10px 15px', color: couleurEc, fontWeight: 700 }}>{d.Réalisés}j</td>
@@ -456,7 +453,7 @@ export default function Statistiques({ chantiers, clients, devis = [], parametre
           </tr></thead>
           <tbody>
             {donneesClients.map((c, i) => (
-              <tr key={c.nom} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', background: i === 0 ? 'rgba(245,158,11,0.08)' : 'transparent' }}>
+              <tr key={c.nom} style={{ borderBottom: '1px solid var(--ds-td-border)', background: i === 0 ? 'rgba(245,158,11,0.08)' : 'transparent' }}>
                 <td style={{ padding: '10px 15px' }}>{i === 0 ? '1er' : i === 1 ? '2e' : i === 2 ? '3e' : `${i + 1}`}</td>
                 <td style={{ padding: '10px 15px' }}><strong>{c.nom}</strong></td>
                 <td style={{ padding: '10px 15px' }}>{c.chantiers}</td>
@@ -501,7 +498,7 @@ export default function Statistiques({ chantiers, clients, devis = [], parametre
                         <span style={{ fontSize: 13, fontWeight: 800, color: couleur }}>CHF {fmtN(emp.coutTotal)}</span>
                       </div>
                     </div>
-                    <div style={{ height: 8, background: 'rgba(255,255,255,0.05)', borderRadius: 6, overflow: 'hidden' }}>
+                    <div style={{ height: 8, background: 'var(--border-soft)', borderRadius: 6, overflow: 'hidden' }}>
                       <div style={{ height: '100%', width: `${pct}%`, background: `linear-gradient(90deg, ${couleur}cc, ${couleur}66)`, borderRadius: 6, transition: 'width 0.4s ease' }} />
                     </div>
                   </div>
@@ -520,7 +517,7 @@ export default function Statistiques({ chantiers, clients, devis = [], parametre
                 {donneesEmployes.map((emp, i) => {
                   const couleur = i === 0 ? C.danger : i === 1 ? C.warning : 'var(--text-primary)';
                   return (
-                    <tr key={emp.nom} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                    <tr key={emp.nom} style={{ borderBottom: '1px solid var(--ds-td-border)' }}>
                       <td style={{ padding: '10px 15px', fontWeight: 700, color: couleur }}>{emp.nom}</td>
                       <td style={{ padding: '10px 15px', color: 'var(--text-muted)', fontSize: 12 }}>{emp.poste}</td>
                       <td style={{ padding: '10px 15px' }}>CHF {fmtN(emp.tarifJour)}</td>

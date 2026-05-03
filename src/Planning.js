@@ -69,9 +69,9 @@ function VueCharge({ chantiers, clients }) {
       <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 24, padding: '14px 20px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 12 }}>
         <span style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 600 }}>Capacité équipe :</span>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <button onClick={() => setCapacite(Math.max(1, capacite - 1))} style={{ width: 28, height: 28, borderRadius: 8, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)', color: 'var(--text-primary)', cursor: 'pointer', fontSize: 16, fontFamily: 'Inter,sans-serif' }}>−</button>
+          <button onClick={() => setCapacite(Math.max(1, capacite - 1))} style={{ width: 28, height: 28, borderRadius: 8, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)', color: 'var(--text-primary)', cursor: 'pointer', fontSize: 16, fontFamily: 'inherit' }}>−</button>
           <span style={{ fontSize: 20, fontWeight: 900, color: 'var(--text-primary)', minWidth: 24, textAlign: 'center' }}>{capacite}</span>
-          <button onClick={() => setCapacite(capacite + 1)} style={{ width: 28, height: 28, borderRadius: 8, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)', color: 'var(--text-primary)', cursor: 'pointer', fontSize: 16, fontFamily: 'Inter,sans-serif' }}>+</button>
+          <button onClick={() => setCapacite(capacite + 1)} style={{ width: 28, height: 28, borderRadius: 8, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)', color: 'var(--text-primary)', cursor: 'pointer', fontSize: 16, fontFamily: 'inherit' }}>+</button>
           <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>personnes disponibles · {capacite * 5} jours-homme / semaine</span>
         </div>
       </div>
@@ -102,7 +102,7 @@ function VueCharge({ chantiers, clients }) {
       )}
 
       {/* ── Graphe barres 12 semaines ── */}
-      <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 16, padding: '22px 24px', marginBottom: 24 }}>
+      <div style={{ ...DS.card, padding: '22px 24px', marginBottom: 24 }}>
         <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 20 }}>Charge prévue — 12 semaines</div>
         <div style={{ display: 'flex', gap: 6, alignItems: 'flex-end', height: 120, marginBottom: 8 }}>
           {semaines.map(s => {

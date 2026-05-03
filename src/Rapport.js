@@ -139,7 +139,7 @@ export default function Rapport({ chantiers, clients, devis = [], parametres, pa
                 const client = clients.find(cl => cl.id === c.clientId);
                 const scoreQ = getScoreQualite(c.id);
                 return (
-                  <tr key={c.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                  <tr key={c.id} style={{ borderBottom: '1px solid var(--ds-td-border)' }}>
                     <td style={{ padding: '12px 15px' }}><strong>{c.nom}</strong><div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>{c.numero}</div></td>
                     <td style={{ padding: '12px 15px' }}>{client?.entreprise || '-'}</td>
                     <td style={{ padding: '12px 15px' }}>
@@ -150,7 +150,7 @@ export default function Rapport({ chantiers, clients, devis = [], parametres, pa
                         if (progress > 70) color = '#22c55e';
                         return (
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <div style={{ background: 'rgba(255,255,255,0.08)', borderRadius: '10px', height: '8px', width: '80px', overflow: 'hidden' }}>
+                            <div style={{ background: 'var(--border)', borderRadius: '10px', height: '8px', width: '80px', overflow: 'hidden' }}>
                               <div style={{ background: `linear-gradient(90deg, ${color}, ${color}cc)`, width: `${progress}%`, height: '8px', borderRadius: '10px', transition: 'width 0.4s ease', boxShadow: `0 0 8px ${color}` }} />
                             </div>
                             <span style={{ fontSize: '13px', fontWeight: 'bold' }}>{progress}%</span>
@@ -235,11 +235,11 @@ export default function Rapport({ chantiers, clients, devis = [], parametres, pa
             {chantiersEnCours.map((c, i) => {
               const score = getScoreQualite(c.id);
               return (
-                <tr key={c.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                <tr key={c.id} style={{ borderBottom: '1px solid var(--ds-td-border)' }}>
                   <td style={{ padding: '12px 15px' }}><strong>{c.nom}</strong></td>
                   <td style={{ padding: '12px 15px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <div style={{ background: 'rgba(255,255,255,0.08)', borderRadius: '10px', height: '8px', width: '100px' }}>
+                      <div style={{ background: 'var(--border)', borderRadius: '10px', height: '8px', width: '100px' }}>
                         <div style={{ background: `linear-gradient(90deg, ${couleurScore(score)}, ${couleurScore(score)}cc)`, width: `${score}%`, height: '8px', borderRadius: '10px', boxShadow: `0 0 6px ${couleurScore(score)}55` }} />
                       </div>
                       <span style={{ fontWeight: 'bold', color: couleurScore(score) }}>{score}%</span>
@@ -273,7 +273,7 @@ export default function Rapport({ chantiers, clients, devis = [], parametres, pa
               {chantiersSemaineProchaine.map((c, i) => {
                 const client = clients.find(cl => cl.id === c.clientId);
                 return (
-                  <tr key={c.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                  <tr key={c.id} style={{ borderBottom: '1px solid var(--ds-td-border)' }}>
                     <td style={{ padding: '12px 15px' }}><strong>{c.nom}</strong></td>
                     <td style={{ padding: '12px 15px' }}>{client?.entreprise || '-'}</td>
                     <td style={{ padding: '12px 15px' }}>{c.dateDebut}</td>

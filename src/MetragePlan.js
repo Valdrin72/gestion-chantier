@@ -137,7 +137,7 @@ export default function MetragePlan({ parametres, onCreerChantier, onCreerDevis 
             </select>
           </div>
           {nomFichier && (
-            <div style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '20px', padding: '6px 14px', fontSize: '12px', color: 'var(--text-secondary)', fontFamily: 'Inter, sans-serif' }}>
+            <div style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '20px', padding: '6px 14px', fontSize: '12px', color: 'var(--text-secondary)', fontFamily: 'inherit' }}>
               {nomFichier}
             </div>
           )}

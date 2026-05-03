@@ -130,7 +130,7 @@ export default function Photos({ chantiers, photosData, setPhotosData }) {
             const nb = getPhotos(c.id, cat.id).length;
             return (
               <button key={cat.id} onClick={() => setCategorieActive(cat.id)}
-                style={{ background: categorieActive === cat.id ? cat.couleur + '28' : 'rgba(255,255,255,0.04)', color: categorieActive === cat.id ? cat.couleur : 'var(--text-secondary)', border: `1px solid ${categorieActive === cat.id ? cat.couleur + '60' : 'rgba(255,255,255,0.08)'}`, padding: '6px 14px', borderRadius: '20px', cursor: 'pointer', fontSize: '12px', fontWeight: categorieActive === cat.id ? 700 : 500, fontFamily: 'Inter, sans-serif', transition: 'all 0.18s' }}>
+                style={{ background: categorieActive === cat.id ? cat.couleur + '28' : 'rgba(255,255,255,0.04)', color: categorieActive === cat.id ? cat.couleur : 'var(--text-secondary)', border: `1px solid ${categorieActive === cat.id ? cat.couleur + '60' : 'rgba(255,255,255,0.08)'}`, padding: '6px 14px', borderRadius: '20px', cursor: 'pointer', fontSize: '12px', fontWeight: categorieActive === cat.id ? 700 : 500, fontFamily: 'inherit', transition: 'all 0.18s' }}>
                 {cat.label} {nb > 0 && <span style={{ background: 'rgba(255,255,255,0.3)', borderRadius: '10px', padding: '1px 7px', marginLeft: '5px' }}>{nb}</span>}
               </button>
             );

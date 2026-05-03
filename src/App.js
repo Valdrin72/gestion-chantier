@@ -16,7 +16,7 @@ import Qualite from './Qualite';
 import Rapport from './Rapport';
 import Analyse from './Analyse';
 import Login, { PROFILS } from './Login';
-import { DS } from './ds';
+import { DS, couleurStatut as couleurStatutDS, badgeStatut } from './ds';
 import useAgents from './useAgents';
 import Agents from './Agents';
 import Calendrier from './Calendrier';
@@ -1102,21 +1102,20 @@ function Dashboard({ chantiers, clients, factures, devis = [], parametres, navig
           { label: "Chiffre d'affaires", Icon: DollarSign, page: 'devis',
             valeur: `CHF ${fmtN(kpi.caEnCours)}`,
             sous: kpi.nbChantiersActifs > 0 ? `${kpi.nbChantiersActifs} chantier${kpi.nbChantiersActifs !== 1 ? 's' : ''} actif${kpi.nbChantiersActifs !== 1 ? 's' : ''}` : 'Aucun chantier actif',
-            gradient: 'linear-gradient(135deg, #1E40AF 0%, #3B82F6 100%)', glow: 'rgba(59,130,246,0.32)' },
+            ...DS.kpi.blue },
           { label: 'Marge moyenne', Icon: TrendingUp, page: 'analyse',
             valeur: kpi.rentaMoyenne !== null ? `${Math.round(kpi.rentaMoyenne)}%` : '—',
             sous: kpi.nbChantiersRenta > 0 ? `${kpi.nbChantiersRenta} chantier${kpi.nbChantiersRenta > 1 ? 's' : ''} analysé${kpi.nbChantiersRenta > 1 ? 's' : ''}` : 'Aucun coût saisi',
-            gradient: kpi.rentaMoyenne === null ? 'linear-gradient(135deg, #065F46 0%, #10B981 100%)' : kpi.rentaMoyenne >= 15 ? 'linear-gradient(135deg, #065F46 0%, #10B981 100%)' : kpi.rentaMoyenne >= 0 ? 'linear-gradient(135deg, #92400E 0%, #F59E0B 100%)' : 'linear-gradient(135deg, #991B1B 0%, #EF4444 100%)',
-            glow: kpi.rentaMoyenne !== null && kpi.rentaMoyenne >= 15 ? 'rgba(16,185,129,0.32)' : kpi.rentaMoyenne !== null && kpi.rentaMoyenne >= 0 ? 'rgba(245,158,11,0.32)' : 'rgba(239,68,68,0.32)' },
+            ...(kpi.rentaMoyenne === null || kpi.rentaMoyenne >= 15 ? DS.kpi.green : kpi.rentaMoyenne >= 0 ? DS.kpi.amber : DS.kpi.red) },
           { label: 'Chantiers actifs', Icon: HardHat, page: 'chantiers',
             valeur: `${kpi.nbChantiersActifs}`,
             sous: kpiReel.nbDepassement > 0 ? `${kpiReel.nbDepassement} en retard` : 'Tous dans les temps',
-            gradient: 'linear-gradient(135deg, #92400E 0%, #F59E0B 100%)', glow: 'rgba(245,158,11,0.32)',
+            ...DS.kpi.amber,
             badge: kpiReel.nbDepassement > 0 ? `${kpiReel.nbDepassement} en retard` : null },
-          { label: 'Heures ce mois', Icon: Clock, page: 'planning',
+          { label: 'Heures ce mois', Icon: Clock, page: 'heures',
             valeur: kpi.heuresEngagees > 0 ? `${fmtN(kpi.heuresEngagees)}h` : '—',
             sous: kpi.nbEmployes > 0 ? `${kpi.nbEmployes} employé${kpi.nbEmployes > 1 ? 's' : ''} mobilisé${kpi.nbEmployes > 1 ? 's' : ''}` : 'Équipes non renseignées',
-            gradient: 'linear-gradient(135deg, #4C1D95 0%, #8B5CF6 100%)', glow: 'rgba(139,92,246,0.32)' },
+            ...DS.kpi.purple },
         ].map(({ label, Icon, page: dest, valeur, sous, gradient, glow, badge }) => (
           <div key={label} onClick={() => naviguer(dest)}
             style={{ background: gradient, borderRadius: 16, padding: '22px 20px', minHeight: 130, cursor: 'pointer', boxShadow: `0 4px 20px ${glow}, 0 1px 4px rgba(0,0,0,0.12)`, border: '1px solid rgba(255,255,255,0.15)', transition: 'transform 0.18s, box-shadow 0.18s', position: 'relative', overflow: 'hidden' }}
@@ -2011,7 +2010,7 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
   const [erreurs, setErreurs] = useState({});
 
   const statuts = ['Tous', 'Planifié', 'En cours', 'Suspendu', 'Terminé', 'Facturé', 'Clôturé'];
-  const couleurStatut = (s) => ({ 'En cours': C.warning, 'Terminé': C.secondaire, 'Planifié': C.info, 'Suspendu': C.danger, 'Facturé': C.violet, 'Clôturé': '#455a64' }[s] || C.primaire);
+  const couleurStatut = couleurStatutDS;
 
   const chantiersFiltres = useMemo(() => {
     let liste = filtre === 'Tous' ? chantiers : chantiers.filter(c => c.statut === filtre);
@@ -2851,10 +2850,10 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
           margeMoyenne = Math.round(sum / chantiersAvecData.length);
         }
         const kpiItems = [
-          { label: 'EN COURS',       val: nbEnCours,  Icon: HardHat,    gradient: 'linear-gradient(135deg, #1E40AF 0%, #3B82F6 100%)', glow: 'rgba(59,130,246,0.32)', badge: nbEnRetard > 0 ? `${nbEnRetard} en retard` : null },
-          { label: 'CA TOTAL',       val: `CHF ${fmtN(caTotal)}`, Icon: DollarSign, gradient: 'linear-gradient(135deg, #065F46 0%, #10B981 100%)', glow: 'rgba(16,185,129,0.32)' },
-          { label: 'MARGE MOYENNE',  val: margeMoyenne !== null ? `${margeMoyenne}%` : '—', Icon: TrendingUp, gradient: 'linear-gradient(135deg, #92400E 0%, #F59E0B 100%)', glow: 'rgba(245,158,11,0.32)' },
-          { label: 'JOURS PLANIFIÉS',val: `${fmtN(joursPlanifies)}j`, Icon: Clock, gradient: 'linear-gradient(135deg, #4C1D95 0%, #8B5CF6 100%)', glow: 'rgba(139,92,246,0.32)' },
+          { label: 'EN COURS',       val: nbEnCours,  Icon: HardHat,    ...DS.kpi.blue,   badge: nbEnRetard > 0 ? `${nbEnRetard} en retard` : null },
+          { label: 'CA TOTAL',       val: `CHF ${fmtN(caTotal)}`, Icon: DollarSign, ...DS.kpi.green },
+          { label: 'MARGE MOYENNE',  val: margeMoyenne !== null ? `${margeMoyenne}%` : '—', Icon: TrendingUp, ...DS.kpi.amber },
+          { label: 'JOURS PLANIFIÉS',val: `${fmtN(joursPlanifies)}j`, Icon: Clock, ...DS.kpi.purple },
         ];
         return (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 20 }}>
@@ -3610,10 +3609,10 @@ function Devis({ devis, setDevis, clients, parametres, naviguer, setChantiers, c
           ? Math.round(enAttente.reduce((s, d) => { const dt = d.dateEmission || d.date || 0; return s + Math.floor((now - new Date(dt)) / 86400000); }, 0) / enAttente.length)
           : null;
         const kpiItems = [
-          { label: 'MONTANT TOTAL',       val: `CHF ${fmtN(montantTotal)}`, Icon: DollarSign, gradient: 'linear-gradient(135deg, #1E40AF 0%, #3B82F6 100%)', glow: 'rgba(59,130,246,0.32)' },
-          { label: "TAUX D'ACCEPTATION",  val: `${tauxAcceptation}%`,        Icon: TrendingUp, gradient: 'linear-gradient(135deg, #065F46 0%, #10B981 100%)', glow: 'rgba(16,185,129,0.32)' },
-          { label: 'EN ATTENTE',          val: enAttente.length,              Icon: Clock,      gradient: 'linear-gradient(135deg, #92400E 0%, #F59E0B 100%)', glow: 'rgba(245,158,11,0.32)', badge: montantAttente > 0 ? `CHF ${fmtN(montantAttente)}` : null },
-          { label: 'DÉLAI MOYEN',         val: delaisMoyen !== null ? `${delaisMoyen}j` : '—', Icon: FileText, gradient: 'linear-gradient(135deg, #4C1D95 0%, #8B5CF6 100%)', glow: 'rgba(139,92,246,0.32)' },
+          { label: 'MONTANT TOTAL',       val: `CHF ${fmtN(montantTotal)}`, Icon: DollarSign, ...DS.kpi.blue },
+          { label: "TAUX D'ACCEPTATION",  val: `${tauxAcceptation}%`,        Icon: TrendingUp, ...DS.kpi.green },
+          { label: 'EN ATTENTE',          val: enAttente.length,              Icon: Clock,      ...DS.kpi.amber, badge: montantAttente > 0 ? `CHF ${fmtN(montantAttente)}` : null },
+          { label: 'DÉLAI MOYEN',         val: delaisMoyen !== null ? `${delaisMoyen}j` : '—', Icon: FileText, ...DS.kpi.purple },
         ];
         return (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 20 }}>
@@ -3884,10 +3883,10 @@ function Clients({ clients, setClients, chantiers, devis = [], naviguer }) {
         const nbActifs = clients.filter(c => chantiers.some(ch => ch.clientId === c.id && ch.statut === 'En cours')).length;
         const entreprises = clients.filter(c => c.type === 'Entreprise').length;
         const kpiItems = [
-          { label: 'TOTAL CLIENTS',    val: clients.length,      Icon: Users,      gradient: 'linear-gradient(135deg, #1E40AF 0%, #3B82F6 100%)', glow: 'rgba(59,130,246,0.32)', badge: `${nbActifs} actifs` },
-          { label: 'CA TOTAL',         val: `CHF ${fmtN(caTotal)}`, Icon: DollarSign, gradient: 'linear-gradient(135deg, #065F46 0%, #10B981 100%)', glow: 'rgba(16,185,129,0.32)' },
-          { label: 'AVEC CHANTIER',    val: nbAvecChantier,       Icon: HardHat,    gradient: 'linear-gradient(135deg, #92400E 0%, #F59E0B 100%)', glow: 'rgba(245,158,11,0.32)' },
-          { label: 'ENTREPRISES',       val: entreprises,           Icon: FileText,   gradient: 'linear-gradient(135deg, #4C1D95 0%, #8B5CF6 100%)', glow: 'rgba(139,92,246,0.32)' },
+          { label: 'TOTAL CLIENTS',    val: clients.length,      Icon: Users,      ...DS.kpi.blue,   badge: `${nbActifs} actifs` },
+          { label: 'CA TOTAL',         val: `CHF ${fmtN(caTotal)}`, Icon: DollarSign, ...DS.kpi.green },
+          { label: 'AVEC CHANTIER',    val: nbAvecChantier,       Icon: HardHat,    ...DS.kpi.amber },
+          { label: 'ENTREPRISES',       val: entreprises,           Icon: FileText,   ...DS.kpi.purple },
         ];
         return (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 20 }}>
@@ -4020,10 +4019,10 @@ function Employes({ parametres, setParametres, chantiers, naviguer }) {
         const coutMensuel = employes.filter(e => e.actif !== false).reduce((s, e) => s + (parseFloat(e.tarifJour) || 0) * 20, 0);
         const tarifMoyen = nbActifs > 0 ? Math.round(employes.filter(e => e.actif !== false).reduce((s, e) => s + (parseFloat(e.tarifJour) || 0), 0) / nbActifs) : 0;
         const kpiItems = [
-          { label: 'EFFECTIF',      val: employes.length, Icon: Users,      gradient: 'linear-gradient(135deg, #1E40AF 0%, #3B82F6 100%)', glow: 'rgba(59,130,246,0.32)', badge: `${nbActifs} actifs` },
-          { label: 'HEURES TOTALES',val: `${fmtN(Math.round(heuresTotal))}h`, Icon: Clock, gradient: 'linear-gradient(135deg, #065F46 0%, #10B981 100%)', glow: 'rgba(16,185,129,0.32)' },
-          { label: 'COÛT MENSUEL',  val: `CHF ${fmtN(coutMensuel)}`, Icon: DollarSign, gradient: 'linear-gradient(135deg, #92400E 0%, #F59E0B 100%)', glow: 'rgba(245,158,11,0.32)' },
-          { label: 'TARIF MOYEN',   val: `CHF ${fmtN(tarifMoyen)}/j`, Icon: TrendingUp, gradient: 'linear-gradient(135deg, #4C1D95 0%, #8B5CF6 100%)', glow: 'rgba(139,92,246,0.32)' },
+          { label: 'EFFECTIF',      val: employes.length, Icon: Users,      ...DS.kpi.blue,   badge: `${nbActifs} actifs` },
+          { label: 'HEURES TOTALES',val: `${fmtN(Math.round(heuresTotal))}h`, Icon: Clock, ...DS.kpi.green },
+          { label: 'COÛT MENSUEL',  val: `CHF ${fmtN(coutMensuel)}`, Icon: DollarSign, ...DS.kpi.amber },
+          { label: 'TARIF MOYEN',   val: `CHF ${fmtN(tarifMoyen)}/j`, Icon: TrendingUp, ...DS.kpi.purple },
         ];
         return (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 20 }}>

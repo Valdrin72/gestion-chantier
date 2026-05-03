@@ -1,7 +1,8 @@
 import React, { useState, useMemo } from 'react';
-import { ChevronLeft, ChevronRight, Clock, AlertCircle } from 'lucide-react';
+import { Clock } from 'lucide-react';
 import { DS } from './ds';
 import { fmtN } from './donnees';
+import KpiCard from './components/ui/KpiCard';
 
 function getWeekStart(date) {
   const d = new Date(date);
@@ -83,11 +84,16 @@ export default function Heures({ chantiers = [], parametres = {}, setChantiers }
 
   const weekLabel = `Semaine du ${weekStart.toLocaleDateString('fr-CH', { day: 'numeric', month: 'long' })} au ${addDays(weekStart, 6).toLocaleDateString('fr-CH', { day: 'numeric', month: 'long', year: 'numeric' })}`;
 
+  const nbSuppEmployes = employes.filter(e => {
+    const m = hoursMap[e.id] || {};
+    return weekDays.slice(0, 5).some(d => (m[isoDate(d)] || 0) > 8);
+  }).length;
+
   const KPI_ITEMS = [
-    { label: 'HEURES SEMAINE', val: `${fmtN(Math.round(totalHeures))}h`, gradient: 'linear-gradient(135deg, #1E40AF 0%, #3B82F6 100%)', glow: 'rgba(59,130,246,0.32)' },
-    { label: 'MOYENNE / EMPLOYÉ', val: `${moyenneParEmploye}h`, gradient: 'linear-gradient(135deg, #065F46 0%, #10B981 100%)', glow: 'rgba(16,185,129,0.32)' },
-    { label: 'HEURES SUPP.', val: `${Math.round(totalSupp)}h`, gradient: 'linear-gradient(135deg, #92400E 0%, #F59E0B 100%)', glow: 'rgba(245,158,11,0.32)', badge: totalSupp > 0 ? `${employes.filter(e => { const m = hoursMap[e.id] || {}; return weekDays.slice(0,5).some(d => (m[isoDate(d)] || 0) > 8); }).length} employés` : null },
-    { label: 'NON SAISIES', val: `${nonSaisis}`, gradient: nonSaisis > 0 ? 'linear-gradient(135deg, #991B1B 0%, #EF4444 100%)' : 'linear-gradient(135deg, #065F46 0%, #10B981 100%)', glow: nonSaisis > 0 ? 'rgba(239,68,68,0.32)' : 'rgba(16,185,129,0.32)', badge: nonSaisis > 0 ? 'Relancer' : null },
+    { label: 'HEURES SEMAINE',  value: `${fmtN(Math.round(totalHeures))}h`,  ...DS.kpi.blue },
+    { label: 'MOYENNE / EMPLOYÉ', value: `${moyenneParEmploye}h`,            ...DS.kpi.green },
+    { label: 'HEURES SUPP.',    value: `${Math.round(totalSupp)}h`,           ...DS.kpi.amber, badge: totalSupp > 0 ? `${nbSuppEmployes} employé${nbSuppEmployes > 1 ? 's' : ''}` : null },
+    { label: 'NON SAISIES',     value: `${nonSaisis}`,                        ...(nonSaisis > 0 ? DS.kpi.red : DS.kpi.green), badge: nonSaisis > 0 ? 'Relancer' : null },
   ];
 
   const btnStyle = { background: 'var(--ds-btn-ghost-bg)', border: '1px solid var(--ds-btn-ghost-border)', borderRadius: 8, padding: '7px 14px', cursor: 'pointer', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', fontFamily: 'inherit', transition: 'all 0.15s' };
@@ -118,13 +124,7 @@ export default function Heures({ chantiers = [], parametres = {}, setChantiers }
       {/* KPI grid */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24 }}>
         {KPI_ITEMS.map(k => (
-          <div key={k.label} style={{ background: k.gradient, borderRadius: 16, padding: '22px 20px', minHeight: 120, boxShadow: `0 4px 20px ${k.glow}, 0 1px 4px rgba(0,0,0,0.12)`, border: '1px solid rgba(255,255,255,0.15)', position: 'relative', overflow: 'hidden' }}>
-            <div style={{ position: 'absolute', right: -18, top: -18, width: 80, height: 80, borderRadius: '50%', background: 'rgba(255,255,255,0.1)' }} />
-            <div style={{ position: 'absolute', right: -32, bottom: -32, width: 100, height: 100, borderRadius: '50%', background: 'rgba(255,255,255,0.06)' }} />
-            <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.7)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 8, position: 'relative' }}>{k.label}</div>
-            <div style={{ fontSize: 26, fontWeight: 900, color: '#fff', letterSpacing: '-0.8px', lineHeight: 1, position: 'relative' }}>{k.val}</div>
-            {k.badge && <span style={{ display: 'inline-block', marginTop: 7, background: 'rgba(255,255,255,0.22)', color: '#fff', borderRadius: 20, padding: '1px 8px', fontSize: 10, fontWeight: 700, position: 'relative' }}>{k.badge}</span>}
-          </div>
+          <KpiCard key={k.label} label={k.label} value={k.value} gradient={k.gradient} glow={k.glow} badge={k.badge} />
         ))}
       </div>
 

@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { calculerDateFinOuvrables, joursOuvrableRestants, getAlerte, C } from './donnees';
-import { DS } from './ds';
+import { DS, couleurStatut } from './ds';
 
 const MOIS = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
 const JOURS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
@@ -180,14 +180,7 @@ export default function Planning({ chantiers, setChantiers, clients, naviguer })
   const [anneeActuelle, setAnneeActuelle] = useState(new Date().getFullYear());
   const [modal, setModal] = useState(null); // null ou { chantier, form }
 
-  const couleurStatut = (s) => ({
-    'En cours': C.warning,
-    'Terminé': C.secondaire,
-    'Planifié': C.info,
-    'Suspendu': C.danger,
-    'Facturé': C.violet,
-    'Clôturé': '#455a64'
-  }[s] || C.primaire);
+  // couleurStatut importé depuis ds.js — source unique DS.statuts
 
   // ── Modal helpers ──────────────────────────────────────────────
   const ouvrirModal = useCallback((c) => {

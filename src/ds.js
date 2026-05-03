@@ -53,7 +53,7 @@ export const DS = {
     alignItems: 'center',
     gap: '7px',
     boxShadow: '0 4px 14px rgba(59,130,246,0.32)',
-    fontFamily: "'DM Sans', Inter, sans-serif",
+    fontFamily: 'inherit',
     whiteSpace: 'nowrap',
   },
   // btnSuccess = gradient green
@@ -70,7 +70,7 @@ export const DS = {
     alignItems: 'center',
     gap: '7px',
     boxShadow: '0 4px 14px rgba(16,185,129,0.32)',
-    fontFamily: "'DM Sans', Inter, sans-serif",
+    fontFamily: 'inherit',
     whiteSpace: 'nowrap',
   },
   btnDanger: {
@@ -85,7 +85,7 @@ export const DS = {
     display: 'inline-flex',
     alignItems: 'center',
     gap: '6px',
-    fontFamily: "'DM Sans', Inter, sans-serif",
+    fontFamily: 'inherit',
     whiteSpace: 'nowrap',
   },
   // btnGhost = { background:'#fff', color:'#475569', border:'1px solid #E2E8F0' }
@@ -101,7 +101,7 @@ export const DS = {
     display: 'inline-flex',
     alignItems: 'center',
     gap: '7px',
-    fontFamily: "'DM Sans', Inter, sans-serif",
+    fontFamily: 'inherit',
     whiteSpace: 'nowrap',
   },
   btnWarning: {
@@ -116,13 +116,13 @@ export const DS = {
     display: 'inline-flex',
     alignItems: 'center',
     gap: '6px',
-    fontFamily: "'DM Sans', Inter, sans-serif",
+    fontFamily: 'inherit',
     whiteSpace: 'nowrap',
   },
   // iconBtn = petits boutons action dans les tableaux (28×28)
   iconBtn: {
-    background: '#F8FAFC',
-    border: '1px solid #E2E8F0',
+    background: 'var(--bg-hover)',
+    border: '1px solid var(--border)',
     borderRadius: '7px',
     width: '28px',
     height: '28px',
@@ -156,7 +156,7 @@ export const DS = {
     background: 'var(--ds-input-bg)',
     color: 'var(--text-primary)',
     fontSize: '13.5px',
-    fontFamily: "'DM Sans', Inter, sans-serif",
+    fontFamily: 'inherit',
     boxSizing: 'border-box',
     outline: 'none',
   },

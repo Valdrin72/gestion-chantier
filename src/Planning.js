@@ -5,6 +5,7 @@ import { DS } from './ds';
 const MOIS = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
 const JOURS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
 const STATUTS = ['Planifié', 'En cours', 'Suspendu', 'Terminé', 'Facturé', 'Clôturé'];
+const PALETTE = ['#3b82f6','#10b981','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#f97316','#ec4899'];
 
 // ── Capacité de l'entreprise (jours-homme / jour) ─────────────────────────
 const CAPACITE_PAR_DEFAUT = 4; // personnes disponibles — configurable
@@ -314,7 +315,6 @@ export default function Planning({ chantiers, setChantiers, clients, naviguer })
 
   const btnNav = { background: 'var(--ds-btn-ghost-bg)', border: '1px solid var(--ds-btn-ghost-border)', borderRadius: 8, padding: '6px 12px', cursor: 'pointer', fontSize: 14, fontWeight: 700, color: 'var(--text-secondary)', fontFamily: 'inherit' };
 
-  const PALETTE = ['#3b82f6','#10b981','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#f97316','#ec4899'];
   const chantierColors = useMemo(() => {
     const map = {};
     chantiersDuMois.forEach((c, i) => { map[c.id] = PALETTE[i % PALETTE.length]; });

@@ -271,7 +271,6 @@ function App() {
     { id: 'finances',   label: 'Finances',    Icon: DollarSign,      labelCourt: 'Finances' },
     { id: 'planning',   label: 'Planning',    Icon: Calendar,        labelCourt: 'Planning' },
     { id: 'rapport',    label: 'Rapports',    Icon: ClipboardList,   labelCourt: 'Rapports' },
-    { id: 'documents',  label: 'Documents',   Icon: FolderOpen,      labelCourt: 'Docs' },
     { id: 'agents',     label: 'Agents IA',   Icon: Bot,             labelCourt: 'Agents' },
     { id: 'parametres', label: 'Paramètres',  Icon: Settings,        labelCourt: 'Config' },
   ];
@@ -381,8 +380,7 @@ function App() {
           {page === 'rapport'     && <RapportsPage chantiers={chantiers} clients={clients} devis={devis} parametres={parametres} setParametres={setParametres} paiementsData={paiementsData} qualiteData={qualiteData} periodeGlobale={periodeGlobale} naviguer={naviguer} />}
           {page === 'agents'      && <Agents {...agentState} />}
           {page === 'parametres'  && <Parametres parametres={parametres} setParametres={setParametres} clients={clients} setClients={setClients} chantiers={chantiers} devis={devis} naviguer={naviguer} />}
-          {page === 'documents'   && <Documents chantiers={chantiers} devis={devis} factures={factures} clients={clients} naviguer={naviguer} />}
-          {page === 'heures'      && <Heures chantiers={chantiers} parametres={parametres} setChantiers={setChantiers} />}
+                    {page === 'heures'      && <Heures chantiers={chantiers} parametres={parametres} setChantiers={setChantiers} />}
         </main>
 
         {/* ===== NAVIGATION MOBILE BAS ===== */}

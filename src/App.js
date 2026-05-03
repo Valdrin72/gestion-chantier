@@ -4203,23 +4203,29 @@ function Parametres({ parametres, setParametres, clients = [], setClients = () =
           </button>
         </div>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px', marginBottom: '24px' }}>
-        {onglets.map(o => (
-          <div key={o.id} onClick={() => setOnglet(o.id)} style={{
-            background: onglet === o.id ? 'rgba(59,130,246,0.16)' : 'var(--bg-glass)',
-            backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)',
-            borderRadius: '12px', padding: '14px 12px', cursor: 'pointer', textAlign: 'center',
-            border: onglet === o.id ? '1px solid rgba(59,130,246,0.45)' : '1px solid var(--border)',
-            boxShadow: onglet === o.id ? '0 4px 20px rgba(59,130,246,0.18)' : '0 2px 12px rgba(0,0,0,0.3)',
-            transition: 'all 0.18s',
-          }}>
-            <div style={{ fontSize: '18px', marginBottom: '4px' }}>{o.label.split(' ')[0]}</div>
-            <div style={{ fontWeight: 700, color: onglet === o.id ? C.primaire : 'var(--text-primary)', fontSize: '11px' }}>{o.label.substring(2)}</div>
-            <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '2px' }}>{o.desc}</div>
-          </div>
-        ))}
-      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: '260px 1fr', gap: 20, alignItems: 'start' }}>
+        {/* ── Sidebar nav ── */}
+        <div style={{ ...DS.card, padding: 8 }}>
+          {onglets.map(o => {
+            const isActive = onglet === o.id;
+            return (
+              <div key={o.id} onClick={() => setOnglet(o.id)} style={{
+                display: 'flex', alignItems: 'center', gap: 10,
+                padding: '10px 12px', borderRadius: 10, cursor: 'pointer',
+                background: isActive ? '#EEF2FF' : 'transparent',
+                color: isActive ? '#4F46E5' : 'var(--text-primary)',
+                transition: 'all 0.15s', marginBottom: 2,
+              }}>
+                <span style={{ flex: 1, fontSize: 13, fontWeight: isActive ? 700 : 500 }}>{o.label}</span>
+                <span style={{ fontSize: 10, color: isActive ? '#6366F1' : 'var(--text-muted)', flex: 2, display: 'none' }}>{o.desc}</span>
+                <ChevronRight size={14} strokeWidth={2} style={{ color: isActive ? '#4F46E5' : 'var(--text-muted)', flexShrink: 0 }} />
+              </div>
+            );
+          })}
+        </div>
 
+        {/* ── Content panel ── */}
+        <div>
       {onglet === 'dashboard' && (
         <div style={carteStyle}>
           <div className="ds-card-title" style={{ marginBottom: '20px' }}>Paramètres du Dashboard</div>
@@ -4490,6 +4496,8 @@ function Parametres({ parametres, setParametres, clients = [], setClients = () =
       {onglet === 'clients_param' && (
         <Clients clients={clients} setClients={setClients} chantiers={chantiers} devis={devis} naviguer={naviguer} />
       )}
+        </div>{/* end content panel */}
+      </div>{/* end 260/1fr grid */}
     </div>
   );
 }

@@ -3523,7 +3523,7 @@ function Devis({ devis, setDevis, clients, parametres, naviguer, setChantiers, c
   const vide = {
     numero: `DEV-${new Date().getFullYear()}-00${devis.length + 1}`,
     clientId: '', date: new Date().toISOString().split('T')[0], statut: 'brouillon',
-    montantHT: '', heuresRegie: [], notes: '',
+    montantHT: '', dureeEstimee: '', heuresRegie: [], notes: '',
   };
   const [form, setForm] = useState(vide);
 
@@ -3564,7 +3564,7 @@ function Devis({ devis, setDevis, clients, parametres, naviguer, setChantiers, c
       nom: `Chantier — ${client?.entreprise || 'Nouveau'}`,
       numero: `CH-${new Date().getFullYear()}-00${chantiers.length + 1}`,
       clientId: d.clientId, montantDevis: parseFloat(d.montantHT || d.prixPropose) || 0, surface: 0,
-      statut: 'Planifié', priorite: 'Normale', avancement: 0, dateDebut: '', nombreJours: '',
+      statut: 'Planifié', priorite: 'Normale', avancement: 0, dateDebut: '', nombreJours: d.dureeEstimee || '',
       inclusSamedi: false, avenants: [], montantFacture: 0,
       typesTravaux: [], ville: '', canton: '', adresse: '',
       conducteur: '', directeurTravauxId: '', equipe: [], employes: [],
@@ -3685,6 +3685,25 @@ function Devis({ devis, setDevis, clients, parametres, naviguer, setChantiers, c
               </div>
             )}
           </div>
+          {/* ── Durée estimée ── */}
+          <div style={{ background: 'rgba(59,130,246,0.04)', border: '1px solid rgba(59,130,246,0.15)', borderRadius: 12, padding: '16px 20px', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 20 }}>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: '#3b82f6', marginBottom: 6 }}>Durée estimée (jours ouvrables)</div>
+              <input
+                type="number" min="1" step="1"
+                placeholder="Ex : 15"
+                value={form.dureeEstimee}
+                onChange={e => setForm({ ...form, dureeEstimee: e.target.value })}
+                style={{ ...inputStyle, width: 120, fontSize: 18, fontWeight: 700, borderColor: '#3b82f660' }}
+              />
+            </div>
+            {form.dureeEstimee && parseInt(form.dureeEstimee) > 0 && (
+              <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>
+                ≈ <strong style={{ color: '#3b82f6' }}>{Math.ceil(parseInt(form.dureeEstimee) / 5)} semaine{Math.ceil(parseInt(form.dureeEstimee) / 5) > 1 ? 's' : ''}</strong> de travail
+              </div>
+            )}
+          </div>
+
           {/* ── Heures en régie ── */}
           <div style={{ background: 'rgba(245,158,11,0.04)', border: '1px solid rgba(245,158,11,0.2)', borderRadius: 12, padding: '20px', marginBottom: 20 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>

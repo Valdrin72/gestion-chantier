@@ -459,13 +459,8 @@ export default function Planning({ chantiers, setChantiers, clients, naviguer })
                     fontSize: 11, fontWeight: isToday ? 700 : 400, borderRadius: 6,
                     background: isToday ? '#3b82f6' : busy > 0 ? 'rgba(59,130,246,0.12)' : 'transparent',
                     color: isToday ? '#fff' : busy > 0 ? '#1e40af' : jour ? 'var(--text-muted)' : 'transparent',
-                    cursor: busy > 0 ? 'default' : 'default',
-                    position: 'relative',
                   }}>
                     {jour}
-                    {busy > 1 && !isToday && (
-                      <span style={{ position: 'absolute', bottom: 1, right: 2, width: 5, height: 5, borderRadius: '50%', background: '#3b82f6', display: 'block' }} />
-                    )}
                   </div>
                 );
               })}

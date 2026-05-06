@@ -3,6 +3,7 @@
 // ============================================================
 import React, { useState, useMemo } from 'react';
 import { DollarSign, FileText, Clock, AlertTriangle, CreditCard, TrendingUp, Calendar, Zap } from 'lucide-react';
+import Factures from '../Factures';
 import Paiements from '../Paiements';
 import { getIntervallesPeriode, getPeriodeLabel, facturesInPeriode, calculerCA } from '../donnees';
 
@@ -272,6 +273,7 @@ export default function Finances({
 
   const tabs = [
     { id: 'tresorerie', label: 'Trésorerie',          count: null },
+    { id: 'factures',   label: 'Factures',            count: facturesPeriode.filter(f => f.statut !== 'annulee').length },
     { id: 'paiements',  label: 'Paiements chantiers', count: null },
   ];
 
@@ -346,6 +348,21 @@ export default function Finances({
       {onglet === 'tresorerie' && (
         <Tresorerie factures={factures} chantiers={chantiers} clients={clients} devis={devis} />
       )}
+      <div style={{ display: onglet === 'factures' ? 'block' : 'none' }}>
+        <Factures
+          factures={factures}
+          onSave={onSave}
+          clients={clients}
+          chantiers={chantiers}
+          devis={devis}
+          paiementsData={paiementsData}
+          setPaiementsData={setPaiementsData}
+          naviguer={naviguer}
+          profil={profil}
+          periodeGlobale={periodeGlobale}
+          hideHeader
+        />
+      </div>
       <div style={{ display: onglet === 'paiements' ? 'block' : 'none' }}>
         <Paiements
           chantiers={chantiers}

@@ -8,7 +8,7 @@ const PROFILS = [
     icone: '◈',
     couleur: C.primaire,
     description: 'Accès complet à toutes les fonctionnalités',
-    pages: ['dashboard', 'chantiers', 'devis', 'heures', 'factures', 'finances', 'planning', 'rapport', 'agents', 'parametres'],
+    pages: ['dashboard', 'chantiers', 'devis', 'heures', 'finances', 'planning', 'rapport', 'agents', 'parametres'],
   },
   {
     id: 'conducteur',
@@ -24,7 +24,7 @@ const PROFILS = [
     icone: '',
     couleur: C.info,
     description: 'Clients, devis, paiements et statistiques',
-    pages: ['dashboard', 'devis', 'factures', 'finances', 'rapport', 'parametres'],
+    pages: ['dashboard', 'devis', 'finances', 'rapport', 'parametres'],
     
   },
   {

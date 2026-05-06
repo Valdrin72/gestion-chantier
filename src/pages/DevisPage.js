@@ -437,7 +437,7 @@ function Devis() {
                                 onClick={() => {
                                   const nouvelleFacture = creerFactureDepuisDevis(d, chantierLie || null, factures);
                                   setFactures([...factures, nouvelleFacture]);
-                                  naviguer('factures');
+                                  naviguer('finances');
                                 }}
                                 style={{ background: 'rgba(139,92,246,0.12)', color: '#8b5cf6', border: '1px solid rgba(139,92,246,0.3)', borderRadius: 8, padding: '6px 12px', cursor: 'pointer', fontSize: 12, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 5, fontFamily: 'inherit', transition: 'all 0.15s' }}
                                 title="Créer la facture depuis ce devis"

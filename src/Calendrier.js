@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { ChevronLeft, ChevronRight, Plus, Clock, Calendar, X } from 'lucide-react';
+import { Plus, Clock, Calendar, X } from 'lucide-react';
 import { DS } from './ds';
 
 const CATEGORIES = [
@@ -14,7 +14,9 @@ const FORM_VIDE = { titre: '', date: '', categorie: 'reunion' };
 export default function Calendrier({ chantiers = [], clients = [], devis = [], factures = [] }) {
   const today = new Date();
   const [viewDate, setViewDate] = useState(new Date(today.getFullYear(), today.getMonth(), 1));
-  const [customEvents, setCustomEvents] = useState([]);
+  const [customEvents, setCustomEvents] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('cyna_cal_events') || '[]'); } catch { return []; }
+  });
   const [modal, setModal] = useState(null); // null | { form }
 
   const year = viewDate.getFullYear();
@@ -35,18 +37,26 @@ export default function Calendrier({ chantiers = [], clients = [], devis = [], f
   const sauvegarder = () => {
     if (!modal.form.titre.trim() || !modal.form.date) return;
     const cat = CATEGORIES.find(c => c.id === modal.form.categorie);
-    setCustomEvents(prev => [...prev, {
-      id: Date.now(),
-      label: modal.form.titre.trim(),
-      date: modal.form.date,
-      bg: cat.bg,
-      color: cat.color,
-      sub: cat.label,
-    }]);
+    setCustomEvents(prev => {
+      const next = [...prev, {
+        id: Date.now(),
+        label: modal.form.titre.trim(),
+        date: modal.form.date,
+        bg: cat.bg,
+        color: cat.color,
+        sub: cat.label,
+      }];
+      try { localStorage.setItem('cyna_cal_events', JSON.stringify(next)); } catch {}
+      return next;
+    });
     setModal(null);
   };
 
-  const supprimerEvent = (id) => setCustomEvents(prev => prev.filter(e => e.id !== id));
+  const supprimerEvent = (id) => setCustomEvents(prev => {
+    const next = prev.filter(e => e.id !== id);
+    try { localStorage.setItem('cyna_cal_events', JSON.stringify(next)); } catch {}
+    return next;
+  });
 
   const firstDayDow = (new Date(year, month, 1).getDay() + 6) % 7;
   const daysInMonth = new Date(year, month + 1, 0).getDate();

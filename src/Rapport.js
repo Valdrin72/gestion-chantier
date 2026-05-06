@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { C, fmtN, calculerCoutsChantier, calculerCA, joursOuvrableRestants, getAlerte, calculerDateFinOuvrables, isChantierActif } from './donnees';
+import { fmtN, calculerCoutsChantier, calculerCA, joursOuvrableRestants, getAlerte, calculerDateFinOuvrables, isChantierActif } from './donnees';
 import { DS } from './ds';
 
 const carteStyle = DS.card;

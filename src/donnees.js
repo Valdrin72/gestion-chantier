@@ -819,7 +819,7 @@ export const donneesInitiales = {
       numero: 'DEV-2026-001',
       clientId: 1,
       date: '2026-02-15',
-      statut: 'Validé',
+      statut: 'accepté',
       zone: 'Genève',
       typeTravaux: 'Cloisons vitrées',
       surface: 280,

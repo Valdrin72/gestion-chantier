@@ -211,7 +211,10 @@ function App() {
     return raw.map(c => ({ ...c, journal: migrerJournal(c.journal || []) }));
   });
   const [clients, setClientsState] = useState(() => charger('cyna_clients', donneesInitiales.clients));
-  const [devis, setDevisState] = useState(() => charger('cyna_devis', donneesInitiales.devis));
+  const [devis, setDevisState] = useState(() => {
+    const LEGACY = { 'Validé': 'accepté', 'Signé': 'accepté', 'Envoyé': 'envoyé', 'Refusé': 'refusé', 'Brouillon': 'brouillon', 'Annulé': 'refusé' };
+    return charger('cyna_devis', donneesInitiales.devis).map(d => ({ ...d, statut: LEGACY[d.statut] || d.statut }));
+  });
   const [qualiteData, setQualiteDataState] = useState(() => charger('cyna_qualite', {}));
   const [factures, setFacturesState] = useState(() => charger('cyna_factures', []));
   const [paiementsData, setPaiementsDataState] = useState(() => charger('cyna_paiements', {}));
@@ -1997,7 +2000,7 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const vide = {
-    numero: `CH-${new Date().getFullYear()}-00${chantiers.length + 1}`, nom: '', clientId: '', conducteur: '', directeurTravauxId: '', adresse: '', ville: '', canton: '',
+    numero: `CH-${new Date().getFullYear()}-${String(Math.max(0, ...chantiers.map(c => parseInt((c.numero || '').split('-').pop()) || 0)) + 1).padStart(3, '0')}`, nom: '', clientId: '', conducteur: '', directeurTravauxId: '', adresse: '', ville: '', canton: '',
     dateDebut: '', nombreJours: '', nombrePersonnes: '', joursRealises: '', inclusSamedi: false,
     statut: 'En cours', priorite: 'Normale', avancement: 0, typesTravaux: [], surface: '',
     montantDevis: '', avenants: [], montantFacture: 0, equipe: [], employes: [],
@@ -2994,7 +2997,7 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
 
           {/* Sélecteur de devis accepté — OBLIGATOIRE */}
           {(() => {
-            const devisAcceptes = devis.filter(d => ['accepté', 'Validé', 'Signé'].includes(d.statut));
+            const devisAcceptes = devis.filter(d => d.statut === 'accepté');
             const devisLie = devis.find(d => d.id === form.devisId);
             const caBase = parseFloat(devisLie?.montantHT) || 0;
             const caRegie = Array.isArray(devisLie?.heuresRegie)
@@ -3522,7 +3525,7 @@ function Devis({ devis, setDevis, clients, parametres, naviguer, setChantiers, c
   const [filtreDevis, setFiltreDevis] = useState('Tous');
   const [confirmConversion, setConfirmConversion] = useState(null); // { devis, nomChantier }
   const vide = {
-    numero: `DEV-${new Date().getFullYear()}-00${devis.length + 1}`,
+    numero: `DEV-${new Date().getFullYear()}-${String(Math.max(0, ...devis.map(d => parseInt((d.numero || '').split('-').pop()) || 0)) + 1).padStart(3, '0')}`,
     clientId: '', date: new Date().toISOString().split('T')[0], statut: 'brouillon',
     montantHT: '', dureeEstimee: '', heuresRegie: [], notes: '',
   };
@@ -3573,7 +3576,7 @@ function Devis({ devis, setDevis, clients, parametres, naviguer, setChantiers, c
       id: newId,
       devisId: d.id,
       nom: nomChantier.trim() || `Chantier ${d.numero}`,
-      numero: `CH-${new Date().getFullYear()}-${String(chantiers.length + 1).padStart(3, '0')}`,
+      numero: `CH-${new Date().getFullYear()}-${String(Math.max(0, ...prev.map(c => parseInt((c.numero || '').split('-').pop()) || 0)) + 1).padStart(3, '0')}`,
       clientId: d.clientId,
       montantDevis: parseFloat(d.montantHT || d.prixPropose) || 0,
       surface: 0,
@@ -3602,7 +3605,7 @@ function Devis({ devis, setDevis, clients, parametres, naviguer, setChantiers, c
       <div className="page-header-row">
         <div className="page-title-block">
           <div className="page-title-main">Devis</div>
-          <div className="page-title-sub">{devis.length} devis · {devis.filter(d => ['accepté', 'Validé', 'Signé'].includes(d.statut)).length} acceptés ce mois</div>
+          <div className="page-title-sub">{devis.length} devis · {devis.filter(d => d.statut === 'accepté').length} acceptés ce mois</div>
         </div>
         <div className="page-actions-group">
           <button onClick={() => { setForm(vide); setAjout(!ajout); }} style={btnPrimaire}><Plus size={14} /> Nouveau devis</button>
@@ -3611,7 +3614,7 @@ function Devis({ devis, setDevis, clients, parametres, naviguer, setChantiers, c
 
       {/* ── KPI GRID ── */}
       {(() => {
-        const ACCEPTES = ['accepté', 'Validé', 'Signé'];
+        const ACCEPTES = ['accepté'];
         const ATTENTE  = ['envoyé', 'Envoyé'];
         const montantTotal = devis.reduce((s, d) => s + (parseFloat(d.montantHT || d.prixPropose) || 0), 0);
         const nbAcceptes = devis.filter(d => ACCEPTES.includes(d.statut)).length;
@@ -3810,7 +3813,7 @@ function Devis({ devis, setDevis, clients, parametres, naviguer, setChantiers, c
                     ? d.heuresRegie.reduce((s, r) => s + (parseFloat(r.heures) || 0) * (parseFloat(r.tarifHeure) || 0), 0)
                     : 0;
                   const chantierLie = chantiers.find(ch => String(ch.devisId) === String(d.id));
-                  const isAccepte = ['accepté', 'Validé', 'Signé'].includes(d.statut);
+                  const isAccepte = d.statut === 'accepté';
                   const statutStyle = DS.statuts[d.statut] || { bg: '#F1F5F9', color: '#475569' };
                   return (
                     <tr

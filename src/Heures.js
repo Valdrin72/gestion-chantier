@@ -28,7 +28,7 @@ function isoDate(d) {
 const DAY_LABELS_SHORT = ['LUN', 'MAR', 'MER', 'JEU', 'VEN', 'SAM', 'DIM'];
 
 export default function Heures({ chantiers = [], parametres = {}, setChantiers }) {
-  const employes = parametres.employes || [];
+  const employes = useMemo(() => parametres.employes || [], [parametres.employes]); // eslint-disable-line react-hooks/exhaustive-deps
   const today = new Date();
   const [weekStart, setWeekStart] = useState(() => getWeekStart(today));
   const [modal, setModal] = useState(null);
@@ -92,11 +92,9 @@ export default function Heures({ chantiers = [], parametres = {}, setChantiers }
 
     employes.filter(e => e.actif !== false).forEach(e => {
       const empHours = hoursMap[e.id] || {};
-      let empWeekTotal = 0;
       weekDayIsos.forEach(d => {
         const h = empHours[d] || 0;
         total += h;
-        empWeekTotal += h;
         if (h > 8) supp += (h - 8);
       });
       const hasSaisie = weekDayIsos.some(d => (empHours[d] || 0) > 0);

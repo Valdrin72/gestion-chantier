@@ -227,6 +227,12 @@ function App() {
     return PROFILS.find(p => p.id === stored.id) || null;
   });
 
+  // ── Modal Saisie Heures — rendu au niveau App pour ne pas re-rendre Chantiers ──
+  const [saisieHeuresCtx, setSaisieHeuresCtx] = useState(null); // { chantier, date } | null
+  const ouvrirSaisieHeuresApp = useCallback((chantier, date) => {
+    setSaisieHeuresCtx({ chantier, date: date || new Date().toISOString().split('T')[0] });
+  }, []);
+
   const sauvegarderLocal = (cle, data) => {
     try {
       localStorage.setItem(cle, JSON.stringify(data));
@@ -384,7 +390,7 @@ function App() {
         {/* ===== CONTENU PRINCIPAL ===== */}
         <main className="app-main">
           {page === 'dashboard'    && <Dashboard chantiers={chantiers} clients={clients} factures={factures} devis={devis} parametres={parametres} naviguer={naviguer} actionsLog={actionsLog} logAction={logAction} periodeGlobale={periodeGlobale} setPeriodeGlobale={setPeriodeGlobale} profil={profil} agentAlertes={agentState.alertes} nbAgentAlertes={agentState.nbNonLues} agentPredictions={agentState.predictions} marquerLu={agentState.marquerLu} naviguerAgents={() => naviguer('agents')} />}
-          {page === 'chantiers'    && <Chantiers chantiers={chantiers} setChantiers={setChantiers} factures={factures} clients={clients} devis={devis} parametres={parametres} naviguer={naviguer} contexte={contexte} />}
+          {page === 'chantiers'    && <Chantiers chantiers={chantiers} setChantiers={setChantiers} factures={factures} clients={clients} devis={devis} parametres={parametres} naviguer={naviguer} contexte={contexte} ouvrirSaisieHeures={ouvrirSaisieHeuresApp} />}
           {page === 'devis'        && <Devis devis={devis} setDevis={setDevis} clients={clients} parametres={parametres} setParametres={setParametres} naviguer={naviguer} setChantiers={setChantiers} chantiers={chantiers} contexte={contexte} />}
           {page === 'finances'     && <Finances factures={factures} onSave={setFactures} clients={clients} chantiers={chantiers} devis={devis} paiementsData={paiementsData} setPaiementsData={setPaiementsData} naviguer={naviguer} contexte={contexte} profil={profil} periodeGlobale={periodeGlobale} />}
           {page === 'clients'      && <Clients clients={clients} setClients={setClients} chantiers={chantiers} devis={devis} naviguer={naviguer} />}
@@ -395,6 +401,22 @@ function App() {
           {page === 'parametres'  && <Parametres parametres={parametres} setParametres={setParametres} clients={clients} setClients={setClients} chantiers={chantiers} devis={devis} naviguer={naviguer} />}
                     {page === 'heures'      && <Heures chantiers={chantiers} parametres={parametres} setChantiers={setChantiers} />}
         </main>
+
+        {/* ── MODAL SAISIE HEURES — niveau App (ne re-rend pas Chantiers) ── */}
+        {saisieHeuresCtx && (
+          <ModalSaisieHeures
+            key={saisieHeuresCtx.chantier.id}
+            chantierSaisie={saisieHeuresCtx.chantier}
+            initialDate={saisieHeuresCtx.date}
+            parametres={parametres}
+            onFermer={() => setSaisieHeuresCtx(null)}
+            onSave={updated => {
+              setChantiers(prev => prev.map(ch => ch.id === updated.id ? updated : ch));
+              setSaisieHeuresCtx(null);
+              naviguer('heures');
+            }}
+          />
+        )}
 
         {/* ===== NAVIGATION MOBILE BAS ===== */}
         <nav className="bottom-nav">
@@ -1799,7 +1821,7 @@ function renderRentabiliteJours(c, etat, couts, naviguer, fmtN, fmtK) {
 // Composant nommé (pas d'IIFE) : identité stable pour React 19 concurrent mode
 // État interne : dateSaisie et heuresSaisie vivent DANS le modal
 // → chaque interaction ne re-render QUE ce composant, jamais le parent Chantiers
-function ModalSaisieHeures({ chantierSaisie, initialDate, onFermer, onSave, parametres, ouvrirModification }) {
+function ModalSaisieHeures({ chantierSaisie, initialDate, onFermer, onSave, parametres }) {
   const [date, setDate] = useState(initialDate);
   const [heures, setHeures] = useState(() => heuresJour(chantierSaisie.journal || [], initialDate));
 
@@ -1994,7 +2016,7 @@ function ModalSaisieHeures({ chantierSaisie, initialDate, onFermer, onSave, para
   );
 }
 
-function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = [], parametres, naviguer, contexte }) {
+function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = [], parametres, naviguer, contexte, ouvrirSaisieHeures }) {
   const [vue, setVue] = useState('liste');
   const [selected, setSelected] = useState(null);
   const [detailOnglet, setDetailOnglet] = useState('vue');
@@ -2002,9 +2024,6 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
   const [filtre, setFiltre] = useState(contexte?.filtreStatut || 'Tous');
   const [membreEquipe, setMembreEquipe] = useState({ employeId: '', joursPlannifies: '', joursRealises: '', role: 'Ouvrier' });
   const [imprévu, setImprévu] = useState({ description: '', montant: '' });
-  const [panelSaisieHeures, setPanelSaisieHeures] = useState(false);
-  const [chantierSaisieId, setChantierSaisieId] = useState(null);
-  const [dateSaisie, setDateSaisie] = useState(() => new Date().toISOString().split('T')[0]);
   const [simulations, setSimulations] = useState({});
   const [justSimulatedId, setJustSimulatedId] = useState(null);
 
@@ -2109,13 +2128,6 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
       setModeCompleter(false);
     }
     setAjout(false); setForm(vide); setErreurs({});
-  };
-
-  const ouvrirSaisieHeures = (chantier, date) => {
-    const d = date || new Date().toISOString().split('T')[0];
-    setChantierSaisieId(chantier.id);
-    setDateSaisie(d);
-    setPanelSaisieHeures(true);
   };
 
   const supprimer = (id) => {
@@ -2858,8 +2870,6 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
     </React.Fragment>);
   }
 
-  const chantierSaisie = chantiers.find(ch => ch.id === chantierSaisieId) || null;
-
   return (<React.Fragment key="list-form">
     <div>
       <div className="page-header-row">
@@ -3550,23 +3560,6 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
       })()}
     </div>
 
-      {/* ── MODAL SAISIE HEURES ── */}
-      {panelSaisieHeures && chantierSaisie && (
-        <ModalSaisieHeures
-          key={chantierSaisieId}
-          chantierSaisie={chantierSaisie}
-          initialDate={dateSaisie}
-          parametres={parametres}
-          onFermer={() => setPanelSaisieHeures(false)}
-          onSave={updated => {
-            setChantiers(chantiers.map(ch => ch.id === chantierSaisieId ? updated : ch));
-            if (selected?.id === chantierSaisieId) setSelected(updated);
-            setPanelSaisieHeures(false);
-            naviguer('heures');
-          }}
-          ouvrirModification={ouvrirModification}
-        />
-      )}
   </React.Fragment>);
 }
 

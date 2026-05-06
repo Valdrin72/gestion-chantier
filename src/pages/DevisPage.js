@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { fmtN, C } from '../donnees';
 import { DS } from '../ds';
+import { useApp } from '../context/AppContext';
 
 const inputStyle = DS.input;
 const labelStyle = DS.label;
@@ -13,7 +14,8 @@ const btnPrimaire = DS.btnPrimary;
 const btnSucces = DS.btnSuccess;
 const btnDanger = DS.btnDanger;
 
-function Devis({ devis, setDevis, clients, parametres, naviguer, setChantiers, chantiers, contexte = {} }) {
+function Devis() {
+  const { devis, setDevis, clients, parametres, naviguer, setChantiers, chantiers, contexte = {} } = useApp();
   const [ajout, setAjout] = useState(false);
   const [filtreDevis, setFiltreDevis] = useState('Tous');
   const [confirmConversion, setConfirmConversion] = useState(null); // { devis, nomChantier }

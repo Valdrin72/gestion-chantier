@@ -27,6 +27,7 @@ import { Badge, CoutBadge, BarreAvancement, BadgeRentabilite } from './component
 import Dashboard from './pages/Dashboard';
 import Chantiers from './pages/ChantiersPage';
 import Devis from './pages/DevisPage';
+import { AppProvider } from './context/AppContext';
 
 // Supprime les balises HTML des champs texte avant sauvegarde (protection XSS dans PDF)
 const sanitiser = (obj) => {
@@ -245,7 +246,16 @@ function App() {
   const navAutorisees = navItems.filter(item => pagesAutorisees.includes(item.id));
   const navMobileItems = navAutorisees.slice(0, 4);
 
+  const appValue = {
+    chantiers, setChantiers, clients, setClients, devis, setDevis,
+    factures, setFactures, parametres, setParametres,
+    paiementsData, setPaiementsData, actionsLog, profil,
+    logAction, naviguer, contexte, periodeGlobale, setPeriodeGlobale,
+    agentState, ouvrirSaisieHeures: ouvrirSaisieHeuresApp,
+  };
+
   return (
+    <AppProvider value={appValue}>
     <div data-theme={darkMode ? 'dark' : 'light'} className="app-layout">
 
       {/* ===== OVERLAY SIDEBAR MOBILE ===== */}
@@ -332,9 +342,9 @@ function App() {
 
         {/* ===== CONTENU PRINCIPAL ===== */}
         <main className="app-main">
-          {page === 'dashboard'    && <Dashboard chantiers={chantiers} clients={clients} factures={factures} devis={devis} parametres={parametres} naviguer={naviguer} actionsLog={actionsLog} logAction={logAction} periodeGlobale={periodeGlobale} setPeriodeGlobale={setPeriodeGlobale} profil={profil} agentAlertes={agentState.alertes} nbAgentAlertes={agentState.nbNonLues} agentPredictions={agentState.predictions} marquerLu={agentState.marquerLu} naviguerAgents={() => naviguer('agents')} />}
-          {page === 'chantiers'    && <Chantiers chantiers={chantiers} setChantiers={setChantiers} factures={factures} clients={clients} devis={devis} parametres={parametres} naviguer={naviguer} contexte={contexte} ouvrirSaisieHeures={ouvrirSaisieHeuresApp} />}
-          {page === 'devis'        && <Devis devis={devis} setDevis={setDevis} clients={clients} parametres={parametres} setParametres={setParametres} naviguer={naviguer} setChantiers={setChantiers} chantiers={chantiers} contexte={contexte} />}
+          {page === 'dashboard'    && <Dashboard />}
+          {page === 'chantiers'    && <Chantiers />}
+          {page === 'devis'        && <Devis />}
           {page === 'finances'     && <Finances factures={factures} onSave={setFactures} clients={clients} chantiers={chantiers} devis={devis} paiementsData={paiementsData} setPaiementsData={setPaiementsData} naviguer={naviguer} contexte={contexte} profil={profil} periodeGlobale={periodeGlobale} />}
           {page === 'clients'      && <Clients clients={clients} setClients={setClients} chantiers={chantiers} devis={devis} naviguer={naviguer} />}
           {page === 'employes'     && <Employes parametres={parametres} setParametres={setParametres} chantiers={chantiers} naviguer={naviguer} />}
@@ -405,6 +415,7 @@ function App() {
 
       </div>
     </div>
+    </AppProvider>
   );
 }
 

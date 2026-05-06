@@ -12,8 +12,15 @@ import {
 } from '../donnees';
 import { DS } from '../ds';
 import { STATUTS_CLOS } from '../constants/statuts';
+import { useApp } from '../context/AppContext';
 
-function Dashboard({ chantiers, clients, factures, devis = [], parametres, naviguer, actionsLog = [], logAction = () => {}, periodeGlobale = 'mois', setPeriodeGlobale = () => {}, profil = null, agentAlertes = [], nbAgentAlertes = 0, agentPredictions = {}, marquerLu = () => {}, naviguerAgents = () => {} }) {
+function Dashboard() {
+  const { chantiers, clients, factures, devis = [], parametres, naviguer, actionsLog = [], logAction = () => {}, periodeGlobale = 'mois', setPeriodeGlobale = () => {}, profil = null, agentState } = useApp();
+  const agentAlertes = agentState?.alertes || [];
+  const nbAgentAlertes = agentState?.nbNonLues || 0;
+  const agentPredictions = agentState?.predictions || {};
+  const marquerLu = agentState?.marquerLu || (() => {});
+  const naviguerAgents = () => naviguer('agents');
   const facturesSafe = factures || [];
   const [insightsFerme, setInsightsFerme] = useState(false);
 

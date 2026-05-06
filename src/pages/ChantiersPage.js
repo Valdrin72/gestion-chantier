@@ -13,6 +13,7 @@ import {
 import { DS, couleurStatut as couleurStatutDS } from '../ds';
 import { STATUTS_CLOS } from '../constants/statuts';
 import { Badge, CoutBadge, BarreAvancement, BadgeRentabilite } from '../components/SharedBadges';
+import { useApp } from '../context/AppContext';
 
 // Supprime les balises HTML des champs texte avant sauvegarde (protection XSS dans PDF)
 const sanitiser = (obj) => {
@@ -421,7 +422,8 @@ function renderRentabiliteJours(c, etat, couts, naviguer, fmtN, fmtK) {
   );
 }
 
-function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = [], parametres, naviguer, contexte, ouvrirSaisieHeures }) {
+function Chantiers() {
+  const { chantiers, setChantiers, factures = [], clients, devis = [], parametres, naviguer, contexte, ouvrirSaisieHeures } = useApp();
   const [vue, setVue] = useState('liste');
   const [selected, setSelected] = useState(null);
   const [detailOnglet, setDetailOnglet] = useState('vue');

@@ -4,9 +4,9 @@
   "private": true,
   "description": "Plateforme de gestion documentaire, validation, chiffrage et cycle de vie pour architectes et professionnels du bâtiment",
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev -p 3001",
     "build": "next build",
-    "start": "next start",
+    "start": "next start -p 3001",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
     "db:generate": "prisma generate",

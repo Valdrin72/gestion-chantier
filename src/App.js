@@ -1803,15 +1803,18 @@ function ModalSaisieHeures({ chantierSaisie, initialDate, onFermer, onSave, para
   const [date, setDate] = useState(initialDate);
   const [heures, setHeures] = useState(() => heuresJour(chantierSaisie.journal || [], initialDate));
 
-  const empsList = useMemo(() => (chantierSaisie.equipe || []).map(m => {
-    const emp = (parametres.employes || []).find(e => e.id === parseInt(m.employeId));
-    const empId = parseInt(m.employeId);
-    return {
-      id: Number.isNaN(empId) ? String(m.employeId) : empId,
-      nom: emp?.nom || `Employé #${m.employeId}`,
-      poste: m.role || emp?.poste || '',
-    };
-  }), [chantierSaisie.equipe, parametres.employes]);
+  // Source : TOUS les employés actifs — pas seulement ceux en équipe du chantier
+  const equipeIds = useMemo(() => new Set((chantierSaisie.equipe || []).map(m => parseInt(m.employeId))), [chantierSaisie.equipe]);
+  const empsList = useMemo(() => {
+    const tous = (parametres.employes || []).map(e => ({
+      id: e.id,
+      nom: `${e.prenom || ''} ${e.nom || ''}`.trim() || `Employé #${e.id}`,
+      poste: e.poste || '',
+      dansEquipe: equipeIds.has(e.id),
+    }));
+    // Equipe du chantier en premier, puis les autres
+    return [...tous.filter(e => e.dansEquipe), ...tous.filter(e => !e.dansEquipe)];
+  }, [parametres.employes, equipeIds]);
 
   const hierDate = useMemo(() => {
     const d = new Date(date); d.setDate(d.getDate() - 1);
@@ -1837,7 +1840,7 @@ function ModalSaisieHeures({ chantierSaisie, initialDate, onFermer, onSave, para
   return (
     <div style={{
       position: 'fixed', inset: 0, zIndex: 1000,
-      background: 'rgba(0,0,0,0.72)', backdropFilter: 'blur(4px)',
+      background: 'rgba(0,0,0,0.65)',
       display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
       padding: '40px 16px', overflowY: 'auto',
     }} onClick={e => { if (e.target === e.currentTarget) onFermer(); }}>
@@ -1856,15 +1859,13 @@ function ModalSaisieHeures({ chantierSaisie, initialDate, onFermer, onSave, para
           <button onClick={onFermer} style={{ ...btnDanger, padding: '8px 12px' }}><X size={16} /></button>
         </div>
 
-        {/* Équipe source */}
+        {/* Info équipe */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, padding: '8px 14px', background: 'var(--bg-glass-2)', borderRadius: 8, border: '1px solid var(--border)' }}>
           <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)' }}>
-            Équipe du chantier ({empsList.length})
+            {equipeIds.size > 0
+              ? `${equipeIds.size} dans l'équipe · ${empsList.length - equipeIds.size} autres disponibles`
+              : `${empsList.length} employés disponibles`}
           </span>
-          <button
-            onClick={() => { onFermer(); ouvrirModification(chantierSaisie); }}
-            style={{ fontSize: 11, fontWeight: 600, color: C.primaire, background: C.primaire + '12', border: `1px solid ${C.primaire}30`, borderRadius: 6, padding: '3px 10px', cursor: 'pointer', fontFamily: 'inherit' }}
-          >Modifier l'équipe →</button>
         </div>
 
         {/* Date picker */}
@@ -1894,11 +1895,13 @@ function ModalSaisieHeures({ chantierSaisie, initialDate, onFermer, onSave, para
           <button
             onClick={() => {
               const h = {};
-              empsList.forEach(e => { h[e.id] = 8; });
+              // Si équipe définie → 8h pour l'équipe seulement, sinon tous
+              const cibles = equipeIds.size > 0 ? empsList.filter(e => e.dansEquipe) : empsList;
+              cibles.forEach(e => { h[e.id] = 8; });
               setHeures(h);
             }}
             style={{ fontSize: 12, fontWeight: 700, color: C.primaire, background: C.primaire + '15', border: `1px solid ${C.primaire}35`, borderRadius: 8, padding: '7px 14px', cursor: 'pointer', fontFamily: 'inherit' }}
-          >Tout à 8h</button>
+          >{equipeIds.size > 0 ? `Équipe à 8h (${equipeIds.size})` : 'Tout à 8h'}</button>
           <button
             onClick={() => setHeures({})}
             style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', background: 'var(--bg-glass-2)', border: '1px solid var(--border-hover)', borderRadius: 8, padding: '7px 14px', cursor: 'pointer', fontFamily: 'inherit' }}
@@ -1907,12 +1910,26 @@ function ModalSaisieHeures({ chantierSaisie, initialDate, onFermer, onSave, para
 
         {/* Employee list — clés stables, pas de nœud conditionnel */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 24 }}>
-          {empsList.map(emp => {
+          {empsList.length === 0 && (
+            <div style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)', fontSize: 13 }}>
+              Aucun employé configuré. Ajoutez vos employés dans Paramètres.
+            </div>
+          )}
+          {empsList.map((emp, idx) => {
             const h = parseFloat(heures[emp.id]) || 0;
             const isActive = h > 0;
             const isOver = h > 10;
+            const showSep = idx > 0 && !emp.dansEquipe && empsList[idx - 1].dansEquipe && equipeIds.size > 0;
             return (
-              <div key={emp.id} style={{
+              <React.Fragment key={emp.id}>
+                {showSep && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '4px 0' }}>
+                    <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
+                    <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.6px' }}>Autres employés</span>
+                    <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
+                  </div>
+                )}
+              <div style={{
                 display: 'flex', alignItems: 'center', gap: 12,
                 padding: '12px 16px', borderRadius: 12,
                 background: isOver ? C.danger + '12' : isActive ? C.secondaire + '10' : 'var(--bg-glass)',
@@ -1959,6 +1976,7 @@ function ModalSaisieHeures({ chantierSaisie, initialDate, onFermer, onSave, para
                 {/* Span toujours présent — visibility au lieu de montage/démontage conditionnel */}
                 <span style={{ fontSize: 10, color: C.danger, fontWeight: 700, whiteSpace: 'nowrap', visibility: isOver ? 'visible' : 'hidden' }}>&gt;10h</span>
               </div>
+              </React.Fragment>
             );
           })}
         </div>
@@ -3544,6 +3562,7 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
             setChantiers(chantiers.map(ch => ch.id === chantierSaisieId ? updated : ch));
             if (selected?.id === chantierSaisieId) setSelected(updated);
             setPanelSaisieHeures(false);
+            naviguer('heures');
           }}
           ouvrirModification={ouvrirModification}
         />

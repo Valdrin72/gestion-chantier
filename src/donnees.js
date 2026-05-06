@@ -117,6 +117,27 @@ export const sommeAvenants = (chantier) =>
     : (parseFloat(chantier.avenants) || 0);
 
 /**
+ * Construit une map { employeId: { isoDate: totalHeures } } depuis tous les journaux chantiers.
+ * Utilisé par la page Heures pour construire le tableau hebdomadaire.
+ */
+export const getHeuresParEmployeParDate = (chantiers, employes = []) => {
+  const map = {};
+  employes.forEach(e => { map[e.id] = {}; });
+  chantiers.forEach(c => {
+    (c.journal || []).forEach(entry => {
+      if (!entry.date) return;
+      (entry.employes || []).forEach(ej => {
+        const empId = ej.employeId;
+        if (!map[empId]) map[empId] = {};
+        if (!map[empId][entry.date]) map[empId][entry.date] = 0;
+        map[empId][entry.date] += parseFloat(ej.heuresTravaillees) || 0;
+      });
+    });
+  });
+  return map;
+};
+
+/**
  * Retourne le CA généré par les heures en régie d'un devis.
  * Structure : devis.heuresRegie = [{ id, description, heures, tarifHeure }]
  * Les heures en régie sont du CA supplémentaire attaché au devis (pas au chantier).

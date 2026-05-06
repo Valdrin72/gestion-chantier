@@ -5,7 +5,6 @@ import React, { useState, useMemo } from 'react';
 import { DollarSign, FileText, Clock, AlertTriangle, CreditCard, TrendingUp, Calendar, Zap } from 'lucide-react';
 import Factures from './Factures';
 import Paiements from './Paiements';
-import { DS } from './ds';
 import { getIntervallesPeriode, getPeriodeLabel, facturesInPeriode, calculerCA } from './donnees';
 
 const fmt  = (n) => (parseFloat(n) || 0).toLocaleString('fr-CH', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
@@ -14,7 +13,6 @@ const fmtK = (n) => { const v = parseFloat(n) || 0; return v >= 1000 ? `${(v/100
 // ── Composant Trésorerie prévisionnelle ──────────────────────────────────────
 function Tresorerie({ factures = [], chantiers = [], clients = [], devis = [] }) {
   const today = new Date(); today.setHours(0,0,0,0);
-  const todayStr = today.toISOString().slice(0,10);
 
   const data = useMemo(() => {
     // ── 1. Factures impayées classées par urgence ────────────────

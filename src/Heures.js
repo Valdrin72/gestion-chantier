@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Clock, X, Trash2 } from 'lucide-react';
 import { DS } from './ds';
-import { fmtN } from './donnees';
+import { fmtN, getHeuresParEmployeParDate } from './donnees';
 import KpiCard from './components/ui/KpiCard';
 
 const FORM_VIDE = { employeId: '', chantierId: '', date: '', heures: '8' };
@@ -94,25 +94,8 @@ export default function Heures({ chantiers = [], parametres = {}, setChantiers }
 
   const weekDays = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)), [weekStart]);
 
-  // Build hours map: { empId: { isoDate: hours } }
-  const hoursMap = useMemo(() => {
-    const map = {};
-    employes.forEach(e => { map[e.id] = {}; });
-
-    chantiers.forEach(c => {
-      (c.journal || []).forEach(entry => {
-        if (!entry.date) return;
-        (entry.employes || []).forEach(ej => {
-          const empId = ej.employeId;
-          if (!map[empId]) map[empId] = {};
-          if (!map[empId][entry.date]) map[empId][entry.date] = 0;
-          map[empId][entry.date] += parseFloat(ej.heuresTravaillees) || 0;
-        });
-      });
-    });
-
-    return map;
-  }, [chantiers, employes]);
+  // Build hours map: { empId: { isoDate: hours } } — logique centralisée dans donnees.js
+  const hoursMap = useMemo(() => getHeuresParEmployeParDate(chantiers, employes), [chantiers, employes]);
 
   // KPI computations
   const { totalHeures, totalSupp, nonSaisis } = useMemo(() => {

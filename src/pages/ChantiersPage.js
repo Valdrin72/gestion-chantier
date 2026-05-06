@@ -1,0 +1,1916 @@
+import React, { useState, useMemo } from 'react';
+import {
+  HardHat, CheckSquare, TrendingUp,
+  X, Plus, Pencil, Trash2, AlertTriangle,
+  ChevronRight, DollarSign, Clock, Eye,
+} from 'lucide-react';
+import {
+  donneesInitiales, fmtN, calculerDateFinOuvrables, joursOuvrableRestants,
+  getAlerteChantier, getChantierStatus, calculerCoutsChantier, statutRentabilite, C,
+  calculerEcartChantier, calculerEtatChantier, assertEtatValide, assertEtatCoherent,
+  calculerVitesseChantier, heuresEmploye, sommeAvenants, calculerCA, isChantierActif,
+} from '../donnees';
+import { DS, couleurStatut as couleurStatutDS } from '../ds';
+import { STATUTS_CLOS } from '../constants/statuts';
+import { Badge, CoutBadge, BarreAvancement, BadgeRentabilite } from '../components/SharedBadges';
+
+// Supprime les balises HTML des champs texte avant sauvegarde (protection XSS dans PDF)
+const sanitiser = (obj) => {
+  const nettoyer = (v) => typeof v === 'string' ? v.replace(/<[^>]*>/g, '').substring(0, 2000) : v;
+  return Object.fromEntries(Object.entries(obj).map(([k, v]) => [k, nettoyer(v)]));
+};
+
+const inputStyle = DS.input;
+const labelStyle = DS.label;
+const carteStyle = DS.card;
+const thStyle = DS.th;
+const tdStyle = DS.td;
+const btnPrimaire = DS.btnPrimary;
+const btnSucces  = DS.btnSuccess;
+const btnDanger  = DS.btnDanger;
+
+// ── Helpers de rendu pour la vue détail chantier ───────────────────────────
+// Fonctions nommées (pas d'IIFEs) — retournent du JSX, n'utilisent pas de hooks
+function renderTerrainVelocity(c, etat) {
+  const v = calculerVitesseChantier(c, etat);
+  if (!v) return null;
+  const gravite = v.retardEstime >= 5 ? 'critique' : v.retardEstime >= 2 ? 'attention' : 'ok';
+  const graviteConfig = {
+    critique:  { niveau: 'danger', couleur: C.danger,     titre: `+${v.retardEstime} jours de retard — action nécessaire` },
+    attention: { niveau: 'warning', couleur: C.warning,    titre: `+${v.retardEstime} jour${v.retardEstime > 1 ? 's' : ''} de retard — action recommandée` },
+    ok:        { niveau: 'ok', couleur: C.secondaire, titre: 'Dans les temps' },
+  }[gravite];
+  let reco = null;
+  let impact = null;
+  if (gravite === 'critique' || gravite === 'attention') {
+    if (v.gainJours > 0) {
+      reco = `→ Ajouter 1 ouvrier pendant quelques jours`;
+      impact = v.nouveauRetard <= 1 ? 'Permet de revenir dans les délais' : `Permet de réduire le retard à ~${v.nouveauRetard} j`;
+    } else {
+      reco = `→ Revoir le planning ou étendre la durée`;
+      impact = 'Rattrapage nécessaire sans renfort disponible';
+    }
+  } else {
+    reco = '→ Surveiller — rattrapage possible sans action';
+  }
+  return (
+    <div style={{ padding: '16px 20px', borderRadius: 14, marginBottom: 16,
+      background: graviteConfig.couleur === C.secondaire
+        ? `radial-gradient(ellipse at 6% 50%, ${C.secondaire}0d 0%, transparent 80%)`
+        : `radial-gradient(ellipse at 6% 50%, ${graviteConfig.couleur}0f 0%, transparent 80%)`,
+      border: `1px solid ${graviteConfig.couleur}30`, borderLeft: `4px solid ${graviteConfig.couleur}` }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: reco ? 12 : 0 }}>
+        <span style={{ fontSize: 18, lineHeight: 1, flexShrink: 0 }}>{graviteConfig.icone}</span>
+        <span style={{ fontSize: 15, fontWeight: 800, color: graviteConfig.couleur, letterSpacing: '-0.2px' }}>{graviteConfig.titre}</span>
+      </div>
+      {reco && (
+        <div style={{ paddingLeft: 28 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: impact ? 4 : 0 }}>{reco}</div>
+          {impact && <div style={{ fontSize: 12, color: graviteConfig.couleur, fontWeight: 600 }}>{impact}</div>}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function renderProjectionCard(etat, fmtK) {
+  const urgence = etat.margeEstimeePct === null ? 'ok'
+    : etat.margeEstimeePct < 0 ? 'critique'
+    : etat.margeEstimeePct <= 10 ? 'surveillance'
+    : 'ok';
+  const urgenceConfig = {
+    critique:     { couleur: C.danger,     decision: 'Perte estimée — action immédiate' },
+    surveillance: { couleur: C.warning,    decision: 'Surveiller de près' },
+    ok:           { couleur: C.secondaire, decision: 'Chantier maîtrisé' },
+  }[urgence];
+  const fiab = etat.avancementPct < 40
+    ? { label: 'Projection à confirmer', couleur: C.warning }
+    : { label: 'Projection fiable', couleur: C.secondaire };
+  const margeVal = etat.margeEstimee ?? 0;
+  const margePct = etat.margeEstimeePct ?? 0;
+  return (
+    <div style={{ ...carteStyle, borderLeft: `4px solid ${urgenceConfig.couleur}` }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap', gap: 8 }}>
+        <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', color: 'var(--text-muted)' }}>Projection à terminaison</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: 11, color: 'var(--text-muted)', background: 'var(--bg-glass-2)', borderRadius: 20, padding: '3px 10px' }}>{etat.avancementPct}% réalisé</span>
+          <span style={{ fontSize: 11, fontWeight: 700, color: fiab.couleur, background: fiab.couleur + '18', border: `1px solid ${fiab.couleur}40`, borderRadius: 20, padding: '3px 10px', whiteSpace: 'nowrap' }}>{fiab.label}</span>
+        </div>
+      </div>
+      <div style={{ textAlign: 'center', padding: '8px 0 20px' }}>
+        <div style={{ fontSize: 22, fontWeight: 900, color: urgenceConfig.couleur, letterSpacing: '-0.3px', marginBottom: 16 }}>{urgenceConfig.decision}</div>
+        <div style={{ fontSize: 46, fontWeight: 900, color: urgenceConfig.couleur, letterSpacing: '-2px', lineHeight: 1 }}>{margeVal >= 0 ? '+' : '−'}CHF {fmtK(Math.abs(margeVal))}</div>
+        <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 8 }}>{margeVal >= 0 ? 'marge estimée' : 'perte estimée'}</div>
+      </div>
+      <div style={{ borderTop: '1px solid var(--border)', paddingTop: 12, display: 'flex', flexDirection: 'column', gap: 4, textAlign: 'center' }}>
+        <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>Coût final estimé&nbsp;<span style={{ color: 'var(--text-secondary)', fontWeight: 700, fontSize: 14 }}>CHF {fmtK(etat.coutFinalEstime)}</span></div>
+        <div style={{ fontSize: 11, color: 'var(--text-muted)', opacity: 0.8 }}>Marge estimée&nbsp;<span style={{ color: margePct >= 15 ? C.secondaire : margePct >= 5 ? C.warning : C.danger, fontWeight: 600 }}>{margePct}%</span></div>
+      </div>
+    </div>
+  );
+}
+
+function renderRecommandations(etat, couts) {
+  const recommandations = [];
+  if (couts.ratioEfficacite !== null && couts.ratioEfficacite < 0.85)
+    recommandations.push({ icone: '↓', texte: 'Le chantier consomme plus vite qu\'il n\'avance' });
+  if (etat.coutTotalReel > 0 && (etat.coutMOReel / etat.coutTotalReel) > 0.6)
+    recommandations.push({ icone: 'mo', texte: 'Main d\'œuvre trop élevée — vérifier productivité ou dimensionnement équipe' });
+  if (couts.coutMaterielPrevu > 0 && etat.coutMateriel > couts.coutMaterielPrevu * 1.15)
+    recommandations.push({ icone: 'mat', texte: 'Dépassement matériel — contrôler commandes ou pertes chantier' });
+  const affichees = recommandations.slice(0, 2);
+  if (affichees.length === 0) return null;
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 4 }}>
+      {affichees.map(r => (
+        <div key={r.texte} style={{ background: C.warning + '10', border: `1px solid ${C.warning}35`, borderRadius: 10, padding: '10px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
+          <span style={{ fontSize: 18, lineHeight: 1 }}>{r.icone}</span>
+          <span style={{ fontSize: 13, color: C.warning, fontWeight: 600 }}>{r.texte}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function renderEcartTable(couts, fmtN) {
+  const lignes = [
+    { label: 'Main d\'œuvre', prevu: couts.coutEquipePrevu, reel: couts.coutEquipeReel, ecart: couts.ecartEquipe, ecartPct: couts.ecartEquipePct },
+    { label: 'Matériel', prevu: couts.coutMaterielPrevu, reel: couts.coutMaterielReel, ecart: couts.ecartMateriel, ecartPct: couts.ecartMaterielPct },
+    { label: 'Sous-traitance', prevu: couts.coutSousTraitancePrevu, reel: couts.coutSousTraitanceReel, ecart: couts.ecartSousTraitance, ecartPct: couts.ecartSousTraitancePct },
+    { label: 'Autres', prevu: couts.autresCoutsPrevu, reel: couts.autresCoutsReel, ecart: couts.ecartAutres, ecartPct: couts.ecartAutresPct },
+  ].filter(l => l.prevu > 0 || l.reel > 0);
+  const totalEcart = couts.totalCoutsReel - couts.totalCoutsPrevu;
+  return (
+    <div style={{ marginBottom: 16 }}>
+      <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.7px', color: 'var(--text-muted)', marginBottom: 8 }}>Écart prévu / réel par poste</div>
+      <div style={{ border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+          <thead>
+            <tr style={{ background: 'var(--bg-glass-2)' }}>
+              {['Poste', 'Prévu', 'Réel', 'Écart', '%'].map(h => (
+                <th key={h} style={{ padding: '8px 12px', textAlign: h === 'Poste' ? 'left' : 'right', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-muted)', borderBottom: '1px solid var(--border)' }}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {lignes.map(l => {
+              const couleurEcart = l.ecart > 0 ? C.danger : l.ecart < 0 ? C.secondaire : 'var(--text-muted)';
+              return (
+                <tr key={l.label} style={{ borderBottom: '1px solid var(--border)' }}>
+                  <td style={{ padding: '8px 12px', color: 'var(--text-secondary)' }}>{l.label}</td>
+                  <td style={{ padding: '8px 12px', textAlign: 'right', color: 'var(--text-muted)' }}>CHF {fmtN(l.prevu)}</td>
+                  <td style={{ padding: '8px 12px', textAlign: 'right', color: 'var(--text-secondary)' }}>CHF {fmtN(l.reel)}</td>
+                  <td style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 700, color: couleurEcart }}>{l.ecart > 0 ? '+' : ''}{l.ecart !== 0 ? `CHF ${fmtN(Math.abs(l.ecart))}` : '—'}</td>
+                  <td style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 700, color: couleurEcart }}>{l.ecart > 0 ? '+' : l.ecart < 0 ? '-' : ''}{l.ecart !== 0 && l.ecartPct !== null ? `${Math.abs(l.ecartPct)}%` : '—'}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+          <tfoot>
+            <tr style={{ background: 'var(--bg-glass-2)' }}>
+              <td style={{ padding: '8px 12px', fontWeight: 700, color: 'var(--text-primary)' }}>Total</td>
+              <td style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 700, color: 'var(--text-primary)' }}>CHF {fmtN(couts.totalCoutsPrevu)}</td>
+              <td style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 700, color: 'var(--text-primary)' }}>CHF {fmtN(couts.totalCoutsReel)}</td>
+              <td colSpan={2} style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 800, color: totalEcart > 0 ? C.danger : totalEcart < 0 ? C.secondaire : 'var(--text-muted)' }}>{totalEcart > 0 ? '+' : ''}{totalEcart !== 0 ? `CHF ${fmtN(Math.abs(totalEcart))}` : '—'}</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+// ── Rentabilité par jours réalisés ──────────────────────────────────────────
+function renderRentabiliteJours(c, etat, couts, naviguer, fmtN, fmtK) {
+  const joursPrevu = etat.totalJoursPrevus;
+  const joursRealises = etat.totalJoursReels;
+  const joursCalRestants = joursOuvrableRestants(c.dateDebut, joursPrevu, c.inclusSamedi);
+  const rj = {
+    joursPrevu,
+    joursRealises,
+    joursRestants: joursPrevu - joursRealises,
+    enDepassement: joursCalRestants !== null && joursCalRestants < 0,
+    enAvance: false,
+    aucuneSaisie: joursRealises === 0,
+    coutMOPrevu: couts.coutEquipePrevu,
+    coutMOReel:  couts.coutEquipeReel,
+    autresCouts: (couts.coutMaterielReel || 0) + (couts.coutSousTraitanceReel || 0) + (couts.autresCoutsReel || 0),
+    montantDevis: couts.montantTotal,
+    totalCoutsReel: Math.round(couts.totalCoutsReel || 0),
+    rentabilite: couts.margeReel !== null ? Math.round(couts.margeReel) : null,
+    rentabilitePct: couts.margeReelPct,
+    rentabiliteProjetee: etat.projectionDisponible && etat.margeEstimee !== null ? Math.round(etat.margeEstimee) : null,
+    rentabiliteProjetee_Pct: etat.projectionDisponible ? etat.margeEstimeePct : null,
+  };
+
+  const couleurStatutJours = rj.aucuneSaisie
+    ? 'var(--text-muted)'
+    : rj.enDepassement
+      ? C.danger
+      : rj.enAvance
+        ? C.secondaire
+        : C.warning;
+
+  const labelStatutJours = rj.aucuneSaisie
+    ? 'Pas de données'
+    : rj.enDepassement
+      ? 'Dépassement'
+      : 'En cours';
+
+  const couleurRenta = statutRentabilite(rj.rentabilitePct).couleur;
+
+  // Écart KPI — calculé ici pour éviter IIFE dans le .map()
+  const ec = rj.aucuneSaisie ? null : calculerEcartChantier(c);
+  const ecKpi = {
+    label: 'Écart / devis',
+    valeur: ec ? (ec.ecartJours === 0 ? '0j' : `${ec.ecartJours > 0 ? '+' : ''}${ec.ecartJours}j`) : '—',
+    couleur: !ec ? '#78909c' : ec.ecartJours > 0 ? C.danger : ec.ecartJours < 0 ? C.secondaire : '#78909c',
+  };
+
+  // Équipe analysis — calculs extraits en amont
+  const membres = etat.equipe || [];
+  const nbTotal    = membres.length;
+  const nbReel     = membres.filter(m => m.joursReels > 0).length;
+  const couverture = nbTotal > 0 ? Math.round((nbReel / nbTotal) * 100) : 0;
+  const etatEquipe = nbReel === 0 ? 'vide' : nbReel < nbTotal ? 'partiel' : 'complet';
+  const couleurEtat = etatEquipe === 'complet' ? C.secondaire : etatEquipe === 'partiel' ? C.warning : 'var(--text-muted)';
+  const titreEtat   = etatEquipe === 'complet' ? 'Coût équipe complet' : etatEquipe === 'partiel' ? 'Coût équipe réel (partiel)' : 'Coût équipe : non démarré';
+  const alerteCouverture = etatEquipe === 'partiel'
+    ? couverture < 50
+      ? { texte: 'Données insuffisantes pour analyse fiable', couleur: C.danger }
+      : { texte: 'Analyse partielle — compléter les données', couleur: C.warning }
+    : null;
+
+  const membresAffiches = nbTotal > 0 && etatEquipe !== 'vide'
+    ? [...membres]
+        .filter(m => etatEquipe === 'complet' || m.joursReels > 0)
+        .sort((a, b) => b.cout - a.cout)
+        .map(m => ({ ...m, partPct: etat.coutMOReel > 0 ? Math.round((m.cout / etat.coutMOReel) * 100) : 0 }))
+    : [];
+  const totalEquipe = membresAffiches.reduce((s, m) => s + m.cout, 0);
+
+  return (
+    <div style={{ ...carteStyle, borderLeft: `4px solid ${couleurStatutJours}` }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18, flexWrap: 'wrap', gap: 8 }}>
+        <div className="ds-card-title" style={{ margin: 0 }}>Rentabilité par jours réalisés</div>
+        <span style={{ fontSize: 12, fontWeight: 700, color: couleurStatutJours, background: couleurStatutJours + '18', border: `1px solid ${couleurStatutJours}35`, borderRadius: 20, padding: '4px 14px' }}>
+          {labelStatutJours}
+        </span>
+      </div>
+
+      {/* Barre de progression jours */}
+      {!rj.aucuneSaisie && rj.joursPrevu > 0 && (
+        <div style={{ marginBottom: 18 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--text-muted)', marginBottom: 6 }}>
+            <span>0 jour</span>
+            <span>{rj.joursPrevu} jours prévus</span>
+          </div>
+          <div style={{ background: 'var(--bg-glass-2)', borderRadius: 8, height: 10, overflow: 'hidden', position: 'relative' }}>
+            <div style={{
+              height: '100%', borderRadius: 8, transition: 'width 0.4s ease',
+              background: rj.enDepassement
+                ? `linear-gradient(90deg, ${C.warning}, ${C.danger})`
+                : `linear-gradient(90deg, ${C.primaire}, ${C.secondaire})`,
+              width: `${Math.min((rj.joursRealises / rj.joursPrevu) * 100, 100)}%`,
+            }} />
+            {rj.enDepassement && (
+              <div style={{ position: 'absolute', right: 0, top: 0, height: '100%', width: `${Math.min(((rj.joursRealises - rj.joursPrevu) / rj.joursPrevu) * 100, 30)}%`, background: C.danger + '60', borderRadius: '0 8px 8px 0' }} />
+            )}
+          </div>
+          <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 5, textAlign: 'right' }}>
+            {rj.joursRealises} jour{rj.joursRealises > 1 ? 's' : ''} réalisé{rj.joursRealises > 1 ? 's' : ''}
+            {rj.enDepassement
+              ? ` (+${-rj.joursRestants}j de dépassement)`
+              : rj.enAvance
+                ? ` — ${rj.joursRestants}j restant${rj.joursRestants > 1 ? 's' : ''}`
+                : ''}
+          </div>
+        </div>
+      )}
+
+      {/* KPIs jours */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 10, marginBottom: rj.aucuneSaisie ? 0 : 16 }}>
+        {[
+          { label: 'Jours prévus',    valeur: `${rj.joursPrevu}j`,                                              couleur: C.primaire },
+          { label: 'Jours réalisés',  valeur: rj.aucuneSaisie ? '—' : `${rj.joursRealises}j`,                  couleur: rj.aucuneSaisie ? '#78909c' : couleurStatutJours },
+          ecKpi,
+          { label: 'Coût/j équipe',   valeur: rj.coutJournalierEquipe > 0 ? `CHF ${fmtN(rj.coutJournalierEquipe)}` : '—', couleur: C.violet },
+        ].map(s => (
+          <div key={s.label} style={{ background: s.couleur + '10', border: `1px solid ${s.couleur}25`, borderRadius: 10, padding: '12px 14px', textAlign: 'center' }}>
+            <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px', color: 'var(--text-muted)', marginBottom: 5 }}>{s.label}</div>
+            <div style={{ fontSize: 18, fontWeight: 800, color: s.couleur, letterSpacing: '-0.3px' }}>{s.valeur}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Rentabilité basée sur les jours */}
+      {!rj.aucuneSaisie && (
+        <div style={{ borderTop: '1px solid var(--border)', paddingTop: 14, marginTop: 2 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', color: 'var(--text-muted)', marginBottom: 10 }}>
+            Rentabilité calculée sur les jours réalisés
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 10 }}>
+            {[
+              { label: 'Coût MO réel',     valeur: `CHF ${fmtN(rj.coutMOReel)}`,     couleur: C.warning },
+              { label: 'Autres coûts',      valeur: `CHF ${fmtN(rj.autresCouts)}`,    couleur: '#78909c' },
+              { label: 'Total coûts réels', valeur: `CHF ${fmtN(rj.totalCoutsReel)}`, couleur: C.danger },
+              { label: 'Rentabilité réelle',valeur: `CHF ${fmtN(rj.rentabilite)}`,    couleur: couleurRenta },
+              { label: 'Marge réelle (%)',  valeur: `${rj.rentabilitePct}%`,           couleur: couleurRenta },
+              ...(rj.rentabiliteProjetee !== null ? [{ label: 'Projection fin chantier', valeur: `CHF ${fmtN(rj.rentabiliteProjetee)}`, couleur: rj.rentabiliteProjetee_Pct >= 15 ? C.secondaire : C.warning }] : []),
+            ].map(s => (
+              <div key={s.label} style={{ background: s.couleur + '10', border: `1px solid ${s.couleur}25`, borderRadius: 10, padding: '12px 14px', textAlign: 'center' }}>
+                <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-muted)', marginBottom: 5 }}>{s.label}</div>
+                <div style={{ fontSize: 16, fontWeight: 800, color: s.couleur, letterSpacing: '-0.3px' }}>{s.valeur}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {rj.aucuneSaisie && (
+        <div style={{ textAlign: 'center', padding: '16px 0 4px', color: 'var(--text-muted)', fontSize: 13 }}>
+          Saisissez les <strong>jours réalisés</strong> dans le formulaire de modification pour activer ce calcul.
+        </div>
+      )}
+
+      {/* Analyse équipe */}
+      {nbTotal > 0 && (
+        <div style={{ borderTop: '1px solid var(--border)', paddingTop: 14, marginTop: 14 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: etatEquipe === 'partiel' ? 6 : 10 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', color: couleurEtat }}>{titreEtat}</div>
+            {etatEquipe === 'complet' && (
+              <span style={{ fontSize: 10, fontWeight: 700, color: C.secondaire, background: C.secondaire + '14', border: `1px solid ${C.secondaire}28`, borderRadius: 20, padding: '2px 10px' }}>
+                Données complètes — analyse fiable
+              </span>
+            )}
+            {etatEquipe === 'partiel' && (
+              <span style={{ fontSize: 10, fontWeight: 600, color: C.warning, background: C.warning + '14', border: `1px solid ${C.warning}28`, borderRadius: 20, padding: '2px 10px' }}>
+                Couverture : {nbReel} / {nbTotal} ({couverture}%)
+              </span>
+            )}
+          </div>
+
+          {alerteCouverture && (
+            <div style={{ fontSize: 11, fontWeight: 600, color: alerteCouverture.couleur, background: alerteCouverture.couleur + '10', border: `1px solid ${alerteCouverture.couleur}25`, borderRadius: 6, padding: '6px 10px', marginBottom: 10 }}>
+              {alerteCouverture.texte}
+            </div>
+          )}
+
+          {etatEquipe === 'vide' && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', background: 'var(--bg-glass)', border: '1px solid var(--border)', borderRadius: 8 }}>
+              <span style={{ fontSize: 22, fontWeight: 900, color: 'var(--text-muted)' }}>—</span>
+              <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Ajoutez des journées pour activer le suivi réel</span>
+            </div>
+          )}
+
+          {etatEquipe !== 'vide' && (
+            <>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+                {membresAffiches.map(m => {
+                  const barWidth = Math.max(m.partPct, 2);
+                  const couleurCout = m.partPct >= 40 ? C.danger : m.partPct >= 25 ? C.warning : C.primaire;
+                  return (
+                    <div key={m.employeId}
+                      onClick={() => naviguer('employes', { employeActif: m.employeId })}
+                      style={{ background: 'var(--bg-glass)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 14px', cursor: 'pointer', transition: 'background 0.18s ease, border-color 0.18s ease, transform 0.18s ease' }}
+                      onMouseEnter={e => { e.currentTarget.style.background = 'rgba(59,130,246,0.06)'; e.currentTarget.style.borderColor = 'rgba(59,130,246,0.22)'; e.currentTarget.style.transform = 'translateX(3px)'; }}
+                      onMouseLeave={e => { e.currentTarget.style.background = 'var(--bg-glass)'; e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.transform = ''; }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <span style={{ fontWeight: 700, fontSize: 13, color: 'var(--text-primary)' }}>{m.nom}</span>
+                          <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{m.poste}</span>
+                          <ChevronRight size={11} strokeWidth={2} style={{ color: 'var(--text-muted)' }} />
+                        </div>
+                        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                          <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>CHF {fmtN(m.tarifJour)}/j × {m.joursReels}j</span>
+                          <span style={{ fontSize: 14, fontWeight: 800, color: couleurCout }}>CHF {fmtN(m.cout)}</span>
+                          <span style={{ fontSize: 11, fontWeight: 700, background: couleurCout + '18', color: couleurCout, border: `1px solid ${couleurCout}30`, borderRadius: 20, padding: '2px 8px' }}>{m.partPct}%</span>
+                        </div>
+                      </div>
+                      <div style={{ height: 4, background: 'var(--bg-hover)', borderRadius: 4, overflow: 'hidden' }}>
+                        <div style={{ height: '100%', width: `${barWidth}%`, background: `linear-gradient(90deg, ${couleurCout}cc, ${couleurCout}66)`, borderRadius: 4 }} />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: etatEquipe === 'complet' ? 'var(--text-secondary)' : C.warning }}>
+                    {etatEquipe === 'complet' ? 'Total équipe' : 'Total partiel'}
+                  </span>
+                  {etatEquipe === 'complet' && <span style={{ fontSize: 10, color: C.secondaire }}>Basé sur 100% des employés</span>}
+                  {etatEquipe === 'partiel' && (
+                    <span style={{ fontSize: 10, color: C.warning }}>Basé sur {nbReel} / {nbTotal} employés ({couverture}%)</span>
+                  )}
+                </div>
+                <span
+                  title={etatEquipe === 'complet' ? 'Données complètes — calcul fiable' : 'Données basées uniquement sur les employés renseignés'}
+                  style={{ fontSize: 15, fontWeight: 900, color: etatEquipe === 'complet' ? C.violet : C.warning }}
+                >
+                  CHF {fmtN(totalEquipe)}
+                </span>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = [], parametres, naviguer, contexte, ouvrirSaisieHeures }) {
+  const [vue, setVue] = useState('liste');
+  const [selected, setSelected] = useState(null);
+  const [detailOnglet, setDetailOnglet] = useState('vue');
+  const [ajout, setAjout] = useState(false);
+  const [filtre, setFiltre] = useState(contexte?.filtreStatut || 'Tous');
+  const [membreEquipe, setMembreEquipe] = useState({ employeId: '', joursPlannifies: '', joursRealises: '', role: 'Ouvrier' });
+  const [imprévu, setImprévu] = useState({ description: '', montant: '' });
+  const [simulations, setSimulations] = useState({});
+  const [justSimulatedId, setJustSimulatedId] = useState(null);
+
+  const [modeCompleter, setModeCompleter] = useState(false);
+
+  // Sync selected avec chantiers[] — évite les données stales après une modification externe
+  React.useEffect(() => {
+    if (!selected) return;
+    const updated = chantiers.find(c => c.id === selected.id);
+    if (updated && updated !== selected) setSelected(updated);
+  }, [chantiers]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  React.useEffect(() => {
+    if (contexte?.chantierActif) {
+      const c = chantiers.find(ch => ch.id === contexte.chantierActif);
+      if (c) { setSelected(c); setVue('detail'); setDetailOnglet('vue'); }
+    }
+    if (contexte?.modeCompleter) setModeCompleter(true);
+    if (contexte?.filtreStatut) setFiltre(contexte.filtreStatut);
+    if (contexte?.clientActif) setFiltre('Tous');
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const vide = {
+    numero: `CH-${new Date().getFullYear()}-${String(Math.max(0, ...chantiers.map(c => parseInt((c.numero || '').split('-').pop()) || 0)) + 1).padStart(3, '0')}`, nom: '', clientId: '', conducteur: '', directeurTravauxId: '', adresse: '', ville: '', canton: '',
+    dateDebut: '', nombreJours: '', nombrePersonnes: '', joursRealises: '', inclusSamedi: false,
+    statut: 'En cours', priorite: 'Normale', avancement: 0, typesTravaux: [], surface: '',
+    montantDevis: '', avenants: [], montantFacture: 0, equipe: [], employes: [],
+    coutMaterielPrevu: '', materielReel: '', coutSousTraitancePrevu: '', sousTraitanceReelle: '',
+    autresCoutsPrevu: '', autresCoutsReels: '', imprevus: [], heuresPrevu: '', heuresRealise: '', notes: '',
+    journal: [], // préparation journal de chantier (futur)
+  };
+  const [form, setForm] = useState(vide);
+  const [erreurs, setErreurs] = useState({});
+
+  const statuts = ['Tous', 'Planifié', 'En cours', 'Suspendu', 'Terminé', 'Facturé', 'Clôturé'];
+  const couleurStatut = couleurStatutDS;
+
+  const chantiersFiltres = useMemo(() => {
+    let liste = filtre === 'Tous' ? chantiers : chantiers.filter(c => c.statut === filtre);
+    if (contexte?.clientActif) liste = liste.filter(c => c.clientId === contexte.clientActif);
+    if (contexte?.employeActif) liste = liste.filter(c => c.equipe?.some(m => parseInt(m.employeId) === contexte.employeActif));
+    return liste;
+  }, [chantiers, filtre, contexte]);
+
+  // Calculs lourds du chantier sélectionné — mis en cache pour éviter les recalculs sur chaque re-render
+  const etatSelected = useMemo(() => {
+    if (!selected) return null;
+    return calculerEtatChantier(selected, parametres.employes, devis);
+  }, [selected, parametres.employes, devis]);
+
+  const coutsSelected = useMemo(() => {
+    if (!selected) return null;
+    return calculerCoutsChantier(selected, parametres.employes, parametres.localites, parametres.parametres, devis);
+  }, [selected, parametres.employes, parametres.localites, parametres.parametres, devis]);
+
+
+  // Cache des jours restants pour tous les chantiers filtrés — évite les recalculs dans le render
+  const joursParChantier = useMemo(() => {
+    const map = {};
+    chantiersFiltres.forEach(c => { map[c.id] = joursOuvrableRestants(c.dateDebut, c.nombreJours, c.inclusSamedi); });
+    return map;
+  }, [chantiersFiltres]);
+
+  const sauvegarder = () => {
+    if (!form.nom) return;
+    if (!form.devisId) {
+      setErreurs(prev => ({ ...prev, devisId: 'Un devis signé est obligatoire pour créer un chantier' }));
+      return;
+    }
+    if (!form.id && (!form.dateDebut || !form.nombreJours)) return;
+    const nb = parseInt(form.nombreJours);
+    if (form.nombreJours && (isNaN(nb) || nb <= 0)) { alert('Le nombre de jours doit être un entier positif.'); return; }
+    const formSain = sanitiser(form);
+    // Sync montantDevis depuis le devis lié (cache pour ExportPDF legacy)
+    const devisLie = devis.find(d => String(d.id) === String(formSain.devisId));
+    if (devisLie) {
+      formSain.montantDevis = String(parseFloat(devisLie.montantHT) || 0);
+    }
+    const empsList = parametres.employes || donneesInitiales.employes || [];
+    // Dériver joursRealises depuis le journal (heuresTravaillees — format unique)
+    const equipeAvecJours = form.equipe.map(m => {
+      const empId = parseInt(m.employeId);
+      const jours = heuresEmploye(form.journal || [], empId) / 8;
+      return { ...m, joursRealises: String(jours) };
+    });
+    const employes = equipeAvecJours.map(m => {
+      const emp = empsList.find(e => e.id === parseInt(m.employeId));
+      const jours = parseFloat(m.joursRealises) || 0;
+      return { ...m, cout: emp ? (parseFloat(emp.tarifJour) || 0) * jours : 0 };
+    });
+    // Avancement auto-calculé — dates uniques du journal / nombreJours chantier
+    const joursReelsChantier = new Set((form.journal || []).map(e => e.date).filter(Boolean)).size;
+    const joursPrevusChantier = parseInt(form.nombreJours) || 0;
+    const avancementAuto = joursPrevusChantier > 0
+      ? Math.min(100, Math.round((joursReelsChantier / joursPrevusChantier) * 100))
+      : (form.id ? (parseFloat(form.avancement) || 0) : 0);
+    const chantiersData = { ...formSain, employes, avancement: avancementAuto };
+    let tableauFinal;
+    if (form.id) {
+      tableauFinal = chantiers.map(c => c.id === form.id ? chantiersData : c);
+    } else {
+      tableauFinal = [...chantiers, { ...chantiersData, id: Date.now() }];
+    }
+    setChantiers(tableauFinal);
+    // Si on venait de "Compléter", revenir au détail du chantier après sauvegarde
+    if (modeCompleter && form.id) {
+      const saved = tableauFinal.find(c => c.id === form.id);
+      if (saved) { setSelected(saved); setVue('detail'); }
+      setModeCompleter(false);
+    }
+    setAjout(false); setForm(vide); setErreurs({});
+  };
+
+  const supprimer = (id) => {
+    const c = chantiers.find(ch => ch.id === id);
+    if (!window.confirm(`Supprimer le chantier "${c?.nom}" ? Cette action est irréversible.`)) return;
+    setChantiers(chantiers.filter(ch => ch.id !== id));
+    setSelected(null);
+    setVue('liste');
+  };
+  const toggleTravaux = (t) => { const list = form.typesTravaux || []; setForm({ ...form, typesTravaux: list.includes(t) ? list.filter(x => x !== t) : [...list, t] }); };
+  const ajouterMembre = () => {
+    if (membreEquipe.employeId && membreEquipe.joursPlannifies) {
+      setForm({ ...form, equipe: [...form.equipe, { ...membreEquipe, _uid: `${membreEquipe.employeId}_${Date.now()}` }] });
+      setMembreEquipe({ employeId: '', joursPlannifies: '', joursRealises: '', role: 'Ouvrier' });
+    }
+  };
+  const ajouterImprévu = () => {
+    if (imprévu.description && imprévu.montant) {
+      setForm({ ...form, imprevus: [...form.imprevus, { ...imprévu }] });
+      setImprévu({ description: '', montant: '' });
+    }
+  };
+  // Fusion avec vide pour garantir la présence de tous les champs (chantiers créés sans le formulaire)
+  const ouvrirModification = (c) => {
+    setSelected(null); setVue('liste'); setForm({ ...vide, ...c }); setAjout(true);
+  };
+
+  if (vue === 'detail' && selected) {
+    const c = selected;
+    // ══ MOTEUR UNIQUE — source de vérité (memoïsé en amont) ═════════════
+    const etat = etatSelected;
+    assertEtatValide(etat);
+    const coherenceDetail = assertEtatCoherent(etat);
+    const couts = coutsSelected;
+    const j = joursOuvrableRestants(c.dateDebut, c.nombreJours, c.inclusSamedi);
+
+    const modeChantier = etat.avancementPct === 0 ? 'INIT'
+      : etat.avancementPct >= 95 ? 'FINAL'
+      : 'PROJECTION';
+
+    // ── Performance temporelle (depuis moteur) ──────────────────────────
+    const perfRatio = etat.totalJoursPrevus > 0 && etat.totalJoursReels > 0
+      ? etat.totalJoursReels / etat.totalJoursPrevus
+      : null;
+    const perfConfig = perfRatio === null ? null
+      : perfRatio <= 0.9
+        ? { label: 'Dans les temps', couleur: C.secondaire,  }
+        : perfRatio <= 1.1
+          ? { label: 'À surveiller', couleur: C.warning,  }
+          : { label: 'En retard', couleur: C.danger,  };
+    const perfReco = etat.deriveJours <= 0 ? null
+      : etat.deriveJours <= 2 ? 'surveiller'
+      : etat.deriveJours <= 5 ? 'ajouter'
+      : 'renforcer';
+    const perfRecoLabel = perfReco === 'surveiller'
+      ? 'Surveiller — possible rattrapage sans action'
+      : perfReco === 'ajouter'
+        ? 'Ajouter 1 ouvrier pendant quelques jours'
+        : perfReco === 'renforcer'
+          ? 'Renforcer l\'équipe ou revoir le planning'
+          : null;
+    const perfNombreEmployes = (c.equipe || []).length;
+    const perfResteJours = etat.totalJoursPrevus - etat.totalJoursReels;
+    const perfImpact = (() => {
+      if (!perfReco || perfReco === 'surveiller') return null;
+      if (perfNombreEmployes === 0 || perfResteJours <= 0) return null;
+      const nbAjout = perfReco === 'ajouter' ? 1 : 2;
+      const gainVitesse = nbAjout / perfNombreEmployes;
+      const nouvelleDuree = Math.round(perfResteJours / (1 + gainVitesse));
+      const gainJours = Math.round(perfResteJours - nouvelleDuree);
+      if (gainJours <= 0) return null;
+      const retardResiduel = etat.deriveJours - gainJours;
+      const texte = retardResiduel <= 1
+        ? `Gain estimé : -${gainJours} jour${gainJours > 1 ? 's' : ''} sur la fin de chantier`
+        : `Permettrait de réduire le retard à ~${retardResiduel} jour${retardResiduel > 1 ? 's' : ''}`;
+      const conclusion = retardResiduel <= 0
+        ? { icone: '', texte: 'Permet de revenir dans les délais', couleur: C.secondaire }
+        : retardResiduel <= 2
+          ? { icone: 'warning', texte: 'Réduit le retard mais reste sous contrôle', couleur: C.warning }
+          : { icone: 'danger', texte: 'Insuffisant — revoir le planning ou ajouter plus de ressources', couleur: C.danger };
+      return { texte, conclusion };
+    })();
+    const perfMessageCourt = (() => {
+      if (j === null || !c.dateDebut) return '';
+      if (j < 0) {
+        const r = Math.abs(j);
+        return perfRatio !== null && perfRatio > 1.1
+          ? `+${r}j de retard — action nécessaire`
+          : `+${r}j de retard — surveiller`;
+      }
+      if (j === 0) return 'Dernier jour prévu';
+      return `${j}j restants`;
+    })();
+    const perfDetail = `${etat.totalJoursReels} j réalisés sur ${etat.totalJoursPrevus} j prévus`;
+
+    // ── Score de criticité (depuis moteur) ───────────────────────────────
+    const scoreCriticite = (etat.deriveJours * 2)
+      + (etat.projectionDisponible && etat.margeEstimeePct !== null && etat.margeEstimeePct < 0 ? 10 : 0)
+      + (couts.ratioEfficacite !== null && couts.ratioEfficacite < 0.8 ? 5 : 0);
+    const criticiteConfig = scoreCriticite >= 15
+      ? { icone: 'danger', label: 'Chantier critique — action immédiate', couleur: C.danger, fond: 'radial-gradient(ellipse at 6% 50%, rgba(239,68,68,0.13) 0%, rgba(239,68,68,0.04) 100%)' }
+      : scoreCriticite >= 8
+        ? { icone: 'warning', label: 'Chantier à risque — à traiter aujourd\'hui', couleur: C.warning, fond: 'radial-gradient(ellipse at 6% 50%, rgba(245,158,11,0.13) 0%, rgba(245,158,11,0.04) 100%)' }
+        : null;
+
+    const al = getAlerteChantier(c);
+    const client = clients.find(cl => cl.id === c.clientId);
+    const directeurTravaux = c.directeurTravauxId ? parametres.employes.find(e => e.id === parseInt(c.directeurTravauxId)) : null;
+    const fmtK = (n) => fmtN(n);
+    const facturesLiees = factures.filter(f => parseInt(f.chantierId) === c.id);
+    const montantFactureLie = facturesLiees.reduce((s, f) => s + (parseFloat(f.montantTTC) || 0), 0);
+    const montantPayeLie    = facturesLiees.reduce((s, f) => s + (parseFloat(f.montantPaye) || 0), 0);
+    const devisTotal = calculerCA(c, devis);
+    const pctFacture = devisTotal > 0 ? Math.min(Math.round((montantFactureLie / devisTotal) * 100), 100) : 0;
+    // ── Alerte trésorerie (depuis moteur) ────────────────────────────────
+    const tresorerieEcart = devisTotal > 0 ? etat.avancementPct - pctFacture : 0;
+    const tresorerieConfig = tresorerieEcart > 30
+      ? { icone: 'warning', label: 'Travail non facturé — risque de trésorerie', couleur: C.danger }
+      : tresorerieEcart > 15
+        ? { icone: 'warning', label: 'Facturation en retard', couleur: C.warning }
+        : null;
+    const pctEncaisse = devisTotal > 0 ? Math.min(Math.round((montantPayeLie / devisTotal) * 100), 100) : 0;
+
+    // ── Alertes intelligentes (depuis moteur uniquement) ─────────────────
+    const alertesChantier = (() => {
+      const list = [];
+
+      // Dépassement de délai (date-based)
+      if (j !== null && j < 0) {
+        const abs = Math.abs(j);
+        list.push({ id: 'delai', texte: `Dépassement de délai — ${abs} jour${abs > 1 ? 's' : ''} de retard sur la planification`, gravite: 'critique', icone: 'danger' });
+      } else if (j !== null && j <= 3 && j >= 0) {
+        list.push({ id: 'fin_proche', texte: `Fin imminente — ${j === 0 ? "dernier jour aujourd'hui" : `${j} jour${j > 1 ? 's' : ''} restant${j > 1 ? 's' : ''}`}`, gravite: 'warning', icone: 'warning' });
+      }
+
+      // Rentabilité — projection moteur uniquement (bloquée si < 20%)
+      if (etat.projectionDisponible && etat.margeEstimeePct !== null) {
+        if (etat.margeEstimee < 0) {
+          list.push({ id: 'perte', texte: `Chantier en perte — déficit estimé CHF ${fmtN(Math.abs(etat.margeEstimee))} (${etat.margeEstimeePct.toFixed(1)}%)`, gravite: 'critique', icone: 'danger' });
+        } else if (etat.margeEstimeePct < 15) {
+          list.push({ id: 'marge_faible', texte: `Rentabilité faible — marge estimée ${etat.margeEstimeePct.toFixed(1)}% · seuil cible 15%`, gravite: 'warning', icone: 'warning' });
+        }
+      }
+
+      // Main d'œuvre élevée — depuis moteur
+      if (etat.coutMOReel > 0 && etat.coutTotalReel > 0) {
+        const pctMO = (etat.coutMOReel / etat.coutTotalReel) * 100;
+        if (pctMO > 60) {
+          list.push({ id: 'mo_elevee', texte: `Main d'œuvre élevée — ${Math.round(pctMO)}% du coût total (seuil 60%)`, gravite: 'warning', icone: 'warning' });
+        }
+      }
+
+      return list.sort((a, b) => (b.gravite === 'critique' ? 1 : 0) - (a.gravite === 'critique' ? 1 : 0));
+    })();
+
+    // ── Vars extraites des IIFEs du rendu détail ──────────────────────────────
+    const chantierStatusBadge = ['En cours', 'Suspendu'].includes(c.statut) ? getChantierStatus(c) : null;
+    const devisSource = devis.find(d => String(d.id) === String(c.devisId));
+
+    const estNouveauPlanifie = modeCompleter && c.statut === 'Planifié';
+
+    return (<React.Fragment key="detail">
+      <div>
+        {/* ── Banner "Compléter" affiché après création depuis devis ── */}
+        {estNouveauPlanifie && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, background: 'linear-gradient(135deg, #ecfdf5, #d1fae5)', border: '1px solid #6ee7b7', borderRadius: 12, padding: '14px 18px', marginBottom: 16 }}>
+            <span style={{ fontSize: 22 }}>🎉</span>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontWeight: 700, color: '#065f46', fontSize: 14 }}>Chantier créé avec succès</div>
+              <div style={{ fontSize: 12, color: '#047857', marginTop: 2 }}>Complétez les informations (adresse, équipe, dates), puis passez en cours et saisissez les heures.</div>
+            </div>
+            <button
+              onClick={() => ouvrirModification(c)}
+              style={{ background: 'linear-gradient(135deg, #10b981, #059669)', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 16px', fontWeight: 700, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}
+            ><Pencil size={14} /> Compléter le chantier</button>
+          </div>
+        )}
+
+        <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', flexWrap: 'wrap' }}>
+          <button onClick={() => { setVue('liste'); setSelected(null); setModeCompleter(false); }} style={btnPrimaire}><ChevronRight size={15} style={{ transform: 'rotate(180deg)' }} /> Retour</button>
+          {!estNouveauPlanifie && (
+            <button onClick={() => ouvrirModification(c)} style={btnSucces}><Pencil size={15} /> Modifier</button>
+          )}
+          {c.devisId && !isChantierActif(c) && !STATUTS_CLOS.includes(c.statut) && (
+            <button
+              onClick={() => {
+                const updated = { ...c, statut: 'En cours' };
+                setChantiers(chantiers.map(ch => ch.id === c.id ? updated : ch));
+                setSelected(updated);
+                setModeCompleter(false);
+              }}
+              style={{ ...btnSucces, background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.4)', color: '#f59e0b' }}
+            >▶ Passer en cours</button>
+          )}
+          {isChantierActif(c) && (
+            <button
+              onClick={() => ouvrirSaisieHeures(c)}
+              style={{ ...btnPrimaire, background: 'linear-gradient(135deg, #7c3aed, #6d28d9)', border: '1px solid #7c3aed55' }}
+            ><Clock size={15} /> Saisir heures</button>
+          )}
+          <button onClick={() => naviguer('qualite', { chantierActif: c.id })} style={{ ...DS.btnGhost }}><CheckSquare size={15} /> Qualité</button>
+          <button onClick={() => naviguer('finances', { chantierActif: c.id })} style={{ ...DS.btnGhost }}><DollarSign size={15} /> Finances</button>
+          <button onClick={() => supprimer(c.id)} style={btnDanger}><Trash2 size={14} /> Supprimer</button>
+        </div>
+
+        {/* ── Onglets détail ── */}
+        <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', marginBottom: 20 }}>
+          {[
+            { id: 'vue',       label: 'Vue' },
+            { id: 'analyse',   label: 'Analyse' },
+            { id: 'financier', label: 'Financier' },
+          ].map(o => (
+            <button key={o.id} onClick={() => setDetailOnglet(o.id)} style={{
+              background: 'transparent', border: 'none',
+              borderBottom: detailOnglet === o.id ? '2px solid #3b82f6' : '2px solid transparent',
+              color: detailOnglet === o.id ? '#3b82f6' : 'var(--text-secondary)',
+              padding: '10px 18px', marginBottom: '-1px',
+              cursor: 'pointer', fontSize: 14, fontWeight: detailOnglet === o.id ? 700 : 400,
+            }}>{o.label}</button>
+          ))}
+        </div>
+
+        {/* ── Fallback données invalides (erreur critique moteur) ── */}
+        {!coherenceDetail.ok && (
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 12,
+            padding: '14px 18px', borderRadius: 12, marginBottom: 16,
+            background: 'rgba(144,164,174,0.08)', border: '1px solid rgba(144,164,174,0.3)',
+            borderLeft: '4px solid #90a4ae',
+          }}>
+            <span style={{ fontSize: 20, lineHeight: 1, color: "var(--text-muted)" }}>○</span>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 800, color: '#90a4ae' }}>Données invalides — analyse impossible</div>
+              <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 3 }}>Vérifier les données saisies pour ce chantier</div>
+            </div>
+          </div>
+        )}
+
+        {/* ═══════════════════════════════════════════════════════
+            COCKPIT — 4 indicateurs clés, lisibles en 5 secondes
+            Données sources : etat (moteur unique), couts, perf
+            ═══════════════════════════════════════════════════════ */}
+        {(() => {
+          // ── Tuile 1 : Rentabilité ───────────────────────────
+          const margeTile = (() => {
+            if (etat.projectionDisponible && etat.margeEstimeePct !== null) {
+              const v = etat.margeEstimeePct;
+              return { val: `${v >= 0 ? '+' : ''}${v.toFixed(1)}%`, label: 'Marge estimée finale', couleur: v >= 15 ? C.secondaire : v >= 5 ? C.warning : C.danger };
+            }
+            if (couts.margeReelPct !== null && etat.coutTotalReel > 0) {
+              const v = couts.margeReelPct;
+              return { val: `${v >= 0 ? '+' : ''}${v.toFixed(1)}%`, label: 'Marge actuelle', couleur: v >= 15 ? C.secondaire : v >= 5 ? C.warning : C.danger };
+            }
+            return devisTotal !== null
+              ? { val: '—', label: 'Saisir des heures', couleur: '#78909c' }
+              : { val: 'N/A', label: 'Aucun devis lié', couleur: '#78909c' };
+          })();
+
+          // ── Tuile 2 : Avancement ────────────────────────────
+          const avTile = {
+            val: `${etat.avancementPct}%`,
+            label: etat.totalJoursPrevus > 0
+              ? `${etat.totalJoursReels}j réalisés / ${etat.totalJoursPrevus}j prévus`
+              : 'Jours prévus non définis',
+            couleur: etat.avancementPct === 0 ? '#78909c' : perfConfig ? perfConfig.couleur : C.secondaire,
+          };
+
+          // ── Tuile 3 : Planning (calendaire uniquement) ──────────
+          const joursCalendaire = joursOuvrableRestants(c.dateDebut, c.nombreJours, c.inclusSamedi);
+          const planTile = (() => {
+            if (!c.dateDebut || !c.nombreJours)
+              return { val: '—', label: 'Pas de dates définies', couleur: '#78909c' };
+            if (joursCalendaire === null)
+              return { val: '—', label: 'Calcul impossible', couleur: '#78909c' };
+            if (etat.totalJoursReels === 0)
+              return { val: `${c.nombreJours}j`, label: 'Durée prévue — non démarré', couleur: '#78909c' };
+            if (joursCalendaire > 0)
+              return { val: `${joursCalendaire}j restants`, label: `${etat.avancementPct}% réalisé`, couleur: C.secondaire };
+            if (joursCalendaire === 0)
+              return { val: 'Dernier jour', label: `${etat.avancementPct}% réalisé`, couleur: C.warning };
+            const retard = Math.abs(joursCalendaire);
+            return { val: `+${retard}j de retard`, label: `${etat.avancementPct}% réalisé`, couleur: retard > 5 ? C.danger : C.warning };
+          })();
+
+          // ── Tuile 4 : Action recommandée ────────────────────
+          const critAlert = alertesChantier.find(a => a.gravite === 'critique');
+          const actionTile = (() => {
+            if (modeChantier === 'FINAL') return { icone: 'info', val: 'Facturer', label: 'Chantier quasi terminé', couleur: C.secondaire };
+            if (critAlert)                return { icone: 'danger', val: 'Action urgente', label: critAlert.texte.length > 50 ? critAlert.texte.slice(0, 48) + '…' : critAlert.texte, couleur: C.danger };
+            if (perfReco === 'renforcer') return { niveau: 'danger', val: 'Renforcer l\'équipe', label: 'Retard important — revoir planning', couleur: C.danger };
+            if (perfReco === 'ajouter')  return { niveau: 'warning', val: '+1 ouvrier', label: 'Réduire le retard en cours', couleur: C.warning };
+            if (perfReco === 'surveiller') return { icone: '◎', val: 'Surveiller', label: 'Possible rattrapage sans action', couleur: C.warning };
+            if (modeChantier === 'INIT') return { icone: '▶', val: 'Saisir les heures', label: 'Aucune donnée terrain', couleur: '#78909c' };
+            return { icone: '', val: 'RAS', label: 'Aucune action requise', couleur: C.secondaire };
+          })();
+
+          const tiles = [
+            { id: 'renta', icone: 'renta', titre: 'RENTABILITÉ', ...margeTile },
+            { id: 'av',    icone: 'av', titre: 'AVANCEMENT',  ...avTile },
+            { id: 'plan',  icone: 'plan', titre: 'PLANNING',    ...planTile },
+            { id: 'act',   icone: actionTile.icone, titre: 'ACTION', val: actionTile.val, label: actionTile.label, couleur: actionTile.couleur },
+          ];
+
+          return (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 20 }}>
+              {tiles.map(t => (
+                <div key={t.id} style={{
+                  background: `linear-gradient(145deg, ${t.couleur}12 0%, rgba(255,255,255,0.02) 100%)`,
+                  border: `1px solid ${t.couleur}30`,
+                  borderTop: `3px solid ${t.couleur}`,
+                  borderRadius: 12, padding: '16px 18px',
+                  boxShadow: `0 2px 12px rgba(0,0,0,0.25), inset 0 1px 0 var(--border-glass)`,
+                }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', color: 'var(--text-muted)', marginBottom: 8 }}>
+                    {t.icone} {t.titre}
+                  </div>
+                  <div style={{ fontSize: 22, fontWeight: 900, color: t.couleur, letterSpacing: '-0.5px', lineHeight: 1.1, marginBottom: 6 }}>
+                    {t.val}
+                  </div>
+                  <div style={{ fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.35 }}>
+                    {t.label}
+                  </div>
+                </div>
+              ))}
+            </div>
+          );
+        })()}
+
+        {detailOnglet === 'vue' && <>
+        {/* ── Criticité globale ── */}
+        {criticiteConfig && (
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 14,
+            padding: '16px 22px', borderRadius: 14, marginBottom: 16,
+            background: criticiteConfig.fond,
+            border: `1px solid ${criticiteConfig.couleur}35`,
+            borderLeft: `5px solid ${criticiteConfig.couleur}`,
+            boxShadow: `0 2px 16px ${criticiteConfig.couleur}18`,
+          }}>
+            <span style={{ fontSize: 24, lineHeight: 1, flexShrink: 0 }}>{criticiteConfig.icone}</span>
+            <span style={{ fontSize: 15, fontWeight: 800, color: criticiteConfig.couleur, letterSpacing: '-0.2px' }}>{criticiteConfig.label}</span>
+          </div>
+        )}
+
+        {/* ── Alerte trésorerie ── */}
+        {tresorerieConfig && (
+          <div style={{
+            display: 'flex', alignItems: 'flex-start', gap: 14,
+            padding: '14px 20px', borderRadius: 12, marginBottom: 16,
+            background: tresorerieConfig.couleur === C.danger
+              ? 'radial-gradient(ellipse at 6% 50%, rgba(239,68,68,0.1) 0%, rgba(239,68,68,0.03) 100%)'
+              : 'radial-gradient(ellipse at 6% 50%, rgba(245,158,11,0.1) 0%, rgba(245,158,11,0.03) 100%)',
+            border: `1px solid ${tresorerieConfig.couleur}30`,
+            borderLeft: `4px solid ${tresorerieConfig.couleur}`,
+          }}>
+            <span style={{ fontSize: 20, lineHeight: 1, flexShrink: 0, marginTop: 1 }}>{tresorerieConfig.icone}</span>
+            <div>
+              <div style={{ fontWeight: 700, fontSize: 13, color: tresorerieConfig.couleur }}>{tresorerieConfig.label}</div>
+              <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 3 }}>
+                {etat.avancementPct}% réalisé · {pctFacture}% facturé
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── Alertes intelligentes ── */}
+        {alertesChantier.length > 0 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 20 }}>
+            {alertesChantier.map(a => {
+              const isCritique = a.gravite === 'critique';
+              const col = isCritique ? C.danger : C.warning;
+              return (
+                <div key={a.id} style={{
+                  display: 'flex', alignItems: 'center', gap: 12,
+                  padding: '13px 18px', borderRadius: 12,
+                  background: isCritique
+                    ? 'radial-gradient(ellipse at 6% 50%, rgba(239,68,68,0.13) 0%, rgba(239,68,68,0.04) 100%)'
+                    : 'radial-gradient(ellipse at 6% 50%, rgba(245,158,11,0.13) 0%, rgba(245,158,11,0.04) 100%)',
+                  border: `1px solid ${col}30`,
+                  borderLeft: `4px solid ${col}`,
+                  boxShadow: `0 2px 12px ${col}14`,
+                  backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)',
+                }}>
+                  <span style={{ fontSize: 20, flexShrink: 0 }}>{a.icone}</span>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: col, flex: 1, lineHeight: 1.4 }}>{a.texte}</span>
+                  <span style={{
+                    fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px',
+                    background: col + '16', color: col, border: `1px solid ${col}30`,
+                    borderRadius: 20, padding: '3px 11px', flexShrink: 0,
+                  }}>{isCritique ? 'Critique' : 'Attention'}</span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+        </>}
+
+        {detailOnglet === 'analyse' && <>
+        {/* ── Intelligence terrain ── */}
+        {etat.projectionDisponible && isChantierActif(c) && renderTerrainVelocity(c, etat)}
+
+        {/* ── Performance temporelle ── */}
+        {etat.totalJoursReels > 0 && perfConfig && (
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            padding: '14px 20px', borderRadius: 12, marginBottom: 16,
+            background: perfConfig.couleur + '0d',
+            border: `1px solid ${perfConfig.couleur}30`,
+            borderLeft: `4px solid ${perfConfig.couleur}`,
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1 }}>
+              <span style={{ fontSize: 20, lineHeight: 1, flexShrink: 0 }}>{perfConfig.dot}</span>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 700, fontSize: 14, color: perfConfig.couleur }}>{perfMessageCourt}</div>
+                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 3, opacity: 0.8 }}>{perfDetail}</div>
+                {perfRecoLabel && (
+                  <div style={{ marginTop: 8 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span style={{ fontSize: 13 }}>·</span>
+                      <span style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 500 }}>
+                        Recommandation : {perfRecoLabel.toLowerCase()}
+                      </span>
+                    </div>
+                    {perfImpact && (
+                      <div style={{ marginTop: 4, marginLeft: 20 }}>
+                        <div style={{ fontSize: 11, color: C.secondaire, fontWeight: 600 }}>
+                          → {perfImpact.texte}
+                        </div>
+                        <div style={{ marginTop: 4, fontSize: 12, fontWeight: 700, color: perfImpact.conclusion.couleur }}>
+                          {perfImpact.conclusion.icone} {perfImpact.conclusion.texte}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div style={{ ...carteStyle, borderLeft: `4px solid ${couleurStatut(c.statut)}` }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <div>
+              <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, letterSpacing: '0.5px' }}>{c.numero}</div>
+              <h1 style={{ color: 'var(--text-primary)', margin: '4px 0 0', fontSize: 22, fontWeight: 800, letterSpacing: '-0.3px' }}>{c.nom}</h1>
+              {client && (
+                <div style={{ color: 'var(--text-secondary)', marginTop: '8px', cursor: 'pointer', fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}
+                  onClick={() => naviguer('clients', { clientActif: c.clientId })}>
+                  {client.prenom} {client.nom} — {client.entreprise} · {client.telephone}
+                  <span style={{ color: C.primaire, textDecoration: 'none', fontSize: '12px', fontWeight: 600, background: 'rgba(59,130,246,0.1)', padding: '2px 8px', borderRadius: 6 }}>Voir →</span>
+                </div>
+              )}
+            </div>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <Badge texte={c.priorite} couleur={c.priorite === 'Haute' ? C.danger : C.info} />
+              <Badge texte={c.statut} couleur={couleurStatut(c.statut)} />
+              {chantierStatusBadge && <Badge texte={chantierStatusBadge.label} couleur={chantierStatusBadge.couleur} glow />}
+              {c.devisId && !isChantierActif(c) && !STATUTS_CLOS.includes(c.statut) && (
+                <Badge texte="CA non comptabilisé" couleur={C.warning} />
+              )}
+              <BadgeRentabilite ca={etat.devisTotal} couts={etat.coutTotalReel} />
+            </div>
+          </div>
+          <div style={{ margin: '20px 0' }}>
+            <BarreAvancement valeur={etat.avancementPct} />
+            <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '6px', fontWeight: 500, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span>
+                {etat.totalJoursPrevus > 0
+                  ? <><strong style={{ color: 'var(--text-primary)' }}>{etat.totalJoursReels} j réalisés</strong> sur {etat.totalJoursPrevus} j prévus</>
+                  : etat.totalJoursReels > 0
+                    ? <strong style={{ color: 'var(--text-primary)' }}>{etat.totalJoursReels} j réalisés</strong>
+                    : <span style={{ color: 'var(--text-muted)' }}>Chantier non démarré</span>
+                }
+              </span>
+              {etat.totalJoursPrevus > 0 && (
+                <span style={{ fontSize: 11, color: 'var(--text-muted)', background: 'var(--bg-glass-2)', borderRadius: 20, padding: '2px 10px' }}>
+                  {etat.avancementPct}%
+                </span>
+              )}
+            </div>
+          </div>
+          <div className="info-grid">
+            {[
+              ['Adresse', `${c.adresse || ''}${c.ville ? ', ' + c.ville : ''}${c.canton ? ' (' + c.canton + ')' : ''}`],
+              ['Dir. travaux', directeurTravaux ? `${directeurTravaux.nom} — ${directeurTravaux.poste || ''}` : (c.conducteur || '—')],
+              ['Début', c.dateDebut],
+              ['Fin prévue', c.dateDebut && c.nombreJours ? calculerDateFinOuvrables(c.dateDebut, c.nombreJours, c.inclusSamedi) : '—'],
+              ['Jours prévus', c.nombreJours ? `${c.nombreJours} jours` : '—'],
+              ['Surface', c.surface ? `${c.surface} m²` : '—'],
+              ['Travaux', c.typesTravaux?.join(', ') || '—'],
+            ].map(([label, val]) => (
+              <div key={label} className="info-item">
+                <span className="info-label">{label}</span>
+                <span className="info-value">{val || '—'}</span>
+              </div>
+            ))}
+          </div>
+          {c.notes && <div style={{ marginTop: '15px', background: 'rgba(245,158,11,0.07)', border: '1px solid rgba(245,158,11,0.2)', padding: '12px 16px', borderRadius: '10px', color: 'var(--text-secondary)', fontSize: 13 }}>{c.notes}</div>}
+        </div>
+
+
+        {/* ── MODE INIT — chantier non démarré ── */}
+        {etat.totalJoursReels === 0 && etat.coutTotalReel === 0 && (
+          <div style={{ background: 'var(--bg-glass)', border: '1px solid var(--border-hover)', borderRadius: 14, padding: '20px 24px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+              <HardHat size={28} strokeWidth={1.5} style={{ color: "var(--text-muted)" }} />
+              <div>
+                <div style={{ fontWeight: 700, color: 'var(--text-secondary)', fontSize: 15, marginBottom: 4 }}>Chantier non démarré</div>
+                <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>Déclarez la première journée pour activer le suivi et la projection.</div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── Projection indisponible — chantier trop tôt ── */}
+        {etat.totalJoursReels > 0 && !etat.projectionDisponible && (
+          <div style={{ background: 'var(--bg-glass)', border: '1px solid var(--border)', borderRadius: 12, padding: '14px 18px', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 12 }}>
+            
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-secondary)' }}>Projection indisponible — chantier trop tôt</div>
+              <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 3 }}>
+                {etat.totalJoursReels} j réalisés · projection disponible à partir de 20%
+                {etat.totalJoursPrevus > 0 && ` (encore ~${Math.max(0, Math.ceil(etat.totalJoursPrevus * 0.2) - etat.totalJoursReels)} j)`}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── Projection à terminaison (moteur uniquement) ── */}
+        {etat.projectionDisponible && renderProjectionCard(etat, fmtK)}
+
+
+        {/* ── Recommandations automatiques ── */}
+        {etat.projectionDisponible && renderRecommandations(etat, couts)}
+
+        {/* ── Rentabilité par jours (logique métier BTP) ── */}
+        {renderRentabiliteJours(c, etat, couts, naviguer, fmtN, fmtK)}
+        </>}
+
+        {detailOnglet === 'financier' && <>
+        <div style={carteStyle}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+            <div className="ds-card-title" style={{ margin: 0 }}>Financier</div>
+            {devisSource ? (
+              <span
+                onClick={() => naviguer('devis')}
+                style={{ fontSize: 11, fontWeight: 700, background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.3)', color: '#10b981', padding: '4px 12px', borderRadius: 20, cursor: 'pointer' }}
+                title={`CA issu du devis ${devisSource.numero}`}
+              >
+                {devisSource.numero} · CHF {fmtN(parseFloat(devisSource.montantHT) || 0)}
+              </span>
+            ) : (
+              <span
+                onClick={() => naviguer('devis')}
+                style={{ fontSize: 11, fontWeight: 700, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)', color: '#ef4444', padding: '4px 12px', borderRadius: 20, cursor: 'pointer' }}
+              >
+                Aucun devis lié — Lier un devis →
+              </span>
+            )}
+          </div>
+
+          {/* ── Aucun devis lié ── */}
+          {devisTotal === null && (
+            <div style={{ background: 'rgba(239,68,68,0.05)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 10, padding: '14px 18px', marginBottom: 16 }}>
+              <div style={{ fontWeight: 700, color: '#ef4444', fontSize: 13, marginBottom: 4 }}>Aucun devis lié</div>
+              <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Le chiffre d'affaires est indisponible. Liez un devis accepté pour activer le suivi financier.</div>
+              <button onClick={() => ouvrirModification(c)} style={{ marginTop: 10, ...DS.btnGhost, fontSize: 12, padding: '5px 12px' }}>Modifier le chantier</button>
+            </div>
+          )}
+
+          {/* ── Ligne CA / facturé / encaissé ── */}
+          {devisTotal !== null && (
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 14 }}>
+                {[
+                  { label: 'CA signé', val: `CHF ${fmtK(devisTotal)}`, sub: (() => { const av = sommeAvenants(c); const rg = Array.isArray(devisSource?.heuresRegie) ? devisSource.heuresRegie.reduce((s,r) => s+(parseFloat(r.heures)||0)*(parseFloat(r.tarifHeure)||0),0) : 0; if (av > 0 && rg > 0) return `avenants ${fmtK(av)} + régie ${fmtK(rg)}`; if (av > 0) return `dont avenants CHF ${fmtK(av)}`; if (rg > 0) return `dont régie CHF ${fmtK(rg)}`; return null; })(), couleur: C.primaire },
+                  { label: 'Facturé', val: `CHF ${fmtK(montantFactureLie)}`, sub: `${pctFacture}% du devis`, couleur: pctFacture >= 100 ? C.secondaire : pctFacture > 0 ? C.info : '#78909c' },
+                  { label: 'Encaissé', val: `CHF ${fmtK(montantPayeLie)}`, sub: `${pctEncaisse}% du devis`, couleur: pctEncaisse >= 100 ? C.secondaire : pctEncaisse > 0 ? C.warning : '#78909c' },
+                ].map(s => (
+                  <div key={s.label} style={{ background: s.couleur + '12', border: `1px solid ${s.couleur}28`, borderRadius: 12, padding: '14px 16px' }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px', color: 'var(--text-muted)', marginBottom: 4 }}>{s.label}</div>
+                    <div style={{ fontSize: 18, fontWeight: 800, color: s.couleur, letterSpacing: '-0.3px' }}>{s.val}</div>
+                    {s.sub && <div style={{ fontSize: 11, color: s.couleur, opacity: 0.75, marginTop: 3, fontWeight: 600 }}>{s.sub}</div>}
+                  </div>
+                ))}
+              </div>
+              {/* Barre de progression facturation */}
+              <div style={{ marginBottom: 6 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--text-muted)', marginBottom: 4 }}>
+                  <span>Progression facturation</span>
+                  <span>{pctFacture}% facturé · {pctEncaisse}% encaissé</span>
+                </div>
+                <div style={{ background: 'var(--bg-glass-2)', borderRadius: 6, height: 8, overflow: 'hidden', position: 'relative' }}>
+                  <div style={{ position: 'absolute', left: 0, top: 0, height: '100%', width: `${pctFacture}%`, background: `linear-gradient(90deg, ${C.info}, ${C.primaire})`, borderRadius: 6, transition: 'width 0.4s ease' }} />
+                  <div style={{ position: 'absolute', left: 0, top: 0, height: '100%', width: `${pctEncaisse}%`, background: C.secondaire + 'aa', borderRadius: 6 }} />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ── Imprévus ── */}
+          {c.imprevus?.length > 0 && (
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.7px', color: C.danger, marginBottom: 8 }}>Coûts imprévus</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {c.imprevus.map((imp) => (
+                  <div key={`${imp.description}-${imp.montant}`} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: C.danger + '0a', border: `1px solid ${C.danger}22`, borderRadius: 8, padding: '8px 14px' }}>
+                    <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{imp.description}</span>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: C.danger }}>CHF {fmtN(imp.montant)}</span>
+                  </div>
+                ))}
+                <div style={{ textAlign: 'right', fontSize: 12, fontWeight: 700, color: C.danger, marginTop: 2 }}>
+                  Total imprévus : CHF {fmtN(etat.coutImprevus)}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ── Alerte dépassement budget ── */}
+          {couts.depassementBudget && (
+            <div style={{ background: C.danger + '15', border: `1px solid ${C.danger}50`, borderRadius: 10, padding: '10px 16px', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 10 }}>
+              <AlertTriangle size={18} strokeWidth={2} style={{ color: "var(--text-muted)", flexShrink: 0 }} />
+              <div>
+                <span style={{ fontWeight: 700, color: C.danger, fontSize: 13 }}>Dépassement budget</span>
+                <span style={{ fontSize: 12, color: 'var(--text-muted)', marginLeft: 8 }}>
+                  Coûts réels (CHF {fmtN(etat.coutTotalReel)}) &gt; Budget prévu (CHF {fmtN(couts.totalCoutsPrevu)})
+                </span>
+              </div>
+            </div>
+          )}
+          {couts.alerteOrange && (
+            <div style={{ background: C.warning + '15', border: `1px solid ${C.warning}50`, borderRadius: 10, padding: '10px 16px', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 10 }}>
+              <AlertTriangle size={18} strokeWidth={2} style={{ color: "var(--text-muted)", flexShrink: 0 }} />
+              <div>
+                <span style={{ fontWeight: 700, color: C.warning, fontSize: 13 }}>Attention budget</span>
+                <span style={{ fontSize: 12, color: 'var(--text-muted)', marginLeft: 8 }}>
+                  80% du budget consommé alors que l'avancement est à {etat.avancementPct}%
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* Correction #4 — Alertes rythme / vélocité */}
+          {couts.alerteRythmeRouge && (
+            <div style={{ background: C.danger + '15', border: `1px solid ${C.danger}50`, borderRadius: 10, padding: '10px 16px', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 10 }}>
+              <AlertTriangle size={18} strokeWidth={2} style={{ color: "var(--text-muted)", flexShrink: 0 }} />
+              <div>
+                <span style={{ fontWeight: 700, color: C.danger, fontSize: 13 }}>Rythme de dépense critique</span>
+                <span style={{ fontSize: 12, color: 'var(--text-muted)', marginLeft: 8 }}>
+                  Vous dépensez trop vite par rapport à l'avancement — ratio efficacité {couts.ratioEfficacite !== null ? Math.round(couts.ratioEfficacite * 100) : '—'}% (seuil : 70%)
+                </span>
+              </div>
+            </div>
+          )}
+          {!couts.alerteRythmeRouge && couts.alerteRythmeOrange && (
+            <div style={{ background: C.warning + '15', border: `1px solid ${C.warning}50`, borderRadius: 10, padding: '10px 16px', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 10 }}>
+              <AlertTriangle size={18} strokeWidth={2} style={{ color: "var(--text-muted)", flexShrink: 0 }} />
+              <div>
+                <span style={{ fontWeight: 700, color: C.warning, fontSize: 13 }}>Rythme de dépense élevé</span>
+                <span style={{ fontSize: 12, color: 'var(--text-muted)', marginLeft: 8 }}>
+                  Les coûts progressent plus vite que l'avancement — ratio efficacité {couts.ratioEfficacite !== null ? Math.round(couts.ratioEfficacite * 100) : '—'}% (seuil : 85%)
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* ── Coûts réels ── */}
+          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: '16px' }}>
+            <CoutBadge label="Équipe réel" valeur={etat.coutMOReel} couleur={C.secondaire} />
+            <CoutBadge label="Matériel réel" valeur={etat.coutMateriel} couleur={C.violet} />
+            <CoutBadge label="Imprévus" valeur={etat.coutImprevus} couleur={C.danger} />
+            <CoutBadge label="Total coûts" valeur={etat.coutTotalReel} couleur="#455a64" />
+          </div>
+
+          {/* ── P8 Badge données incomplètes ── */}
+          {couts.donneesIncompletes && (
+            <div style={{ background: C.warning + '12', border: `1px solid ${C.warning}40`, borderRadius: 8, padding: '8px 14px', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <AlertTriangle size={15} strokeWidth={2} style={{ color: "var(--text-muted)", flexShrink: 0 }} />
+              <span style={{ fontSize: 12, color: C.warning, fontWeight: 700 }}>Données incomplètes</span>
+              <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Coûts réels manquants : {couts.champsManquants.join(', ')}</span>
+              <span style={{ fontSize: 11, color: 'var(--text-muted)', fontStyle: 'italic' }}>— La marge calculée est indicative.</span>
+            </div>
+          )}
+
+          {/* ── KPIs marge — FINAL uniquement (indicateurs réels non pertinents en cours de chantier) ── */}
+          {modeChantier === 'FINAL' && (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', marginBottom: 16 }}>
+            {[
+              { label: 'Marge directe (%)', valeur: couts.margeReelPct !== null ? `${couts.margeReelPct}%` : '—', couleur: (couts.margeReelPct ?? 0) >= 15 ? C.secondaire : C.danger },
+              { label: 'Marge nette', valeur: couts.margeNettePct !== null ? `${couts.margeNettePct}%` : '—', couleur: (couts.margeNettePct ?? 0) >= 10 ? C.secondaire : (couts.margeNettePct ?? 0) >= 0 ? C.warning : C.danger, sub: `FG: CHF ${fmtK(couts.fraisGeneraux)}` },
+              { label: 'Coût/m² réel', valeur: couts.coutParM2Reel !== null ? `CHF ${couts.coutParM2Reel}` : '—', couleur: couts.coutParM2Reel !== null ? C.violet : 'var(--text-muted)' },
+              { label: 'Prix/m² devis', valeur: couts.prixParM2Devis !== null ? `CHF ${couts.prixParM2Devis}` : '—', couleur: couts.prixParM2Devis !== null ? C.info : 'var(--text-muted)' },
+            ].map(s => (
+              <div key={s.label} style={{ background: (typeof s.couleur === 'string' && s.couleur.startsWith('#')) ? s.couleur + '12' : 'var(--bg-glass-2)', border: `1px solid ${(typeof s.couleur === 'string' && s.couleur.startsWith('#')) ? s.couleur + '30' : 'var(--border-glass)'}`, borderRadius: '12px', padding: '16px', textAlign: 'center', backdropFilter: 'blur(8px)' }}>
+                <div style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px', color: 'var(--text-muted)', marginBottom: '6px' }}>{s.label}</div>
+                <div style={{ fontSize: '20px', fontWeight: 800, color: s.couleur, letterSpacing: '-0.3px' }}>{s.valeur}</div>
+                {s.sub && <div style={{ fontSize: 10, color: s.couleur, opacity: 0.7, marginTop: 3 }}>{s.sub}</div>}
+              </div>
+            ))}
+          </div>
+          )}
+
+          {/* ── Tableau écart prévu / réel — MODE FINAL uniquement ── */}
+          {modeChantier === 'FINAL' && (couts.totalCoutsPrevu > 0 || couts.totalCoutsReel > 0) && renderEcartTable(couts, fmtN)}
+
+          {/* ── Budget restant + RAD réel métier — MODE FINAL uniquement ── */}
+          {modeChantier === 'FINAL' && couts.totalCoutsPrevu > 0 && (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              {/* Budget restant = enveloppe disponible */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: (couts.budgetRestant >= 0 ? C.secondaire : C.danger) + '10', border: `1px solid ${(couts.budgetRestant >= 0 ? C.secondaire : C.danger)}30`, borderRadius: 10, padding: '12px 14px' }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px', color: 'var(--text-muted)' }}>Budget restant</div>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 1 }}>Enveloppe − coûts engagés</div>
+                </div>
+                <div style={{ fontSize: 18, fontWeight: 800, color: couts.budgetRestant >= 0 ? C.secondaire : C.danger }}>
+                  {couts.budgetRestant >= 0 ? '' : '−'}CHF {fmtK(Math.abs(couts.budgetRestant))}
+                </div>
+              </div>
+              {/* RAD = coût estimé pour finir à ce rythme */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--bg-glass-2)', border: '1px solid var(--border-hover)', borderRadius: 10, padding: '12px 14px' }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px', color: 'var(--text-muted)' }}>RAD — Coût pour finir</div>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 1 }}>À ce rythme, reste à dépenser</div>
+                </div>
+                {couts.rad !== null ? (
+                  <div style={{ fontSize: 18, fontWeight: 800, color: couts.rad > couts.budgetRestant ? C.danger : C.secondaire }}>
+                    CHF {fmtK(couts.rad)}
+                  </div>
+                ) : (
+                  <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-muted)' }}>—</div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
+        </>}
+
+      </div>
+    </React.Fragment>);
+  }
+
+  return (<React.Fragment key="list-form">
+    <div>
+      <div className="page-header-row">
+        <div className="page-title-block">
+          <div className="page-title-main">Chantiers</div>
+          {(contexte?.clientActif || contexte?.employeActif) && (
+            <div className="page-title-sub">{contexte?.clientActif ? 'Filtrés par client' : 'Filtrés par employé'}</div>
+          )}
+        </div>
+        <div className="page-actions-group">
+          {contexte?.clientActif && (
+            <button onClick={() => naviguer('clients')} style={{ ...DS.btnGhost }}><ChevronRight size={14} style={{ transform: 'rotate(180deg)' }} /> Retour aux clients</button>
+          )}
+          {contexte?.employeActif && (
+            <button onClick={() => naviguer('employes')} style={{ ...DS.btnGhost }}><ChevronRight size={14} style={{ transform: 'rotate(180deg)' }} /> Retour aux employés</button>
+          )}
+          {(contexte?.clientActif || contexte?.employeActif) && (
+            <button onClick={() => naviguer('chantiers')} style={{ ...DS.btnGhost }}><X size={14} /> Supprimer filtre</button>
+          )}
+        </div>
+      </div>
+
+      {/* ── KPI GRID ── */}
+      {(() => {
+        const nbEnCours = chantiers.filter(c => c.statut === 'En cours').length;
+        const nbEnRetard = chantiersFiltres.filter(c => { const j = joursParChantier[c.id]; return j !== null && j < 0; }).length;
+        const caTotal = chantiersFiltres.reduce((t, c) => t + (calculerCA(c, devis) || 0), 0);
+        const joursPlanifies = chantiersFiltres.reduce((t, c) => t + (parseInt(c.nombreJours) || 0), 0);
+        const chantiersAvecData = chantiersFiltres.filter(c => { const ca = calculerCA(c, devis); return ca !== null && ca > 0; });
+        let margeMoyenne = null;
+        if (chantiersAvecData.length > 0) {
+          const sum = chantiersAvecData.reduce((s, c) => {
+            const couts = calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis);
+            return s + (couts.totalCoutsReel > 0 && couts.margeReelPct !== null ? couts.margeReelPct : 0);
+          }, 0);
+          margeMoyenne = Math.round(sum / chantiersAvecData.length);
+        }
+        const nbAvecDevis = chantiersFiltres.filter(c => calculerCA(c, devis) !== null).length;
+        const kpiItems = [
+          { label: 'EN COURS',       val: nbEnCours,  Icon: HardHat,    ...DS.kpi.blue,   badge: nbEnRetard > 0 ? `${nbEnRetard} en retard` : null },
+          { label: 'CA CHANTIERS',   val: `CHF ${fmtN(caTotal)}`, sous: `${nbAvecDevis} avec devis · tous statuts`, Icon: DollarSign, ...DS.kpi.green },
+          { label: 'MARGE MOYENNE',  val: margeMoyenne !== null ? `${margeMoyenne}%` : '—', Icon: TrendingUp, ...DS.kpi.amber },
+          { label: 'JOURS PLANIFIÉS',val: `${fmtN(joursPlanifies)}j`, Icon: Clock, ...DS.kpi.purple },
+        ];
+        return (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 20 }}>
+            {kpiItems.map(k => (
+              <div key={k.label} style={{ background: k.gradient, borderRadius: 16, padding: '22px 20px', minHeight: 120, boxShadow: `0 4px 20px ${k.glow}, 0 1px 4px rgba(0,0,0,0.12)`, border: '1px solid rgba(255,255,255,0.15)', position: 'relative', overflow: 'hidden' }}>
+                <div style={{ position: 'absolute', right: -18, top: -18, width: 80, height: 80, borderRadius: '50%', background: 'rgba(255,255,255,0.1)' }} />
+                <div style={{ position: 'absolute', right: -32, bottom: -32, width: 100, height: 100, borderRadius: '50%', background: 'rgba(255,255,255,0.06)' }} />
+                <div style={{ background: 'rgba(255,255,255,0.18)', borderRadius: 10, width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 14, position: 'relative' }}>
+                  <k.Icon size={17} strokeWidth={2} style={{ color: '#fff' }} />
+                </div>
+                <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.7)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 5, position: 'relative' }}>{k.label}</div>
+                <div style={{ fontSize: 26, fontWeight: 900, color: '#fff', letterSpacing: '-0.8px', lineHeight: 1, position: 'relative' }}>{k.val}</div>
+                {k.sous && <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.62)', marginTop: 5, position: 'relative' }}>{k.sous}</div>}
+                {k.badge && <span style={{ display: 'inline-block', marginTop: 7, background: 'rgba(239,68,68,0.85)', color: '#fff', borderRadius: 20, padding: '1px 8px', fontSize: 10, fontWeight: 700, position: 'relative' }}>{k.badge}</span>}
+              </div>
+            ))}
+          </div>
+        );
+      })()}
+
+      <div style={{ display: 'flex', gap: '6px', marginBottom: '20px', flexWrap: 'wrap' }}>
+        {statuts.map(s => (
+          <button key={s} onClick={() => setFiltre(s)} style={{
+            background: filtre === s ? '#EEF2FF' : 'transparent',
+            color: filtre === s ? '#4F46E5' : 'var(--text-muted)',
+            border: '1px solid transparent',
+            padding: '5px 14px', borderRadius: '20px', cursor: 'pointer', fontSize: '13px',
+            fontWeight: filtre === s ? 600 : 400, fontFamily: 'inherit',
+            transition: 'all 0.18s',
+          }}>{s}</button>
+        ))}
+      </div>
+
+      {ajout && (
+        <div style={carteStyle}>
+          <div className="ds-card-title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <HardHat size={18} /> {form.id ? (modeCompleter ? 'Compléter le chantier' : 'Modifier le chantier') : 'Nouveau chantier'}
+          </div>
+
+          {/* ══ PRÉVISION ══════════════════════════════════════════════ */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
+            <div style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.9px', color: C.primaire, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ display: 'inline-block', width: 3, height: 14, background: C.primaire, borderRadius: 2 }} />
+              {form.id ? 'Prévision initiale' : 'Prévision'}
+            </div>
+            {form.id && (
+              <span style={{ fontSize: 11, color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                Données de référence — modifiable si nécessaire
+              </span>
+            )}
+          </div>
+
+          {/* Champs principaux */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '15px', marginBottom: '20px' }}>
+            {[['Numéro', 'numero', 'text', 'CH-2026-001'], ['Nom du chantier *', 'nom', 'text', 'Ex: Bureaux Dupont'], ['Conducteur', 'conducteur', 'text', 'Jean Martin'], ['Adresse', 'adresse', 'text', 'Rue...'], ['Canton', 'canton', 'text', 'GE'], ['Date de début *', 'dateDebut', 'date', ''], ['Jours ouvrables prévus *', 'nombreJours', 'number', '15'], ['Surface (m²)', 'surface', 'number', '250']].map(([label, key, type, placeholder]) => (
+              <div key={key}><label style={labelStyle}>{label}</label>
+                <input type={type} placeholder={placeholder} value={form[key] ?? ''} onChange={e => setForm({ ...form, [key]: e.target.value })} style={inputStyle} /></div>
+            ))}
+            <div><label style={labelStyle}>Client</label>
+              <select value={form.clientId || ''} onChange={e => setForm({ ...form, clientId: parseInt(e.target.value) })} style={inputStyle}>
+                <option value="">Sélectionner...</option>
+                {clients.map(c => <option key={c.id} value={c.id}>{c.prenom} {c.nom} — {c.entreprise}</option>)}
+              </select></div>
+            <div><label style={labelStyle}>Directeur de travaux</label>
+              <select value={form.directeurTravauxId || ''} onChange={e => setForm({ ...form, directeurTravauxId: e.target.value })} style={inputStyle}>
+                <option value="">— Sélectionner —</option>
+                {parametres.employes.filter(e => e.actif !== false).map(e => <option key={e.id} value={e.id}>{e.nom} — {e.poste || 'Employé'}</option>)}
+              </select></div>
+            <div>
+              <label style={labelStyle}>Localité <span style={{ color: C.danger }}>*</span></label>
+              <select value={form.ville || ''} onChange={e => { setForm({ ...form, ville: e.target.value }); if (erreurs.ville) setErreurs(prev => ({ ...prev, ville: null })); }}
+                style={{ ...inputStyle, ...(erreurs.ville ? { borderColor: '#ef4444', boxShadow: '0 0 0 1px #ef444440' } : {}) }}>
+                <option value="">Sélectionner...</option>
+                {parametres.localites.map(l => <option key={l.id} value={l.nom}>{l.nom} (CHF {l.tarifJour}.-/j)</option>)}
+              </select>
+              {erreurs.ville && <div style={{ color: '#ef4444', fontSize: 12, marginTop: 5, fontWeight: 600 }}>La localité est obligatoire</div>}
+            </div>
+            <div><label style={labelStyle}>Statut</label>
+              <select value={form.statut} onChange={e => setForm({ ...form, statut: e.target.value })} style={inputStyle}>
+                {['À chiffrer', 'Devis envoyé', 'Validé', 'En préparation', 'Planifié', 'En cours', 'Suspendu', 'Terminé', 'Facturé', 'Clôturé'].map(s => <option key={s}>{s}</option>)}
+              </select></div>
+            <div><label style={labelStyle}>Priorité</label>
+              <select value={form.priorite} onChange={e => setForm({ ...form, priorite: e.target.value })} style={inputStyle}>
+                {['Basse', 'Normale', 'Haute', 'Urgente'].map(s => <option key={s}>{s}</option>)}
+              </select></div>
+          </div>
+
+          {/* Calendrier */}
+          <div style={{ marginBottom: '15px' }}>
+            <label style={{ ...labelStyle, display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <input type="checkbox" checked={form.inclusSamedi || false} onChange={e => setForm({ ...form, inclusSamedi: e.target.checked })} />
+              Inclure le samedi</label>
+          </div>
+          {form.dateDebut && form.nombreJours && (
+            <div style={{ background: 'rgba(59,130,246,0.07)', border: '1px solid rgba(59,130,246,0.18)', padding: '14px 18px', borderRadius: '12px', marginBottom: '15px' }}>
+              <div style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px', color: 'var(--text-muted)', marginBottom: '4px' }}>Date de fin prévue</div>
+              <div style={{ fontWeight: 700, color: C.primaire, fontSize: '15px' }}>{calculerDateFinOuvrables(form.dateDebut, form.nombreJours, form.inclusSamedi)}</div>
+            </div>
+          )}
+
+          {/* Types de travaux */}
+          <div style={{ marginBottom: '20px' }}>
+            <label style={labelStyle}>Types de travaux</label>
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+              {parametres.typesTravaux.map(t => (
+                <button key={t.id} onClick={() => toggleTravaux(t.nom)} style={{
+                  background: (form.typesTravaux || []).includes(t.nom) ? 'rgba(59,130,246,0.18)' : 'var(--bg-glass-2)',
+                  color: (form.typesTravaux || []).includes(t.nom) ? C.primaire : 'var(--text-secondary)',
+                  border: (form.typesTravaux || []).includes(t.nom) ? '1px solid rgba(59,130,246,0.4)' : '1px solid var(--border)',
+                  padding: '5px 14px', borderRadius: '20px', cursor: 'pointer', fontSize: '13px',
+                  fontWeight: (form.typesTravaux || []).includes(t.nom) ? 700 : 500,
+                  fontFamily: 'inherit', transition: 'all 0.15s',
+                }}>{t.nom}</button>
+              ))}
+            </div>
+          </div>
+
+          {/* Budget prévisionnel */}
+          <div style={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', color: 'var(--text-muted)', marginBottom: '12px' }}>Budget prévisionnel</div>
+
+          {/* Sélecteur de devis accepté — OBLIGATOIRE */}
+          {(() => {
+            const devisAcceptes = devis.filter(d => d.statut === 'accepté');
+            const devisLie = devis.find(d => d.id === form.devisId);
+            const caBase = parseFloat(devisLie?.montantHT) || 0;
+            const caRegie = Array.isArray(devisLie?.heuresRegie)
+              ? devisLie.heuresRegie.reduce((s, r) => s + (parseFloat(r.heures) || 0) * (parseFloat(r.tarifHeure) || 0), 0)
+              : 0;
+            const caTotal = caBase + caRegie;
+            const hasError = erreurs.devisId || !form.devisId;
+            return (
+              <>
+                <div style={{ marginBottom: 14 }}>
+                  <label style={labelStyle}>Devis lié <span style={{ color: C.danger }}>*</span></label>
+                  <select
+                    value={form.devisId || ''}
+                    onChange={e => {
+                      const d = devis.find(x => String(x.id) === String(e.target.value));
+                      setForm({ ...form, devisId: d ? d.id : null });
+                      setErreurs(prev => ({ ...prev, devisId: null }));
+                    }}
+                    style={{ ...inputStyle, borderColor: hasError ? 'rgba(239,68,68,0.5)' : 'rgba(16,185,129,0.4)', boxShadow: hasError ? '0 0 0 1px rgba(239,68,68,0.2)' : form.devisId ? '0 0 0 1px rgba(16,185,129,0.15)' : undefined }}
+                  >
+                    <option value="">— Sélectionner un devis accepté —</option>
+                    {devisAcceptes.map(d => {
+                      const cli = clients.find(c => c.id === d.clientId);
+                      return <option key={d.id} value={d.id}>{d.numero} · {cli?.nom || 'Client inconnu'} · CHF {fmtN(parseFloat(d.montantHT) || 0)}</option>;
+                    })}
+                  </select>
+                  {erreurs.devisId
+                    ? <div style={{ color: '#ef4444', fontSize: 12, marginTop: 5, fontWeight: 600 }}>{erreurs.devisId}</div>
+                    : !form.devisId && <div style={{ color: '#ef4444', fontSize: 11, marginTop: 4, fontWeight: 600 }}>Un devis signé est obligatoire pour créer un chantier</div>
+                  }
+                  {devisAcceptes.length === 0 && (
+                    <div style={{ marginTop: 8, padding: '10px 14px', background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.25)', borderRadius: 8, fontSize: 12, color: C.warning, fontWeight: 600 }}>
+                      Aucun devis accepté disponible — <span style={{ cursor: 'pointer', textDecoration: 'underline' }} onClick={() => naviguer('devis')}>Créer un devis →</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* CA — read-only depuis devis signé */}
+                {devisLie ? (
+                  <div style={{ background: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.2)', borderRadius: 12, padding: '14px 18px', marginBottom: 16, display: 'grid', gridTemplateColumns: caRegie > 0 ? '1fr 1fr 1fr' : '1fr 1fr', gap: 12 }}>
+                    <div>
+                      <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px', color: 'var(--text-muted)', marginBottom: 3 }}>CA devis</div>
+                      <div style={{ fontSize: 17, fontWeight: 800, color: '#10b981' }}>CHF {fmtN(caBase)}</div>
+                    </div>
+                    {caRegie > 0 && (
+                      <div>
+                        <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px', color: 'var(--text-muted)', marginBottom: 3 }}>Régie</div>
+                        <div style={{ fontSize: 17, fontWeight: 800, color: '#f59e0b' }}>+CHF {fmtN(Math.round(caRegie))}</div>
+                      </div>
+                    )}
+                    <div>
+                      <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px', color: 'var(--text-muted)', marginBottom: 3 }}>CA total</div>
+                      <div style={{ fontSize: 17, fontWeight: 800, color: '#10b981' }}>CHF {fmtN(caTotal)}</div>
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ background: 'rgba(239,68,68,0.05)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 12, padding: '14px 18px', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <AlertTriangle size={18} strokeWidth={2} style={{ color: "var(--text-muted)", flexShrink: 0 }} />
+                    <div>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: '#ef4444' }}>Aucun devis lié</div>
+                      <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>Le CA sera indisponible tant qu'aucun devis accepté n'est sélectionné.</div>
+                    </div>
+                  </div>
+                )}
+              </>
+            );
+          })()}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '15px', marginBottom: '20px' }}>
+            {[['Matériel prévu (CHF)', 'coutMaterielPrevu'], ['Sous-traitance prévue (CHF)', 'coutSousTraitancePrevu'], ['Autres coûts prévus (CHF)', 'autresCoutsPrevu']].map(([label, key]) => (
+              <div key={key}><label style={labelStyle}>{label}</label>
+                <input type="text" inputMode="numeric" placeholder="0"
+                  value={form[key] ? fmtN(form[key]) : ''}
+                  onChange={e => { const raw = e.target.value.replace(/'/g, '').replace(/[^0-9.]/g, ''); setForm({ ...form, [key]: raw }); }}
+                  style={inputStyle} /></div>
+            ))}
+          </div>
+          {/* ══ SUIVI TERRAIN — édition uniquement ══════════════════════ */}
+          {form.id && (
+            <>
+              <div style={{ borderTop: '1px solid var(--border)', margin: '8px 0 20px' }} />
+              <div style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.9px', color: C.warning, marginBottom: '14px', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ display: 'inline-block', width: 3, height: 14, background: C.warning, borderRadius: 2 }} />
+                Suivi terrain
+              </div>
+
+              {/* Avancement calculé automatiquement + ratioTemps */}
+              {(() => {
+                const joursR = (form.equipe || []).reduce((s, m) =>
+                  s + heuresEmploye(form.journal || [], parseInt(m.employeId)) / 8
+                , 0);
+                const joursP = (form.equipe || []).reduce((s, m) => s + (parseFloat(m.joursPlannifies) || 0), 0);
+                const av = joursP > 0 ? Math.min(100, Math.round((joursR / joursP) * 100)) : 0;
+                const ratioTemps = joursP > 0 ? joursR / joursP : 0;
+                const alerteTemps = ratioTemps > 1.4 ? 'rouge' : ratioTemps > 1.2 ? 'orange' : null;
+                const couleurAv = alerteTemps === 'rouge' ? C.danger : alerteTemps === 'orange' ? C.warning : C.secondaire;
+                return (
+                  <div style={{ background: couleurAv + '10', border: `1px solid ${couleurAv}30`, borderRadius: 10, padding: '12px 16px', marginBottom: 16 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        
+                        <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
+                          Avancement&nbsp;
+                          <strong style={{ color: couleurAv, fontSize: 16 }}>{av}%</strong>
+                        </span>
+                        <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                          — {Math.round(joursR * 10) / 10}j réalisés / {joursP}j prévus
+                        </span>
+                      </span>
+                      {alerteTemps && (
+                        <span style={{ fontSize: 11, fontWeight: 700, color: couleurAv, background: couleurAv + '18', border: `1px solid ${couleurAv}40`, padding: '3px 10px', borderRadius: 20 }}>
+                          {alerteTemps === 'rouge' ? 'Dépassement temps critique' : 'Dépassement temps élevé'}
+                          &nbsp;({Math.round(ratioTemps * 100)}%)
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* Coûts réels */}
+              <div style={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', color: 'var(--text-muted)', marginBottom: '12px' }}>Coûts réels</div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '15px', marginBottom: '20px' }}>
+                {[['Matériel réel (CHF)', 'materielReel'], ['Sous-traitance réelle (CHF)', 'sousTraitanceReelle'], ['Autres coûts réels (CHF)', 'autresCoutsReels']].map(([label, key]) => (
+                  <div key={key}><label style={labelStyle}>{label}</label>
+                    <input type="text" inputMode="numeric" placeholder="0"
+                      value={form[key] ? fmtN(form[key]) : ''}
+                      onChange={e => { const raw = e.target.value.replace(/'/g, '').replace(/[^0-9.]/g, ''); setForm({ ...form, [key]: raw }); }}
+                      style={inputStyle} /></div>
+                ))}
+              </div>
+
+              {/* Imprévus */}
+              <div style={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', color: C.danger, marginBottom: '12px' }}>Coûts imprévus</div>
+              {form.imprevus.length > 0 && (
+                <table className="table-cards" style={{ width: '100%', marginBottom: '10px' }}>
+                  <thead><tr>{['Description', 'Montant (CHF)', ''].map(h => <th key={h} style={thStyle}>{h}</th>)}</tr></thead>
+                  <tbody>
+                    {form.imprevus.map((imp, i) => (
+                      <tr key={`imp-${imp.description}-${imp.montant}-${i}`}>
+                        <td style={tdStyle}>{imp.description}</td>
+                        <td style={tdStyle}>CHF {fmtN(imp.montant)}</td>
+                        <td style={tdStyle}><button onClick={() => setForm({ ...form, imprevus: form.imprevus.filter((_, idx) => idx !== i) })} style={btnDanger}><Trash2 size={13} /> Supprimer</button></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: '10px', alignItems: 'end', marginBottom: '20px' }}>
+                <div><label style={labelStyle}>Description</label>
+                  <input placeholder="Ex: Vitrage supplémentaire" value={imprévu.description} onChange={e => setImprévu({ ...imprévu, description: e.target.value })} style={inputStyle} /></div>
+                <div><label style={labelStyle}>Montant (CHF)</label>
+                  <input type="text" inputMode="numeric" placeholder="1'500" value={imprévu.montant ? fmtN(imprévu.montant) : ''} onChange={e => { const raw = e.target.value.replace(/'/g, '').replace(/[^0-9.]/g, ''); setImprévu({ ...imprévu, montant: raw }); }} style={inputStyle} /></div>
+                <button onClick={ajouterImprévu} style={{ ...btnDanger, padding: '10px 15px' }}>+ Ajouter</button>
+              </div>
+
+              {/* Journal de chantier */}
+              {(form.journal || []).length > 0 && (() => {
+                // Grouper par date (format groupé : { date, employes: [{ employeId, heuresTravaillees }] })
+                const parDate = {};
+                for (const entry of form.journal || []) {
+                  if (!parDate[entry.date]) parDate[entry.date] = { heuresParEmp: {}, totalH: 0 };
+                  for (const e of (entry.employes || [])) {
+                    const eid = parseInt(e.employeId); const h = parseFloat(e.heuresTravaillees) || 0;
+                    parDate[entry.date].heuresParEmp[eid] = (parDate[entry.date].heuresParEmp[eid] || 0) + h;
+                    parDate[entry.date].totalH += h;
+                  }
+                }
+                const jours = Object.entries(parDate)
+                  .sort(([a], [b]) => b.localeCompare(a))
+                  .slice(0, 10);
+                const empsList = parametres.employes || [];
+                return (
+                  <div style={{ marginBottom: 16 }}>
+                    <div style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', color: 'var(--text-muted)', marginBottom: 8 }}>Journal</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      {jours.map(([date, info]) => {
+                        const d = new Date(date);
+                        const label = d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+                        const noms = Object.entries(info.heuresParEmp)
+                          .filter(([, h]) => h > 0)
+                          .map(([eid, h]) => {
+                            const emp = empsList.find(e => e.id === parseInt(eid));
+                            return `${emp?.nom || '?'} (${h}h)`;
+                          }).join(', ');
+                        const nbPresents = Object.values(info.heuresParEmp).filter(h => h > 0).length;
+                        return (
+                          <div key={date} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 12px', background: 'var(--bg-glass)', borderRadius: 8, fontSize: 12 }}>
+                            <span style={{ color: 'var(--text-muted)', minWidth: 60 }}>{label}</span>
+                            <span style={{ color: C.secondaire, fontWeight: 600 }}>{nbPresents} empl. · {info.totalH}h</span>
+                            <span style={{ color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{noms}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* Notes terrain */}
+              <div style={{ marginBottom: '15px' }}>
+                <label style={labelStyle}>Notes terrain</label>
+                <textarea placeholder="Observations, problèmes rencontrés..." value={form.notes || ''} onChange={e => setForm({ ...form, notes: e.target.value })} style={{ ...inputStyle, height: '70px', resize: 'vertical' }} />
+              </div>
+            </>
+          )}
+
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <button onClick={sauvegarder} style={btnSucces}>{form.id ? <><Pencil size={15}/> Enregistrer le suivi</> : <><Plus size={15}/> Créer le chantier</>}</button>
+            <button onClick={() => { setAjout(false); setForm(vide); setErreurs({}); }} style={btnDanger}><X size={14}/> Annuler</button>
+          </div>
+        </div>
+      )}
+
+      {(() => {
+        const getDecisionChantier = (etatC) => {
+          // Incohérent — coûts saisis sans journées
+          if (etatC.totalJoursReels === 0 && etatC.coutTotalReel > 0)
+            return { icone: '', label: 'Incohérent', couleur: '#90a4ae', message: 'Activité sans suivi', sous: 'Des coûts sont saisis sans journées déclarées', niveau: 'warning', priorite: 4 };
+          // Terminé — avec variantes retard/avance/finalisé + marge
+          if (etatC.avancementPct >= 100) {
+            const msgT = etatC.deriveJours > 0
+              ? `Terminé avec +${etatC.deriveJours} j de retard`
+              : etatC.deriveJours < 0
+                ? `Terminé avec ${Math.abs(etatC.deriveJours)} j d'avance`
+                : 'Chantier finalisé';
+            const sousT = (etatC.projectionDisponible && etatC.margeEstimee !== null)
+              ? etatC.margeEstimee >= 0 ? `+CHF ${fmtN(Math.round(etatC.margeEstimee))} de marge` : `Perte CHF ${fmtN(Math.abs(Math.round(etatC.margeEstimee)))}`
+              : null;
+            return { icone: '', label: 'Terminé', couleur: '#78909c', message: msgT, sous: sousT, niveau: 'ok', priorite: 5 };
+          }
+          // Retard critique — sous-texte perte si les deux sont vrais
+          if (etatC.deriveJours >= 5)
+            return { niveau: 'danger', label: 'Retard critique', couleur: C.danger, message: `+${etatC.deriveJours} j de retard`, sous: (etatC.projectionDisponible && etatC.margeEstimee !== null && etatC.margeEstimee < 0) ? `Perte estimée CHF ${fmtN(Math.abs(Math.round(etatC.margeEstimee)))}` : null, niveau: 'critique', priorite: 1 };
+          // Perte estimée seule (sans retard critique)
+          if (etatC.projectionDisponible && etatC.margeEstimee !== null && etatC.margeEstimee < 0)
+            return { niveau: 'danger', label: 'Perte estimée', couleur: C.danger, message: `Perte estimée CHF ${fmtN(Math.abs(Math.round(etatC.margeEstimee)))}`, sous: 'Basé sur tendance actuelle', niveau: 'critique', priorite: 2 };
+          // Retard léger
+          if (etatC.deriveJours >= 2)
+            return { niveau: 'warning', label: 'À surveiller', couleur: C.warning, message: `Retard léger : +${etatC.deriveJours} j`, sous: null, niveau: 'warning', priorite: 3 };
+          // Tout va bien
+          return { niveau: 'ok', label: 'Dans les temps', couleur: C.secondaire, message: 'Cadence normale', sous: null, niveau: 'ok', priorite: 6 };
+        };
+        const getActionsChantier = (etat, chantier) => {
+          if (!etat || etat.avancementPct == null) return [];
+          const nb = (etat.equipe || []).length || 1;
+          if (etat.deriveJours >= 5)
+            return [{ type: 'ajout_ouvrier',    label: 'Ajouter 1 ouvrier',        impact: `Gain estimé : -${Math.round(etat.deriveJours / nb)} j`,              couleur: C.danger }];
+          if (etat.margeEstimee < 0 && etat.projectionDisponible)
+            return [{ type: 'optimisation',     label: 'Réduire les coûts',         impact: `Gain estimé : +CHF ${fmtN(Math.abs(Math.round(etat.margeEstimee)))}`, couleur: C.danger }];
+          if (etat.totalJoursReels === 0 && etat.coutTotalReel > 0)
+            return [{ type: 'data',             label: 'Compléter les journées',    impact: 'Compléter les données',                                               couleur: C.warning }];
+          if (etat.avancementPct >= 100)
+            return [{ type: 'facturation',      label: 'Facturer le chantier',      impact: 'Facturation possible',                                                couleur: C.secondaire }];
+          if (etat.deriveJours >= 2)
+            return [{ type: 'surveillance',     label: 'Surveiller',                impact: 'Pas d\'action requise',                                               couleur: C.warning }];
+          return   [{ type: 'continuer',        label: 'Continuer',                 impact: 'Pas d\'action requise',                                               couleur: C.secondaire }];
+        };
+        const simulerAction = (action, etat, chantier) => {
+          if (!action) return null;
+          if (action.type === 'ajout_ouvrier') {
+            const equipeSize = (etat.equipe || []).length || 1;
+            // Tarif journalier moyen de l'équipe actuelle
+            const tarifsEquipe = (etat.equipe || []).map(m => {
+              const emp = parametres.employes.find(e => e.id === (m.employeId || m.id));
+              return emp ? (parseFloat(emp.tarifJour) || 0) : 350;
+            });
+            const tarifMoyen = tarifsEquipe.length > 0
+              ? Math.round(tarifsEquipe.reduce((s, t) => s + t, 0) / tarifsEquipe.length)
+              : 350;
+            const joursRestants = Math.max(1, (parseInt(chantier.nombreJours) || 0) - etat.totalJoursReels);
+            const scenarios = [1, 2, 3].map(nb => {
+              const gain = Math.round(etat.deriveJours * (nb / equipeSize));
+              const apres = Math.max(0, etat.deriveJours - gain);
+              const coutAjout = tarifMoyen * nb * Math.max(1, gain);
+              const ratio = gain > 0 ? gain / (coutAjout / 1000) : 0;
+              return { nb, avant: etat.deriveJours, apres, gain, coutAjout, ratio };
+            });
+            // Recommandation : priorité aux délais tenus, sinon meilleur ratio
+            const dansLesTemps = scenarios.filter(s => s.apres <= 0);
+            const recommande = dansLesTemps.length > 0
+              ? dansLesTemps.reduce((best, s) => s.coutAjout < best.coutAjout ? s : best, dansLesTemps[0]) // moins cher parmi ceux qui tiennent les délais
+              : scenarios.reduce((best, s) => s.ratio > best.ratio ? s : best, scenarios[0]);
+            // Seuil coût élevé : > 1 journée de chantier complet de l'équipe
+            const seuilCoutEleve = tarifMoyen * equipeSize;
+            const coutEleve = recommande.coutAjout > seuilCoutEleve;
+            let recoRaison;
+            if (recommande.apres <= 0)           recoRaison = 'Permet de finir dans les délais';
+            else if (recommande.gain >= 3)       recoRaison = 'Réduit fortement le retard';
+            else if (recommande.gain >= 1)       recoRaison = 'Amélioration modérée';
+            else                                 recoRaison = 'Impact limité';
+            if (coutEleve && recommande.apres > 0) recoRaison += ' mais avec un coût élevé';
+            const recoDetail = `Gain : -${recommande.gain} jour${recommande.gain > 1 ? 's' : ''} pour CHF ${fmtN(recommande.coutAjout)}`;
+            const nbLabel = `${recommande.nb} ouvrier${recommande.nb > 1 ? 's' : ''}`;
+            let finalMessage, finalColor;
+            if (recommande.apres <= 0)      { finalMessage = 'OK — chantier maîtrisé';                                                              finalColor = '#4ade80'; }
+            else if (recommande.apres <= 2) { finalMessage = `Optimisation possible — ajouter ${nbLabel}`;                                          finalColor = C.warning; }
+            else                            { finalMessage = `Action requise — ajouter ${nbLabel} (${recommande.apres} j de retard)`;               finalColor = C.danger; }
+            return { type: 'gain_temps_multi', scenarios, recommande, recoRaison, recoDetail, finalMessage, finalColor };
+          }
+          if (action.type === 'optimisation') {
+            const avant = Math.abs(Math.round(etat.margeEstimee));
+            return { type: 'gain_marge', avant, apres: 0, gainLabel: `Gain : +CHF ${fmtN(avant)} de marge` };
+          }
+          return null;
+        };
+        const DECISION_INVALIDE = { icone: '', label: 'Données invalides', couleur: '#90a4ae', message: 'Impossible d\'analyser ce chantier', sous: 'Vérifier les données saisies', niveau: 'invalid', priorite: 0 };
+        const scored = [...chantiersFiltres].map(c => {
+          const etatC = calculerEtatChantier(c, parametres.employes, devis);
+          const coherence = assertEtatCoherent(etatC);
+          // Erreur critique → fallback immédiat, aucun calcul supplémentaire
+          if (!coherence.ok)
+            return { c, etatC, decision: DECISION_INVALIDE, indicateurs: [], actions: [] };
+          const decision = getDecisionChantier(etatC);
+          // Indicateurs secondaires — guards stricts
+          const estTermine = etatC.avancementPct >= 100;
+          const perteDejaExprimee = decision.priorite === 2 || (decision.priorite === 1 && decision.sous !== null);
+          const deriveDejaExprimee = decision.priorite === 1 || decision.priorite === 3;
+          const dataDejaExprimee   = decision.priorite === 4;
+          const margeAbs = (etatC.margeEstimee !== null && !isNaN(etatC.margeEstimee)) ? Math.round(Math.abs(etatC.margeEstimee)) : 0;
+          const todayStr = new Date().toISOString().split('T')[0];
+          const hasHeuresAuj = (c.journal || []).some(e =>
+            e.date === todayStr && (e.employes || []).some(emp => (parseFloat(emp.heuresTravaillees) || 0) > 0)
+          );
+          const ind = [];
+          if (!estTermine && !perteDejaExprimee && etatC.projectionDisponible && margeAbs > 0 && etatC.margeEstimee < 0)
+            ind.push({ type: 'perte',  label: `Perte CHF ${fmtN(margeAbs)}`,  couleur: C.danger,  tooltip: 'Le chantier est déficitaire selon la projection' });
+          if (!estTermine && !dataDejaExprimee && etatC.totalJoursReels === 0 && etatC.coutTotalReel > 0)
+            ind.push({ type: 'data',   label: 'Données',                        couleur: '#90a4ae', tooltip: 'Des données sont incohérentes ou manquantes' });
+          if (!estTermine && !deriveDejaExprimee && etatC.totalJoursReels > 0 && etatC.deriveJours >= 2 && !isNaN(etatC.deriveJours))
+            ind.push({ type: 'derive', label: `+${etatC.deriveJours} j`,        couleur: C.warning, tooltip: 'Décalage entre prévu et réel' });
+          if (!estTermine && isChantierActif(c) && etatC.totalJoursReels > 0 && !hasHeuresAuj)
+            ind.push({ type: 'no_hours', label: 'Aucune saisie aujourd\'hui', couleur: C.warning, tooltip: 'Aucune heure déclarée pour ce chantier aujourd\'hui' });
+          const PRIO_IND = { perte: 0, data: 1, derive: 2, no_hours: 3 };
+          const indicateurs = ind.sort((a, b) => PRIO_IND[a.type] - PRIO_IND[b.type]).slice(0, 2);
+          return { c, etatC, decision, indicateurs, actions: getActionsChantier(etatC, c) };
+        }).sort((a, b) => a.decision.priorite - b.decision.priorite);
+        const nbCritique = scored.filter(x => x.decision.niveau === 'critique').length;
+        const nbWarning  = scored.filter(x => x.decision.niveau === 'warning').length;
+        return (
+          <>
+            {nbCritique > 0 ? (
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 12,
+                padding: '13px 18px', borderRadius: 12, marginBottom: 16,
+                background: C.danger + '0f', border: `1px solid ${C.danger}30`, borderLeft: `4px solid ${C.danger}`,
+              }}>
+                <AlertTriangle size={18} strokeWidth={2} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
+                <span style={{ fontSize: 14, fontWeight: 800, color: C.danger }}>
+                  {nbCritique} chantier{nbCritique > 1 ? 's' : ''} bloque{nbCritique > 1 ? 'nt' : ''} aujourd'hui
+                </span>
+              </div>
+            ) : nbWarning > 0 ? (
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 12,
+                padding: '13px 18px', borderRadius: 12, marginBottom: 16,
+                background: C.warning + '0f', border: `1px solid ${C.warning}30`, borderLeft: `4px solid ${C.warning}`,
+              }}>
+                <AlertTriangle size={18} strokeWidth={2} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
+                <span style={{ fontSize: 14, fontWeight: 800, color: C.warning }}>
+                  {nbWarning} chantier{nbWarning > 1 ? 's' : ''} à surveiller
+                </span>
+              </div>
+            ) : null}
+            <div style={{ ...DS.card, padding: 0, overflow: 'hidden' }}>
+              {scored.length === 0 ? (
+                <div style={{ padding: '40px 24px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 14 }}>
+                  {contexte?.clientActif || contexte?.employeActif ? 'Aucun chantier ne correspond à ce filtre.' : 'Aucun chantier à afficher.'}
+                </div>
+              ) : (
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <thead>
+                      <tr>
+                        {['Référence', 'Chantier', 'Client', 'Avancement', 'Marge', 'Statut', 'Actions'].map(col => (
+                          <th key={col} style={DS.th}>{col}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {scored.map(({ c, etatC, decision }) => {
+                        const client = clients.find(cl => cl.id === c.clientId);
+                        const sc = couleurStatut(c.statut);
+                        const initiales = (c.nom || '').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+                        const avancePct = Math.min(100, Math.max(0, etatC.avancementPct || 0));
+                        return (
+                          <tr
+                            key={c.id}
+                            style={{ cursor: 'pointer', transition: 'background 0.15s' }}
+                            onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-hover)'}
+                            onMouseLeave={e => e.currentTarget.style.background = ''}
+                            onClick={() => { setSelected(c); setVue('detail'); setDetailOnglet('vue'); }}
+                          >
+                            <td style={DS.td}>
+                              <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.4px' }}>{c.numero}</span>
+                            </td>
+                            <td style={{ ...DS.td, maxWidth: 240 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                <div style={{
+                                  width: 36, height: 36, borderRadius: 8, flexShrink: 0,
+                                  background: decision.couleur + '22',
+                                  border: `1px solid ${decision.couleur}40`,
+                                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                  fontSize: 12, fontWeight: 800, color: decision.couleur,
+                                }}>{initiales}</div>
+                                <div style={{ minWidth: 0 }}>
+                                  <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.nom}</div>
+                                  <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 1 }}>{c.ville}</div>
+                                </div>
+                              </div>
+                            </td>
+                            <td style={DS.td}>
+                              <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{client?.entreprise || '—'}</span>
+                            </td>
+                            <td style={{ ...DS.td, minWidth: 140 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <div style={{ width: 100, height: 5, borderRadius: 3, background: 'var(--border)', flexShrink: 0, overflow: 'hidden' }}>
+                                  <div style={{ height: '100%', width: `${avancePct}%`, background: decision.couleur, borderRadius: 3, transition: 'width 0.3s' }} />
+                                </div>
+                                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)', minWidth: 30 }}>{avancePct}%</span>
+                              </div>
+                            </td>
+                            <td style={DS.td}>
+                              <span style={{
+                                fontSize: 11, fontWeight: 700, color: decision.couleur,
+                                background: decision.couleur + '18', border: `1px solid ${decision.couleur}40`,
+                                borderRadius: 20, padding: '3px 10px', whiteSpace: 'nowrap', display: 'inline-block',
+                              }}>{decision.label}</span>
+                            </td>
+                            <td style={DS.td}>
+                              <span style={{
+                                fontSize: 11, fontWeight: 700, color: sc.color, background: sc.bg,
+                                borderRadius: 20, padding: '3px 10px', whiteSpace: 'nowrap', display: 'inline-block',
+                              }}>{c.statut}</span>
+                            </td>
+                            <td style={{ ...DS.td, whiteSpace: 'nowrap' }} onClick={e => e.stopPropagation()}>
+                              <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                                <button
+                                  onClick={() => { setSelected(c); setVue('detail'); setDetailOnglet('vue'); }}
+                                  style={DS.iconBtn}
+                                  title="Voir le détail"
+                                ><Eye size={14} /></button>
+                                <button
+                                  onClick={() => ouvrirModification(c)}
+                                  style={DS.iconBtn}
+                                  title="Modifier"
+                                ><Pencil size={14} /></button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </>
+        );
+      })()}
+    </div>
+
+  </React.Fragment>);
+}
+
+
+export default Chantiers;

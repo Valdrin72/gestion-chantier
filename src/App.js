@@ -1101,9 +1101,9 @@ function Dashboard({ chantiers, clients, factures, devis = [], parametres, navig
       {/* ── KPI CARDS ────────────────────────────────────────── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24 }}>
         {[
-          { label: "Chiffre d'affaires", Icon: DollarSign, page: 'devis',
+          { label: "CA en cours", Icon: DollarSign, page: 'devis',
             valeur: `CHF ${fmtN(kpi.caEnCours)}`,
-            sous: kpi.nbChantiersActifs > 0 ? `${kpi.nbChantiersActifs} chantier${kpi.nbChantiersActifs !== 1 ? 's' : ''} actif${kpi.nbChantiersActifs !== 1 ? 's' : ''}` : 'Aucun chantier actif',
+            sous: kpi.nbChantiersActifs > 0 ? `${kpi.nbChantiersActifs} chantier${kpi.nbChantiersActifs !== 1 ? 's' : ''} en cours · devis signés` : 'Aucun chantier en cours',
             ...DS.kpi.blue },
           { label: 'Marge moyenne', Icon: TrendingUp, page: 'analyse',
             valeur: kpi.rentaMoyenne !== null ? `${Math.round(kpi.rentaMoyenne)}%` : '—',
@@ -2851,9 +2851,10 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
           }, 0);
           margeMoyenne = Math.round(sum / chantiersAvecData.length);
         }
+        const nbAvecDevis = chantiersFiltres.filter(c => calculerCA(c, devis) !== null).length;
         const kpiItems = [
           { label: 'EN COURS',       val: nbEnCours,  Icon: HardHat,    ...DS.kpi.blue,   badge: nbEnRetard > 0 ? `${nbEnRetard} en retard` : null },
-          { label: 'CA TOTAL',       val: `CHF ${fmtN(caTotal)}`, Icon: DollarSign, ...DS.kpi.green },
+          { label: 'CA CHANTIERS',   val: `CHF ${fmtN(caTotal)}`, sous: `${nbAvecDevis} avec devis · tous statuts`, Icon: DollarSign, ...DS.kpi.green },
           { label: 'MARGE MOYENNE',  val: margeMoyenne !== null ? `${margeMoyenne}%` : '—', Icon: TrendingUp, ...DS.kpi.amber },
           { label: 'JOURS PLANIFIÉS',val: `${fmtN(joursPlanifies)}j`, Icon: Clock, ...DS.kpi.purple },
         ];
@@ -2868,6 +2869,7 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
                 </div>
                 <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.7)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 5, position: 'relative' }}>{k.label}</div>
                 <div style={{ fontSize: 26, fontWeight: 900, color: '#fff', letterSpacing: '-0.8px', lineHeight: 1, position: 'relative' }}>{k.val}</div>
+                {k.sous && <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.62)', marginTop: 5, position: 'relative' }}>{k.sous}</div>}
                 {k.badge && <span style={{ display: 'inline-block', marginTop: 7, background: 'rgba(239,68,68,0.85)', color: '#fff', borderRadius: 20, padding: '1px 8px', fontSize: 10, fontWeight: 700, position: 'relative' }}>{k.badge}</span>}
               </div>
             ))}
@@ -3614,22 +3616,20 @@ function Devis({ devis, setDevis, clients, parametres, naviguer, setChantiers, c
 
       {/* ── KPI GRID ── */}
       {(() => {
-        const ACCEPTES = ['accepté'];
-        const ATTENTE  = ['envoyé', 'Envoyé'];
-        const montantTotal = devis.reduce((s, d) => s + (parseFloat(d.montantHT || d.prixPropose) || 0), 0);
-        const nbAcceptes = devis.filter(d => ACCEPTES.includes(d.statut)).length;
-        const tauxAcceptation = devis.length > 0 ? Math.round((nbAcceptes / devis.length) * 100) : 0;
-        const enAttente = devis.filter(d => ATTENTE.includes(d.statut));
+        const devisAcceptes = devis.filter(d => d.statut === 'accepté');
+        const caSigné = devisAcceptes.reduce((s, d) => s + (parseFloat(d.montantHT || d.prixPropose) || 0), 0);
+        const tauxAcceptation = devis.length > 0 ? Math.round((devisAcceptes.length / devis.length) * 100) : 0;
+        const enAttente = devis.filter(d => d.statut === 'envoyé');
         const montantAttente = enAttente.reduce((s, d) => s + (parseFloat(d.montantHT || d.prixPropose) || 0), 0);
         const now = Date.now();
         const delaisMoyen = enAttente.length > 0
           ? Math.round(enAttente.reduce((s, d) => { const dt = d.dateEmission || d.date || 0; return s + Math.floor((now - new Date(dt)) / 86400000); }, 0) / enAttente.length)
           : null;
         const kpiItems = [
-          { label: 'MONTANT TOTAL',       val: `CHF ${fmtN(montantTotal)}`, Icon: DollarSign, ...DS.kpi.blue },
-          { label: "TAUX D'ACCEPTATION",  val: `${tauxAcceptation}%`,        Icon: TrendingUp, ...DS.kpi.green },
-          { label: 'EN ATTENTE',          val: enAttente.length,              Icon: Clock,      ...DS.kpi.amber, badge: montantAttente > 0 ? `CHF ${fmtN(montantAttente)}` : null },
-          { label: 'DÉLAI MOYEN',         val: delaisMoyen !== null ? `${delaisMoyen}j` : '—', Icon: FileText, ...DS.kpi.purple },
+          { label: 'CA SIGNÉ',            val: `CHF ${fmtN(caSigné)}`, sous: `${devisAcceptes.length} devis accepté${devisAcceptes.length !== 1 ? 's' : ''}`, Icon: DollarSign, ...DS.kpi.green },
+          { label: "TAUX D'ACCEPTATION",  val: `${tauxAcceptation}%`, sous: `sur ${devis.length} devis total`, Icon: TrendingUp, ...DS.kpi.blue },
+          { label: 'EN ATTENTE RÉPONSE',  val: enAttente.length, sous: montantAttente > 0 ? `CHF ${fmtN(montantAttente)} en jeu` : 'Aucun en cours', Icon: Clock, ...DS.kpi.amber },
+          { label: 'DÉLAI MOYEN',         val: delaisMoyen !== null ? `${delaisMoyen}j` : '—', sous: 'depuis envoi', Icon: FileText, ...DS.kpi.purple },
         ];
         return (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 20 }}>
@@ -3642,7 +3642,7 @@ function Devis({ devis, setDevis, clients, parametres, naviguer, setChantiers, c
                 </div>
                 <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.7)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 5, position: 'relative' }}>{k.label}</div>
                 <div style={{ fontSize: 26, fontWeight: 900, color: '#fff', letterSpacing: '-0.8px', lineHeight: 1, position: 'relative' }}>{k.val}</div>
-                {k.badge && <span style={{ display: 'inline-block', marginTop: 7, background: 'rgba(255,255,255,0.22)', color: '#fff', borderRadius: 20, padding: '1px 8px', fontSize: 10, fontWeight: 700, position: 'relative' }}>{k.badge}</span>}
+                {k.sous && <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.62)', marginTop: 5, position: 'relative' }}>{k.sous}</div>}
               </div>
             ))}
           </div>

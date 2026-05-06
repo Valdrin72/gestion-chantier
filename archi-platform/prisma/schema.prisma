@@ -1,0 +1,632 @@
+// =====================================================================
+// Archi Platform — Prisma schema
+// Modules:
+//   1. GED (documents, versions, partage, validation, commentaires PDF)
+//   2. Chiffrage (catalogue d'éléments paramétrables, métré, coûts)
+//   3. Cycle de vie (inventaire post-projet, alertes maintenance)
+// =====================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------
+// AUTH (Auth.js / NextAuth) + Multi-tenant
+// ---------------------------------------------------------------------
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  emailVerified DateTime?
+  name          String?
+  image         String?
+  passwordHash  String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  accounts      Account[]
+  sessions      Session[]
+
+  memberships          OrganizationMember[]
+  projectMemberships   ProjectMember[]
+  uploadedFiles        FileEntry[]          @relation("FileUploader")
+  uploadedVersions     FileVersion[]        @relation("VersionUploader")
+  createdShareLinks    ShareLink[]          @relation("ShareLinkCreator")
+  validationRequests   ValidationRequest[]  @relation("ValidationRequester")
+  validationSteps      ValidationStep[]     @relation("ValidationApprover")
+  comments             Comment[]            @relation("CommentAuthor")
+  mentions             CommentMention[]     @relation("MentionedUser")
+  notifications        Notification[]
+  estimates            Estimate[]           @relation("EstimateAuthor")
+  assetEvents          AssetEvent[]         @relation("AssetEventAuthor")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model Organization {
+  id        String   @id @default(cuid())
+  slug      String   @unique
+  name      String
+  logoUrl   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  members      OrganizationMember[]
+  projects     Project[]
+  elementTypes ElementType[]
+}
+
+enum OrgRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+model OrganizationMember {
+  id             String       @id @default(cuid())
+  organizationId String
+  userId         String
+  role           OrgRole      @default(MEMBER)
+  createdAt      DateTime     @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, userId])
+}
+
+// ---------------------------------------------------------------------
+// PROJECTS & RBAC
+// ---------------------------------------------------------------------
+
+model Project {
+  id             String       @id @default(cuid())
+  organizationId String
+  slug           String
+  name           String
+  description    String?
+  status         ProjectStatus @default(ACTIVE)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  members      ProjectMember[]
+  folders      Folder[]
+  files        FileEntry[]
+  estimates    Estimate[]
+  assetInventory AssetInventory?
+
+  @@unique([organizationId, slug])
+}
+
+enum ProjectStatus {
+  ACTIVE
+  ARCHIVED
+  HANDED_OVER  // remis au propriétaire — phase maintenance
+}
+
+enum ProjectRole {
+  OWNER          // propriétaire (client final)
+  ARCHITECT
+  ENGINEER
+  CONTRACTOR
+  REVIEWER       // peut valider mais pas modifier
+  VIEWER         // lecture seule
+}
+
+model ProjectMember {
+  id        String      @id @default(cuid())
+  projectId String
+  userId    String
+  role      ProjectRole @default(VIEWER)
+  // Permissions fines surchargeables (JSON), sinon dérivées du rôle
+  permissions Json?
+  createdAt DateTime    @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, userId])
+}
+
+// ---------------------------------------------------------------------
+// MODULE 1 — GED
+// ---------------------------------------------------------------------
+
+model Folder {
+  id        String   @id @default(cuid())
+  projectId String
+  parentId  String?
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  project  Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  parent   Folder?    @relation("FolderTree", fields: [parentId], references: [id], onDelete: Cascade)
+  children Folder[]   @relation("FolderTree")
+  files    FileEntry[]
+
+  @@index([projectId, parentId])
+}
+
+model FileEntry {
+  id              String   @id @default(cuid())
+  projectId       String
+  folderId        String?
+  name            String           // nom logique du document (stable)
+  description     String?
+  currentVersionId String? @unique
+  uploadedById    String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  project         Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  folder          Folder?        @relation(fields: [folderId], references: [id], onDelete: SetNull)
+  uploadedBy      User           @relation("FileUploader", fields: [uploadedById], references: [id])
+  currentVersion  FileVersion?   @relation("CurrentVersion", fields: [currentVersionId], references: [id])
+  versions        FileVersion[]  @relation("FileVersions")
+  shareLinks      ShareLink[]
+  validations     ValidationRequest[]
+  comments        Comment[]
+
+  @@index([projectId, folderId])
+}
+
+model FileVersion {
+  id          String   @id @default(cuid())
+  fileId      String
+  versionNumber Int
+  storageKey  String          // clé sur le storage (S3 ou local)
+  mimeType    String
+  sizeBytes   BigInt
+  checksum    String?         // sha256
+  uploadedById String
+  changeNote  String?
+  createdAt   DateTime @default(now())
+
+  file        FileEntry  @relation("FileVersions", fields: [fileId], references: [id], onDelete: Cascade)
+  uploadedBy  User       @relation("VersionUploader", fields: [uploadedById], references: [id])
+  currentOf   FileEntry? @relation("CurrentVersion")
+
+  @@unique([fileId, versionNumber])
+}
+
+model ShareLink {
+  id          String    @id @default(cuid())
+  fileId      String
+  token       String    @unique           // nanoid utilisé dans l'URL publique
+  createdById String
+  // null = pas d'expiration
+  expiresAt   DateTime?
+  // null = pas de mot de passe
+  passwordHash String?
+  // au choix de celui qui partage
+  allowDownload Boolean @default(true)
+  // version épinglée (sinon = currentVersion au moment de l'accès)
+  pinnedVersionId String?
+  // statistiques
+  accessCount Int       @default(0)
+  lastAccessedAt DateTime?
+  revokedAt   DateTime?
+  createdAt   DateTime  @default(now())
+
+  file        FileEntry  @relation(fields: [fileId], references: [id], onDelete: Cascade)
+  createdBy   User       @relation("ShareLinkCreator", fields: [createdById], references: [id])
+}
+
+// ----- Validation workflow -----
+
+enum ValidationMode {
+  ANY            // une seule approbation suffit
+  ALL            // tous les valideurs doivent approuver
+  SEQUENTIAL     // ordre imposé
+}
+
+enum ValidationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+model ValidationRequest {
+  id          String   @id @default(cuid())
+  fileId      String
+  versionId   String              // valide UNE version précise
+  requestedById String
+  mode        ValidationMode @default(ALL)
+  status      ValidationStatus @default(PENDING)
+  message     String?
+  dueDate     DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  resolvedAt  DateTime?
+
+  file        FileEntry @relation(fields: [fileId], references: [id], onDelete: Cascade)
+  requestedBy User      @relation("ValidationRequester", fields: [requestedById], references: [id])
+  steps       ValidationStep[]
+
+  @@index([fileId])
+}
+
+model ValidationStep {
+  id           String   @id @default(cuid())
+  requestId    String
+  approverId   String
+  order        Int       @default(0)     // pour SEQUENTIAL
+  status       ValidationStatus @default(PENDING)
+  comment      String?
+  decidedAt    DateTime?
+  createdAt    DateTime @default(now())
+
+  request   ValidationRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  approver  User              @relation("ValidationApprover", fields: [approverId], references: [id])
+
+  @@unique([requestId, approverId])
+  @@index([approverId, status])
+}
+
+// ----- Commentaires PDF / fichier -----
+
+enum CommentTargetType {
+  FILE          // commentaire général sur le fichier
+  PDF_ANNOTATION  // ancré sur une zone du PDF
+}
+
+model Comment {
+  id          String  @id @default(cuid())
+  fileId      String
+  versionId   String?           // commentaire éventuellement lié à une version précise
+  authorId    String
+  parentId    String?           // pour les threads (réponses)
+  body        String  @db.Text
+  targetType  CommentTargetType @default(FILE)
+
+  // Annotation PDF — uniquement si targetType = PDF_ANNOTATION
+  pdfPageNumber Int?
+  // rectangle relatif à la page (0..1) : { x, y, w, h }
+  pdfRect      Json?
+
+  resolvedAt  DateTime?
+  resolvedById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  file     FileEntry  @relation(fields: [fileId], references: [id], onDelete: Cascade)
+  author   User       @relation("CommentAuthor", fields: [authorId], references: [id])
+  parent   Comment?   @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies  Comment[]  @relation("CommentReplies")
+  mentions CommentMention[]
+
+  @@index([fileId, pdfPageNumber])
+}
+
+model CommentMention {
+  id          String  @id @default(cuid())
+  commentId   String
+  userId      String          // utilisateur mentionné
+  // expecting a response from this user
+  awaitingResponse Boolean @default(true)
+  respondedAt DateTime?
+  createdAt   DateTime @default(now())
+
+  comment Comment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  user    User    @relation("MentionedUser", fields: [userId], references: [id])
+
+  @@unique([commentId, userId])
+}
+
+// ----- Notifications -----
+
+enum NotificationType {
+  VALIDATION_REQUESTED
+  VALIDATION_APPROVED
+  VALIDATION_REJECTED
+  FILE_ADDED
+  FILE_VERSION_ADDED
+  COMMENT_MENTION
+  COMMENT_REPLY
+  SHARE_ACCESSED
+  ASSET_LIFECYCLE_ALERT
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  type      NotificationType
+  // Cible polymorphe
+  payload   Json
+  readAt    DateTime?
+  emailSentAt DateTime?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt])
+}
+
+// Préférences notifications (par projet ou globale)
+model NotificationPreference {
+  id        String   @id @default(cuid())
+  userId    String
+  projectId String?           // null = global
+  emailOnFileAdded         Boolean @default(true)
+  emailOnValidationRequest Boolean @default(true)
+  emailOnMention           Boolean @default(true)
+  emailOnAssetAlert        Boolean @default(true)
+
+  @@unique([userId, projectId])
+}
+
+// ---------------------------------------------------------------------
+// MODULE 2 — CHIFFRAGE / MÉTRÉ
+// ---------------------------------------------------------------------
+
+// Catalogue d'éléments paramétrables au niveau de l'organisation
+// (ex: "Fenêtre", "Mur", "Porte", "Radiateur"...)
+model ElementType {
+  id              String   @id @default(cuid())
+  organizationId  String
+  code            String              // ex: "WIN-STD"
+  name            String              // ex: "Fenêtre"
+  category        String?             // ex: "Menuiserie extérieure"
+  // Indique si l'élément peut être suivi en cycle de vie (Module 3)
+  trackable       Boolean  @default(true)
+  defaultLifespanMonths Int?         // durée de vie par défaut en mois
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  fields       ElementTypeField[]
+  estimateLines EstimateLine[]
+
+  @@unique([organizationId, code])
+}
+
+enum FieldKind {
+  TEXT
+  NUMBER
+  BOOLEAN
+  SELECT
+  MULTI_SELECT
+  DATE
+  DIMENSION       // dimension (mm) — affichage spécifique
+  COLOR
+}
+
+model ElementTypeField {
+  id          String   @id @default(cuid())
+  elementTypeId String
+  key         String              // ex: "largeur", "hauteur", "materiau"
+  label       String              // affichage UI
+  kind        FieldKind
+  required    Boolean  @default(false)
+  // pour SELECT/MULTI_SELECT
+  options     Json?
+  unit        String?             // ex: "mm", "m²", "kg"
+  position    Int      @default(0)
+
+  elementType ElementType @relation(fields: [elementTypeId], references: [id], onDelete: Cascade)
+
+  @@unique([elementTypeId, key])
+}
+
+model Estimate {
+  id          String   @id @default(cuid())
+  projectId   String
+  name        String
+  authorId    String
+  currency    String   @default("CHF")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  author  User    @relation("EstimateAuthor", fields: [authorId], references: [id])
+  sheets  EstimateSheet[]
+
+  @@index([projectId])
+}
+
+model EstimateSheet {
+  id          String   @id @default(cuid())
+  estimateId  String
+  name        String              // ex: "Rez-de-chaussée"
+  position    Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  estimate Estimate @relation(fields: [estimateId], references: [id], onDelete: Cascade)
+  lines    EstimateLine[]
+
+  @@index([estimateId])
+}
+
+enum ExistingState {
+  NEW              // élément neuf (à poser)
+  TO_KEEP          // existant conservé tel quel
+  TO_RENOVATE      // existant à rénover
+  TO_REPLACE       // existant à remplacer
+  TO_REMOVE        // à déposer / démolir
+}
+
+model EstimateLine {
+  id              String   @id @default(cuid())
+  sheetId         String
+  elementTypeId   String?              // null si ligne libre
+  position        Int      @default(0)
+
+  // Identification
+  label           String                // ex: "Fenêtre cuisine"
+  reference       String?               // référence libre (ex: F-01)
+  location        String?               // ex: "Cuisine RDC"
+
+  // Caractéristiques (clé/valeur, structurées via ElementTypeField)
+  // ex: { "largeur": 1200, "hauteur": 1500, "materiau": "PVC" }
+  attributes      Json?
+
+  // État existant
+  existingState   ExistingState @default(NEW)
+  conditionNote   String?
+
+  // Métré
+  quantity        Decimal  @default(1) @db.Decimal(14, 4)
+  unit            String   @default("u")  // u, m, m², m³, kg, h...
+
+  // Coûts
+  unitCostMaterial Decimal @default(0) @db.Decimal(14, 2)
+  unitCostLabor    Decimal @default(0) @db.Decimal(14, 2)
+  unitCostOther    Decimal @default(0) @db.Decimal(14, 2)
+  // total = qty * (mat + labor + other) — calculé à la volée
+
+  // Cycle de vie
+  expectedLifespanMonths Int?
+  installDate     DateTime?
+  warrantyMonths  Int?
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  sheet         EstimateSheet @relation(fields: [sheetId], references: [id], onDelete: Cascade)
+  elementType   ElementType?  @relation(fields: [elementTypeId], references: [id])
+  asset         Asset?        // un élément suivi en cycle de vie
+
+  @@index([sheetId])
+}
+
+// ---------------------------------------------------------------------
+// MODULE 3 — CYCLE DE VIE / MAINTENANCE
+// ---------------------------------------------------------------------
+
+model AssetInventory {
+  id          String   @id @default(cuid())
+  projectId   String   @unique
+  ownerUserId String?              // utilisateur propriétaire (rôle OWNER) qui prend la main
+  handedOverAt DateTime?
+  createdAt   DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  assets  Asset[]
+}
+
+enum AssetStatus {
+  OPERATIONAL
+  NEEDS_INSPECTION
+  NEEDS_MAINTENANCE
+  END_OF_LIFE
+  REPLACED
+  DECOMMISSIONED
+}
+
+model Asset {
+  id              String   @id @default(cuid())
+  inventoryId     String
+  // Source : ligne de chiffrage qui a créé l'asset
+  estimateLineId  String?  @unique
+  elementTypeId   String?
+
+  label           String
+  reference       String?
+  location        String?
+  attributes      Json?               // copie des attributs au moment du handover
+
+  installDate     DateTime?
+  expectedLifespanMonths Int?
+  warrantyMonths  Int?
+  warrantyEndDate DateTime?
+  endOfLifeDate   DateTime?           // calculé : installDate + lifespan
+
+  status          AssetStatus @default(OPERATIONAL)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  inventory   AssetInventory @relation(fields: [inventoryId], references: [id], onDelete: Cascade)
+  estimateLine EstimateLine? @relation(fields: [estimateLineId], references: [id], onDelete: SetNull)
+  events      AssetEvent[]
+  alerts      LifecycleAlert[]
+
+  @@index([inventoryId, status])
+}
+
+enum AssetEventKind {
+  INSPECTION
+  MAINTENANCE
+  REPAIR
+  REPLACEMENT
+  NOTE
+}
+
+model AssetEvent {
+  id          String   @id @default(cuid())
+  assetId     String
+  authorId    String?
+  kind        AssetEventKind
+  title       String
+  description String?
+  cost        Decimal? @db.Decimal(14, 2)
+  performedAt DateTime @default(now())
+  createdAt   DateTime @default(now())
+
+  asset  Asset @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  author User? @relation("AssetEventAuthor", fields: [authorId], references: [id])
+
+  @@index([assetId, performedAt])
+}
+
+enum AlertSeverity {
+  INFO
+  WARNING
+  CRITICAL
+}
+
+model LifecycleAlert {
+  id          String   @id @default(cuid())
+  assetId     String
+  severity    AlertSeverity @default(INFO)
+  title       String
+  message     String?
+  triggerAt   DateTime              // quand l'alerte devient active
+  acknowledgedAt DateTime?
+  resolvedAt  DateTime?
+  createdAt   DateTime @default(now())
+
+  asset Asset @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@index([triggerAt, resolvedAt])
+}

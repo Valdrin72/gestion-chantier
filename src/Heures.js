@@ -56,6 +56,9 @@ export default function Heures({ chantiers = [], parametres = {}, setChantiers }
     if (!employeId || !chantierId || !date || !heures) return;
     const h = parseFloat(heures);
     if (!h || h <= 0) return;
+    // Bloquer si avant le début du chantier
+    const chantierSelectionne = chantiers.find(c => String(c.id) === String(chantierId));
+    if (chantierSelectionne?.dateDebut && date < chantierSelectionne.dateDebut) return;
 
     setChantiers(prev => prev.map(c => {
       if (String(c.id) !== String(chantierId)) return c;
@@ -312,10 +315,19 @@ export default function Heures({ chantiers = [], parametres = {}, setChantiers }
               </select>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 24 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
               <div>
                 <label style={DS.label}>Date</label>
-                <input type="date" value={modal.form.date} onChange={e => setModal({ ...modal, form: { ...modal.form, date: e.target.value } })} style={DS.input} />
+                {(() => {
+                  const ch = chantiers.find(c => String(c.id) === String(modal.form.chantierId));
+                  const minDate = ch?.dateDebut || undefined;
+                  const avantDebut = minDate && modal.form.date && modal.form.date < minDate;
+                  return (
+                    <input type="date" value={modal.form.date} min={minDate}
+                      onChange={e => setModal({ ...modal, form: { ...modal.form, date: e.target.value } })}
+                      style={{ ...DS.input, borderColor: avantDebut ? '#ef4444' : undefined }} />
+                  );
+                })()}
               </div>
               <div>
                 <label style={DS.label}>Heures travaillées</label>
@@ -323,14 +335,38 @@ export default function Heures({ chantiers = [], parametres = {}, setChantiers }
               </div>
             </div>
 
+            {/* Alerte date avant début chantier */}
+            {(() => {
+              const ch = chantiers.find(c => String(c.id) === String(modal.form.chantierId));
+              const avantDebut = ch?.dateDebut && modal.form.date && modal.form.date < ch.dateDebut;
+              if (!avantDebut) return null;
+              return (
+                <div style={{ display: 'flex', gap: 10, background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 10, padding: '12px 14px', marginBottom: 16 }}>
+                  <span style={{ fontSize: 18 }}>🚫</span>
+                  <div>
+                    <div style={{ fontWeight: 700, color: '#991b1b', fontSize: 13 }}>Chantier pas encore démarré</div>
+                    <div style={{ fontSize: 12, color: '#b91c1c', marginTop: 2 }}>
+                      Début prévu le <strong>{new Date(ch.dateDebut + 'T00:00:00').toLocaleDateString('fr-CH', { day: 'numeric', month: 'long', year: 'numeric' })}</strong>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
               <button onClick={() => setModal(null)} style={DS.btnGhost}>Annuler</button>
-              <button
-                onClick={sauvegarder}
-                disabled={!modal.form.employeId || !modal.form.chantierId || !modal.form.date || !modal.form.heures}
-                style={{ ...DS.btnPrimary, opacity: (!modal.form.employeId || !modal.form.chantierId || !modal.form.date || !modal.form.heures) ? 0.5 : 1 }}>
-                Enregistrer
-              </button>
+              {(() => {
+                const ch = chantiers.find(c => String(c.id) === String(modal.form.chantierId));
+                const avantDebut = ch?.dateDebut && modal.form.date && modal.form.date < ch.dateDebut;
+                const manque = !modal.form.employeId || !modal.form.chantierId || !modal.form.date || !modal.form.heures;
+                const bloque = avantDebut || manque;
+                return (
+                  <button onClick={sauvegarder} disabled={bloque}
+                    style={{ ...DS.btnPrimary, opacity: bloque ? 0.4 : 1 }}>
+                    {avantDebut ? 'Date invalide' : 'Enregistrer'}
+                  </button>
+                );
+              })()}
             </div>
           </div>
         </div>

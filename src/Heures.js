@@ -59,6 +59,8 @@ export default function Heures({ chantiers = [], parametres = {}, setChantiers }
     // Bloquer si avant le début du chantier
     const chantierSelectionne = chantiers.find(c => String(c.id) === String(chantierId));
     if (chantierSelectionne?.dateDebut && date < chantierSelectionne.dateDebut) return;
+    const todayStr = new Date().toISOString().split('T')[0];
+    if (date > todayStr) return;
 
     setChantiers(prev => prev.map(c => {
       if (String(c.id) !== String(chantierId)) return c;
@@ -232,15 +234,17 @@ export default function Heures({ chantiers = [], parametres = {}, setChantiers }
                       {dayHours.map((h, di) => {
                         const cs = getCellStyle(h, di);
                         const dateCell = isoDate(weekDays[di]);
+                        const todayStr = isoDate(today);
+                        const estFutur = dateCell > todayStr;
                         return (
-                          <td key={di} style={{ ...DS.td, textAlign: 'center', cursor: 'pointer' }}
-                            onClick={() => ouvrirModal({ date: dateCell, employeId: emp.id })}
-                            title={h > 0 ? `Modifier — ${h}h` : 'Saisir heures'}
+                          <td key={di} style={{ ...DS.td, textAlign: 'center', cursor: estFutur ? 'default' : 'pointer', opacity: estFutur ? 0.35 : 1 }}
+                            onClick={() => !estFutur && ouvrirModal({ date: dateCell, employeId: emp.id })}
+                            title={estFutur ? 'Date future — saisie impossible' : h > 0 ? `Modifier — ${h}h` : 'Saisir heures'}
                           >
                             {h > 0 ? (
                               <span style={{ ...cs, borderRadius: 6, padding: '3px 8px', fontSize: 13, fontWeight: 700, display: 'inline-block' }}>{h}h</span>
                             ) : (
-                              <span style={{ color: 'var(--text-muted)', fontSize: 13, opacity: 0.4 }}>+</span>
+                              <span style={{ color: 'var(--text-muted)', fontSize: 13, opacity: 0.4 }}>{estFutur ? '—' : '+'}</span>
                             )}
                           </td>
                         );
@@ -321,11 +325,13 @@ export default function Heures({ chantiers = [], parametres = {}, setChantiers }
                 {(() => {
                   const ch = chantiers.find(c => String(c.id) === String(modal.form.chantierId));
                   const minDate = ch?.dateDebut || undefined;
+                  const maxDate = new Date().toISOString().split('T')[0];
                   const avantDebut = minDate && modal.form.date && modal.form.date < minDate;
+                  const futur = modal.form.date && modal.form.date > maxDate;
                   return (
-                    <input type="date" value={modal.form.date} min={minDate}
+                    <input type="date" value={modal.form.date} min={minDate} max={maxDate}
                       onChange={e => setModal({ ...modal, form: { ...modal.form, date: e.target.value } })}
-                      style={{ ...DS.input, borderColor: avantDebut ? '#ef4444' : undefined }} />
+                      style={{ ...DS.input, borderColor: (avantDebut || futur) ? '#ef4444' : undefined }} />
                   );
                 })()}
               </div>
@@ -335,19 +341,30 @@ export default function Heures({ chantiers = [], parametres = {}, setChantiers }
               </div>
             </div>
 
-            {/* Alerte date avant début chantier */}
+            {/* Alerte date invalide */}
             {(() => {
               const ch = chantiers.find(c => String(c.id) === String(modal.form.chantierId));
+              const todayStr = new Date().toISOString().split('T')[0];
               const avantDebut = ch?.dateDebut && modal.form.date && modal.form.date < ch.dateDebut;
-              if (!avantDebut) return null;
+              const futur = modal.form.date && modal.form.date > todayStr;
+              if (!avantDebut && !futur) return null;
               return (
                 <div style={{ display: 'flex', gap: 10, background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 10, padding: '12px 14px', marginBottom: 16 }}>
                   <span style={{ fontSize: 18 }}>🚫</span>
                   <div>
-                    <div style={{ fontWeight: 700, color: '#991b1b', fontSize: 13 }}>Chantier pas encore démarré</div>
-                    <div style={{ fontSize: 12, color: '#b91c1c', marginTop: 2 }}>
-                      Début prévu le <strong>{new Date(ch.dateDebut + 'T00:00:00').toLocaleDateString('fr-CH', { day: 'numeric', month: 'long', year: 'numeric' })}</strong>
-                    </div>
+                    {futur ? (
+                      <>
+                        <div style={{ fontWeight: 700, color: '#991b1b', fontSize: 13 }}>Date dans le futur</div>
+                        <div style={{ fontSize: 12, color: '#b91c1c', marginTop: 2 }}>Vous ne pouvez pas saisir des heures pour une date future.</div>
+                      </>
+                    ) : (
+                      <>
+                        <div style={{ fontWeight: 700, color: '#991b1b', fontSize: 13 }}>Chantier pas encore démarré</div>
+                        <div style={{ fontSize: 12, color: '#b91c1c', marginTop: 2 }}>
+                          Début prévu le <strong>{new Date(ch.dateDebut + 'T00:00:00').toLocaleDateString('fr-CH', { day: 'numeric', month: 'long', year: 'numeric' })}</strong>
+                        </div>
+                      </>
+                    )}
                   </div>
                 </div>
               );
@@ -357,13 +374,15 @@ export default function Heures({ chantiers = [], parametres = {}, setChantiers }
               <button onClick={() => setModal(null)} style={DS.btnGhost}>Annuler</button>
               {(() => {
                 const ch = chantiers.find(c => String(c.id) === String(modal.form.chantierId));
+                const todayStr = new Date().toISOString().split('T')[0];
                 const avantDebut = ch?.dateDebut && modal.form.date && modal.form.date < ch.dateDebut;
+                const futur = modal.form.date && modal.form.date > todayStr;
                 const manque = !modal.form.employeId || !modal.form.chantierId || !modal.form.date || !modal.form.heures;
-                const bloque = avantDebut || manque;
+                const bloque = avantDebut || futur || manque;
                 return (
                   <button onClick={sauvegarder} disabled={bloque}
                     style={{ ...DS.btnPrimary, opacity: bloque ? 0.4 : 1 }}>
-                    {avantDebut ? 'Date invalide' : 'Enregistrer'}
+                    {(avantDebut || futur) ? 'Date invalide' : 'Enregistrer'}
                   </button>
                 );
               })()}

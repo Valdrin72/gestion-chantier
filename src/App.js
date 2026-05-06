@@ -1847,12 +1847,15 @@ function ModalSaisieHeures({ chantierSaisie, initialDate, onFermer, onSave, para
   const totalH = Object.values(heures).reduce((s, h) => s + (parseFloat(h) || 0), 0);
   const nbSaisis = Object.values(heures).filter(h => (parseFloat(h) || 0) > 0).length;
 
-  // Validation date : bloquer si avant le début du chantier
+  // Validation date : bloquer si avant le début du chantier ou dans le futur
   const dateDebut = chantierSaisie.dateDebut || null;
+  const today = new Date().toISOString().split('T')[0];
   const avantDebut = dateDebut && date < dateDebut;
+  const dansLeFutur = date > today;
+  const dateInvalide = avantDebut || dansLeFutur;
 
   const valider = useCallback(() => {
-    if (avantDebut) return;
+    if (dateInvalide) return;
     if (nbSaisis === 0) { alert('Aucune heure saisie.'); return; }
     const overLimit = Object.entries(heures).some(([, h]) => (parseFloat(h) || 0) > 10);
     if (overLimit && !window.confirm('Certains employés dépassent 10h. Confirmer ?')) return;
@@ -1862,7 +1865,7 @@ function ModalSaisieHeures({ chantierSaisie, initialDate, onFermer, onSave, para
     const journalFiltre = (chantierSaisie.journal || []).filter(e => e.date !== date);
     const newJournal = [...journalFiltre, { date, employes }];
     onSave({ ...chantierSaisie, journal: newJournal });
-  }, [avantDebut, nbSaisis, heures, chantierSaisie, date, onSave]);
+  }, [dateInvalide, nbSaisis, heures, chantierSaisie, date, onSave]);
 
   return (
     <div style={{
@@ -1896,31 +1899,42 @@ function ModalSaisieHeures({ chantierSaisie, initialDate, onFermer, onSave, para
         </div>
 
         {/* Date picker */}
-        <div style={{ marginBottom: avantDebut ? 12 : 20 }}>
+        <div style={{ marginBottom: dateInvalide ? 12 : 20 }}>
           <label style={labelStyle}>Date</label>
           <input
             type="date"
             value={date}
             min={dateDebut || undefined}
+            max={today}
             onChange={e => {
               const d = e.target.value;
               setDate(d);
               setHeures(heuresJour(chantierSaisie.journal || [], d));
             }}
-            style={{ ...inputStyle, maxWidth: 200, borderColor: avantDebut ? '#ef4444' : undefined }}
+            style={{ ...inputStyle, maxWidth: 200, borderColor: dateInvalide ? '#ef4444' : undefined }}
           />
         </div>
 
-        {/* Blocage : date avant le début du chantier */}
-        {avantDebut && (
+        {/* Blocage : date invalide */}
+        {dateInvalide && (
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 12, padding: '14px 16px', marginBottom: 20 }}>
             <span style={{ fontSize: 20, lineHeight: 1 }}>🚫</span>
             <div>
-              <div style={{ fontWeight: 700, color: '#991b1b', fontSize: 14 }}>Chantier pas encore démarré</div>
-              <div style={{ fontSize: 12, color: '#b91c1c', marginTop: 3 }}>
-                Ce chantier débute le <strong>{new Date(dateDebut + 'T00:00:00').toLocaleDateString('fr-CH', { day: 'numeric', month: 'long', year: 'numeric' })}</strong>.
-                Vous ne pouvez pas saisir des heures avant cette date.
-              </div>
+              {dansLeFutur ? (
+                <>
+                  <div style={{ fontWeight: 700, color: '#991b1b', fontSize: 14 }}>Date dans le futur</div>
+                  <div style={{ fontSize: 12, color: '#b91c1c', marginTop: 3 }}>
+                    Vous ne pouvez pas saisir des heures pour une date future. Aujourd'hui : <strong>{new Date(today + 'T00:00:00').toLocaleDateString('fr-CH', { day: 'numeric', month: 'long', year: 'numeric' })}</strong>.
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div style={{ fontWeight: 700, color: '#991b1b', fontSize: 14 }}>Chantier pas encore démarré</div>
+                  <div style={{ fontSize: 12, color: '#b91c1c', marginTop: 3 }}>
+                    Ce chantier débute le <strong>{new Date(dateDebut + 'T00:00:00').toLocaleDateString('fr-CH', { day: 'numeric', month: 'long', year: 'numeric' })}</strong>.
+                  </div>
+                </>
+              )}
             </div>
           </div>
         )}
@@ -2026,10 +2040,10 @@ function ModalSaisieHeures({ chantierSaisie, initialDate, onFermer, onSave, para
         {/* Footer */}
         <button
           onClick={valider}
-          disabled={avantDebut || nbSaisis === 0}
-          style={{ ...btnSucces, width: '100%', justifyContent: 'center', padding: '14px', fontSize: 15, fontWeight: 800, opacity: (avantDebut || nbSaisis === 0) ? 0.4 : 1 }}
+          disabled={dateInvalide || nbSaisis === 0}
+          style={{ ...btnSucces, width: '100%', justifyContent: 'center', padding: '14px', fontSize: 15, fontWeight: 800, opacity: (dateInvalide || nbSaisis === 0) ? 0.4 : 1 }}
         >
-          {avantDebut ? `Chantier démarre le ${new Date(dateDebut + 'T00:00:00').toLocaleDateString('fr-CH', { day: 'numeric', month: 'long' })}` : `Valider — ${nbSaisis} employé${nbSaisis !== 1 ? 's' : ''} · ${totalH}h`}
+          {dansLeFutur ? 'Date dans le futur — impossible' : avantDebut ? `Chantier démarre le ${new Date(dateDebut + 'T00:00:00').toLocaleDateString('fr-CH', { day: 'numeric', month: 'long' })}` : `Valider — ${nbSaisis} employé${nbSaisis !== 1 ? 's' : ''} · ${totalH}h`}
         </button>
       </div>
     </div>

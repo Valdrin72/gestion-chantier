@@ -33,9 +33,22 @@ export default function Heures({ chantiers = [], parametres = {}, setChantiers }
   const [weekStart, setWeekStart] = useState(() => getWeekStart(today));
   const [modal, setModal] = useState(null);
 
-  const ouvrirModal = () => {
-    const dateDefaut = isoDate(today);
-    setModal({ form: { ...FORM_VIDE, date: dateDefaut, employeId: employes[0]?.id || '', chantierId: chantiers[0]?.id || '' } });
+  const ouvrirModal = (prefill = {}) => {
+    const dateDefaut = prefill.date || isoDate(today);
+    const employeId = prefill.employeId || employes[0]?.id || '';
+    // Retrouver le chantier et les heures existantes pour ce jour/employé
+    let chantierId = prefill.chantierId || chantiers[0]?.id || '';
+    let heuresExistantes = '';
+    if (prefill.date && employeId) {
+      for (const c of chantiers) {
+        const entry = (c.journal || []).find(e => e.date === prefill.date);
+        if (entry) {
+          const emp = (entry.employes || []).find(e => String(e.employeId) === String(employeId));
+          if (emp) { chantierId = c.id; heuresExistantes = String(emp.heuresTravaillees); break; }
+        }
+      }
+    }
+    setModal({ form: { ...FORM_VIDE, date: dateDefaut, employeId, chantierId, heures: heuresExistantes || '8' } });
   };
 
   const sauvegarder = () => {
@@ -52,7 +65,7 @@ export default function Heures({ chantiers = [], parametres = {}, setChantiers }
         const entry = { ...journal[idx] };
         const employes2 = entry.employes ? [...entry.employes] : [];
         const ei = employes2.findIndex(e => String(e.employeId) === String(employeId));
-        if (ei >= 0) employes2[ei] = { ...employes2[ei], heuresTravaillees: String(employes2[ei].heuresTravaillees * 1 + h) };
+        if (ei >= 0) employes2[ei] = { ...employes2[ei], heuresTravaillees: String(h) };
         else employes2.push({ employeId, heuresTravaillees: String(h) });
         journal[idx] = { ...entry, employes: employes2 };
       } else {
@@ -215,12 +228,16 @@ export default function Heures({ chantiers = [], parametres = {}, setChantiers }
                       </td>
                       {dayHours.map((h, di) => {
                         const cs = getCellStyle(h, di);
+                        const dateCell = isoDate(weekDays[di]);
                         return (
-                          <td key={di} style={{ ...DS.td, textAlign: 'center' }}>
+                          <td key={di} style={{ ...DS.td, textAlign: 'center', cursor: 'pointer' }}
+                            onClick={() => ouvrirModal({ date: dateCell, employeId: emp.id })}
+                            title={h > 0 ? `Modifier — ${h}h` : 'Saisir heures'}
+                          >
                             {h > 0 ? (
                               <span style={{ ...cs, borderRadius: 6, padding: '3px 8px', fontSize: 13, fontWeight: 700, display: 'inline-block' }}>{h}h</span>
                             ) : (
-                              <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>—</span>
+                              <span style={{ color: 'var(--text-muted)', fontSize: 13, opacity: 0.4 }}>+</span>
                             )}
                           </td>
                         );
@@ -262,7 +279,14 @@ export default function Heures({ chantiers = [], parametres = {}, setChantiers }
             onClick={e => e.stopPropagation()}>
 
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-              <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--text-primary)' }}>Saisir des heures</div>
+              <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--text-primary)' }}>
+                {(() => {
+                  const { employeId, date } = modal.form;
+                  if (!employeId || !date) return 'Saisir des heures';
+                  const existant = chantiers.some(c => (c.journal || []).some(e => e.date === date && (e.employes || []).some(em => String(em.employeId) === String(employeId) && (parseFloat(em.heuresTravaillees) || 0) > 0)));
+                  return existant ? 'Modifier les heures' : 'Saisir des heures';
+                })()}
+              </div>
               <button onClick={() => setModal(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 4 }}>
                 <X size={18} />
               </button>

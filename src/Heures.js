@@ -234,7 +234,7 @@ export default function Heures({ chantiers = [], parametres = {}, setChantiers }
                       <td style={{ ...DS.td, fontWeight: 600 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                           <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: '#fff', flexShrink: 0 }}>
-                            {emp.nom.split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase()}
+                            {((emp.nom || 'NN').trim().split(' ').filter(Boolean).map(w => w[0]).join('').substring(0, 2) || 'NN').toUpperCase()}
                           </div>
                           <div>
                             <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>{emp.nom}</div>

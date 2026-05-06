@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import {
   LayoutDashboard, HardHat, FileText, Users, UserCheck, Calendar,
   BarChart2, CheckSquare, ClipboardList, TrendingUp,
@@ -187,17 +187,26 @@ function App() {
     setContexte(precedent.contexte);
   }, []);
 
-  const charger = (cle, defaut) => {
+  const charger = (cle, defaut, validateur = null) => {
     try {
-      const data = localStorage.getItem(cle);
-      return data ? JSON.parse(data) : defaut;
-    } catch { return defaut; }
+      const raw = localStorage.getItem(cle);
+      if (!raw) return defaut;
+      const parsed = JSON.parse(raw);
+      if (validateur && !validateur(parsed)) {
+        console.error(`[STORAGE] Données invalides pour ${cle} — reset au défaut`);
+        return defaut;
+      }
+      return parsed;
+    } catch {
+      console.error(`[STORAGE] Données corrompues pour ${cle} — reset au défaut`);
+      return defaut;
+    }
   };
 
   const [periodeGlobale, setPeriodeGlobale] = useState('mois');
 
   const [parametres, setParametresState] = useState(() => {
-    const loaded = charger('cyna_parametres', donneesInitiales);
+    const loaded = charger('cyna_parametres', donneesInitiales, v => v && typeof v === 'object' && !Array.isArray(v));
     // P3 — Migration : si coefficientMainOeuvre absent (anciens users), appliquer 1.35 et persister
     if (loaded.parametres && loaded.parametres.coefficientMainOeuvre === undefined) {
       loaded.parametres = { ...loaded.parametres, coefficientMainOeuvre: 1.35 };
@@ -206,17 +215,17 @@ function App() {
     return loaded;
   });
   const [chantiers, setChantiersState] = useState(() => {
-    const raw = charger('cyna_chantiers', donneesInitiales.chantiers);
+    const raw = charger('cyna_chantiers', donneesInitiales.chantiers, v => Array.isArray(v) && v.every(c => c && c.id != null && c.nom != null));
     // Migration unique : convertit les entrées journal employesPresents → heuresTravaillees
     return raw.map(c => ({ ...c, journal: migrerJournal(c.journal || []) }));
   });
-  const [clients, setClientsState] = useState(() => charger('cyna_clients', donneesInitiales.clients));
+  const [clients, setClientsState] = useState(() => charger('cyna_clients', donneesInitiales.clients, Array.isArray));
   const [devis, setDevisState] = useState(() => {
     const LEGACY = { 'Validé': 'accepté', 'Signé': 'accepté', 'Envoyé': 'envoyé', 'Refusé': 'refusé', 'Brouillon': 'brouillon', 'Annulé': 'refusé' };
-    return charger('cyna_devis', donneesInitiales.devis).map(d => ({ ...d, statut: LEGACY[d.statut] || d.statut }));
+    return charger('cyna_devis', donneesInitiales.devis, Array.isArray).map(d => ({ ...d, statut: LEGACY[d.statut] || d.statut }));
   });
   const [qualiteData, setQualiteDataState] = useState(() => charger('cyna_qualite', {}));
-  const [factures, setFacturesState] = useState(() => charger('cyna_factures', []));
+  const [factures, setFacturesState] = useState(() => charger('cyna_factures', [], Array.isArray));
   const [paiementsData, setPaiementsDataState] = useState(() => charger('cyna_paiements', {}));
   // photosData conservé en localStorage pour migration future, non exposé à l'UI
   const [actionsLog, setActionsLogState] = useState(() => charger('cyna_actions', []));
@@ -270,16 +279,18 @@ function App() {
     });
   }, []);
 
-  // Migration unique au démarrage : corrige les chantiers avec devisId = devis.numero au lieu de devis.id
+  // Migration : corrige les chantiers avec devisId = devis.numero au lieu de devis.id
+  // Idempotente — peut tourner plusieurs fois sans dupliquer (migrerDevisId ne touche que les ids incohérents)
+  const chantiersRef = useRef(chantiers);
+  useEffect(() => { chantiersRef.current = chantiers; }, [chantiers]);
   useEffect(() => {
-    const corriges = migrerDevisId(chantiers, devis);
-    const changed = corriges.some((c, i) => c.devisId !== chantiers[i].devisId);
+    const corriges = migrerDevisId(chantiersRef.current, devis);
+    const changed = corriges.some((c, i) => c.devisId !== chantiersRef.current[i]?.devisId);
     if (changed) {
       console.log('[CYNA] Migration devisId appliquée — chantiers mis à jour');
       setChantiers(corriges);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // run once on mount
+  }, [devis]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const agentState = useAgents({ chantiers, devis, factures, clients, parametres });
 
@@ -504,7 +515,7 @@ function Dashboard({ chantiers, clients, factures, devis = [], parametres, navig
       .map(c => calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis))
       .filter(r => r.montantTotal > 0 && r.totalCoutsReel > 0 && !r.donneesIncompletes);
     const rentaMoyenne = chantiersRenta.length > 0
-      ? chantiersRenta.reduce((sum, r) => sum + parseFloat(r.margeReelPct), 0) / chantiersRenta.length
+      ? chantiersRenta.reduce((sum, r) => { const v = parseFloat(r.margeReelPct); return sum + (isNaN(v) ? 0 : v); }, 0) / chantiersRenta.length
       : null;
     const nbChantiersRenta = chantiersRenta.length;
 
@@ -565,8 +576,9 @@ function Dashboard({ chantiers, clients, factures, devis = [], parametres, navig
     const map = {};
     actifs.forEach(c => {
       const couts = calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis);
-      map[c.id] = couts.montantTotal > 0 && couts.totalCoutsReel > 0
-        ? Math.round(parseFloat(couts.margeReelPct))
+      const pctRaw = parseFloat(couts.margeReelPct);
+      map[c.id] = couts.montantTotal > 0 && couts.totalCoutsReel > 0 && !isNaN(pctRaw)
+        ? Math.round(pctRaw)
         : null;
     });
     return map;
@@ -701,7 +713,7 @@ function Dashboard({ chantiers, clients, factures, devis = [], parametres, navig
       const { montantTotal, totalCoutsReel, margeReel, margeReelPct } = couts;
       if (montantTotal > 0 && totalCoutsReel > 0) {
         const pct = parseFloat(margeReelPct);
-        if (pct < 15) {
+        if (!isNaN(pct) && pct < 15) {
           const s = statutRentabilite(pct);
           const detail = margeReel < 0
             ? `déficit CHF ${fmtN(Math.abs(Math.round(margeReel)))}`
@@ -2949,7 +2961,7 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
         if (chantiersAvecData.length > 0) {
           const sum = chantiersAvecData.reduce((s, c) => {
             const couts = calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis);
-            return s + (couts.totalCoutsReel > 0 ? parseFloat(couts.margeReelPct) : 0);
+            const v = parseFloat(couts.margeReelPct); return s + (couts.totalCoutsReel > 0 && !isNaN(v) ? v : 0);
           }, 0);
           margeMoyenne = Math.round(sum / chantiersAvecData.length);
         }

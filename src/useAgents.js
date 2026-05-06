@@ -117,13 +117,17 @@ export default function useAgents({ chantiers, devis, factures, clients, paramet
 
   // Exécution initiale au mount + toutes les heures
   const hasRunRef = useRef(false);
+  const initTimerRef = useRef(null);
   useEffect(() => {
     if (!hasRunRef.current && chantiers?.length >= 0) {
       hasRunRef.current = true;
-      setTimeout(() => executer(true), 1500); // légère pause pour laisser l'app monter
+      initTimerRef.current = setTimeout(() => executer(true), 1500);
     }
     const interval = setInterval(() => executer(false), INTERVAL_MS);
-    return () => clearInterval(interval);
+    return () => {
+      clearTimeout(initTimerRef.current);
+      clearInterval(interval);
+    };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

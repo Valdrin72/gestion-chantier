@@ -3,9 +3,9 @@
 // ============================================================
 import React, { useState, useMemo } from 'react';
 import { DollarSign, FileText, Clock, AlertTriangle, CreditCard, TrendingUp, Calendar, Zap } from 'lucide-react';
-import Factures from './Factures';
-import Paiements from './Paiements';
-import { getIntervallesPeriode, getPeriodeLabel, facturesInPeriode, calculerCA } from './donnees';
+import Factures from '../Factures';
+import Paiements from '../Paiements';
+import { getIntervallesPeriode, getPeriodeLabel, facturesInPeriode, calculerCA } from '../donnees';
 
 const fmt  = (n) => (parseFloat(n) || 0).toLocaleString('fr-CH', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 const fmtK = (n) => { const v = parseFloat(n) || 0; return v >= 1000 ? `${(v/1000).toFixed(1)}k` : String(Math.round(v)); };

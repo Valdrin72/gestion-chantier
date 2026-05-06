@@ -7,7 +7,7 @@ import {
   ChevronRight, DollarSign, Clock, Bot,
 } from 'lucide-react';
 import { donneesInitiales, fmtN, C, migrerJournal, migrerDevisId, calculerCA } from './donnees';
-import Finances from './Finances';
+import Finances from './pages/FinancesPage';
 import Statistiques from './Statistiques';
 import Planning from './Planning';
 import Qualite from './Qualite';

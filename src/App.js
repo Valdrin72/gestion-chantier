@@ -3222,48 +3222,6 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
                 );
               })()}
 
-              {/* ── Déclarer la journée du jour ── */}
-              {form.id && (() => {
-                const today = new Date().toISOString().split('T')[0];
-                const heuresAujParEmp = heuresJour(form.journal || [], today);
-                const nbAuj = Object.values(heuresAujParEmp).filter(h => h > 0).length;
-                const totalHeuresAuj = Object.values(heuresAujParEmp).reduce((s, h) => s + h, 0);
-                const dateLabel = new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
-                const disabled = false;
-                const chantierEnForm = chantiers.find(ch => ch.id === form.id);
-                return (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
-                    {nbAuj > 0 && (
-                      <div style={{ background: C.secondaire + '10', border: `1px solid ${C.secondaire}30`, borderRadius: 8, padding: '8px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <span style={{ fontSize: 12, color: C.secondaire, fontWeight: 600 }}>
-                          Journée déclarée — {nbAuj} employé{nbAuj > 1 ? 's' : ''} · {totalHeuresAuj}h
-                        </span>
-                        <button
-                          onClick={() => chantierEnForm && ouvrirSaisieHeures(chantierEnForm)}
-                          style={{ fontSize: 11, fontWeight: 700, color: C.secondaire, background: 'transparent', border: `1px solid ${C.secondaire}50`, borderRadius: 6, padding: '3px 10px', cursor: 'pointer', fontFamily: 'inherit' }}
-                        >Modifier</button>
-                      </div>
-                    )}
-                    <button
-                      onClick={() => chantierEnForm && !disabled && ouvrirSaisieHeures(chantierEnForm)}
-                      style={{
-                        width: '100%', padding: '14px', borderRadius: 12, cursor: disabled ? 'not-allowed' : 'pointer',
-                        background: disabled ? 'var(--bg-glass-2)' : `linear-gradient(135deg, ${C.secondaire}22, ${C.secondaire}10)`,
-                        border: `1px solid ${disabled ? 'var(--border-glass-strong)' : C.secondaire + '40'}`,
-                        color: disabled ? 'var(--text-muted)' : C.secondaire,
-                        fontSize: 15, fontWeight: 700, fontFamily: 'inherit',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
-                        opacity: disabled ? 0.5 : 1,
-                      }}
-                    >
-                      
-                      {nbAuj > 0 ? 'Modifier la journée' : 'Déclarer la journée du jour'}
-                      {!disabled && <span style={{ fontSize: 11, fontWeight: 600, opacity: 0.7 }}>{dateLabel}</span>}
-                    </button>
-                  </div>
-                );
-              })()}
-
               {/* Coûts réels */}
               <div style={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', color: 'var(--text-muted)', marginBottom: '12px' }}>Coûts réels</div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '15px', marginBottom: '20px' }}>

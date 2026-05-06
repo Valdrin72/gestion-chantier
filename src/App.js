@@ -24,6 +24,7 @@ import Documents from './Documents';
 import Heures from './Heures';
 import Marges from './Marges';
 import { STATUTS_CLOS, TOUS_STATUTS } from './constants/statuts';
+import ModalSaisieHeures from './components/ModalSaisieHeures';
 
 // Supprime les balises HTML des champs texte avant sauvegarde (protection XSS dans PDF)
 const sanitiser = (obj) => {
@@ -485,6 +486,15 @@ function Dashboard({ chantiers, clients, factures, devis = [], parametres, navig
   // ── Actifs = tous les chantiers "En cours", sans filtre de période ─
   const actifs = useMemo(() => chantiers.filter(isChantierActif), [chantiers]);
 
+  // ── Cache unique calculerCoutsChantier — évite 5+ appels redondants par chantier ──
+  const coutsMap = useMemo(() => {
+    const map = new Map();
+    chantiers.forEach(c => {
+      map.set(c.id, calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis));
+    });
+    return map;
+  }, [chantiers, parametres.employes, parametres.localites, parametres.parametres, devis]);
+
   // ── Factures filtrées par période ────────────────────────────
   const facturesPeriode = useMemo(() => {
     const { debut, fin } = getIntervallesPeriode(periodeGlobale);
@@ -514,8 +524,8 @@ function Dashboard({ chantiers, clients, factures, devis = [], parametres, navig
     // 3. RENTABILITÉ MOYENNE — même moteur que la fiche chantier (coefficient + FG inclus)
     // Exclus : chantiers sans CA, sans coûts réels saisis, ou données incomplètes
     const chantiersRenta = chantiers
-      .map(c => calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis))
-      .filter(r => r.montantTotal > 0 && r.totalCoutsReel > 0 && !r.donneesIncompletes);
+      .map(c => coutsMap.get(c.id))
+      .filter(r => r && r.montantTotal > 0 && r.totalCoutsReel > 0 && !r.donneesIncompletes);
     const rentaMoyenne = chantiersRenta.length > 0
       ? chantiersRenta.reduce((sum, r) => sum + (r.margeReelPct ?? 0), 0) / chantiersRenta.length
       : null;
@@ -577,13 +587,13 @@ function Dashboard({ chantiers, clients, factures, devis = [], parametres, navig
   const rentaParChantier = useMemo(() => {
     const map = {};
     actifs.forEach(c => {
-      const couts = calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis);
-      map[c.id] = couts.montantTotal > 0 && couts.totalCoutsReel > 0 && couts.margeReelPct !== null
+      const couts = coutsMap.get(c.id);
+      map[c.id] = couts && couts.montantTotal > 0 && couts.totalCoutsReel > 0 && couts.margeReelPct !== null
         ? Math.round(couts.margeReelPct)
         : null;
     });
     return map;
-  }, [actifs, parametres.employes, parametres.localites]);
+  }, [actifs, coutsMap]);
 
   // ── Rentabilité réelle par chantier (basé sur jours réalisés) ─
   const rentaReelleParChantier = useMemo(() => {
@@ -710,7 +720,7 @@ function Dashboard({ chantiers, clients, factures, devis = [], parametres, navig
 
     // Chantiers non rentables (calcul complet)
     actifs.forEach(c => {
-      const couts = calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis);
+      const couts = coutsMap.get(c.id);
       const { montantTotal, totalCoutsReel, margeReel, margeReelPct } = couts;
       if (montantTotal > 0 && totalCoutsReel > 0) {
         const pct = margeReelPct;
@@ -1048,7 +1058,7 @@ function Dashboard({ chantiers, clients, factures, devis = [], parametres, navig
   const repartitionCouts = useMemo(() => {
     let mo = 0, mat = 0, st = 0, dep = 0, autres = 0;
     actifs.forEach(c => {
-      const r = calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis);
+      const r = coutsMap.get(c.id) || {};
       mo += r.coutEquipeReel || 0;
       mat += r.coutMaterielReel || 0;
       st += r.coutSousTraitanceReel || 0;
@@ -1064,7 +1074,7 @@ function Dashboard({ chantiers, clients, factures, devis = [], parametres, navig
       { name: 'Déplacement',  value: (dep / total) * 100, couleur: '#f59e0b' },
       { name: 'Autres',       value: (autres / total) * 100, couleur: '#94a3b8' },
     ].filter(s => s.value > 0.5) };
-  }, [actifs, parametres, devis]);
+  }, [actifs, coutsMap]);
 
   // ── Avancement moyen global — source unique : journal (calculerEtatChantier)
   // Fallback sur c.avancement (valeur manuelle) uniquement si journal vide
@@ -1201,7 +1211,7 @@ function Dashboard({ chantiers, clients, factures, devis = [], parametres, navig
                   const priorite = calculerPriorite(c);
                   const statBadge = BADGE_STATUT_DASH[priorite.niveau];
                   const montantCA = calculerCA(c, devis);
-                  const couts = calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis);
+                  const couts = coutsMap.get(c.id) || {};
                   const progress = Math.max(0, Math.min(100, Number(c.avancement ?? 0)));
                   const j = joursParChantier[c.id];
                   const retardJ = j !== null && j < 0 ? Math.abs(j) : 0;
@@ -1842,10 +1852,9 @@ function renderRentabiliteJours(c, etat, couts, naviguer, fmtN, fmtK) {
 }
 
 // ── Modal Saisie des heures ─────────────────────────────────────────────────
-// Composant nommé (pas d'IIFE) : identité stable pour React 19 concurrent mode
-// État interne : dateSaisie et heuresSaisie vivent DANS le modal
-// → chaque interaction ne re-render QUE ce composant, jamais le parent Chantiers
-function ModalSaisieHeures({ chantierSaisie, initialDate, onFermer, onSave, parametres }) {
+// Extrait dans src/components/ModalSaisieHeures.js
+// eslint-disable-next-line no-unused-vars
+function ModalSaisieHeures_REMOVED({ chantierSaisie, initialDate, onFermer, onSave, parametres }) {
   const [date, setDate] = useState(initialDate);
   const [heures, setHeures] = useState(() => heuresJour(chantierSaisie.journal || [], initialDate));
 

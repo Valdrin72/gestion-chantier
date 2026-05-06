@@ -228,9 +228,10 @@ function App() {
   });
 
   // ── Modal Saisie Heures — rendu au niveau App pour ne pas re-rendre Chantiers ──
-  const [saisieHeuresCtx, setSaisieHeuresCtx] = useState(null); // { chantier, date } | null
+  // On stocke l'id, pas le snapshot — le chantier est dérivé en live depuis chantiers[]
+  const [saisieHeuresCtx, setSaisieHeuresCtx] = useState(null); // { chantierId, date } | null
   const ouvrirSaisieHeuresApp = useCallback((chantier, date) => {
-    setSaisieHeuresCtx({ chantier, date: date || new Date().toISOString().split('T')[0] });
+    setSaisieHeuresCtx({ chantierId: chantier.id, date: date || new Date().toISOString().split('T')[0] });
   }, []);
 
   const sauvegarderLocal = (cle, data) => {
@@ -402,21 +403,25 @@ function App() {
                     {page === 'heures'      && <Heures chantiers={chantiers} parametres={parametres} setChantiers={setChantiers} />}
         </main>
 
-        {/* ── MODAL SAISIE HEURES — niveau App (ne re-rend pas Chantiers) ── */}
-        {saisieHeuresCtx && (
-          <ModalSaisieHeures
-            key={saisieHeuresCtx.chantier.id}
-            chantierSaisie={saisieHeuresCtx.chantier}
-            initialDate={saisieHeuresCtx.date}
-            parametres={parametres}
-            onFermer={() => setSaisieHeuresCtx(null)}
-            onSave={updated => {
-              setChantiers(prev => prev.map(ch => ch.id === updated.id ? updated : ch));
-              setSaisieHeuresCtx(null);
-              naviguer('heures');
-            }}
-          />
-        )}
+        {/* ── MODAL SAISIE HEURES — chantier dérivé en live depuis chantiers[] (jamais stale) ── */}
+        {saisieHeuresCtx && (() => {
+          const chantierLive = chantiers.find(c => c.id === saisieHeuresCtx.chantierId) || null;
+          if (!chantierLive) return null;
+          return (
+            <ModalSaisieHeures
+              key={saisieHeuresCtx.chantierId}
+              chantierSaisie={chantierLive}
+              initialDate={saisieHeuresCtx.date}
+              parametres={parametres}
+              onFermer={() => setSaisieHeuresCtx(null)}
+              onSave={updated => {
+                setChantiers(prev => prev.map(ch => ch.id === updated.id ? updated : ch));
+                setSaisieHeuresCtx(null);
+                naviguer('heures');
+              }}
+            />
+          );
+        })()}
 
         {/* ===== NAVIGATION MOBILE BAS ===== */}
         <nav className="bottom-nav">
@@ -2062,6 +2067,13 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
   const [justSimulatedId, setJustSimulatedId] = useState(null);
 
   const [modeCompleter, setModeCompleter] = useState(false);
+
+  // Sync selected avec chantiers[] — évite les données stales après une modification externe
+  React.useEffect(() => {
+    if (!selected) return;
+    const updated = chantiers.find(c => c.id === selected.id);
+    if (updated && updated !== selected) setSelected(updated);
+  }, [chantiers]); // eslint-disable-line react-hooks/exhaustive-deps
 
   React.useEffect(() => {
     if (contexte?.chantierActif) {

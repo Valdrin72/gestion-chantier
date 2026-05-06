@@ -1,11 +1,9 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
   LayoutDashboard, HardHat, FileText, Calendar,
-  BarChart2, ClipboardList,
-  Settings, Moon, Sun, LogOut,
-  Menu, X, Plus,
-  ChevronRight, DollarSign, Clock, Bot,
+  ClipboardList, Settings, DollarSign, Clock, Bot,
 } from 'lucide-react';
+import { Sidebar, Topbar, MobileNav } from './components/Layout';
 import { donneesInitiales, migrerJournal, migrerDevisId } from './donnees';
 import Finances from './pages/FinancesPage';
 import Login, { PROFILS } from './Login';
@@ -236,90 +234,18 @@ function App() {
   return (
     <AppProvider value={appValue}>
     <div data-theme={darkMode ? 'dark' : 'light'} className="app-layout">
-
-      {/* ===== OVERLAY SIDEBAR MOBILE ===== */}
-      {sidebarOuvert && <div className="sidebar-overlay" onClick={() => setSidebarOuvert(false)} />}
-
-      {/* ===== SIDEBAR ===== */}
-      <aside className={`sidebar${sidebarOuvert ? ' sidebar-open' : ''}`}>
-        <div className="sidebar-logo">
-          <div className="sidebar-logo-icon"><BarChart2 size={17} strokeWidth={1.8} style={{ color: '#fff' }} /></div>
-          <div className="sidebar-logo-name">CYNA</div>
-        </div>
-        <button className="sidebar-cta" onClick={() => { naviguer('chantiers'); setSidebarOuvert(false); }}>
-          <Plus size={16} strokeWidth={2.6} /> Nouveau chantier
-        </button>
-        <nav className="sidebar-nav">
-          {navAutorisees.map(item => (
-            <button
-              key={item.id}
-              className={`sidebar-item${page === item.id ? ' active' : ''}`}
-              data-label={item.label}
-              onClick={() => { naviguer(item.id); setSidebarOuvert(false); }}
-            >
-              <item.Icon size={17} strokeWidth={page === item.id ? 2.2 : 1.8} />
-              <span>{item.label}</span>
-            </button>
-          ))}
-        </nav>
-        <button className="sidebar-theme-toggle" onClick={toggleDarkMode} title={darkMode ? 'Mode clair' : 'Mode sombre'}>
-          <div className={`sidebar-toggle-track${darkMode ? ' on' : ''}`}>
-            <div className="sidebar-toggle-thumb" />
-          </div>
-          {darkMode ? <Sun size={14} strokeWidth={2} /> : <Moon size={14} strokeWidth={2} />}
-          <span>{darkMode ? 'Mode clair' : 'Mode sombre'}</span>
-        </button>
-        <div className="sidebar-profile">
-          <div className="sidebar-avatar">{profil.nom.substring(0, 2).toUpperCase()}</div>
-          <div className="sidebar-profile-info">
-            <div className="sidebar-profile-name">{profil.nom}</div>
-            <div className="sidebar-profile-role">{profil.id}</div>
-          </div>
-          <button className="sidebar-logout" onClick={() => { setProfil(null); localStorage.removeItem('cyna_profil'); }} title="Changer de profil">
-            <LogOut size={14} strokeWidth={2} />
-          </button>
-        </div>
-      </aside>
-
-      {/* ===== ZONE PRINCIPALE ===== */}
+      <Sidebar
+        sidebarOuvert={sidebarOuvert} setSidebarOuvert={setSidebarOuvert}
+        navAutorisees={navAutorisees} page={page} naviguer={naviguer}
+        darkMode={darkMode} toggleDarkMode={toggleDarkMode}
+        profil={profil} setProfil={setProfil}
+      />
       <div className="main-area">
-
-        {/* TOPBAR */}
-        <header className="topbar">
-          <div className="topbar-left">
-            <button className="burger-btn" onClick={() => setSidebarOuvert(v => !v)}>
-              <Menu size={20} strokeWidth={1.8} />
-            </button>
-            {canGoBack && page !== 'dashboard' && (
-              <button
-                onClick={revenirArriere}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 5,
-                  background: 'var(--bg-glass-2)',
-                  border: '1px solid var(--border-hover)',
-                  borderRadius: 8, padding: '5px 12px',
-                  color: 'var(--text-secondary)', cursor: 'pointer',
-                  fontSize: 13, fontWeight: 600, fontFamily: 'inherit',
-                  transition: 'all 0.15s',
-                }}
-                onMouseEnter={e => { e.currentTarget.style.background = 'rgba(59,130,246,0.12)'; e.currentTarget.style.color = '#60a5fa'; e.currentTarget.style.borderColor = 'rgba(59,130,246,0.3)'; }}
-                onMouseLeave={e => { e.currentTarget.style.background = 'var(--bg-glass-2)'; e.currentTarget.style.color = 'var(--text-secondary)'; e.currentTarget.style.borderColor = 'var(--border-hover)'; }}
-              >
-                <ChevronRight size={14} style={{ transform: 'rotate(180deg)' }} />
-                Retour
-              </button>
-            )}
-            <span className="topbar-title">{navAutorisees.find(n => n.id === page)?.label || 'Dashboard'}</span>
-          </div>
-          <div className="topbar-right">
-            <button className="topbar-icon-btn" onClick={toggleDarkMode} title={darkMode ? 'Mode clair' : 'Mode sombre'}>
-              {darkMode ? <Sun size={18} strokeWidth={2} /> : <Moon size={18} strokeWidth={2} />}
-            </button>
-            <div className="topbar-avatar">{profil.nom.substring(0, 2).toUpperCase()}</div>
-          </div>
-        </header>
-
-        {/* ===== CONTENU PRINCIPAL ===== */}
+        <Topbar
+          setSidebarOuvert={setSidebarOuvert} canGoBack={canGoBack} page={page}
+          revenirArriere={revenirArriere} navAutorisees={navAutorisees}
+          darkMode={darkMode} toggleDarkMode={toggleDarkMode} profil={profil}
+        />
         <main className="app-main">
           {page === 'dashboard'    && <Dashboard />}
           {page === 'chantiers'    && <Chantiers />}
@@ -327,14 +253,12 @@ function App() {
           {page === 'finances'     && <Finances factures={factures} onSave={setFactures} clients={clients} chantiers={chantiers} devis={devis} paiementsData={paiementsData} setPaiementsData={setPaiementsData} naviguer={naviguer} contexte={contexte} profil={profil} periodeGlobale={periodeGlobale} />}
           {page === 'clients'      && <Clients clients={clients} setClients={setClients} chantiers={chantiers} devis={devis} naviguer={naviguer} />}
           {page === 'employes'     && <Employes parametres={parametres} setParametres={setParametres} chantiers={chantiers} naviguer={naviguer} />}
-          {page === 'planning'    && <PlanningPage chantiers={chantiers} setChantiers={setChantiers} clients={clients} devis={devis} factures={factures} naviguer={naviguer} />}
-          {page === 'rapport'     && <RapportsPage chantiers={chantiers} clients={clients} devis={devis} parametres={parametres} setParametres={setParametres} paiementsData={paiementsData} qualiteData={qualiteData} periodeGlobale={periodeGlobale} naviguer={naviguer} />}
-          {page === 'agents'      && <Agents {...agentState} />}
-          {page === 'parametres'  && <Parametres parametres={parametres} setParametres={setParametres} clients={clients} setClients={setClients} chantiers={chantiers} devis={devis} naviguer={naviguer} />}
-                    {page === 'heures'      && <Heures chantiers={chantiers} parametres={parametres} setChantiers={setChantiers} />}
+          {page === 'planning'     && <PlanningPage chantiers={chantiers} setChantiers={setChantiers} clients={clients} devis={devis} factures={factures} naviguer={naviguer} />}
+          {page === 'rapport'      && <RapportsPage chantiers={chantiers} clients={clients} devis={devis} parametres={parametres} setParametres={setParametres} paiementsData={paiementsData} qualiteData={qualiteData} periodeGlobale={periodeGlobale} naviguer={naviguer} />}
+          {page === 'agents'       && <Agents {...agentState} />}
+          {page === 'parametres'   && <Parametres parametres={parametres} setParametres={setParametres} clients={clients} setClients={setClients} chantiers={chantiers} devis={devis} naviguer={naviguer} />}
+          {page === 'heures'       && <Heures chantiers={chantiers} parametres={parametres} setChantiers={setChantiers} />}
         </main>
-
-        {/* ── MODAL SAISIE HEURES — chantier dérivé en live depuis chantiers[] (jamais stale) ── */}
         {saisieHeuresCtx && (() => {
           const chantierLive = chantiers.find(c => c.id === saisieHeuresCtx.chantierId) || null;
           if (!chantierLive) return null;
@@ -353,45 +277,11 @@ function App() {
             />
           );
         })()}
-
-        {/* ===== NAVIGATION MOBILE BAS ===== */}
-        <nav className="bottom-nav">
-          {navMobileItems.map(item => (
-            <button key={item.id} className={`bottom-nav-item${page === item.id ? ' active' : ''}`} onClick={() => naviguer(item.id)}>
-              <span className="bottom-nav-icon"><item.Icon size={22} strokeWidth={1.8} /></span>
-              <span className="bottom-nav-label">{item.labelCourt}</span>
-            </button>
-          ))}
-          <button className={`bottom-nav-item${mobileMenuOuvert ? ' active' : ''}`} onClick={() => setMobileMenuOuvert(v => !v)}>
-            <span className="bottom-nav-icon">
-              {mobileMenuOuvert ? <X size={22} strokeWidth={2} /> : <Menu size={22} strokeWidth={1.8} />}
-            </span>
-            <span className="bottom-nav-label">Plus</span>
-          </button>
-        </nav>
-
-        {/* ===== DRAWER MOBILE ===== */}
-        {mobileMenuOuvert && (
-          <div className="mobile-drawer-overlay" onClick={() => setMobileMenuOuvert(false)}>
-            <div className="mobile-drawer" onClick={e => e.stopPropagation()}>
-              <div className="drawer-handle" />
-              <div className="drawer-header">
-                <span>Navigation</span>
-                <button onClick={() => setMobileMenuOuvert(false)}><X size={16} /></button>
-              </div>
-              <div className="drawer-items">
-                {navAutorisees.map(item => (
-                  <button key={item.id} className={`drawer-item${page === item.id ? ' active' : ''}`}
-                    onClick={() => { naviguer(item.id); setMobileMenuOuvert(false); }}>
-                    <span className="drawer-item-icon"><item.Icon size={26} strokeWidth={1.7} /></span>
-                    <span className="drawer-item-label">{item.labelCourt}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-
+        <MobileNav
+          navMobileItems={navMobileItems} page={page} naviguer={naviguer}
+          mobileMenuOuvert={mobileMenuOuvert} setMobileMenuOuvert={setMobileMenuOuvert}
+          navAutorisees={navAutorisees}
+        />
       </div>
     </div>
     </AppProvider>

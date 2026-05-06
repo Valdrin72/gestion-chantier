@@ -674,7 +674,9 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
                     <span style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.35)', minWidth: 22, textAlign: 'center' }}>#{i + 1}</span>
                     <div>
                       <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>{p.date}</div>
-                      {p.note && <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{p.note}</div>}
+                      <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                        Virement{p.note ? ` · ${p.note}` : ''}
+                      </div>
                     </div>
                   </div>
                   <span style={{ fontSize: 16, fontWeight: 800, color: '#10b981' }}>+{fmt(p.montant)} CHF</span>
@@ -721,6 +723,10 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
                     value={paiementForm.montant ? fmtN(paiementForm.montant) : ''}
                     placeholder={`Solde : ${fmt((paiementModal.montantTTC ?? 0) - (paiementModal.montantPaye ?? 0))}`}
                     onChange={e => { const raw = e.target.value.replace(/'/g, '').replace(/[^0-9.]/g, ''); setPaiementForm(p => ({ ...p, montant: raw })); }} />
+                </div>
+                <div>
+                  <label style={S.label}>Mode de paiement</label>
+                  <input type="text" style={{ ...S.input, color: 'var(--text-secondary)', cursor: 'not-allowed' }} value="Virement" readOnly />
                 </div>
                 <div>
                   <label style={S.label}>Note (optionnel)</label>

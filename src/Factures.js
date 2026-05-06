@@ -472,13 +472,6 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
                 <input type="date" style={S.input} value={paiementForm.date}
                   onChange={e => setPaiementForm(p => ({ ...p, date: e.target.value }))} />
               </div>
-              <div>
-                <label style={S.label}>Mode de paiement</label>
-                <select style={S.input} value={paiementForm.mode}
-                  onChange={e => setPaiementForm(p => ({ ...p, mode: e.target.value }))}>
-                  {['Virement', 'Chèque', 'Espèces', 'Carte bancaire', 'BVR'].map(m => <option key={m}>{m}</option>)}
-                </select>
-              </div>
             </div>
             <div style={{ display: 'flex', gap: 10 }}>
               <button style={{ ...S.btnSuccess, flex: 1 }} onClick={enregistrerPaiement}>Confirmer le paiement</button>

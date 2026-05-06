@@ -48,7 +48,7 @@ export default function Heures({ chantiers = [], parametres = {}, setChantiers }
         }
       }
     }
-    setModal({ form: { ...FORM_VIDE, date: dateDefaut, employeId, chantierId, heures: heuresExistantes || '8' } });
+    setModal({ form: { ...FORM_VIDE, date: dateDefaut, employeId, chantierId, heures: heuresExistantes || '8' }, existant: !!heuresExistantes });
   };
 
   const sauvegarder = () => {
@@ -248,31 +248,14 @@ export default function Heures({ chantiers = [], parametres = {}, setChantiers }
                         const todayStr = isoDate(today);
                         const estFutur = dateCell > todayStr;
                         return (
-                          <td key={di} style={{ ...DS.td, textAlign: 'center', opacity: estFutur ? 0.35 : 1, position: 'relative' }}>
-                            {h > 0 ? (
-                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
-                                <span
-                                  onClick={() => !estFutur && ouvrirModal({ date: dateCell, employeId: emp.id })}
-                                  style={{ ...cs, borderRadius: 6, padding: '3px 8px', fontSize: 13, fontWeight: 700, display: 'inline-block', cursor: estFutur ? 'default' : 'pointer' }}
-                                  title={estFutur ? '' : `Modifier — ${h}h`}
-                                >{h}h</span>
-                                {!estFutur && (
-                                  <button
-                                    onClick={() => supprimerHeures(emp.id, dateCell)}
-                                    title="Supprimer ces heures"
-                                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', padding: '2px', display: 'flex', alignItems: 'center', opacity: 0.6, lineHeight: 1 }}
-                                    onMouseEnter={e => e.currentTarget.style.opacity = 1}
-                                    onMouseLeave={e => e.currentTarget.style.opacity = 0.6}
-                                  ><Trash2 size={12} /></button>
-                                )}
-                              </div>
-                            ) : (
-                              <span
-                                onClick={() => !estFutur && ouvrirModal({ date: dateCell, employeId: emp.id })}
-                                style={{ color: 'var(--text-muted)', fontSize: 13, opacity: 0.4, cursor: estFutur ? 'default' : 'pointer' }}
-                                title={estFutur ? 'Date future — saisie impossible' : 'Saisir heures'}
-                              >{estFutur ? '—' : '+'}</span>
-                            )}
+                          <td key={di} style={{ ...DS.td, textAlign: 'center', opacity: estFutur ? 0.35 : 1, cursor: estFutur ? 'default' : 'pointer' }}
+                            onClick={() => !estFutur && ouvrirModal({ date: dateCell, employeId: emp.id })}
+                            title={estFutur ? 'Date future — saisie impossible' : h > 0 ? `Modifier — ${h}h` : 'Saisir heures'}
+                          >
+                            {h > 0
+                              ? <span style={{ ...cs, borderRadius: 6, padding: '3px 8px', fontSize: 13, fontWeight: 700, display: 'inline-block' }}>{h}h</span>
+                              : <span style={{ color: 'var(--text-muted)', fontSize: 13, opacity: 0.4 }}>{estFutur ? '—' : '+'}</span>
+                            }
                           </td>
                         );
                       })}
@@ -376,7 +359,19 @@ export default function Heures({ chantiers = [], parametres = {}, setChantiers }
               </div>
             )}
 
-            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'space-between', alignItems: 'center' }}>
+              {/* Bouton supprimer — visible seulement si des heures existent pour cet employé/jour */}
+              {modal.existant && (
+                <button
+                  onClick={() => {
+                    if (!window.confirm(`Supprimer les heures du ${new Date(modal.form.date + 'T00:00:00').toLocaleDateString('fr-CH', { day: 'numeric', month: 'long' })} ?`)) return;
+                    supprimerHeures(modal.form.employeId, modal.form.date);
+                    setModal(null);
+                  }}
+                  style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 8, padding: '7px 14px', cursor: 'pointer', color: '#dc2626', fontWeight: 700, fontSize: 13, fontFamily: 'inherit' }}
+                ><Trash2 size={14} /> Supprimer</button>
+              )}
+              <div style={{ display: 'flex', gap: 10, marginLeft: 'auto' }}>
               <button onClick={() => setModal(null)} style={DS.btnGhost}>Annuler</button>
               {(() => {
                 const todayStr = new Date().toISOString().split('T')[0];
@@ -390,6 +385,7 @@ export default function Heures({ chantiers = [], parametres = {}, setChantiers }
                   </button>
                 );
               })()}
+              </div>
             </div>
           </div>
         </div>

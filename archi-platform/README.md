@@ -40,16 +40,37 @@ Couvre tout le cycle d'un projet : **conception → chantier → maintenance**.
 
 ## Démarrage
 
+### Windows (rapide)
+
+Prérequis : **Node.js 22 LTS** + **PostgreSQL 16** (https://www.postgresql.org/download/windows/).
+
+Dans PowerShell, depuis `archi-platform/` :
+
+```powershell
+.\setup.ps1
+npm run dev
+```
+
+Le script `setup.ps1` te demande le mot de passe du user `postgres` (celui défini à
+l'install de PostgreSQL), crée la base, génère `.env`, installe les deps, et seed les
+données de démonstration.
+
+### macOS / Linux (manuel)
+
 ```bash
+# créer la base
+createdb archi_platform
+
 cp .env.example .env
 # éditer DATABASE_URL et AUTH_SECRET (openssl rand -base64 32)
 
-npm install
-npx prisma db push           # crée les tables (dev rapide, sans migration)
+npm install --legacy-peer-deps
+npx prisma db push           # crée les tables
 npm run db:seed              # crée user demo + catalogue d'éléments
 npm run dev
 ```
 
+Plateforme disponible sur **http://localhost:3001**.
 Identifiants demo : `demo@archi.test` / `password123`
 
 ## Structure

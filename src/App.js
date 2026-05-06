@@ -3048,35 +3048,15 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
           </div>
 
           {/* Calendrier */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '15px' }}>
-            <div><label style={{ ...labelStyle, display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div style={{ marginBottom: '15px' }}>
+            <label style={{ ...labelStyle, display: 'flex', alignItems: 'center', gap: '8px' }}>
               <input type="checkbox" checked={form.inclusSamedi || false} onChange={e => setForm({ ...form, inclusSamedi: e.target.checked })} />
-              Inclure le samedi</label></div>
-            <div>
-              <label style={labelStyle}>Personnes prévues</label>
-              <input type="number" min="1" placeholder="Ex: 3"
-                value={form.nombrePersonnes || ''}
-                onChange={e => setForm({ ...form, nombrePersonnes: e.target.value })}
-                style={inputStyle} />
-            </div>
+              Inclure le samedi</label>
           </div>
           {form.dateDebut && form.nombreJours && (
             <div style={{ background: 'rgba(59,130,246,0.07)', border: '1px solid rgba(59,130,246,0.18)', padding: '14px 18px', borderRadius: '12px', marginBottom: '15px' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: parseInt(form.nombrePersonnes) > 0 ? '1fr 1fr' : '1fr', gap: '15px' }}>
-                <div><div style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px', color: 'var(--text-muted)', marginBottom: '4px' }}>Date de fin prévue</div>
-                  <div style={{ fontWeight: 700, color: C.primaire, fontSize: '15px' }}>{calculerDateFinOuvrables(form.dateDebut, form.nombreJours, form.inclusSamedi)}</div></div>
-                {parseInt(form.nombrePersonnes) > 0 && (
-                  <div>
-                    <div style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px', color: 'var(--text-muted)', marginBottom: '4px' }}>Charge estimée</div>
-                    <div style={{ fontWeight: 800, color: '#f59e0b', fontSize: '15px' }}>
-                      {parseInt(form.nombreJours) * parseInt(form.nombrePersonnes)} jours-homme
-                    </div>
-                    <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 2 }}>
-                      {form.nombreJours}j × {form.nombrePersonnes} pers.
-                    </div>
-                  </div>
-                )}
-              </div>
+              <div style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px', color: 'var(--text-muted)', marginBottom: '4px' }}>Date de fin prévue</div>
+              <div style={{ fontWeight: 700, color: C.primaire, fontSize: '15px' }}>{calculerDateFinOuvrables(form.dateDebut, form.nombreJours, form.inclusSamedi)}</div>
             </div>
           )}
 
@@ -3574,7 +3554,7 @@ function Devis({ devis, setDevis, clients, parametres, naviguer, setChantiers, c
   const vide = {
     numero: `DEV-${new Date().getFullYear()}-${String(Math.max(0, ...devis.map(d => parseInt((d.numero || '').split('-').pop()) || 0)) + 1).padStart(3, '0')}`,
     clientId: '', date: new Date().toISOString().split('T')[0], statut: 'brouillon',
-    montantHT: '', dureeEstimee: '', heuresRegie: [], notes: '',
+    montantHT: '', dureeEstimee: '', nombrePersonnes: '', heuresRegie: [], notes: '',
   };
   const [form, setForm] = useState(vide);
 
@@ -3628,7 +3608,7 @@ function Devis({ devis, setDevis, clients, parametres, naviguer, setChantiers, c
       montantDevis: parseFloat(d.montantHT || d.prixPropose) || 0,
       surface: 0,
       statut: 'Planifié', priorite: 'Normale', avancement: 0,
-      dateDebut: '', nombreJours: d.dureeEstimee || '',
+      dateDebut: '', nombreJours: d.dureeEstimee || '', nombrePersonnes: d.nombrePersonnes || '',
       inclusSamedi: false, avenants: [], montantFacture: 0,
       typesTravaux: [], ville: '', canton: '', adresse: '',
       conducteur: '', directeurTravauxId: '', equipe: [], employes: [],
@@ -3748,23 +3728,43 @@ function Devis({ devis, setDevis, clients, parametres, naviguer, setChantiers, c
               </div>
             )}
           </div>
-          {/* ── Durée estimée ── */}
-          <div style={{ background: 'rgba(59,130,246,0.04)', border: '1px solid rgba(59,130,246,0.15)', borderRadius: 12, padding: '16px 20px', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 20 }}>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: '#3b82f6', marginBottom: 6 }}>Durée estimée (jours ouvrables)</div>
-              <input
-                type="number" min="1" step="1"
-                placeholder="Ex : 15"
-                value={form.dureeEstimee}
-                onChange={e => setForm({ ...form, dureeEstimee: e.target.value })}
-                style={{ ...inputStyle, width: 120, fontSize: 18, fontWeight: 700, borderColor: '#3b82f660' }}
-              />
-            </div>
-            {form.dureeEstimee && parseInt(form.dureeEstimee) > 0 && (
-              <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>
-                ≈ <strong style={{ color: '#3b82f6' }}>{Math.ceil(parseInt(form.dureeEstimee) / 5)} semaine{Math.ceil(parseInt(form.dureeEstimee) / 5) > 1 ? 's' : ''}</strong> de travail
+          {/* ── Durée estimée + Personnes prévues ── */}
+          <div style={{ background: 'rgba(59,130,246,0.04)', border: '1px solid rgba(59,130,246,0.15)', borderRadius: 12, padding: '16px 20px', marginBottom: 20 }}>
+            <div style={{ display: 'flex', alignItems: 'flex-end', gap: 24, flexWrap: 'wrap' }}>
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: '#3b82f6', marginBottom: 6 }}>Durée estimée (jours ouvrables)</div>
+                <input
+                  type="number" min="1" step="1"
+                  placeholder="Ex : 15"
+                  value={form.dureeEstimee}
+                  onChange={e => setForm({ ...form, dureeEstimee: e.target.value })}
+                  style={{ ...inputStyle, width: 120, fontSize: 18, fontWeight: 700, borderColor: '#3b82f660' }}
+                />
               </div>
-            )}
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: '#f59e0b', marginBottom: 6 }}>Personnes prévues</div>
+                <input
+                  type="number" min="1" step="1"
+                  placeholder="Ex : 3"
+                  value={form.nombrePersonnes || ''}
+                  onChange={e => setForm({ ...form, nombrePersonnes: e.target.value })}
+                  style={{ ...inputStyle, width: 100, fontSize: 18, fontWeight: 700, borderColor: '#f59e0b60' }}
+                />
+              </div>
+              {form.dureeEstimee && parseInt(form.dureeEstimee) > 0 && (
+                <div style={{ fontSize: 13, color: 'var(--text-muted)', paddingBottom: 6 }}>
+                  ≈ <strong style={{ color: '#3b82f6' }}>{Math.ceil(parseInt(form.dureeEstimee) / 5)} semaine{Math.ceil(parseInt(form.dureeEstimee) / 5) > 1 ? 's' : ''}</strong> de travail
+                  {parseInt(form.nombrePersonnes) > 0 && (
+                    <span style={{ marginLeft: 12, color: '#f59e0b', fontWeight: 700 }}>
+                      · {parseInt(form.dureeEstimee) * parseInt(form.nombrePersonnes)} jours-homme
+                      <span style={{ fontSize: 10, fontWeight: 400, color: 'var(--text-muted)', marginLeft: 4 }}>
+                        ({form.dureeEstimee}j × {form.nombrePersonnes} pers.)
+                      </span>
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
 
           {/* ── Heures en régie ── */}
@@ -3968,6 +3968,11 @@ function Devis({ devis, setDevis, clients, parametres, naviguer, setChantiers, c
                   <div style={{ fontSize: 13, fontWeight: 600, color: d.dureeEstimee ? '#3b82f6' : 'var(--text-muted)' }}>
                     {d.dureeEstimee ? `${d.dureeEstimee}j ouvrables` : 'Non renseignée'}
                   </div>
+                  {d.nombrePersonnes && parseInt(d.nombrePersonnes) > 0 && (
+                    <div style={{ fontSize: 11, color: '#f59e0b', fontWeight: 600, marginTop: 2 }}>
+                      {parseInt(d.dureeEstimee) * parseInt(d.nombrePersonnes)} jours-homme ({d.nombrePersonnes} pers.)
+                    </div>
+                  )}
                 </div>
               </div>
 

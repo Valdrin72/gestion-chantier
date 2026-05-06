@@ -3554,7 +3554,7 @@ function Devis({ devis, setDevis, clients, parametres, naviguer, setChantiers, c
   const vide = {
     numero: `DEV-${new Date().getFullYear()}-${String(Math.max(0, ...devis.map(d => parseInt((d.numero || '').split('-').pop()) || 0)) + 1).padStart(3, '0')}`,
     clientId: '', date: new Date().toISOString().split('T')[0], statut: 'brouillon',
-    montantHT: '', dureeEstimee: '', nombrePersonnes: '', heuresRegie: [], notes: '',
+    montantHT: '', dureeEstimee: '', nombrePersonnes: '', avenants: [], heuresRegie: [], notes: '',
   };
   const [form, setForm] = useState(vide);
 
@@ -3767,6 +3767,53 @@ function Devis({ devis, setDevis, clients, parametres, naviguer, setChantiers, c
             </div>
           </div>
 
+          {/* ── Avenants ── */}
+          <div style={{ background: 'rgba(139,92,246,0.04)', border: '1px solid rgba(139,92,246,0.2)', borderRadius: 12, padding: '20px', marginBottom: 20 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: '#8b5cf6' }}>📋 Avenants (travaux supplémentaires)</div>
+                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>Travaux additionnels négociés — s'ajoutent au CA du devis</div>
+              </div>
+              <button
+                onClick={() => setForm({ ...form, avenants: [...(form.avenants || []), { id: Date.now(), description: '', montant: '' }] })}
+                style={{ ...DS.btnGhost, fontSize: 12, padding: '5px 12px' }}
+              >+ Ajouter un avenant</button>
+            </div>
+            {(form.avenants || []).length === 0 && (
+              <div style={{ fontSize: 12, color: 'var(--text-muted)', fontStyle: 'italic' }}>Aucun avenant — cliquez sur "Ajouter un avenant" si des travaux supplémentaires ont été négociés.</div>
+            )}
+            {(form.avenants || []).map((a, i) => (
+              <div key={a.id} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr auto', gap: 8, marginBottom: 8, alignItems: 'center' }}>
+                <input
+                  placeholder="Description (ex: Extension terrasse sud)"
+                  value={a.description}
+                  onChange={e => { const l = [...form.avenants]; l[i] = { ...a, description: e.target.value }; setForm({ ...form, avenants: l }); }}
+                  style={inputStyle}
+                />
+                <input
+                  type="number" min="0" placeholder="Montant CHF HT"
+                  value={a.montant}
+                  onChange={e => { const l = [...form.avenants]; l[i] = { ...a, montant: e.target.value }; setForm({ ...form, avenants: l }); }}
+                  style={inputStyle}
+                />
+                <button
+                  onClick={() => setForm({ ...form, avenants: form.avenants.filter((_, j) => j !== i) })}
+                  style={{ ...DS.btnDanger, padding: '6px 10px', fontSize: 12 }}
+                >×</button>
+              </div>
+            ))}
+            {(form.avenants || []).length > 0 && (() => {
+              const totalAvenants = (form.avenants || []).reduce((s, a) => s + (parseFloat(a.montant) || 0), 0);
+              const totalCA = (parseFloat(form.montantHT) || 0) + totalAvenants;
+              return (
+                <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid rgba(139,92,246,0.2)', display: 'flex', gap: 24, flexWrap: 'wrap' }}>
+                  <div><span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Total avenants : </span><span style={{ fontWeight: 700, color: '#8b5cf6' }}>CHF {fmtN(Math.round(totalAvenants))}</span></div>
+                  <div><span style={{ fontSize: 11, color: 'var(--text-muted)' }}>CA total (devis + avenants) : </span><span style={{ fontWeight: 800, color: '#10b981' }}>CHF {fmtN(Math.round(totalCA))}</span></div>
+                </div>
+              );
+            })()}
+          </div>
+
           {/* ── Heures en régie ── */}
           <div style={{ background: 'rgba(245,158,11,0.04)', border: '1px solid rgba(245,158,11,0.2)', borderRadius: 12, padding: '20px', marginBottom: 20 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
@@ -3857,6 +3904,9 @@ function Devis({ devis, setDevis, clients, parametres, naviguer, setChantiers, c
                   const totalRegie = Array.isArray(d.heuresRegie)
                     ? d.heuresRegie.reduce((s, r) => s + (parseFloat(r.heures) || 0) * (parseFloat(r.tarifHeure) || 0), 0)
                     : 0;
+                  const totalAvenants = Array.isArray(d.avenants)
+                    ? d.avenants.reduce((s, a) => s + (parseFloat(a.montant) || 0), 0)
+                    : 0;
                   const chantierLie = chantiers.find(ch => String(ch.devisId) === String(d.id));
                   const isAccepte = d.statut === 'accepté';
                   const statutStyle = DS.statuts[d.statut] || { bg: '#F1F5F9', color: '#475569' };
@@ -3889,8 +3939,11 @@ function Devis({ devis, setDevis, clients, parametres, naviguer, setChantiers, c
                       </td>
                       <td style={DS.td}>
                         <span style={{ fontSize: 13, fontWeight: 800, color: isAccepte ? '#10b981' : 'var(--text-primary)' }}>
-                          CHF {fmtN(montant + totalRegie)}
+                          CHF {fmtN(montant + totalRegie + totalAvenants)}
                         </span>
+                        {totalAvenants > 0 && (
+                          <div style={{ fontSize: 10, color: '#8b5cf6', marginTop: 1 }}>dont CHF {fmtN(Math.round(totalAvenants))} avenants</div>
+                        )}
                         {totalRegie > 0 && (
                           <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 1 }}>dont CHF {fmtN(Math.round(totalRegie))} régie</div>
                         )}

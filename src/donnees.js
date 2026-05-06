@@ -130,19 +130,23 @@ export const sommeHeuresRegie = (devis) =>
 export const isChantierActif = (c) => c?.statut?.trim().toLowerCase() === 'en cours';
 
 /**
- * Chiffre d'affaires = montantHT du devis accepté lié + avenants (chantier) + heures en régie (devis).
+ * Chiffre d'affaires = montantHT du devis lié + avenants (devis) + avenants (chantier) + heures en régie (devis).
  * Retourne null si aucun devis lié — aucun fallback autorisé.
  *
  * Séparation claire :
- *   - avenants  → stockés sur le chantier (travaux supplémentaires négociés)
- *   - heuresRegie → stockées sur le devis  (heures facturées au temps passé)
+ *   - avenants devis   → travaux supplémentaires négociés, documentés sur le devis
+ *   - avenants chantier → ancienne structure (rétrocompat)
+ *   - heuresRegie      → stockées sur le devis (heures facturées au temps passé)
  */
 export const calculerCA = (chantier, devisList = []) => {
   if (!chantier.devisId) return null;
   const devisLie = devisList.find(d => String(d.id) === String(chantier.devisId));
   if (!devisLie) return null;
   const montantBase = parseFloat(devisLie.montantHT || devisLie.prixPropose) || 0;
-  return montantBase + sommeAvenants(chantier) + sommeHeuresRegie(devisLie);
+  const avenantDevis = Array.isArray(devisLie.avenants)
+    ? devisLie.avenants.reduce((s, a) => s + (parseFloat(a.montant) || 0), 0)
+    : 0;
+  return montantBase + avenantDevis + sommeAvenants(chantier) + sommeHeuresRegie(devisLie);
 };
 
 /**

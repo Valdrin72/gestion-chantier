@@ -2935,7 +2935,6 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
           {(contexte?.clientActif || contexte?.employeActif) && (
             <button onClick={() => naviguer('chantiers')} style={{ ...DS.btnGhost }}><X size={14} /> Supprimer filtre</button>
           )}
-          <button onClick={() => { setForm(vide); setAjout(!ajout); }} style={btnPrimaire}><Plus size={16} /> Nouveau chantier</button>
         </div>
       </div>
 

@@ -713,26 +713,16 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 22 }}>
                 <div>
-                  <label style={S.label}>Date du paiement</label>
-                  <input type="date" style={S.input} autoFocus value={paiementForm.date}
-                    onChange={e => setPaiementForm(p => ({ ...p, date: e.target.value }))} />
-                </div>
-                <div>
                   <label style={S.label}>Montant (CHF) *</label>
-                  <input type="text" inputMode="numeric" style={S.input}
+                  <input type="text" inputMode="numeric" style={S.input} autoFocus
                     value={paiementForm.montant ? fmtN(paiementForm.montant) : ''}
                     placeholder={`Solde : ${fmt((paiementModal.montantTTC ?? 0) - (paiementModal.montantPaye ?? 0))}`}
                     onChange={e => { const raw = e.target.value.replace(/'/g, '').replace(/[^0-9.]/g, ''); setPaiementForm(p => ({ ...p, montant: raw })); }} />
                 </div>
                 <div>
-                  <label style={S.label}>Mode de paiement</label>
-                  <input type="text" style={{ ...S.input, color: 'var(--text-secondary)', cursor: 'not-allowed' }} value="Virement" readOnly />
-                </div>
-                <div>
-                  <label style={S.label}>Note (optionnel)</label>
-                  <input type="text" style={S.input} value={paiementForm.note}
-                    placeholder="Ex: Acompte 50%, solde final…"
-                    onChange={e => setPaiementForm(p => ({ ...p, note: e.target.value }))} />
+                  <label style={S.label}>Date de paiement</label>
+                  <input type="date" style={S.input} value={paiementForm.date}
+                    onChange={e => setPaiementForm(p => ({ ...p, date: e.target.value }))} />
                 </div>
               </div>
               <div style={{ display: 'flex', gap: 10 }}>

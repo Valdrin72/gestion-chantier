@@ -664,6 +664,77 @@ export const facturesInPeriode = (facture, debut, fin) => {
   return d >= debut && d <= fin;
 };
 
+// ===== FACTURES — UTILITAIRES =====
+
+export const genererNumeroFacture = (factures) => {
+  const an = new Date().getFullYear();
+  const mois = String(new Date().getMonth() + 1).padStart(2, '0');
+  const existants = factures
+    .map(f => { const m = f.numero?.match(/^F-(\d{4})(\d{2})-(\d+)$/); return m ? parseInt(m[3], 10) : 0; })
+    .filter(Boolean);
+  const seq = existants.length > 0 ? Math.max(...existants) + 1 : 1;
+  return `F-${an}${mois}-${String(seq).padStart(3, '0')}`;
+};
+
+export const calculerStatutFacture = (facture) => {
+  const total = parseFloat(facture.montantTTC) || 0;
+  const paye  = parseFloat(facture.montantPaye) || 0;
+  if (facture.statut === 'annulee') return 'annulee';
+  if (total > 0 && paye >= total) return 'payee';
+  if (paye > 0 && paye < total)   return 'partielle';
+  if (facture.dateEcheance && new Date(facture.dateEcheance) < new Date()) return 'retard';
+  return facture.statut || 'brouillon';
+};
+
+export const creerFactureDepuisDevis = (devis, chantier, factures, tva = 8.1) => {
+  const montantBase = parseFloat(devis.montantHT || devis.prixPropose) || 0;
+  const totalAvenants = Array.isArray(devis.avenants)
+    ? devis.avenants.reduce((s, a) => s + (parseFloat(a.montant) || 0), 0)
+    : 0;
+  const totalRegie = Array.isArray(devis.heuresRegie)
+    ? devis.heuresRegie.reduce((s, r) => s + (parseFloat(r.heures) || 0) * (parseFloat(r.tarifHeure) || 0), 0)
+    : 0;
+
+  const lignes = [
+    { description: `Travaux selon devis ${devis.numero}`, quantite: 1, prixUnitaire: montantBase, tva },
+    ...(Array.isArray(devis.avenants) ? devis.avenants
+      .filter(a => parseFloat(a.montant) > 0)
+      .map(a => ({ description: a.description || 'Avenant', quantite: 1, prixUnitaire: parseFloat(a.montant) || 0, tva }))
+      : []),
+    ...(Array.isArray(devis.heuresRegie) ? devis.heuresRegie
+      .filter(r => parseFloat(r.heures) > 0)
+      .map(r => ({ description: r.description || 'Heures en régie', quantite: parseFloat(r.heures) || 0, prixUnitaire: parseFloat(r.tarifHeure) || 0, tva }))
+      : []),
+  ];
+
+  const totalHT  = montantBase + totalAvenants + totalRegie;
+  const montantTVA = totalHT * tva / 100;
+  const echeance = new Date();
+  echeance.setDate(echeance.getDate() + 30);
+
+  return {
+    id: `fact_${Date.now()}`,
+    numero: genererNumeroFacture(factures),
+    clientId: devis.clientId,
+    chantierId: chantier ? chantier.id : '',
+    devisId: devis.id,
+    type: 'standard',
+    source: 'devis',
+    statut: 'brouillon',
+    dateEmission: new Date().toISOString().slice(0, 10),
+    dateEcheance: echeance.toISOString().slice(0, 10),
+    objet: `Travaux ${devis.numero}`,
+    lignes,
+    montantHT: totalHT,
+    montantTVA,
+    montantTTC: totalHT + montantTVA,
+    montantPaye: 0,
+    paiementsHistorique: [],
+    notes: '',
+    creeLe: new Date().toISOString(),
+  };
+};
+
 // ===== DONNÉES INITIALES =====
 export const donneesInitiales = {
   // PARAMÈTRES GLOBAUX

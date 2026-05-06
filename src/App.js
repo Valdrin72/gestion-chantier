@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
   LayoutDashboard, HardHat, FileText, Calendar,
-  ClipboardList, Settings, DollarSign, Clock, Bot,
+  ClipboardList, Settings, DollarSign, Clock, Bot, Receipt,
 } from 'lucide-react';
 import { Sidebar, Topbar, MobileNav } from './components/Layout';
 import { donneesInitiales, migrerJournal, migrerDevisId } from './donnees';
@@ -13,6 +13,7 @@ import Heures from './Heures';
 import ModalSaisieHeures from './components/ModalSaisieHeures';
 import Dashboard from './pages/Dashboard';
 import Chantiers from './pages/ChantiersPage';
+import FacturesPage from './pages/FacturesPage';
 import Devis from './pages/DevisPage';
 import Clients from './pages/ClientsPage';
 import Employes from './pages/EmployesPage';
@@ -26,6 +27,7 @@ const NAV_FALLBACK = {
   chantiers:    'dashboard',
   devis:        'dashboard',
   finances:     'dashboard',
+  factures:     'dashboard',
   clients:      'dashboard',
   employes:     'dashboard',
   planning:     'chantiers',
@@ -203,11 +205,17 @@ function App() {
 
   const agentState = useAgents({ chantiers, devis, factures, clients, parametres });
 
+  const nbFacturesRetard = factures.filter(f =>
+    f.statut === 'retard' ||
+    (f.statut === 'envoyee' && f.dateEcheance && new Date(f.dateEcheance) < new Date())
+  ).length;
+
   const navItems = [
     { id: 'dashboard',  label: 'Dashboard',   Icon: LayoutDashboard, labelCourt: 'Accueil' },
     { id: 'chantiers',  label: 'Chantiers',   Icon: HardHat,         labelCourt: 'Chantiers' },
     { id: 'devis',      label: 'Devis',       Icon: FileText,        labelCourt: 'Devis' },
     { id: 'heures',     label: 'Heures',      Icon: Clock,           labelCourt: 'Heures' },
+    { id: 'factures',   label: 'Factures',    Icon: Receipt,         labelCourt: 'Factures', badge: nbFacturesRetard || null },
     { id: 'finances',   label: 'Finances',    Icon: DollarSign,      labelCourt: 'Finances' },
     { id: 'planning',   label: 'Planning',    Icon: Calendar,        labelCourt: 'Planning' },
     { id: 'rapport',    label: 'Rapports',    Icon: ClipboardList,   labelCourt: 'Rapports' },
@@ -250,6 +258,7 @@ function App() {
           {page === 'dashboard'    && <Dashboard />}
           {page === 'chantiers'    && <Chantiers />}
           {page === 'devis'        && <Devis />}
+          {page === 'factures'     && <FacturesPage />}
           {page === 'finances'     && <Finances factures={factures} onSave={setFactures} clients={clients} chantiers={chantiers} devis={devis} paiementsData={paiementsData} setPaiementsData={setPaiementsData} naviguer={naviguer} contexte={contexte} profil={profil} periodeGlobale={periodeGlobale} />}
           {page === 'clients'      && <Clients clients={clients} setClients={setClients} chantiers={chantiers} devis={devis} naviguer={naviguer} />}
           {page === 'employes'     && <Employes parametres={parametres} setParametres={setParametres} chantiers={chantiers} naviguer={naviguer} />}

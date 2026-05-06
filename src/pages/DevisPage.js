@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import {
-  Plus, Pencil, Trash2, HardHat,
+  Plus, Pencil, Trash2, HardHat, Receipt,
   DollarSign, Clock, FileText, TrendingUp,
 } from 'lucide-react';
-import { fmtN, C } from '../donnees';
+import { fmtN, C, creerFactureDepuisDevis } from '../donnees';
 import { DS } from '../ds';
 import { useApp } from '../context/AppContext';
 
@@ -15,7 +15,7 @@ const btnSucces = DS.btnSuccess;
 const btnDanger = DS.btnDanger;
 
 function Devis() {
-  const { devis, setDevis, clients, parametres, naviguer, setChantiers, chantiers, contexte = {} } = useApp();
+  const { devis, setDevis, clients, parametres, naviguer, setChantiers, chantiers, factures, setFactures, contexte = {} } = useApp();
   const [ajout, setAjout] = useState(false);
   const [filtreDevis, setFiltreDevis] = useState('Tous');
   const [confirmConversion, setConfirmConversion] = useState(null); // { devis, nomChantier }
@@ -423,12 +423,29 @@ function Devis() {
                         }}>{d.statut}</span>
                       </td>
                       <td style={{ ...DS.td, whiteSpace: 'nowrap' }}>
-                        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                        <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
                           {!chantierLie && isAccepte && (
                             <button onClick={() => ouvrirConfirmConversion(d)} style={{ ...DS.btnSuccess, padding: '6px 12px', fontSize: 12, gap: 5 }}>
                               <HardHat size={13} /> Créer le chantier
                             </button>
                           )}
+                          {isAccepte && (() => {
+                            const factureExistante = factures.some(f => String(f.devisId) === String(d.id) && f.statut !== 'annulee');
+                            if (factureExistante) return null;
+                            return (
+                              <button
+                                onClick={() => {
+                                  const nouvelleFacture = creerFactureDepuisDevis(d, chantierLie || null, factures);
+                                  setFactures([...factures, nouvelleFacture]);
+                                  naviguer('factures');
+                                }}
+                                style={{ background: 'rgba(139,92,246,0.12)', color: '#8b5cf6', border: '1px solid rgba(139,92,246,0.3)', borderRadius: 8, padding: '6px 12px', cursor: 'pointer', fontSize: 12, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 5, fontFamily: 'inherit', transition: 'all 0.15s' }}
+                                title="Créer la facture depuis ce devis"
+                              >
+                                <Receipt size={13} /> Créer la facture
+                              </button>
+                            );
+                          })()}
                           <button
                             onClick={() => { setForm({ ...d, montantHT: d.montantHT || d.prixPropose || '' }); setAjout(true); }}
                             style={DS.iconBtn}

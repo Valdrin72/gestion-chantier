@@ -591,7 +591,10 @@ function Dashboard() {
       const fin = new Date(now); fin.setDate(now.getDate() - (w - 1) * 7);
       const ca = (factures || []).filter(f => { const d = f.dateEmission ? new Date(f.dateEmission) : null; return d && d >= deb && d < fin; })
         .reduce((s, f) => s + (parseFloat(f.montantTTC) || 0), 0);
-      return { semaine: deb.toLocaleDateString('fr-CH', { day: '2-digit', month: '2-digit' }), CA: Math.round(ca), Couts: coutsParSemaine };
+      const enc = (factures || []).flatMap(f => f.paiementsHistorique || [])
+        .filter(p => { const d = p.date ? new Date(p.date) : null; return d && d >= deb && d < fin; })
+        .reduce((s, p) => s + (parseFloat(p.montant) || 0), 0);
+      return { semaine: deb.toLocaleDateString('fr-CH', { day: '2-digit', month: '2-digit' }), CA: Math.round(ca), Couts: coutsParSemaine, Encaissements: Math.round(enc) };
     });
   }, [factures, actifs, parametres, devis]);
 
@@ -814,13 +817,14 @@ function Dashboard() {
                 <Tooltip contentStyle={{ background: 'var(--dash-card)', border: '1px solid var(--dash-border)', borderRadius: 10, fontSize: 12 }} labelStyle={{ color: 'var(--text-primary)', fontWeight: 700 }} formatter={(val, name) => [`CHF ${fmtN(val)}`, name]} />
                 <Line type="monotone" dataKey="CA" stroke="#3b82f6" strokeWidth={2.5} dot={{ r: 3, fill: '#3b82f6' }} name="Chiffre d'affaires" />
                 <Line type="monotone" dataKey="Couts" stroke="#94a3b8" strokeWidth={2} dot={{ r: 3, fill: '#94a3b8' }} strokeDasharray="5 3" name="Coûts estimés" />
+                <Line type="monotone" dataKey="Encaissements" stroke="#10b981" strokeWidth={2} dot={{ r: 3, fill: '#10b981' }} name="Encaissements" />
               </LineChart>
             </ResponsiveContainer>
           ) : (
             <div style={{ height: 210, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: 13 }}>Aucune donnée disponible</div>
           )}
           <div style={{ display: 'flex', gap: 20, marginTop: 12, justifyContent: 'center' }}>
-            {[['#3b82f6', "Chiffre d'affaires"], ['#94a3b8', 'Coûts estimés']].map(([col, lbl]) => (
+            {[['#3b82f6', "Chiffre d'affaires"], ['#94a3b8', 'Coûts estimés'], ['#10b981', 'Encaissements']].map(([col, lbl]) => (
               <div key={lbl} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--text-secondary)' }}>
                 <span style={{ width: 20, height: 2.5, background: col, borderRadius: 2, display: 'inline-block' }} />{lbl}
               </div>

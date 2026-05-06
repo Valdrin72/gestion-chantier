@@ -23,6 +23,11 @@ export function Sidebar({ sidebarOuvert, setSidebarOuvert, navAutorisees, page, 
             >
               <item.Icon size={17} strokeWidth={page === item.id ? 2.2 : 1.8} />
               <span>{item.label}</span>
+              {item.badge && (
+                <span style={{ marginLeft: 'auto', background: '#ef4444', color: '#fff', borderRadius: 20, padding: '1px 7px', fontSize: 10, fontWeight: 700, lineHeight: 1.6, flexShrink: 0 }}>
+                  {item.badge}
+                </span>
+              )}
             </button>
           ))}
         </nav>

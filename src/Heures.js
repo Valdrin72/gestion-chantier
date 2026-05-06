@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Clock, X } from 'lucide-react';
+import { Clock, X, Trash2 } from 'lucide-react';
 import { DS } from './ds';
 import { fmtN } from './donnees';
 import KpiCard from './components/ui/KpiCard';
@@ -56,9 +56,6 @@ export default function Heures({ chantiers = [], parametres = {}, setChantiers }
     if (!employeId || !chantierId || !date || !heures) return;
     const h = parseFloat(heures);
     if (!h || h <= 0) return;
-    // Bloquer si avant le début du chantier
-    const chantierSelectionne = chantiers.find(c => String(c.id) === String(chantierId));
-    if (chantierSelectionne?.dateDebut && date < chantierSelectionne.dateDebut) return;
     const todayStr = new Date().toISOString().split('T')[0];
     if (date > todayStr) return;
 
@@ -79,6 +76,20 @@ export default function Heures({ chantiers = [], parametres = {}, setChantiers }
       return { ...c, journal };
     }));
     setModal(null);
+  };
+
+  const supprimerHeures = (employeId, date) => {
+    if (!window.confirm(`Supprimer les heures du ${new Date(date + 'T00:00:00').toLocaleDateString('fr-CH', { day: 'numeric', month: 'long' })} pour cet employé ?`)) return;
+    setChantiers(prev => prev.map(c => {
+      const entry = (c.journal || []).find(e => e.date === date);
+      if (!entry) return c;
+      const employes2 = (entry.employes || []).filter(e => String(e.employeId) !== String(employeId));
+      if (employes2.length === entry.employes?.length) return c; // cet employé n'était pas là
+      const newJournal = employes2.length > 0
+        ? c.journal.map(e => e.date === date ? { ...e, employes: employes2 } : e)
+        : c.journal.filter(e => e.date !== date);
+      return { ...c, journal: newJournal };
+    }));
   };
 
   const weekDays = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)), [weekStart]);
@@ -237,14 +248,30 @@ export default function Heures({ chantiers = [], parametres = {}, setChantiers }
                         const todayStr = isoDate(today);
                         const estFutur = dateCell > todayStr;
                         return (
-                          <td key={di} style={{ ...DS.td, textAlign: 'center', cursor: estFutur ? 'default' : 'pointer', opacity: estFutur ? 0.35 : 1 }}
-                            onClick={() => !estFutur && ouvrirModal({ date: dateCell, employeId: emp.id })}
-                            title={estFutur ? 'Date future — saisie impossible' : h > 0 ? `Modifier — ${h}h` : 'Saisir heures'}
-                          >
+                          <td key={di} style={{ ...DS.td, textAlign: 'center', opacity: estFutur ? 0.35 : 1, position: 'relative' }}>
                             {h > 0 ? (
-                              <span style={{ ...cs, borderRadius: 6, padding: '3px 8px', fontSize: 13, fontWeight: 700, display: 'inline-block' }}>{h}h</span>
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+                                <span
+                                  onClick={() => !estFutur && ouvrirModal({ date: dateCell, employeId: emp.id })}
+                                  style={{ ...cs, borderRadius: 6, padding: '3px 8px', fontSize: 13, fontWeight: 700, display: 'inline-block', cursor: estFutur ? 'default' : 'pointer' }}
+                                  title={estFutur ? '' : `Modifier — ${h}h`}
+                                >{h}h</span>
+                                {!estFutur && (
+                                  <button
+                                    onClick={() => supprimerHeures(emp.id, dateCell)}
+                                    title="Supprimer ces heures"
+                                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', padding: '2px', display: 'flex', alignItems: 'center', opacity: 0.6, lineHeight: 1 }}
+                                    onMouseEnter={e => e.currentTarget.style.opacity = 1}
+                                    onMouseLeave={e => e.currentTarget.style.opacity = 0.6}
+                                  ><Trash2 size={12} /></button>
+                                )}
+                              </div>
                             ) : (
-                              <span style={{ color: 'var(--text-muted)', fontSize: 13, opacity: 0.4 }}>{estFutur ? '—' : '+'}</span>
+                              <span
+                                onClick={() => !estFutur && ouvrirModal({ date: dateCell, employeId: emp.id })}
+                                style={{ color: 'var(--text-muted)', fontSize: 13, opacity: 0.4, cursor: estFutur ? 'default' : 'pointer' }}
+                                title={estFutur ? 'Date future — saisie impossible' : 'Saisir heures'}
+                              >{estFutur ? '—' : '+'}</span>
                             )}
                           </td>
                         );
@@ -323,15 +350,12 @@ export default function Heures({ chantiers = [], parametres = {}, setChantiers }
               <div>
                 <label style={DS.label}>Date</label>
                 {(() => {
-                  const ch = chantiers.find(c => String(c.id) === String(modal.form.chantierId));
-                  const minDate = ch?.dateDebut || undefined;
                   const maxDate = new Date().toISOString().split('T')[0];
-                  const avantDebut = minDate && modal.form.date && modal.form.date < minDate;
                   const futur = modal.form.date && modal.form.date > maxDate;
                   return (
-                    <input type="date" value={modal.form.date} min={minDate} max={maxDate}
+                    <input type="date" value={modal.form.date} max={maxDate}
                       onChange={e => setModal({ ...modal, form: { ...modal.form, date: e.target.value } })}
-                      style={{ ...DS.input, borderColor: (avantDebut || futur) ? '#ef4444' : undefined }} />
+                      style={{ ...DS.input, borderColor: futur ? '#ef4444' : undefined }} />
                   );
                 })()}
               </div>
@@ -341,48 +365,28 @@ export default function Heures({ chantiers = [], parametres = {}, setChantiers }
               </div>
             </div>
 
-            {/* Alerte date invalide */}
-            {(() => {
-              const ch = chantiers.find(c => String(c.id) === String(modal.form.chantierId));
-              const todayStr = new Date().toISOString().split('T')[0];
-              const avantDebut = ch?.dateDebut && modal.form.date && modal.form.date < ch.dateDebut;
-              const futur = modal.form.date && modal.form.date > todayStr;
-              if (!avantDebut && !futur) return null;
-              return (
-                <div style={{ display: 'flex', gap: 10, background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 10, padding: '12px 14px', marginBottom: 16 }}>
-                  <span style={{ fontSize: 18 }}>🚫</span>
-                  <div>
-                    {futur ? (
-                      <>
-                        <div style={{ fontWeight: 700, color: '#991b1b', fontSize: 13 }}>Date dans le futur</div>
-                        <div style={{ fontSize: 12, color: '#b91c1c', marginTop: 2 }}>Vous ne pouvez pas saisir des heures pour une date future.</div>
-                      </>
-                    ) : (
-                      <>
-                        <div style={{ fontWeight: 700, color: '#991b1b', fontSize: 13 }}>Chantier pas encore démarré</div>
-                        <div style={{ fontSize: 12, color: '#b91c1c', marginTop: 2 }}>
-                          Début prévu le <strong>{new Date(ch.dateDebut + 'T00:00:00').toLocaleDateString('fr-CH', { day: 'numeric', month: 'long', year: 'numeric' })}</strong>
-                        </div>
-                      </>
-                    )}
-                  </div>
+            {/* Alerte date future uniquement */}
+            {modal.form.date && modal.form.date > new Date().toISOString().split('T')[0] && (
+              <div style={{ display: 'flex', gap: 10, background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 10, padding: '12px 14px', marginBottom: 16 }}>
+                <span style={{ fontSize: 18 }}>🚫</span>
+                <div>
+                  <div style={{ fontWeight: 700, color: '#991b1b', fontSize: 13 }}>Date dans le futur</div>
+                  <div style={{ fontSize: 12, color: '#b91c1c', marginTop: 2 }}>Vous ne pouvez pas saisir des heures pour une date future.</div>
                 </div>
-              );
-            })()}
+              </div>
+            )}
 
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
               <button onClick={() => setModal(null)} style={DS.btnGhost}>Annuler</button>
               {(() => {
-                const ch = chantiers.find(c => String(c.id) === String(modal.form.chantierId));
                 const todayStr = new Date().toISOString().split('T')[0];
-                const avantDebut = ch?.dateDebut && modal.form.date && modal.form.date < ch.dateDebut;
                 const futur = modal.form.date && modal.form.date > todayStr;
                 const manque = !modal.form.employeId || !modal.form.chantierId || !modal.form.date || !modal.form.heures;
-                const bloque = avantDebut || futur || manque;
+                const bloque = futur || manque;
                 return (
                   <button onClick={sauvegarder} disabled={bloque}
                     style={{ ...DS.btnPrimary, opacity: bloque ? 0.4 : 1 }}>
-                    {(avantDebut || futur) ? 'Date invalide' : 'Enregistrer'}
+                    {futur ? 'Date invalide' : 'Enregistrer'}
                   </button>
                 );
               })()}

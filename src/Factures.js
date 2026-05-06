@@ -134,7 +134,7 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
   const [recherche, setRecherche] = useState('');
   const [form, setForm] = useState(null);
   const [paiementModal, setPaiementModal] = useState(null); // facture sur laquelle on enregistre
-  const [paiementForm, setPaiementForm] = useState({ montant: '', date: new Date().toISOString().slice(0, 10), mode: 'Virement' });
+  const [paiementForm, setPaiementForm] = useState({ montant: '', date: new Date().toISOString().slice(0, 10), note: '' });
 
   const canEdit = profil?.id === 'direction' || profil?.id === 'administratif';
 
@@ -159,9 +159,9 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
         montant,
         date: paiementForm.date,
         dateEcheance: paiementForm.date,
-        type: paiementForm.mode,
+        type: 'Virement',
         statut: 'Payé',
-        notes: `Paiement facture ${f.numero}`,
+        notes: paiementForm.note || `Paiement facture ${f.numero}`,
         factureId: f.id,
         chantierId: f.chantierId || null,
       };
@@ -172,7 +172,7 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
     const nouveauMontantPaye = (f.montantPaye ?? 0) + montant;
     const restant = (f.montantTTC ?? 0) - nouveauMontantPaye;
     const nouveauStatut = restant <= 0.01 ? 'payee' : 'partielle';
-    const entreeHistorique = { id: Date.now(), montant, date: paiementForm.date, mode: paiementForm.mode };
+    const entreeHistorique = { id: Date.now(), montant, date: paiementForm.date, mode: 'Virement', note: paiementForm.note };
     const factureMAJ = {
       ...f,
       montantPaye: nouveauMontantPaye,
@@ -182,7 +182,7 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
     onSave(factures.map(x => x.id === f.id ? factureMAJ : x));
 
     setPaiementModal(null);
-    setPaiementForm({ montant: '', date: new Date().toISOString().slice(0, 10), mode: 'Virement' });
+    setPaiementForm({ montant: '', date: new Date().toISOString().slice(0, 10), note: '' });
     // Mettre à jour la vue détail si ouverte
     if (selected?.id === f.id) setSelected(factureMAJ);
   };
@@ -674,7 +674,7 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
                     <span style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.35)', minWidth: 22, textAlign: 'center' }}>#{i + 1}</span>
                     <div>
                       <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>{p.date}</div>
-                      <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{p.mode || 'Virement'}</div>
+                      {p.note && <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{p.note}</div>}
                     </div>
                   </div>
                   <span style={{ fontSize: 16, fontWeight: 800, color: '#10b981' }}>+{fmt(p.montant)} CHF</span>
@@ -711,23 +711,22 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 22 }}>
                 <div>
+                  <label style={S.label}>Date du paiement</label>
+                  <input type="date" style={S.input} autoFocus value={paiementForm.date}
+                    onChange={e => setPaiementForm(p => ({ ...p, date: e.target.value }))} />
+                </div>
+                <div>
                   <label style={S.label}>Montant (CHF) *</label>
-                  <input type="text" inputMode="numeric" style={S.input} autoFocus
+                  <input type="text" inputMode="numeric" style={S.input}
                     value={paiementForm.montant ? fmtN(paiementForm.montant) : ''}
                     placeholder={`Solde : ${fmt((paiementModal.montantTTC ?? 0) - (paiementModal.montantPaye ?? 0))}`}
                     onChange={e => { const raw = e.target.value.replace(/'/g, '').replace(/[^0-9.]/g, ''); setPaiementForm(p => ({ ...p, montant: raw })); }} />
                 </div>
                 <div>
-                  <label style={S.label}>Date de paiement</label>
-                  <input type="date" style={S.input} value={paiementForm.date}
-                    onChange={e => setPaiementForm(p => ({ ...p, date: e.target.value }))} />
-                </div>
-                <div>
-                  <label style={S.label}>Mode de paiement</label>
-                  <select style={S.input} value={paiementForm.mode}
-                    onChange={e => setPaiementForm(p => ({ ...p, mode: e.target.value }))}>
-                    {['Virement', 'Chèque', 'Espèces', 'Carte bancaire', 'BVR'].map(m => <option key={m}>{m}</option>)}
-                  </select>
+                  <label style={S.label}>Note (optionnel)</label>
+                  <input type="text" style={S.input} value={paiementForm.note}
+                    placeholder="Ex: Acompte 50%, solde final…"
+                    onChange={e => setPaiementForm(p => ({ ...p, note: e.target.value }))} />
                 </div>
               </div>
               <div style={{ display: 'flex', gap: 10 }}>

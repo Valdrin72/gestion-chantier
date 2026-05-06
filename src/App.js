@@ -1990,11 +1990,14 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
   const [simulations, setSimulations] = useState({});
   const [justSimulatedId, setJustSimulatedId] = useState(null);
 
+  const [modeCompleter, setModeCompleter] = useState(false);
+
   React.useEffect(() => {
     if (contexte?.chantierActif) {
       const c = chantiers.find(ch => ch.id === contexte.chantierActif);
       if (c) { setSelected(c); setVue('detail'); setDetailOnglet('vue'); }
     }
+    if (contexte?.modeCompleter) setModeCompleter(true);
     if (contexte?.filtreStatut) setFiltre(contexte.filtreStatut);
     if (contexte?.clientActif) setFiltre('Tous');
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -2081,6 +2084,12 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
       tableauFinal = [...chantiers, { ...chantiersData, id: Date.now() }];
     }
     setChantiers(tableauFinal);
+    // Si on venait de "Compléter", revenir au détail du chantier après sauvegarde
+    if (modeCompleter && form.id) {
+      const saved = tableauFinal.find(c => c.id === form.id);
+      if (saved) { setSelected(saved); setVue('detail'); }
+      setModeCompleter(false);
+    }
     setAjout(false); setForm(vide); setErreurs({});
   };
 
@@ -2248,17 +2257,37 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
     const chantierStatusBadge = ['En cours', 'Suspendu'].includes(c.statut) ? getChantierStatus(c) : null;
     const devisSource = devis.find(d => String(d.id) === String(c.devisId));
 
+    const estNouveauPlanifie = modeCompleter && c.statut === 'Planifié';
+
     return (<React.Fragment key="detail">
       <div>
+        {/* ── Banner "Compléter" affiché après création depuis devis ── */}
+        {estNouveauPlanifie && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, background: 'linear-gradient(135deg, #ecfdf5, #d1fae5)', border: '1px solid #6ee7b7', borderRadius: 12, padding: '14px 18px', marginBottom: 16 }}>
+            <span style={{ fontSize: 22 }}>🎉</span>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontWeight: 700, color: '#065f46', fontSize: 14 }}>Chantier créé avec succès</div>
+              <div style={{ fontSize: 12, color: '#047857', marginTop: 2 }}>Complétez les informations (adresse, équipe, dates), puis passez en cours et saisissez les heures.</div>
+            </div>
+            <button
+              onClick={() => ouvrirModification(c)}
+              style={{ background: 'linear-gradient(135deg, #10b981, #059669)', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 16px', fontWeight: 700, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}
+            ><Pencil size={14} /> Compléter le chantier</button>
+          </div>
+        )}
+
         <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', flexWrap: 'wrap' }}>
-          <button onClick={() => { setVue('liste'); setSelected(null); }} style={btnPrimaire}><ChevronRight size={15} style={{ transform: 'rotate(180deg)' }} /> Retour</button>
-          <button onClick={() => ouvrirModification(c)} style={btnSucces}><Pencil size={15} /> Modifier</button>
+          <button onClick={() => { setVue('liste'); setSelected(null); setModeCompleter(false); }} style={btnPrimaire}><ChevronRight size={15} style={{ transform: 'rotate(180deg)' }} /> Retour</button>
+          {!estNouveauPlanifie && (
+            <button onClick={() => ouvrirModification(c)} style={btnSucces}><Pencil size={15} /> Modifier</button>
+          )}
           {c.devisId && !isChantierActif(c) && !['Terminé', 'Facturé', 'Clôturé'].includes(c.statut) && (
             <button
               onClick={() => {
                 const updated = { ...c, statut: 'En cours' };
                 setChantiers(chantiers.map(ch => ch.id === c.id ? updated : ch));
                 setSelected(updated);
+                setModeCompleter(false);
               }}
               style={{ ...btnSucces, background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.4)', color: '#f59e0b' }}
             >▶ Passer en cours</button>
@@ -2635,7 +2664,7 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
             <div style={{ background: 'rgba(239,68,68,0.05)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 10, padding: '14px 18px', marginBottom: 16 }}>
               <div style={{ fontWeight: 700, color: '#ef4444', fontSize: 13, marginBottom: 4 }}>Aucun devis lié</div>
               <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Le chiffre d'affaires est indisponible. Liez un devis accepté pour activer le suivi financier.</div>
-              <button onClick={() => { setAjout(true); setForm({ ...c }); }} style={{ marginTop: 10, ...DS.btnGhost, fontSize: 12, padding: '5px 12px' }}>Modifier le chantier</button>
+              <button onClick={() => ouvrirModification(c)} style={{ marginTop: 10, ...DS.btnGhost, fontSize: 12, padding: '5px 12px' }}>Modifier le chantier</button>
             </div>
           )}
 
@@ -2893,7 +2922,7 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
       {ajout && (
         <div style={carteStyle}>
           <div className="ds-card-title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <HardHat size={18} /> {form.id ? 'Modifier le chantier' : 'Nouveau chantier'}
+            <HardHat size={18} /> {form.id ? (modeCompleter ? 'Compléter le chantier' : 'Modifier le chantier') : 'Nouveau chantier'}
           </div>
 
           {/* ══ PRÉVISION ══════════════════════════════════════════════ */}
@@ -3594,7 +3623,7 @@ function Devis({ devis, setDevis, clients, parametres, naviguer, setChantiers, c
       journal: [],
     }]);
     setConfirmConversion(null);
-    naviguer('chantiers', { chantierActif: newId });
+    naviguer('chantiers', { chantierActif: newId, modeCompleter: true });
   };
 
   const STATUTS_COULEUR = {

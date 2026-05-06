@@ -8,7 +8,7 @@ import {
   FolderOpen,
 } from 'lucide-react';
 import { LineChart, Line, PieChart, Pie, Cell, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
-import { donneesInitiales, fmtN, calculerDateFinOuvrables, joursOuvrableRestants, getAlerte, getAlerteChantier, estRetardJustifie, getChantierStatus, calculerCoutsChantier, statutRentabilite, C, getIntervallesPeriode, getPeriodeLabel, chantiersInPeriode, facturesInPeriode, calculerJoursRestants, calculerRentabiliteReelle, calculerEcartChantier, calculerEtatChantier, assertEtatValide, assertEtatCoherent, calculerVitesseChantier, migrerJournal, migrerDevisId, heuresEmploye, heuresJour, sommeAvenants, calculerCA, isChantierActif } from './donnees';
+import { donneesInitiales, fmtN, calculerDateFinOuvrables, joursOuvrableRestants, getAlerte, getAlerteChantier, estRetardJustifie, getChantierStatus, calculerCoutsChantier, statutRentabilite, C, getIntervallesPeriode, getPeriodeLabel, chantiersInPeriode, facturesInPeriode, calculerJoursRestants, calculerRentabiliteReelle, calculerEcartChantier, calculerEtatChantier, assertEtatValide, assertEtatCoherent, calculerVitesseChantier, migrerJournal, migrerDevisId, heuresEmploye, heuresJour, sommeAvenants, calculerCA, isChantierActif, isChantierComptable } from './donnees';
 import Finances from './Finances';
 import Statistiques from './Statistiques';
 import Planning from './Planning';
@@ -23,6 +23,7 @@ import Calendrier from './Calendrier';
 import Documents from './Documents';
 import Heures from './Heures';
 import Marges from './Marges';
+import { STATUTS_CLOS, TOUS_STATUTS } from './constants/statuts';
 
 // Supprime les balises HTML des champs texte avant sauvegarde (protection XSS dans PDF)
 const sanitiser = (obj) => {
@@ -89,7 +90,7 @@ function BarreAvancement({ valeur, couleur }) {
 // Badge rentabilité — lecture seule, aucun calcul existant modifié
 // ca = etat.devisTotal, couts = etat.coutTotalReel
 function BadgeRentabilite({ ca, couts }) {
-  if (ca === null || ca === undefined || ca <= 0) return null;
+  if (!ca || !couts || isNaN(ca) || isNaN(couts) || ca <= 0) return null;
   const marge = ca - couts;
   const taux = marge / ca;
   const cfg = taux >= 0.2
@@ -498,11 +499,12 @@ function Dashboard({ chantiers, clients, factures, devis = [], parametres, navig
 
   // ── KPI dashboard ────────────────────────────────────────────
   const kpi = useMemo(() => {
-    // 1. CA EN COURS — source unique : devis signé lié — chantiers sans devis exclus
-    const actifsAvecDevis = actifs.filter(c => calculerCA(c, devis) !== null);
-    const caEnCours = actifsAvecDevis.reduce((t, c) => t + calculerCA(c, devis), 0);
+    // 1. CA EN COURS — inclut Planifié + En cours (isChantierComptable)
+    const comptables = chantiers.filter(isChantierComptable);
+    const actifsAvecDevis = comptables.map(c => ({ c, ca: calculerCA(c, devis) })).filter(x => x.ca !== null);
+    const caEnCours = actifsAvecDevis.reduce((t, x) => t + x.ca, 0);
     const nbChantiersActifs = actifs.length;
-    const nbActifsSansDevis = actifs.length - actifsAvecDevis.length;
+    const nbActifsSansDevis = comptables.length - actifsAvecDevis.length;
 
     // 2. CASH EN ATTENTE — factures non encaissées
     const cashEnAttente = facturesPeriode
@@ -515,7 +517,7 @@ function Dashboard({ chantiers, clients, factures, devis = [], parametres, navig
       .map(c => calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis))
       .filter(r => r.montantTotal > 0 && r.totalCoutsReel > 0 && !r.donneesIncompletes);
     const rentaMoyenne = chantiersRenta.length > 0
-      ? chantiersRenta.reduce((sum, r) => { const v = parseFloat(r.margeReelPct); return sum + (isNaN(v) ? 0 : v); }, 0) / chantiersRenta.length
+      ? chantiersRenta.reduce((sum, r) => sum + (r.margeReelPct ?? 0), 0) / chantiersRenta.length
       : null;
     const nbChantiersRenta = chantiersRenta.length;
 
@@ -576,9 +578,8 @@ function Dashboard({ chantiers, clients, factures, devis = [], parametres, navig
     const map = {};
     actifs.forEach(c => {
       const couts = calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis);
-      const pctRaw = parseFloat(couts.margeReelPct);
-      map[c.id] = couts.montantTotal > 0 && couts.totalCoutsReel > 0 && !isNaN(pctRaw)
-        ? Math.round(pctRaw)
+      map[c.id] = couts.montantTotal > 0 && couts.totalCoutsReel > 0 && couts.margeReelPct !== null
+        ? Math.round(couts.margeReelPct)
         : null;
     });
     return map;
@@ -712,8 +713,8 @@ function Dashboard({ chantiers, clients, factures, devis = [], parametres, navig
       const couts = calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis);
       const { montantTotal, totalCoutsReel, margeReel, margeReelPct } = couts;
       if (montantTotal > 0 && totalCoutsReel > 0) {
-        const pct = parseFloat(margeReelPct);
-        if (!isNaN(pct) && pct < 15) {
+        const pct = margeReelPct;
+        if (pct !== null && pct < 15) {
           const s = statutRentabilite(pct);
           const detail = margeReel < 0
             ? `déficit CHF ${fmtN(Math.abs(Math.round(margeReel)))}`
@@ -774,7 +775,6 @@ function Dashboard({ chantiers, clients, factures, devis = [], parametres, navig
     });
 
     // Chantiers avec devis mais statut ≠ En cours (CA non comptabilisé)
-    const STATUTS_CLOS = ['Terminé', 'Facturé', 'Clôturé'];
     chantiers.filter(c => c.devisId && !isChantierActif(c) && !STATUTS_CLOS.includes(c.statut)).forEach(c => {
       list.push({
         id: `devis-inactif-${c.id}`,
@@ -1066,10 +1066,17 @@ function Dashboard({ chantiers, clients, factures, devis = [], parametres, navig
     ].filter(s => s.value > 0.5) };
   }, [actifs, parametres, devis]);
 
-  // ── Avancement moyen global ─────────────────────────────────
-  const avancementMoyen = useMemo(() =>
-    actifs.length === 0 ? 0 : actifs.reduce((s, c) => s + (parseFloat(c.avancement) || 0), 0) / actifs.length
-  , [actifs]);
+  // ── Avancement moyen global — source unique : journal (calculerEtatChantier)
+  // Fallback sur c.avancement (valeur manuelle) uniquement si journal vide
+  const avancementMoyen = useMemo(() => {
+    if (actifs.length === 0) return 0;
+    const sum = actifs.reduce((s, c) => {
+      const etat = calculerEtatChantier(c, parametres.employes, devis);
+      const pct = etat.totalJoursReels > 0 ? etat.avancementPct : (parseFloat(c.avancement) || 0);
+      return s + pct;
+    }, 0);
+    return sum / actifs.length;
+  }, [actifs, parametres.employes, devis]);
 
   const BADGE_STATUT_DASH = {
     ok:       { label: 'Rentable',  bg: '#D1FAE5', color: '#065F46' },
@@ -1199,7 +1206,7 @@ function Dashboard({ chantiers, clients, factures, devis = [], parametres, navig
                   const j = joursParChantier[c.id];
                   const retardJ = j !== null && j < 0 ? Math.abs(j) : 0;
                   const barCol = retardJ > 0 ? '#ef4444' : priorite.niveau === 'ok' ? '#10b981' : '#f59e0b';
-                  const mPct = couts.montantTotal > 0 && couts.totalCoutsReel > 0 ? Math.round(parseFloat(couts.margeReelPct)) : null;
+                  const mPct = couts.montantTotal > 0 && couts.totalCoutsReel > 0 && couts.margeReelPct !== null ? Math.round(couts.margeReelPct) : null;
                   return (
                     <div key={c.id} onClick={() => naviguer('chantiers', { chantierActif: c.id })}
                       style={{ padding: '14px', borderRadius: 12, border: '1px solid var(--dash-border)', cursor: 'pointer', background: 'var(--bg-glass)', transition: 'all 0.15s' }}
@@ -1574,7 +1581,7 @@ function renderEcartTable(couts, fmtN) {
                   <td style={{ padding: '8px 12px', textAlign: 'right', color: 'var(--text-muted)' }}>CHF {fmtN(l.prevu)}</td>
                   <td style={{ padding: '8px 12px', textAlign: 'right', color: 'var(--text-secondary)' }}>CHF {fmtN(l.reel)}</td>
                   <td style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 700, color: couleurEcart }}>{l.ecart > 0 ? '+' : ''}{l.ecart !== 0 ? `CHF ${fmtN(Math.abs(l.ecart))}` : '—'}</td>
-                  <td style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 700, color: couleurEcart }}>{l.ecart > 0 ? '+' : l.ecart < 0 ? '-' : ''}{l.ecart !== 0 ? `${Math.abs(parseFloat(l.ecartPct))}%` : '—'}</td>
+                  <td style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 700, color: couleurEcart }}>{l.ecart > 0 ? '+' : l.ecart < 0 ? '-' : ''}{l.ecart !== 0 && l.ecartPct !== null ? `${Math.abs(l.ecartPct)}%` : '—'}</td>
                 </tr>
               );
             })}
@@ -1611,7 +1618,7 @@ function renderRentabiliteJours(c, etat, couts, naviguer, fmtN, fmtK) {
     montantDevis: couts.montantTotal,
     totalCoutsReel: Math.round(couts.totalCoutsReel || 0),
     rentabilite: couts.margeReel !== null ? Math.round(couts.margeReel) : null,
-    rentabilitePct: couts.margeReelPct !== null ? parseFloat(parseFloat(couts.margeReelPct).toFixed(1)) : null,
+    rentabilitePct: couts.margeReelPct,
     rentabiliteProjetee: etat.projectionDisponible && etat.margeEstimee !== null ? Math.round(etat.margeEstimee) : null,
     rentabiliteProjetee_Pct: etat.projectionDisponible ? etat.margeEstimeePct : null,
   };
@@ -2369,7 +2376,7 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
           {!estNouveauPlanifie && (
             <button onClick={() => ouvrirModification(c)} style={btnSucces}><Pencil size={15} /> Modifier</button>
           )}
-          {c.devisId && !isChantierActif(c) && !['Terminé', 'Facturé', 'Clôturé'].includes(c.statut) && (
+          {c.devisId && !isChantierActif(c) && !STATUTS_CLOS.includes(c.statut) && (
             <button
               onClick={() => {
                 const updated = { ...c, statut: 'En cours' };
@@ -2436,7 +2443,7 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
               return { val: `${v >= 0 ? '+' : ''}${v.toFixed(1)}%`, label: 'Marge estimée finale', couleur: v >= 15 ? C.secondaire : v >= 5 ? C.warning : C.danger };
             }
             if (couts.margeReelPct !== null && etat.coutTotalReel > 0) {
-              const v = parseFloat(couts.margeReelPct);
+              const v = couts.margeReelPct;
               return { val: `${v >= 0 ? '+' : ''}${v.toFixed(1)}%`, label: 'Marge actuelle', couleur: v >= 15 ? C.secondaire : v >= 5 ? C.warning : C.danger };
             }
             return devisTotal !== null
@@ -2643,7 +2650,7 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
               <Badge texte={c.priorite} couleur={c.priorite === 'Haute' ? C.danger : C.info} />
               <Badge texte={c.statut} couleur={couleurStatut(c.statut)} />
               {chantierStatusBadge && <Badge texte={chantierStatusBadge.label} couleur={chantierStatusBadge.couleur} glow />}
-              {c.devisId && !isChantierActif(c) && !['Terminé', 'Facturé', 'Clôturé'].includes(c.statut) && (
+              {c.devisId && !isChantierActif(c) && !STATUTS_CLOS.includes(c.statut) && (
                 <Badge texte="CA non comptabilisé" couleur={C.warning} />
               )}
               <BadgeRentabilite ca={etat.devisTotal} couts={etat.coutTotalReel} />
@@ -2874,8 +2881,8 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
           {modeChantier === 'FINAL' && (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', marginBottom: 16 }}>
             {[
-              { label: 'Marge directe (%)', valeur: `${couts.margeReelPct}%`, couleur: parseFloat(couts.margeReelPct) >= 15 ? C.secondaire : C.danger },
-              { label: 'Marge nette', valeur: `${couts.margeNettePct}%`, couleur: parseFloat(couts.margeNettePct) >= 10 ? C.secondaire : parseFloat(couts.margeNettePct) >= 0 ? C.warning : C.danger, sub: `FG: CHF ${fmtK(couts.fraisGeneraux)}` },
+              { label: 'Marge directe (%)', valeur: couts.margeReelPct !== null ? `${couts.margeReelPct}%` : '—', couleur: (couts.margeReelPct ?? 0) >= 15 ? C.secondaire : C.danger },
+              { label: 'Marge nette', valeur: couts.margeNettePct !== null ? `${couts.margeNettePct}%` : '—', couleur: (couts.margeNettePct ?? 0) >= 10 ? C.secondaire : (couts.margeNettePct ?? 0) >= 0 ? C.warning : C.danger, sub: `FG: CHF ${fmtK(couts.fraisGeneraux)}` },
               { label: 'Coût/m² réel', valeur: couts.coutParM2Reel !== null ? `CHF ${couts.coutParM2Reel}` : '—', couleur: couts.coutParM2Reel !== null ? C.violet : 'var(--text-muted)' },
               { label: 'Prix/m² devis', valeur: couts.prixParM2Devis !== null ? `CHF ${couts.prixParM2Devis}` : '—', couleur: couts.prixParM2Devis !== null ? C.info : 'var(--text-muted)' },
             ].map(s => (
@@ -2961,7 +2968,7 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
         if (chantiersAvecData.length > 0) {
           const sum = chantiersAvecData.reduce((s, c) => {
             const couts = calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis);
-            const v = parseFloat(couts.margeReelPct); return s + (couts.totalCoutsReel > 0 && !isNaN(v) ? v : 0);
+            return s + (couts.totalCoutsReel > 0 && couts.margeReelPct !== null ? couts.margeReelPct : 0);
           }, 0);
           margeMoyenne = Math.round(sum / chantiersAvecData.length);
         }
@@ -3460,7 +3467,7 @@ function Chantiers({ chantiers, setChantiers, factures = [], clients, devis = []
             <div style={{ ...DS.card, padding: 0, overflow: 'hidden' }}>
               {scored.length === 0 ? (
                 <div style={{ padding: '40px 24px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 14 }}>
-                  Aucun chantier à afficher
+                  {contexte?.clientActif || contexte?.employeActif ? 'Aucun chantier ne correspond à ce filtre.' : 'Aucun chantier à afficher.'}
                 </div>
               ) : (
                 <div style={{ overflowX: 'auto' }}>

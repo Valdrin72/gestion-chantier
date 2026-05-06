@@ -126,8 +126,11 @@ export const sommeHeuresRegie = (devis) =>
     ? devis.heuresRegie.reduce((s, r) => s + (parseFloat(r.heures) || 0) * (parseFloat(r.tarifHeure) || 0), 0)
     : 0;
 
-/** Retourne true si le chantier est actif — comparaison insensible à la casse et aux espaces. */
+/** Retourne true si le chantier est opérationnellement actif ("En cours"). */
 export const isChantierActif = (c) => c?.statut?.trim().toLowerCase() === 'en cours';
+
+/** Retourne true si le chantier doit être comptabilisé dans le CA (En cours + Planifié). */
+export const isChantierComptable = (c) => ['en cours', 'planifié'].includes(c?.statut?.trim().toLowerCase());
 
 /**
  * Chiffre d'affaires = montantHT du devis lié + avenants (devis) + avenants (chantier) + heures en régie (devis).
@@ -209,12 +212,6 @@ export const calculerCoutsChantier = (chantier, employes, localites, cfg = {}, d
   });
   const coutEquipeReel = coutEquipeReelDetaille.reduce((t, m) => t + m.cout, 0);
 
-  // Vérification cohérence (écart > 1 CHF entre somme lignes et total)
-  const totalLignes = coutEquipeReelDetaille.reduce((t, m) => t + m.cout, 0);
-  if (Math.abs(totalLignes - coutEquipeReel) > 1) {
-    console.warn('[CYNA] Incohérence coût équipe détectée', { totalLignes, coutEquipeReel });
-  }
-
   const coutImprevus = chantier.imprevus?.reduce((t, imp) => t + (parseFloat(imp.montant) || 0), 0) || 0;
   const coutMaterielPrevu = parseFloat(chantier.coutMaterielPrevu) || 0;
   const coutSousTraitancePrevu = parseFloat(chantier.coutSousTraitancePrevu) || 0;
@@ -249,22 +246,22 @@ export const calculerCoutsChantier = (chantier, employes, localites, cfg = {}, d
 
   const margePrevu = caDisponible ? montantTotal - totalCoutsPrevu : null;
   const margeReel = caDisponible ? montantTotal - totalCoutsReel : null;
-  const margePrevuPct = (caDisponible && montantTotal > 0) ? ((margePrevu / montantTotal) * 100).toFixed(1) : null;
-  const margeReelPct = (caDisponible && montantTotal > 0) ? ((margeReel / montantTotal) * 100).toFixed(1) : null;
+  const margePrevuPct = (caDisponible && montantTotal > 0) ? Math.round((margePrevu / montantTotal) * 1000) / 10 : null;
+  const margeReelPct  = (caDisponible && montantTotal > 0) ? Math.round((margeReel  / montantTotal) * 1000) / 10 : null;
 
   // P7 : coût/m² uniquement si surface renseignée
   const surface = parseFloat(chantier.surface) || 0;
-  const coutParM2Prevu = surface > 0 ? (totalCoutsPrevu / surface).toFixed(2) : null;
-  const coutParM2Reel  = surface > 0 ? (totalCoutsReel  / surface).toFixed(2) : null;
-  const prixParM2Devis = (caDisponible && surface > 0) ? (montantTotal / surface).toFixed(2) : null;
+  const coutParM2Prevu = surface > 0 ? Math.round((totalCoutsPrevu / surface) * 100) / 100 : null;
+  const coutParM2Reel  = surface > 0 ? Math.round((totalCoutsReel  / surface) * 100) / 100 : null;
+  const prixParM2Devis = (caDisponible && surface > 0) ? Math.round((montantTotal / surface) * 100) / 100 : null;
 
   const ecartMontant = caDisponible ? montantTotal - totalCoutsReel : null;
-  const ecartPct = (caDisponible && montantTotal > 0) ? (((montantTotal - totalCoutsReel) / montantTotal) * 100).toFixed(1) : null;
+  const ecartPct = (caDisponible && montantTotal > 0) ? Math.round(((montantTotal - totalCoutsReel) / montantTotal) * 1000) / 10 : null;
 
   // Frais généraux & marge nette
   const fraisGeneraux = caDisponible ? montantTotal * (tauxFG / 100) : 0;
   const margeNette = (caDisponible && margeReel !== null) ? margeReel - fraisGeneraux : null;
-  const margeNettePct = (caDisponible && montantTotal > 0 && margeNette !== null) ? ((margeNette / montantTotal) * 100).toFixed(1) : null;
+  const margeNettePct = (caDisponible && montantTotal > 0 && margeNette !== null) ? Math.round((margeNette / montantTotal) * 1000) / 10 : null;
 
   // P4 : deux valeurs distinctes
   // budgetRestant = ce qui reste dans l'enveloppe budgétaire

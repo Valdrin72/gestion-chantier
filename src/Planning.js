@@ -1,10 +1,10 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { calculerDateFinOuvrables, joursOuvrableRestants, getAlerte } from './donnees';
 import { DS } from './ds';
+import { TOUS_STATUTS } from './constants/statuts';
 
 const MOIS = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
 const JOURS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
-const STATUTS = ['Planifié', 'En cours', 'Suspendu', 'Terminé', 'Facturé', 'Clôturé'];
 const PALETTE = ['#3b82f6','#10b981','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#f97316','#ec4899'];
 
 export default function Planning({ chantiers, setChantiers, clients, naviguer }) {
@@ -389,7 +389,7 @@ export default function Planning({ chantiers, setChantiers, clients, naviguer })
             <div style={{ marginBottom: 28 }}>
               <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Statut</label>
               <select value={modal.form.statut} onChange={e => setModal({ ...modal, form: { ...modal.form, statut: e.target.value } })} style={{ ...DS.input, width: '100%' }}>
-                {STATUTS.map(s => <option key={s} value={s}>{s}</option>)}
+                {TOUS_STATUTS.map(s => <option key={s} value={s}>{s}</option>)}
               </select>
             </div>
             <div style={{ display: 'flex', gap: 10, justifyContent: 'space-between' }}>

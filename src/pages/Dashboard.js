@@ -365,9 +365,12 @@ function Dashboard() {
         (reel && !reel.aucuneSaisie && reel.rentabilite < 0))
       return { niveau: 'critique', score: 2 };
 
-    // Attention : retard interne 1-5j OU renta < 10% OU avancement faible OU dépassement jours OU faible marge réelle
-    // Note : avancement < 20% ne déclenche Attention que si des heures ont été saisies
-    if (retardJ >= 1 || (r !== null && r < 10) || (aCommence && avancement < 20 && reel && !reel.aucuneSaisie) ||
+    // Attention : retard interne 1-5j OU renta < 10% OU dépassement jours OU marge réelle faible
+    // Avancement faible = seulement si >50% des jours planifiés sont déjà consommés mais <30% d'avancement
+    const joursRealisesC = new Set((c.journal || []).map(e => e.date).filter(Boolean)).size;
+    const joursPlannedC = c.nombreJours || 0;
+    const avancementRetard = joursPlannedC > 0 && joursRealisesC > joursPlannedC * 0.5 && avancement < 30;
+    if (retardJ >= 1 || (r !== null && r < 10) || avancementRetard ||
         (reel && reel.enDepassement) || (reel && !reel.aucuneSaisie && reel.rentabilitePct < 15))
       return { niveau: 'attention', score: 1 };
 

@@ -321,23 +321,13 @@
 [data-theme="light"] .sidebar-logo-name { color: #0F172A; }
 [data-theme="light"] .sidebar-logo-sub  { color: #64748B; }
 [data-theme="light"] .sidebar-cta {
-  margin: 12px 4px 14px;
-  background: linear-gradient(135deg, #3B82F6 0%, #4F46E5 100%);
-  color: #fff;
-  border: none;
-  border-radius: 11px;
-  padding: 11px 14px;
-  font-size: 13px;
-  font-weight: 700;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 7px;
-  width: calc(100% - 8px);
-  box-shadow: 0 8px 20px rgba(59,130,246,0.32), inset 0 1px 0 rgba(255,255,255,0.18);
-  font-family: 'DM Sans', Inter, sans-serif;
-  transition: all 0.15s;
+  background: #4F46E5;
+  border-radius: 10px;
+  font-weight: 600;
+  box-shadow: 0 4px 14px rgba(79,70,229,0.3), inset 0 1px 0 rgba(255,255,255,0.15);
+}
+[data-theme="light"] .sidebar-cta:hover {
+  background: #4338CA;
 }
 [data-theme="light"] .sidebar-item { color: #64748B; }
 [data-theme="light"] .sidebar-item svg { color: #94A3B8; }
@@ -595,26 +585,27 @@ label { font-weight: 500; font-size: 12px; color: var(--text-secondary); }
 /* Sidebar CTA button — dark mode */
 .sidebar-cta {
   margin: 12px 4px 14px;
-  background: linear-gradient(135deg, #3B82F6 0%, #4F46E5 100%);
+  background: #4F46E5;
   color: #fff;
   border: none;
-  border-radius: 11px;
+  border-radius: 10px;
   padding: 11px 14px;
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 600;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 7px;
   width: calc(100% - 8px);
-  box-shadow: 0 8px 20px rgba(59,130,246,0.32), inset 0 1px 0 rgba(255,255,255,0.18);
+  box-shadow: 0 4px 14px rgba(79,70,229,0.35), inset 0 1px 0 rgba(255,255,255,0.15);
   font-family: 'DM Sans', Inter, sans-serif;
   transition: all 0.15s;
 }
 .sidebar-cta:hover {
+  background: #4338CA;
   transform: translateY(-1px);
-  box-shadow: 0 12px 24px rgba(59,130,246,0.40), inset 0 1px 0 rgba(255,255,255,0.18);
+  box-shadow: 0 8px 20px rgba(79,70,229,0.45), inset 0 1px 0 rgba(255,255,255,0.15);
 }
 
 /* Sidebar dark/light toggle */

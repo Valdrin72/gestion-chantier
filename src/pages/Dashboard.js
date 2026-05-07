@@ -761,12 +761,11 @@ function Dashboard() {
                   const retardJ = j !== null && j < 0 ? Math.abs(j) : 0;
                   const mPct = couts.montantTotal > 0 && couts.totalCoutsReel > 0 && couts.margeReelPct !== null ? Math.round(couts.margeReelPct) : null;
                   const joursTotal = c.nombreJours || 0;
-                  const joursEcoules = c.dateDebut
-                    ? Math.max(0, Math.floor((Date.now() - new Date(c.dateDebut).getTime()) / 86400000))
-                    : null;
+                  // j = jours ouvrables restants → joursEcoules en jours ouvrables pour cohérence
+                  const joursEcoules = j !== null ? Math.max(0, joursTotal - j) : null;
                   const margeVal = parseFloat(couts?.margeReelPct) || 0;
                   const sansCouts = !couts?.margeReelPct;
-                  const avancementVal = sansCouts ? 0 : Math.min(Math.round(((joursEcoules || 0) / (joursTotal || 1)) * 100), 100);
+                  const avancementVal = sansCouts || joursTotal === 0 ? 0 : Math.min(Math.round(((joursEcoules || 0) / joursTotal) * 100), 100);
                   const couleurBarre = sansCouts ? '#CBD5E1'
                     : margeVal > 20 ? '#10B981'
                     : margeVal > 10 ? '#F59E0B'

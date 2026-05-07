@@ -1,7 +1,7 @@
 import React from 'react';
 import { ChevronRight } from 'lucide-react';
 import {
-  joursOuvrableRestants, statutRentabilite, C, calculerEcartChantier,
+  statutRentabilite, C, calculerEcartChantier,
 } from '../../../donnees';
 import { DS } from '../../../ds';
 
@@ -9,12 +9,11 @@ function DetailRentabilite({ c, etat, couts, naviguer, fmtN, fmtK }) {
   const carteStyle = DS.card;
   const joursPrevu = etat.totalJoursPrevus;
   const joursRealises = etat.totalJoursReels;
-  const joursCalRestants = joursOuvrableRestants(c.dateDebut, joursPrevu, c.inclusSamedi);
   const rj = {
     joursPrevu,
     joursRealises,
     joursRestants: joursPrevu - joursRealises,
-    enDepassement: joursCalRestants !== null && joursCalRestants < 0,
+    enDepassement: joursRealises > joursPrevu,
     enAvance: false,
     aucuneSaisie: joursRealises === 0,
     coutMOPrevu: couts.coutEquipePrevu,
@@ -32,9 +31,7 @@ function DetailRentabilite({ c, etat, couts, naviguer, fmtN, fmtK }) {
     ? 'var(--text-muted)'
     : rj.enDepassement
       ? C.danger
-      : rj.enAvance
-        ? C.secondaire
-        : C.warning;
+      : C.primaire;
 
   const labelStatutJours = rj.aucuneSaisie
     ? 'Pas de données'
@@ -131,7 +128,7 @@ function DetailRentabilite({ c, etat, couts, naviguer, fmtN, fmtK }) {
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 10 }}>
             {[
-              { label: 'Coût MO réel',     valeur: `CHF ${fmtN(rj.coutMOReel)}`,     couleur: C.warning },
+              { label: 'Coût MO réel',     valeur: rj.coutMOReel > 0 ? `CHF ${fmtN(rj.coutMOReel)}` : '—', couleur: rj.coutMOReel > 0 ? C.warning : '#78909c' },
               { label: 'Autres coûts',      valeur: `CHF ${fmtN(rj.autresCouts)}`,    couleur: '#78909c' },
               { label: 'Total coûts réels', valeur: `CHF ${fmtN(rj.totalCoutsReel)}`, couleur: C.danger },
               { label: 'Rentabilité réelle',valeur: `CHF ${fmtN(rj.rentabilite)}`,    couleur: couleurRenta },

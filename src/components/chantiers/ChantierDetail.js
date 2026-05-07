@@ -26,7 +26,9 @@ const btnSucces = DS.btnSuccess;
 const btnDanger = DS.btnDanger;
 
 function ChantierDetail({ chantier, detailOnglet, setDetailOnglet, modeCompleter, onRetour, onModifier, onSupprimer, onPasserEnCours }) {
-  const { factures = [], clients, devis = [], parametres, naviguer, ouvrirSaisieHeures } = useApp();
+  const { factures = [], clients, devis = [], parametres, naviguer, ouvrirSaisieHeures, agentState } = useApp();
+  const patterns = agentState?.patterns || {};
+  const patternChantier = c.typeChantier && patterns[c.typeChantier] ? patterns[c.typeChantier] : null;
   const { etat, couts } = useChantierCalculs(chantier);
   const couleurStatut = couleurStatutDS;
 
@@ -207,6 +209,21 @@ function ChantierDetail({ chantier, detailOnglet, setDetailOnglet, modeCompleter
 
   return (<React.Fragment key="detail">
     <div>
+      {modeChantier === 'INIT' && patternChantier && Math.abs(patternChantier.ecartMoyen) >= 1 && (() => {
+        const ca = calculerCA(c, devis);
+        const budgetSuggere = ca !== null ? Math.round(ca * (1 + patternChantier.ecartMoyen / 100)) : null;
+        const positif = patternChantier.ecartMoyen > 0;
+        return (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, background: positif ? '#FEF3C7' : '#ECFDF5', border: `1px solid ${positif ? '#FDE68A' : '#6EE7B7'}`, borderRadius: 12, padding: '12px 16px', marginBottom: 16 }}>
+            <AlertTriangle size={18} style={{ color: positif ? '#92400E' : '#065F46', flexShrink: 0 }} />
+            <div style={{ flex: 1, fontSize: 13, color: positif ? '#92400E' : '#065F46' }}>
+              <strong>Mémoire IA — {c.typeChantier}</strong> · Historiquement ce type {positif ? 'dépasse' : 'reste sous'} le budget de {Math.abs(patternChantier.ecartMoyen).toFixed(1)}% (sur {patternChantier.count} chantier{patternChantier.count > 1 ? 's' : ''})
+              {budgetSuggere !== null && (<> — budget suggéré : <strong>CHF {fmtN(budgetSuggere)}</strong></>)}
+            </div>
+          </div>
+        );
+      })()}
+
       {estNouveauPlanifie && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, background: 'linear-gradient(135deg, #ecfdf5, #d1fae5)', border: '1px solid #6ee7b7', borderRadius: 12, padding: '14px 18px', marginBottom: 16 }}>
           <span style={{ fontSize: 22 }}>🎉</span>

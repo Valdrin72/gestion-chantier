@@ -325,39 +325,45 @@ export default function Agents({
         <div>
           {Object.keys(patterns).length === 0 ? (
             <div style={{ ...DS.card, textAlign: 'center', padding: '40px 20px', color: 'var(--text-muted)', fontSize: 13 }}>
-              Aucun pattern disponible — des chantiers terminés sont nécessaires pour construire la mémoire.
+              Aucun chantier terminé analysé
             </div>
           ) : (
             <div>
               <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 16 }}>
                 Ces patterns sont utilisés pour afficher des suggestions lors de la création de devis du même type de chantier.
               </p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {Object.values(patterns).map(p => (
-                  <div key={p.type} style={{ ...DS.card, padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 16 }}>
-                    <div style={{ width: 44, height: 44, borderRadius: 10, background: '#f59e0b18', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                      <Brain size={20} strokeWidth={1.8} style={{ color: '#f59e0b' }} />
-                    </div>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-primary)', marginBottom: 2 }}>{p.type}</div>
-                      <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-                        Basé sur {p.count} chantier{p.count > 1 ? 's' : ''} terminé{p.count > 1 ? 's' : ''}
-                      </div>
-                    </div>
-                    <div style={{ textAlign: 'right' }}>
-                      <div style={{ fontSize: 22, fontWeight: 900, color: p.ecartMoyen > 0 ? '#ef4444' : '#10b981', letterSpacing: '-0.5px' }}>
-                        {p.ecartMoyen > 0 ? '+' : ''}{p.ecartMoyen.toFixed(1)}%
-                      </div>
-                      <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>écart budget moyen</div>
-                    </div>
-                    <div style={{ textAlign: 'right' }}>
-                      <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-secondary)' }}>
-                        {p.ecartMedian > 0 ? '+' : ''}{p.ecartMedian.toFixed(1)}%
-                      </div>
-                      <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>médiane</div>
-                    </div>
-                  </div>
-                ))}
+              <div style={{ ...DS.card, padding: 0, overflow: 'hidden' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                  <thead>
+                    <tr style={{ background: 'var(--bg-glass)', borderBottom: '1px solid var(--border)' }}>
+                      <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700, fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.6px' }}>Type de chantier</th>
+                      <th style={{ padding: '12px 16px', textAlign: 'center', fontWeight: 700, fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.6px' }}>Nb chantiers</th>
+                      <th style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 700, fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.6px' }}>Écart moyen</th>
+                      <th style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 700, fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.6px' }}>Écart médian</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {Object.values(patterns).map(p => {
+                      const moyCouleur = p.ecartMoyen > 0 ? '#ef4444' : '#10b981';
+                      const medCouleur = p.ecartMedian > 0 ? '#ef4444' : '#10b981';
+                      return (
+                        <tr key={p.type} style={{ borderBottom: '1px solid var(--border)' }}>
+                          <td style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <Brain size={16} strokeWidth={1.8} style={{ color: '#f59e0b' }} />
+                            <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{p.type}</span>
+                          </td>
+                          <td style={{ padding: '12px 16px', textAlign: 'center', color: 'var(--text-secondary)' }}>{p.count}</td>
+                          <td style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 700, color: moyCouleur }}>
+                            {p.ecartMoyen > 0 ? '+' : ''}{p.ecartMoyen.toFixed(1)}%
+                          </td>
+                          <td style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 700, color: medCouleur }}>
+                            {p.ecartMedian > 0 ? '+' : ''}{p.ecartMedian.toFixed(1)}%
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
             </div>
           )}

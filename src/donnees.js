@@ -747,6 +747,18 @@ export const donneesInitiales = {
     joursAlerte: 5,
   },
 
+  // CONFIG AGENTS IA (seuils configurables)
+  agentsConfig: {
+    alerteChantier: {
+      seuilMargeDanger: 0,
+      seuilMargeAttention: 15,
+      seuilRetardAttention: 3,
+      seuilRetardCritique: 7,
+      seuilBudgetAttention: 5,
+      seuilBudgetDanger: 20,
+    },
+  },
+
   // ZONES GÉOGRAPHIQUES
   zones: [
     {

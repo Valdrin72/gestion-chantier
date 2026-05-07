@@ -42,7 +42,25 @@ function Parametres({ parametres, setParametres, clients = [], setClients = () =
     { id: 'qualite', label: 'Qualité', desc: 'Checklists' },
     { id: 'paiements', label: 'Paiements', desc: 'Délais et rappels' },
     { id: 'rapport', label: 'Rapport', desc: 'Alertes hebdo' },
+    { id: 'agents', label: 'Agents IA', desc: 'Seuils des alertes' },
   ];
+
+  const AGENT_DEFAULTS = {
+    seuilMargeDanger: 0,
+    seuilMargeAttention: 15,
+    seuilRetardAttention: 3,
+    seuilRetardCritique: 7,
+    seuilBudgetAttention: 5,
+    seuilBudgetDanger: 20,
+  };
+  const agentConf = { ...AGENT_DEFAULTS, ...(parametres.agentsConfig?.alerteChantier || {}) };
+  const sauvAgentConf = (key, val) => sauv({
+    ...parametres,
+    agentsConfig: {
+      ...(parametres.agentsConfig || {}),
+      alerteChantier: { ...agentConf, [key]: parseFloat(val) || 0 },
+    },
+  });
 
   return (
     <div>
@@ -357,6 +375,84 @@ function Parametres({ parametres, setParametres, clients = [], setClients = () =
                   style={{ ...inputStyle, fontWeight: 'bold', fontSize: '18px', color: C.primaire, borderColor: C.primaire, borderWidth: '2px' }} />
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {onglet === 'agents' && (
+        <div style={carteStyle}>
+          <div className="ds-card-title" style={{ marginBottom: '8px' }}>Agent Alerte Chantier — Seuils</div>
+          <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 22 }}>
+            Configure les seuils déclenchant les alertes automatiques sur les chantiers actifs.
+            Les modifications sont prises en compte à la prochaine exécution de l'agent.
+          </div>
+
+          <div style={{ marginBottom: 22 }}>
+            <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', color: 'var(--text-muted)', marginBottom: 12 }}>Seuils de marge</div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 15 }}>
+              <div style={{ background: 'var(--bg-glass-2)', border: '1px solid var(--border)', borderRadius: 12, padding: 15 }}>
+                <label style={labelStyle}>Seuil ATTENTION (%)</label>
+                <input type="number" min="0" max="100" value={agentConf.seuilMargeAttention}
+                  onChange={e => sauvAgentConf('seuilMargeAttention', e.target.value)}
+                  style={{ ...inputStyle, fontWeight: 'bold', fontSize: 18, color: C.warning, borderColor: C.warning, borderWidth: 2 }} />
+                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 6 }}>Alerte orange si marge réelle en dessous</div>
+              </div>
+              <div style={{ background: 'var(--bg-glass-2)', border: '1px solid var(--border)', borderRadius: 12, padding: 15 }}>
+                <label style={labelStyle}>Seuil DANGER (%)</label>
+                <input type="number" min="0" max="100" value={agentConf.seuilMargeDanger}
+                  onChange={e => sauvAgentConf('seuilMargeDanger', e.target.value)}
+                  style={{ ...inputStyle, fontWeight: 'bold', fontSize: 18, color: C.danger, borderColor: C.danger, borderWidth: 2 }} />
+                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 6 }}>Alerte rouge si marge réelle en dessous</div>
+              </div>
+            </div>
+          </div>
+
+          <div style={{ marginBottom: 22 }}>
+            <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', color: 'var(--text-muted)', marginBottom: 12 }}>Seuils de retard</div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 15 }}>
+              <div style={{ background: 'var(--bg-glass-2)', border: '1px solid var(--border)', borderRadius: 12, padding: 15 }}>
+                <label style={labelStyle}>Seuil ATTENTION (jours)</label>
+                <input type="number" min="0" max="100" value={agentConf.seuilRetardAttention}
+                  onChange={e => sauvAgentConf('seuilRetardAttention', e.target.value)}
+                  style={{ ...inputStyle, fontWeight: 'bold', fontSize: 18, color: C.warning, borderColor: C.warning, borderWidth: 2 }} />
+                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 6 }}>Alerte orange à partir de ce nombre de jours</div>
+              </div>
+              <div style={{ background: 'var(--bg-glass-2)', border: '1px solid var(--border)', borderRadius: 12, padding: 15 }}>
+                <label style={labelStyle}>Seuil CRITIQUE (jours)</label>
+                <input type="number" min="0" max="100" value={agentConf.seuilRetardCritique}
+                  onChange={e => sauvAgentConf('seuilRetardCritique', e.target.value)}
+                  style={{ ...inputStyle, fontWeight: 'bold', fontSize: 18, color: C.danger, borderColor: C.danger, borderWidth: 2 }} />
+                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 6 }}>Alerte rouge au-delà de ce nombre de jours</div>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', color: 'var(--text-muted)', marginBottom: 12 }}>Seuils de dépassement budget</div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 15 }}>
+              <div style={{ background: 'var(--bg-glass-2)', border: '1px solid var(--border)', borderRadius: 12, padding: 15 }}>
+                <label style={labelStyle}>Seuil ATTENTION (%)</label>
+                <input type="number" min="0" max="100" value={agentConf.seuilBudgetAttention}
+                  onChange={e => sauvAgentConf('seuilBudgetAttention', e.target.value)}
+                  style={{ ...inputStyle, fontWeight: 'bold', fontSize: 18, color: C.warning, borderColor: C.warning, borderWidth: 2 }} />
+                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 6 }}>Alerte orange au-delà de ce % de dépassement</div>
+              </div>
+              <div style={{ background: 'var(--bg-glass-2)', border: '1px solid var(--border)', borderRadius: 12, padding: 15 }}>
+                <label style={labelStyle}>Seuil DANGER (%)</label>
+                <input type="number" min="0" max="100" value={agentConf.seuilBudgetDanger}
+                  onChange={e => sauvAgentConf('seuilBudgetDanger', e.target.value)}
+                  style={{ ...inputStyle, fontWeight: 'bold', fontSize: 18, color: C.danger, borderColor: C.danger, borderWidth: 2 }} />
+                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 6 }}>Alerte rouge au-delà de ce % de dépassement</div>
+              </div>
+            </div>
+          </div>
+
+          <div style={{ marginTop: 24, display: 'flex', gap: 10, alignItems: 'center' }}>
+            <button onClick={() => sauv({ ...parametres })} style={btnSucces}>Sauvegarder</button>
+            <button
+              onClick={() => sauv({ ...parametres, agentsConfig: { ...(parametres.agentsConfig || {}), alerteChantier: { ...AGENT_DEFAULTS } } })}
+              style={btnPrimaire}
+            >Réinitialiser aux valeurs par défaut</button>
           </div>
         </div>
       )}

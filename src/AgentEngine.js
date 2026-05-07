@@ -17,6 +17,15 @@ export function runAlerteChantier({ chantiers, devis, parametres }) {
   const alertes = [];
   const actifs = chantiers.filter(isChantierActif);
 
+  const config = parametres?.agentsConfig?.alerteChantier || {
+    seuilMargeDanger: 0,
+    seuilMargeAttention: 15,
+    seuilRetardAttention: 3,
+    seuilRetardCritique: 7,
+    seuilBudgetAttention: 5,
+    seuilBudgetDanger: 20,
+  };
+
   actifs.forEach(c => {
     try {
       const couts = calculerCoutsChantier(
@@ -26,10 +35,10 @@ export function runAlerteChantier({ chantiers, devis, parametres }) {
       const joursRestants = joursOuvrableRestants(c.dateDebut, parseInt(c.nombreJours) || 0, c.inclusSamedi);
       const retardJ = joursRestants !== null && joursRestants < 0 ? Math.abs(joursRestants) : 0;
 
-      // Marge < 15%
+      // Marge — seuils configurables
       if (couts.montantTotal > 0 && couts.totalCoutsReel > 0) {
         const marge = parseFloat(couts.margeReelPct);
-        if (marge < 0) {
+        if (marge < config.seuilMargeDanger) {
           alertes.push({
             id: uid('ac-perte'),
             agent: 'AlerteChantier',
@@ -42,14 +51,14 @@ export function runAlerteChantier({ chantiers, devis, parametres }) {
             lu: false,
             action: { page: 'chantiers', ctx: { chantierActif: c.id } },
           });
-        } else if (marge < 15) {
+        } else if (marge < config.seuilMargeAttention) {
           alertes.push({
             id: uid('ac-marge'),
             agent: 'AlerteChantier',
             type: 'marge',
             niveau: 'ATTENTION',
             message: `${c.nom || c.numero} — marge faible à ${marge.toFixed(1)}%`,
-            detail: `Seuil cible : 15% · écart : ${(15 - marge).toFixed(1)} pts`,
+            detail: `Seuil cible : ${config.seuilMargeAttention}% · écart : ${(config.seuilMargeAttention - marge).toFixed(1)} pts`,
             chantier_id: c.id,
             timestamp: Date.now(),
             lu: false,
@@ -58,13 +67,13 @@ export function runAlerteChantier({ chantiers, devis, parametres }) {
         }
       }
 
-      // Retard > 3 jours
-      if (retardJ > 3) {
+      // Retard — seuils configurables
+      if (retardJ > config.seuilRetardAttention) {
         alertes.push({
           id: uid('ac-retard'),
           agent: 'AlerteChantier',
           type: 'retard',
-          niveau: retardJ > 7 ? 'CRITIQUE' : 'ATTENTION',
+          niveau: retardJ > config.seuilRetardCritique ? 'CRITIQUE' : 'ATTENTION',
           message: `${c.nom || c.numero} — retard de ${retardJ} jour${retardJ > 1 ? 's' : ''}`,
           detail: `Fin prévue dépassée de ${retardJ}j ouvrables`,
           chantier_id: c.id,
@@ -74,15 +83,15 @@ export function runAlerteChantier({ chantiers, devis, parametres }) {
         });
       }
 
-      // Budget dépassé > 5%
+      // Budget dépassé — seuils configurables
       if (couts.totalCoutsPrevu > 0 && couts.totalCoutsReel > 0) {
         const depassPct = ((couts.totalCoutsReel - couts.totalCoutsPrevu) / couts.totalCoutsPrevu) * 100;
-        if (depassPct > 5) {
+        if (depassPct > config.seuilBudgetAttention) {
           alertes.push({
             id: uid('ac-budget'),
             agent: 'AlerteChantier',
             type: 'budget',
-            niveau: depassPct > 20 ? 'DANGER' : 'ATTENTION',
+            niveau: depassPct > config.seuilBudgetDanger ? 'DANGER' : 'ATTENTION',
             message: `${c.nom || c.numero} — budget dépassé de ${depassPct.toFixed(0)}%`,
             detail: `Prévu CHF ${fmtN(Math.round(couts.totalCoutsPrevu))} · Réel CHF ${fmtN(Math.round(couts.totalCoutsReel))}`,
             chantier_id: c.id,

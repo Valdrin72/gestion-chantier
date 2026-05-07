@@ -757,12 +757,11 @@ function Dashboard() {
                   const montantCA = calculerCA(c, devis);
                   const couts = coutsMap.get(c.id) || {};
                   const progress = Math.max(0, Math.min(100, Number(c.avancement ?? 0)));
-                  const j = joursParChantier[c.id];
-                  const retardJ = j !== null && j < 0 ? Math.abs(j) : 0;
                   const mPct = couts.montantTotal > 0 && couts.totalCoutsReel > 0 && couts.margeReelPct !== null ? Math.round(couts.margeReelPct) : null;
                   const joursTotal = c.nombreJours || 0;
                   // Jours réellement travaillés = dates distinctes dans le journal des heures
                   const joursRealises = new Set((c.journal || []).map(e => e.date).filter(Boolean)).size;
+                  const joursRestants = joursTotal > 0 ? Math.max(0, joursTotal - joursRealises) : null;
                   const margeVal = parseFloat(couts?.margeReelPct) || 0;
                   const sansCouts = !couts?.margeReelPct;
                   const avancementVal = joursTotal === 0 ? 0 : Math.min(Math.round((joursRealises / joursTotal) * 100), 100);
@@ -771,11 +770,16 @@ function Dashboard() {
                     : margeVal > 20 ? '#10B981'
                     : margeVal > 10 ? '#F59E0B'
                     : '#EF4444';
-                  const statutJours = retardJ > 0 ? { label: `En retard ${retardJ}j`, couleur: '#ef4444' }
-                    : j === 0 ? { label: "Fin aujourd'hui", couleur: '#f59e0b' }
-                    : j !== null && j <= 3 ? { label: `${j}j restants`, couleur: '#f59e0b' }
-                    : j !== null ? { label: 'En avance', couleur: '#10b981' }
-                    : { label: '—', couleur: 'var(--text-muted)' };
+                  const depasse = joursTotal > 0 && joursRealises > joursTotal;
+                  const statutJours = depasse
+                    ? { label: `+${joursRealises - joursTotal}j dépassement`, couleur: '#ef4444' }
+                    : joursRestants === 0
+                      ? { label: 'Terminé', couleur: '#10b981' }
+                      : joursRestants !== null && joursRestants <= 3
+                        ? { label: `${joursRestants}j restants`, couleur: '#f59e0b' }
+                        : joursRestants !== null
+                          ? { label: `${joursRestants}j restants`, couleur: 'var(--text-muted)' }
+                          : { label: '—', couleur: 'var(--text-muted)' };
                   return (
                     <div key={c.id} onClick={() => naviguer('chantiers', { chantierActif: c.id })}
                       style={{ padding: '14px', borderRadius: 12, border: '1px solid var(--dash-border)', cursor: 'pointer', background: 'var(--bg-glass)', transition: 'all 0.15s' }}

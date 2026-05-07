@@ -116,7 +116,7 @@ export function runSuiviDevis({ devis, factures, clients }) {
   devisAcceptes.forEach(d => {
     try {
       const aFacture = (factures || []).some(f =>
-        String(f.devisId) === String(d.id) || String(f.chantierId) === String(d.chantierId)
+        String(f.devisId) === String(d.id)
       );
       if (aFacture) return;
 

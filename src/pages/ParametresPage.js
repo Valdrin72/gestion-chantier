@@ -1,9 +1,43 @@
 import React, { useState } from 'react';
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, Pencil } from 'lucide-react';
 import { fmtN, C } from '../donnees';
 import { DS } from '../ds';
-import Clients from './ClientsPage';
 import { EditEmployeRow } from './EmployesPage';
+
+function EditClientRow({ c, clients, setClients }) {
+  const [ed, setEd] = useState({ ...c });
+  const [editing, setEditing] = useState(false);
+  if (!editing) return (
+    <tr key={c.id}>
+      <td style={DS.td}><strong>{c.nom}</strong></td>
+      <td style={DS.td}>{c.prenom || '—'}</td>
+      <td style={DS.td}>{c.entreprise || '—'}</td>
+      <td style={DS.td}>{c.telephone || '—'}</td>
+      <td style={DS.td}>{c.email || '—'}</td>
+      <td style={DS.td}>
+        <div style={{ display: 'flex', gap: 4 }}>
+          <button onClick={() => setEditing(true)} style={{ ...DS.btnGhost, padding: '4px 10px', fontSize: 12 }}><Pencil size={12} /> Modifier</button>
+          <button onClick={() => { if (window.confirm(`Supprimer ${c.nom} ?`)) setClients(clients.filter(cl => cl.id !== c.id)); }} style={{ ...DS.btnDanger, padding: '4px 8px' }}>Suppr</button>
+        </div>
+      </td>
+    </tr>
+  );
+  return (
+    <tr key={c.id} style={{ background: 'rgba(59,130,246,0.06)' }}>
+      <td style={DS.td}><input value={ed.nom || ''} onChange={ev => setEd({ ...ed, nom: ev.target.value })} style={{ ...DS.input, padding: '5px 8px' }} /></td>
+      <td style={DS.td}><input value={ed.prenom || ''} onChange={ev => setEd({ ...ed, prenom: ev.target.value })} style={{ ...DS.input, padding: '5px 8px' }} /></td>
+      <td style={DS.td}><input value={ed.entreprise || ''} onChange={ev => setEd({ ...ed, entreprise: ev.target.value })} style={{ ...DS.input, padding: '5px 8px' }} /></td>
+      <td style={DS.td}><input value={ed.telephone || ''} onChange={ev => setEd({ ...ed, telephone: ev.target.value })} style={{ ...DS.input, padding: '5px 8px' }} /></td>
+      <td style={DS.td}><input value={ed.email || ''} onChange={ev => setEd({ ...ed, email: ev.target.value })} style={{ ...DS.input, padding: '5px 8px' }} /></td>
+      <td style={DS.td}>
+        <div style={{ display: 'flex', gap: 4 }}>
+          <button onClick={() => { setClients(clients.map(cl => cl.id === c.id ? ed : cl)); setEditing(false); }} style={DS.btnSuccess}>OK</button>
+          <button onClick={() => setEditing(false)} style={DS.btnDanger}>×</button>
+        </div>
+      </td>
+    </tr>
+  );
+}
 
 const inputStyle = DS.input;
 const labelStyle = DS.label;
@@ -17,6 +51,7 @@ const btnDanger  = DS.btnDanger;
 function Parametres({ parametres, setParametres, clients = [], setClients = () => {}, chantiers = [], devis = [], naviguer = () => {} }) {
   const [onglet, setOnglet] = useState('dashboard');
   const [nouvelEmploye, setNouvelEmploye] = useState({ nom: '', poste: 'Ouvrier qualifié', tarifJour: '', telephone: '', email: '' });
+  const [nouveauClient, setNouveauClient] = useState({ nom: '', prenom: '', entreprise: '', telephone: '', email: '' });
   const [nouvelleLocalite, setNouvelleLocalite] = useState({ nom: '', tarifJour: '' });
   const [nouveauTravail, setNouveauTravail] = useState({ nom: '', unite: 'm²', tarifBase: '' });
   const [saved, setSaved] = useState(false);
@@ -403,7 +438,31 @@ function Parametres({ parametres, setParametres, clients = [], setClients = () =
       )}
 
       {onglet === 'clients_param' && (
-        <Clients clients={clients} setClients={setClients} chantiers={chantiers} devis={devis} naviguer={naviguer} />
+        <div style={carteStyle}>
+          <div className="ds-card-title" style={{ marginBottom: '20px' }}>Carnet d'adresses clients</div>
+          <table className="table-cards" style={{ width: '100%', marginBottom: '20px' }}>
+            <thead><tr>
+              {['Nom', 'Prénom', 'Entreprise', 'Téléphone', 'Email', 'Action'].map(h => <th key={h} style={thStyle}>{h}</th>)}
+            </tr></thead>
+            <tbody>
+              {clients.map(c => <EditClientRow key={c.id} c={c} clients={clients} setClients={setClients} />)}
+            </tbody>
+          </table>
+          <div style={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', color: 'var(--text-muted)', marginBottom: '12px', marginTop: '24px' }}>Ajouter un client</div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr 1fr auto', gap: '10px', alignItems: 'end' }}>
+            {[['Nom', 'nom', 'Dupont'], ['Prénom', 'prenom', 'Marc'], ['Entreprise', 'entreprise', 'Dupont SA'], ['Téléphone', 'telephone', '022...'], ['Email', 'email', 'email@...']].map(([label, key, ph]) => (
+              <div key={key}><label style={labelStyle}>{label}</label>
+                <input type="text" placeholder={ph} value={nouveauClient[key]}
+                  onChange={e => setNouveauClient({ ...nouveauClient, [key]: e.target.value })} style={inputStyle} /></div>
+            ))}
+            <button onClick={() => {
+              if (nouveauClient.nom) {
+                setClients([...clients, { ...nouveauClient, id: Date.now() }]);
+                setNouveauClient({ nom: '', prenom: '', entreprise: '', telephone: '', email: '' });
+              }
+            }} style={btnPrimaire}>+ Ajouter</button>
+          </div>
+        </div>
       )}
         </div>{/* end content panel */}
       </div>{/* end 260/1fr grid */}

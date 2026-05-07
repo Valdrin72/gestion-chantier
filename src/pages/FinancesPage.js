@@ -87,7 +87,53 @@ function Tresorerie({ factures = [], chantiers = [], clients = [], devis = [] })
       : totalRetard > 0 || totalCetteSemaine > 0 ? 'warning'
       : 'ok';
 
-    return { impayees, aFacturer, semaines, maxSemaine, totalAEncaisser, totalRetard, totalCetteSemaine, totalAFacturer, total60j, signalCash };
+    // ── 5. Stats cumulées (performance globale) ──────────────────
+    const factActives = factures.filter(f => f.statut !== 'annulee');
+    const caTotalFacture = factActives.reduce((s, f) => s + (parseFloat(f.montantTTC) || 0), 0);
+    const encaisseTotal  = factActives.reduce((s, f) => s + (parseFloat(f.montantPaye) || 0), 0);
+    const nbFactures     = factActives.length;
+    const ticketMoyen    = nbFactures > 0 ? caTotalFacture / nbFactures : 0;
+    const tauxEncaissement = caTotalFacture > 0 ? Math.round((encaisseTotal / caTotalFacture) * 100) : 0;
+
+    // Délai moyen paiement (sur factures payées, depuis dateFacture jusqu'au dernier paiement)
+    const delais = factActives
+      .filter(f => f.statut === 'payee' && f.dateFacture && (f.paiementsHistorique || []).length > 0)
+      .map(f => {
+        const last = [...f.paiementsHistorique].sort((a, b) => (a.date || '').localeCompare(b.date || '')).pop();
+        if (!last?.date) return null;
+        const d = Math.round((new Date(last.date) - new Date(f.dateFacture)) / 86400000);
+        return d >= 0 ? d : null;
+      })
+      .filter(d => d !== null);
+    const delaiMoyen = delais.length > 0 ? Math.round(delais.reduce((s, d) => s + d, 0) / delais.length) : null;
+
+    // Top clients par CA
+    const caParClient = {};
+    factActives.forEach(f => {
+      const cl = clients.find(c => String(c.id) === String(f.clientId));
+      if (!cl) return;
+      if (!caParClient[cl.id]) caParClient[cl.id] = { nom: cl.entreprise || `${cl.prenom || ''} ${cl.nom || ''}`.trim() || '—', ca: 0, nb: 0 };
+      caParClient[cl.id].ca += parseFloat(f.montantTTC) || 0;
+      caParClient[cl.id].nb += 1;
+    });
+    const topClients = Object.values(caParClient).sort((a, b) => b.ca - a.ca).slice(0, 5);
+
+    // Top chantiers par CA facturé
+    const caParChantier = {};
+    factActives.forEach(f => {
+      const ch = chantiers.find(c => String(c.id) === String(f.chantierId));
+      if (!ch) return;
+      if (!caParChantier[ch.id]) caParChantier[ch.id] = { nom: ch.nom || ch.numero || '—', ca: 0 };
+      caParChantier[ch.id].ca += parseFloat(f.montantTTC) || 0;
+    });
+    const topChantiers = Object.values(caParChantier).sort((a, b) => b.ca - a.ca).slice(0, 5);
+
+    return {
+      impayees, aFacturer, semaines, maxSemaine,
+      totalAEncaisser, totalRetard, totalCetteSemaine, totalAFacturer, total60j, signalCash,
+      caTotalFacture, encaisseTotal, nbFactures, ticketMoyen, tauxEncaissement, delaiMoyen,
+      topClients, topChantiers,
+    };
   }, [factures, chantiers, clients, devis]);
 
   const urgenceConfig = {
@@ -237,6 +283,110 @@ function Tresorerie({ factures = [], chantiers = [], clients = [], devis = [] })
           )}
         </div>
       </div>
+
+      {/* ── Performance globale (toujours rempli s'il y a des factures) ── */}
+      {data.nbFactures > 0 && (
+        <div style={{ marginTop: 24 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <TrendingUp size={15} style={{ color: '#3b82f6' }} />
+            Performance globale
+            <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 500 }}>(toutes périodes confondues)</span>
+          </div>
+
+          {/* KPIs cumulés */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 14, marginBottom: 20 }}>
+            {[
+              { label: 'CA facturé total',    val: `CHF ${fmt(data.caTotalFacture)}`,  couleur: '#3b82f6', Icon: FileText,   sub: `${data.nbFactures} facture${data.nbFactures !== 1 ? 's' : ''}` },
+              { label: 'Encaissé total',      val: `CHF ${fmt(data.encaisseTotal)}`,    couleur: '#10b981', Icon: DollarSign, sub: `Taux ${data.tauxEncaissement}%` },
+              { label: 'Ticket moyen',        val: `CHF ${fmt(data.ticketMoyen)}`,      couleur: '#8b5cf6', Icon: TrendingUp, sub: 'par facture' },
+              { label: 'Délai paiement moyen', val: data.delaiMoyen !== null ? `${data.delaiMoyen} j` : '—', couleur: '#f59e0b', Icon: Clock, sub: data.delaiMoyen !== null ? 'sur factures payées' : 'pas encore de données' },
+            ].map(k => (
+              <div key={k.label} style={{ background: 'var(--ds-card-bg)', border: '1px solid var(--ds-card-border)', borderRadius: 14, padding: '18px 20px', boxShadow: 'var(--ds-card-shadow)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+                  <div style={{ width: 36, height: 36, borderRadius: 10, background: k.couleur + '14', border: `1px solid ${k.couleur}28`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <k.Icon size={16} style={{ color: k.couleur }} strokeWidth={2} />
+                  </div>
+                  <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px', color: 'var(--text-muted)' }}>{k.label}</div>
+                </div>
+                <div style={{ fontSize: 22, fontWeight: 900, color: 'var(--text-primary)', letterSpacing: '-0.5px', lineHeight: 1.1 }}>{k.val}</div>
+                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 5 }}>{k.sub}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Top clients + Top chantiers */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+            <div style={{ background: 'var(--surface-glass)', border: '1px solid var(--border-glass)', borderRadius: 16, padding: '20px 22px' }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <DollarSign size={14} style={{ color: '#3b82f6' }} />
+                Top clients par CA
+              </div>
+              {data.topClients.length === 0 ? (
+                <div style={{ color: 'var(--text-muted)', fontSize: 13, textAlign: 'center', padding: '20px 0' }}>Aucun client facturé</div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {data.topClients.map((cl, i) => {
+                    const pct = data.caTotalFacture > 0 ? (cl.ca / data.caTotalFacture) * 100 : 0;
+                    return (
+                      <div key={i} style={{ padding: '10px 14px', borderRadius: 10, background: 'rgba(59,130,246,0.06)', border: '1px solid rgba(59,130,246,0.15)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8, marginBottom: 6 }}>
+                          <div style={{ minWidth: 0, flex: 1 }}>
+                            <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              <span style={{ color: '#3b82f6', fontWeight: 800, marginRight: 6 }}>#{i + 1}</span>{cl.nom}
+                            </div>
+                            <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{cl.nb} facture{cl.nb > 1 ? 's' : ''}</div>
+                          </div>
+                          <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                            <div style={{ fontSize: 13, fontWeight: 800, color: '#3b82f6' }}>CHF {fmt(cl.ca)}</div>
+                            <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>{pct.toFixed(0)}% du CA</div>
+                          </div>
+                        </div>
+                        <div style={{ height: 4, background: 'var(--border-glass)', borderRadius: 4 }}>
+                          <div style={{ height: '100%', width: `${pct}%`, background: 'linear-gradient(90deg, #3b82f6, #1d4ed8)', borderRadius: 4 }} />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            <div style={{ background: 'var(--surface-glass)', border: '1px solid var(--border-glass)', borderRadius: 16, padding: '20px 22px' }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <TrendingUp size={14} style={{ color: '#10b981' }} />
+                Top chantiers par CA facturé
+              </div>
+              {data.topChantiers.length === 0 ? (
+                <div style={{ color: 'var(--text-muted)', fontSize: 13, textAlign: 'center', padding: '20px 0' }}>Aucun chantier facturé</div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {data.topChantiers.map((ch, i) => {
+                    const pct = data.caTotalFacture > 0 ? (ch.ca / data.caTotalFacture) * 100 : 0;
+                    return (
+                      <div key={i} style={{ padding: '10px 14px', borderRadius: 10, background: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.18)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8, marginBottom: 6 }}>
+                          <div style={{ minWidth: 0, flex: 1 }}>
+                            <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              <span style={{ color: '#10b981', fontWeight: 800, marginRight: 6 }}>#{i + 1}</span>{ch.nom}
+                            </div>
+                          </div>
+                          <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                            <div style={{ fontSize: 13, fontWeight: 800, color: '#10b981' }}>CHF {fmt(ch.ca)}</div>
+                            <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>{pct.toFixed(0)}% du CA</div>
+                          </div>
+                        </div>
+                        <div style={{ height: 4, background: 'var(--border-glass)', borderRadius: 4 }}>
+                          <div style={{ height: '100%', width: `${pct}%`, background: 'linear-gradient(90deg, #10b981, #059669)', borderRadius: 4 }} />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -556,14 +556,22 @@ function ChantierDetail({ chantier, detailOnglet, setDetailOnglet, modeCompleter
                 </div>
               ))}
             </div>
-            <div style={{ marginBottom: 6 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--text-muted)', marginBottom: 4 }}>
-                <span>Progression facturation</span>
-                <span>{pctFacture}% facturé · {pctEncaisse}% encaissé</span>
+            <div style={{ marginBottom: 8 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#64748B', marginBottom: 4 }}>
+                <span>Facturé</span>
+                <span style={{ color: '#10B981', fontWeight: 600 }}>{pctFacture}% · CHF {fmtN(Math.round(montantFactureLie))}</span>
               </div>
-              <div style={{ background: 'var(--bg-glass-2)', borderRadius: 6, height: 8, overflow: 'hidden', position: 'relative' }}>
-                <div style={{ position: 'absolute', left: 0, top: 0, height: '100%', width: `${pctFacture}%`, background: `linear-gradient(90deg, ${C.info}, ${C.primaire})`, borderRadius: 6, transition: 'width 0.4s ease' }} />
-                <div style={{ position: 'absolute', left: 0, top: 0, height: '100%', width: `${pctEncaisse}%`, background: C.secondaire + 'aa', borderRadius: 6 }} />
+              <div style={{ height: 6, background: '#E2E8F0', borderRadius: 3 }}>
+                <div style={{ height: '100%', borderRadius: 3, width: `${Math.min(pctFacture, 100)}%`, background: '#10B981', transition: 'width 0.3s ease' }} />
+              </div>
+            </div>
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#64748B', marginBottom: 4 }}>
+                <span>Encaissé</span>
+                <span style={{ color: '#F59E0B', fontWeight: 600 }}>{pctEncaisse}% · CHF {fmtN(Math.round(montantPayeLie))}</span>
+              </div>
+              <div style={{ height: 6, background: '#E2E8F0', borderRadius: 3 }}>
+                <div style={{ height: '100%', borderRadius: 3, width: `${Math.min(pctEncaisse, 100)}%`, background: '#F59E0B', transition: 'width 0.3s ease' }} />
               </div>
             </div>
           </div>

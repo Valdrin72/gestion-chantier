@@ -224,12 +224,20 @@ export const calculerCoutsChantier = (chantier, employes, localites, cfg = {}, d
     return total + getTarifJour(emp) * parseFloat(membre.joursPlannifies || 0);
   }, 0) || 0;
 
-  // Source unique : journal si disponible, sinon joursRealises manuel, sinon 0 (jamais fallback sur prévu)
-  const coutEquipeReelDetaille = (chantier.equipe || []).map(membre => {
-    const emp = employes.find(e => e.id === parseInt(membre.employeId));
-    const joursReels = getJoursReels(membre);
+  // Source unique : journal — tous les employés ayant des heures, sans nécessiter c.equipe
+  const empIdsAvecHeures = [...new Set(
+    journalCouts.flatMap(e => (e.employes || []).map(em => parseInt(em.employeId))).filter(Boolean)
+  )];
+  // Compléter avec les membres de l'équipe planifiée sans heures encore
+  const empIdsEquipeSansHeures = (chantier.equipe || [])
+    .map(m => parseInt(m.employeId))
+    .filter(id => !empIdsAvecHeures.includes(id));
+  const coutEquipeReelDetaille = [...empIdsAvecHeures, ...empIdsEquipeSansHeures].map(empId => {
+    const emp = employes.find(e => e.id === empId);
+    const membre = (chantier.equipe || []).find(m => parseInt(m.employeId) === empId);
+    const joursReels = heuresEmploye(journalCouts, empId) / 8;
     const tarif = getTarifJour(emp);
-    return { employeId: membre.employeId, joursReels, tarif, cout: tarif * joursReels };
+    return { employeId: empId, joursReels, tarif, cout: tarif * joursReels };
   });
   const coutEquipeReel = coutEquipeReelDetaille.reduce((t, m) => t + m.cout, 0);
 
@@ -249,8 +257,8 @@ export const calculerCoutsChantier = (chantier, employes, localites, cfg = {}, d
   const autresCoutsReel     = autresCoutsReelRaw     ?? 0;
 
   // P8 : détection des champs non renseignés (coûts attendus mais absents)
-  const hasEquipe = (chantier.equipe?.length || 0) > 0;
-  const equipeHasReel = hasEquipe && coutEquipeReelDetaille.some(m => m.joursReels > 0);
+  const hasEquipe = (chantier.equipe?.length || 0) > 0 || empIdsAvecHeures.length > 0;
+  const equipeHasReel = coutEquipeReelDetaille.some(m => m.joursReels > 0);
   const champsManquants = [];
   if (hasEquipe && !equipeHasReel)                            champsManquants.push('Heures équipe');
   if (coutMaterielPrevu > 0    && coutMaterielReelRaw    === null) champsManquants.push('Matériel');
@@ -1024,17 +1032,26 @@ export const calculerEtatChantier = (chantier, employes = [], devisList = []) =>
   const devisTotal = calculerCA(chantier, devisList);
 
   // ── A. Jours réels par employé (source : journal uniquement) ──────────
-  const membreDetail = equipe.map(membre => {
-    const empId   = parseInt(membre.employeId);
+  // Tous les employés ayant des heures dans le journal — sans nécessiter c.equipe
+  const empIdsJournal = [...new Set(
+    journal.flatMap(e => (e.employes || []).map(em => parseInt(em.employeId))).filter(Boolean)
+  )];
+  // Compléter avec les membres de l'équipe planifiée (joursPrevus) qui n'ont pas encore d'heures
+  const empIdsEquipe = equipe.map(m => parseInt(m.employeId)).filter(id => !empIdsJournal.includes(id));
+  const tousEmpIds = [...empIdsJournal, ...empIdsEquipe];
+
+  const membreDetail = tousEmpIds.map(empId => {
     const emp     = employes.find(e => e.id === empId);
     const tarifJour  = parseFloat(emp?.tarifJour) || 0;
-    const tarifHeure = parseFloat(tarifJour / 8);  // dérivé — 8h/jour convention BTP
+    const tarifHeure = tarifJour / 8;  // dérivé — 8h/jour convention BTP
 
     // Heures réelles depuis le journal (format unique — aucun fallback)
     const heuresReelles = heuresEmploye(journal, empId);
-    const joursReels    = heuresReelles / 8; // peut être décimal (demi-journées, heures partielles)
+    const joursReels    = heuresReelles / 8;
 
-    const joursPrevus   = parseFloat(membre.joursPlannifies) || 0;
+    // Jours prévus depuis c.equipe si disponible
+    const membreEquipe  = equipe.find(m => parseInt(m.employeId) === empId);
+    const joursPrevus   = parseFloat(membreEquipe?.joursPlannifies) || 0;
     const heuresPrevues = joursPrevus * 8;
 
     return {
@@ -1047,7 +1064,6 @@ export const calculerEtatChantier = (chantier, employes = [], devisList = []) =>
       joursReels,
       heuresPrevues,
       heuresReelles,
-      // Coût = heures × tarifHeure (équivalent à jours × tarifJour)
       cout: heuresReelles * tarifHeure,
     };
   });

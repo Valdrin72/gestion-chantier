@@ -852,28 +852,44 @@ function Dashboard() {
             ))}
           </div>
           {(() => {
-            const totalFacture  = facturesSafe.reduce((s, f) => s + (parseFloat(f.montantTTC) || 0), 0);
-            const totalEncaisse = facturesSafe.reduce((s, f) => {
-              const viaHist = (f.paiementsHistorique || []).reduce((a, p) => a + (parseFloat(p.montant) || 0), 0);
-              return s + (viaHist > 0 ? viaHist : (parseFloat(f.montantPaye) || 0));
-            }, 0);
-            const tauxEnc = totalFacture > 0 ? Math.round((totalEncaisse / totalFacture) * 100) : null;
-            const mp = kpiReel.margeReellePct;
-            const couleurMarge = mp === null ? 'var(--text-muted)' : mp >= 20 ? '#10b981' : mp >= 10 ? '#f59e0b' : '#ef4444';
-            const tiles = [
-              { label: 'CA chantiers actifs', val: `CHF ${fmtN(kpi.caEnCours)}`,    sub: `${kpi.nbChantiersActifs} chantier${kpi.nbChantiersActifs !== 1 ? 's' : ''}`, couleur: '#3b82f6' },
-              { label: 'Encaissé',            val: `CHF ${fmtN(totalEncaisse)}`,     sub: tauxEnc !== null ? `${tauxEnc}% du facturé` : '—', couleur: '#10b981' },
-              { label: 'Marge réelle moy.',   val: mp !== null ? `${mp}%` : '—',     sub: mp !== null ? `CHF ${fmtN(kpiReel.margeReelleTotale)}` : `${kpiReel.nbSansSaisie} sans saisie`, couleur: couleurMarge },
-            ];
+            const { total, top3, alerteFaible, interpretation, dateLimite, couverture } = previsionTreso30j;
+            const couleurTotal = interpretation?.couleur || '#3b82f6';
             return (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginTop: 16, paddingTop: 14, borderTop: '1px solid var(--border)' }}>
-                {tiles.map(t => (
-                  <div key={t.label} style={{ background: 'var(--bg-glass-2)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 12px', textAlign: 'center' }}>
-                    <div style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-muted)', marginBottom: 4 }}>{t.label}</div>
-                    <div style={{ fontSize: 14, fontWeight: 800, color: t.couleur, letterSpacing: '-0.3px', lineHeight: 1.1 }}>{t.val}</div>
-                    <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 3 }}>{t.sub}</div>
+              <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px solid var(--border)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                  <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-muted)' }}>Prévision encaissements 30 j</span>
+                  {interpretation && (
+                    <span style={{ fontSize: 10, fontWeight: 700, color: interpretation.couleur, background: interpretation.couleur + '15', border: `1px solid ${interpretation.couleur}30`, borderRadius: 20, padding: '2px 8px' }}>
+                      {interpretation.label}
+                    </span>
+                  )}
+                </div>
+                <div style={{ fontSize: 22, fontWeight: 800, color: couleurTotal, letterSpacing: '-0.5px', marginBottom: 4 }}>
+                  CHF {fmtN(total)}
+                </div>
+                {dateLimite && couverture !== null && (
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 10 }}>
+                    Charges couvertes jusqu'au <strong style={{ color: 'var(--text-secondary)' }}>{dateLimite}</strong>
                   </div>
-                ))}
+                )}
+                {interpretation?.action && (
+                  <div style={{ fontSize: 11, color: interpretation.couleur, background: interpretation.couleur + '10', border: `1px solid ${interpretation.couleur}25`, borderRadius: 8, padding: '6px 10px', marginBottom: 10 }}>
+                    {interpretation.action}
+                  </div>
+                )}
+                {top3.length > 0 && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    {top3.map(x => (
+                      <div key={x.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-glass-2)', border: '1px solid var(--border)', borderRadius: 8, padding: '6px 10px' }}>
+                        <span style={{ fontSize: 12, color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, marginRight: 8 }}>{x.nom}</span>
+                        <span style={{ fontSize: 12, fontWeight: 700, color: '#3b82f6', whiteSpace: 'nowrap' }}>CHF {fmtN(x.encaissementPrevu)}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {top3.length === 0 && (
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)', textAlign: 'center', padding: '8px 0' }}>Aucun encaissement prévu — complétez les devis et l'avancement</div>
+                )}
               </div>
             );
           })()}

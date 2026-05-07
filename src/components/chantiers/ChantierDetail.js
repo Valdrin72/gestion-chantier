@@ -27,12 +27,12 @@ const btnDanger = DS.btnDanger;
 
 function ChantierDetail({ chantier, detailOnglet, setDetailOnglet, modeCompleter, onRetour, onModifier, onSupprimer, onPasserEnCours }) {
   const { factures = [], clients, devis = [], parametres, naviguer, ouvrirSaisieHeures, agentState } = useApp();
-  const patterns = agentState?.patterns || {};
-  const patternChantier = c.typeChantier && patterns[c.typeChantier] ? patterns[c.typeChantier] : null;
   const { etat, couts } = useChantierCalculs(chantier);
   const couleurStatut = couleurStatutDS;
 
   const c = chantier;
+  const patterns = agentState?.patterns || {};
+  const patternChantier = c.typeChantier && patterns[c.typeChantier] ? patterns[c.typeChantier] : null;
   assertEtatValide(etat);
   const coherenceDetail = assertEtatCoherent(etat);
   const j = joursOuvrableRestants(c.dateDebut, c.nombreJours, c.inclusSamedi);

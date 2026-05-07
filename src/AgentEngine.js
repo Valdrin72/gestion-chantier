@@ -181,9 +181,15 @@ export function runTresoreriePredictor({ chantiers, factures, devis, parametres 
       else if (echeance <= j60) encaissement60 += restant;
     });
 
-    // Décaissements prévus (charges mensuelles × mois)
-    const decaissement30 = chargesMensuelles;
-    const decaissement60 = chargesMensuelles * 2;
+    // Décaissements prévus — charges proratisées sur le mois en cours pour J+30
+    const finMois = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    const joursRestantsMois = finMois.getDate() - now.getDate();
+    const joursTotalMois = finMois.getDate();
+    const chargesProratisees = joursTotalMois > 0
+      ? chargesMensuelles * (joursRestantsMois / joursTotalMois)
+      : chargesMensuelles;
+    const decaissement30 = chargesProratisees;
+    const decaissement60 = chargesProratisees + chargesMensuelles;
 
     const solde30 = encaissement30 - decaissement30;
     const solde60 = (encaissement30 + encaissement60) - decaissement60;
@@ -197,6 +203,19 @@ export function runTresoreriePredictor({ chantiers, factures, devis, parametres 
         niveau: solde30 < 0 ? 'DANGER' : 'ATTENTION',
         message: `Trésorerie J+30 estimée : CHF ${fmtN(Math.round(solde30))}`,
         detail: `Encaissements attendus CHF ${fmtN(Math.round(encaissement30))} · Charges CHF ${fmtN(Math.round(decaissement30))}`,
+        timestamp: Date.now(),
+        lu: false,
+        action: { page: 'finances', ctx: {} },
+      });
+    }
+    if (solde60 < SEUIL_ALERTE && totalEncaissement > 0) {
+      alertes.push({
+        id: uid('tp-j60'),
+        agent: 'TresoreriePredictor',
+        type: 'tresorerie_j60',
+        niveau: 'INFO',
+        message: `Solde prévu à J+60 : CHF ${fmtN(Math.round(solde60))} — en dessous du seuil`,
+        detail: `Encaissements cumulés CHF ${fmtN(Math.round(encaissement30 + encaissement60))} · Charges CHF ${fmtN(Math.round(decaissement60))}`,
         timestamp: Date.now(),
         lu: false,
         action: { page: 'finances', ctx: {} },

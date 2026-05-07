@@ -852,17 +852,18 @@ function Dashboard() {
             ))}
           </div>
           {(() => {
-            const totalCA  = donneesMensuelles.reduce((s, d) => s + (d.CA || 0), 0);
-            const totalEnc = donneesMensuelles.reduce((s, d) => s + (d.Encaissements || 0), 0);
-            const totalCts = donneesMensuelles.reduce((s, d) => s + (d.Couts || 0), 0);
-            const margeBrute = totalCA - totalCts;
-            const margePct = totalCA > 0 ? Math.round((margeBrute / totalCA) * 100) : null;
-            const tauxEnc = totalCA > 0 ? Math.round((totalEnc / totalCA) * 100) : null;
-            const couleurMarge = margePct === null ? 'var(--text-muted)' : margePct >= 20 ? '#10b981' : margePct >= 10 ? '#f59e0b' : '#ef4444';
+            const totalFacture  = facturesSafe.reduce((s, f) => s + (parseFloat(f.montantTTC) || 0), 0);
+            const totalEncaisse = facturesSafe.reduce((s, f) => {
+              const viaHist = (f.paiementsHistorique || []).reduce((a, p) => a + (parseFloat(p.montant) || 0), 0);
+              return s + (viaHist > 0 ? viaHist : (parseFloat(f.montantPaye) || 0));
+            }, 0);
+            const tauxEnc = totalFacture > 0 ? Math.round((totalEncaisse / totalFacture) * 100) : null;
+            const mp = kpiReel.margeReellePct;
+            const couleurMarge = mp === null ? 'var(--text-muted)' : mp >= 20 ? '#10b981' : mp >= 10 ? '#f59e0b' : '#ef4444';
             const tiles = [
-              { label: 'CA cumulé',     val: `CHF ${fmtN(totalCA)}`,  sub: '4 sem.',                              couleur: '#3b82f6' },
-              { label: 'Encaissé',      val: `CHF ${fmtN(totalEnc)}`, sub: tauxEnc !== null ? `${tauxEnc}% du CA` : '—',  couleur: '#10b981' },
-              { label: 'Marge brute',   val: `CHF ${fmtN(margeBrute)}`, sub: margePct !== null ? `${margePct}% marge`  : '—', couleur: couleurMarge },
+              { label: 'CA chantiers actifs', val: `CHF ${fmtN(kpi.caEnCours)}`,    sub: `${kpi.nbChantiersActifs} chantier${kpi.nbChantiersActifs !== 1 ? 's' : ''}`, couleur: '#3b82f6' },
+              { label: 'Encaissé',            val: `CHF ${fmtN(totalEncaisse)}`,     sub: tauxEnc !== null ? `${tauxEnc}% du facturé` : '—', couleur: '#10b981' },
+              { label: 'Marge réelle moy.',   val: mp !== null ? `${mp}%` : '—',     sub: mp !== null ? `CHF ${fmtN(kpiReel.margeReelleTotale)}` : `${kpiReel.nbSansSaisie} sans saisie`, couleur: couleurMarge },
             ];
             return (
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginTop: 16, paddingTop: 14, borderTop: '1px solid var(--border)' }}>

@@ -38,8 +38,6 @@ function Parametres({ parametres, setParametres, clients = [], setClients = () =
     { id: 'localites', label: 'Localités', desc: 'Frais déplacement' },
     { id: 'travaux', label: 'Travaux', desc: 'Types et tarifs' },
     { id: 'zones', label: 'Zones géo.', desc: 'Tarifs par région' },
-    { id: 'metrage', label: 'Métrage', desc: 'Rendements équipe' },
-    { id: 'qualite', label: 'Qualité', desc: 'Checklists' },
     { id: 'paiements', label: 'Paiements', desc: 'Délais et rappels' },
     { id: 'rapport', label: 'Rapport', desc: 'Alertes hebdo' },
     { id: 'agents', label: 'Agents IA', desc: 'Seuils des alertes' },
@@ -291,59 +289,6 @@ function Parametres({ parametres, setParametres, clients = [], setClients = () =
               ))}
             </tbody>
           </table>
-        </div>
-      )}
-
-      {onglet === 'metrage' && (
-        <div style={carteStyle}>
-          <div className="ds-card-title" style={{ marginBottom: '20px' }}>Paramètres du Métrage</div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '20px' }}>
-            {[
-              { label: 'Rendement fp surélevé (m²/j)', key: 'rendementFPSureleve', defaut: 70 },
-              { label: 'Rendement fp non démontable', key: 'rendementFPNonDemo', defaut: 80 },
-              { label: 'Rendement dallettes doubles', key: 'rendementDallettes', defaut: 40 },
-              { label: 'Rendement moquette', key: 'rendementMoquette', defaut: 120 },
-              { label: 'Rendement carrelage', key: 'rendementCarrelage', defaut: 35 },
-              { label: 'Rendement joint (ml/j)', key: 'rendementJoint', defaut: 60 },
-            ].map(s => (
-              <div key={s.key} style={{ background: 'var(--bg-glass-2)', border: '1px solid var(--border)', borderRadius: '10px', padding: '12px' }}>
-                <label style={labelStyle}>{s.label}</label>
-                <input type="number" value={parametres.parametres?.[s.key] || s.defaut}
-                  onChange={e => sauv({ ...parametres, parametres: { ...parametres.parametres, [s.key]: parseFloat(e.target.value) } })}
-                  style={{ ...inputStyle, fontWeight: 'bold', color: C.primaire, borderColor: C.primaire }} />
-              </div>
-            ))}
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '15px' }}>
-            {[
-              ["Tarif chef d'équipe (CHF/j)", 'tarifChefEquipe', 450],
-              ['Tarif ouvrier qualifié (CHF/j)', 'tarifOuvrier', 350],
-              ["Tarif main d'œuvre (CHF/j)", 'tarifMainOeuvre', 280],
-            ].map(([label, key, defaut]) => (
-              <div key={key} style={{ background: 'var(--bg-glass-2)', border: '1px solid var(--border)', borderRadius: '12px', padding: '15px' }}>
-                <label style={labelStyle}>{label}</label>
-                <input type="number" value={parametres.parametres?.[key] || defaut}
-                  onChange={e => sauv({ ...parametres, parametres: { ...parametres.parametres, [key]: parseFloat(e.target.value) } })}
-                  style={{ ...inputStyle, fontWeight: 'bold', fontSize: '18px', color: C.primaire, borderColor: C.primaire, borderWidth: '2px' }} />
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {onglet === 'qualite' && (
-        <div style={carteStyle}>
-          <div className="ds-card-title" style={{ marginBottom: '20px' }}>Paramètres Qualité</div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
-            {[['Seuil score Bon (%)', 'qualiteSeuilBon', 80], ['Seuil score Moyen (%)', 'qualiteSeuilMoyen', 50]].map(([label, key, defaut]) => (
-              <div key={key} style={{ background: 'var(--bg-glass-2)', border: '1px solid var(--border)', borderRadius: '12px', padding: '15px' }}>
-                <label style={labelStyle}>{label}</label>
-                <input type="number" value={parametres.parametres?.[key] || defaut}
-                  onChange={e => sauv({ ...parametres, parametres: { ...parametres.parametres, [key]: parseFloat(e.target.value) } })}
-                  style={{ ...inputStyle, fontWeight: 'bold', fontSize: '18px', color: C.primaire, borderColor: C.primaire, borderWidth: '2px' }} />
-              </div>
-            ))}
-          </div>
         </div>
       )}
 

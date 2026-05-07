@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import {
   HardHat, Users, TrendingUp, Plus, AlertTriangle,
-  ChevronRight, CheckCircle, DollarSign, Bell, Clock, CreditCard, Bot,
+  ChevronRight, CheckCircle, ShieldCheck, DollarSign, Bell, Clock, CreditCard, Bot,
 } from 'lucide-react';
 import { LineChart, Line, PieChart, Pie, Cell, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 import {
@@ -674,7 +674,7 @@ function Dashboard() {
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 28, flexWrap: 'wrap', gap: 14 }}>
         <div>
           <div style={{ fontSize: 26, fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.5px', lineHeight: 1.2 }}>
-            Bonjour{profil ? ` ${profil.nom.split(' ')[0]}` : ''}</div>
+            Bonjour{profil ? `, ${profil.nom.split(' ')[0]}` : ''} 👋</div>
           <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: '4px 0 0' }}>
             {new Date().toLocaleDateString('fr-CH', { weekday: 'long', day: 'numeric', month: 'long' })} · {actifs.length} chantier{actifs.length !== 1 ? 's' : ''} actif{actifs.length !== 1 ? 's' : ''}
           </p>
@@ -759,8 +759,14 @@ function Dashboard() {
                   const progress = Math.max(0, Math.min(100, Number(c.avancement ?? 0)));
                   const j = joursParChantier[c.id];
                   const retardJ = j !== null && j < 0 ? Math.abs(j) : 0;
-                  const barCol = retardJ > 0 ? '#ef4444' : priorite.niveau === 'ok' ? '#10b981' : '#f59e0b';
                   const mPct = couts.montantTotal > 0 && couts.totalCoutsReel > 0 && couts.margeReelPct !== null ? Math.round(couts.margeReelPct) : null;
+                  const barCol = mPct !== null ? (mPct > 20 ? '#10b981' : mPct >= 10 ? '#f59e0b' : '#ef4444') : (retardJ > 0 ? '#ef4444' : '#94a3b8');
+                  const joursRealises = c.nombreJours ? Math.round((progress / 100) * c.nombreJours) : null;
+                  const statutJours = retardJ > 0 ? { label: `En retard ${retardJ}j`, couleur: '#ef4444' }
+                    : j === 0 ? { label: "Fin aujourd'hui", couleur: '#f59e0b' }
+                    : j !== null && j <= 3 ? { label: `${j}j restants`, couleur: '#f59e0b' }
+                    : j !== null ? { label: 'En avance', couleur: '#10b981' }
+                    : { label: '—', couleur: 'var(--text-muted)' };
                   return (
                     <div key={c.id} onClick={() => naviguer('chantiers', { chantierActif: c.id })}
                       style={{ padding: '14px', borderRadius: 12, border: '1px solid var(--dash-border)', cursor: 'pointer', background: 'var(--bg-glass)', transition: 'all 0.15s' }}
@@ -790,10 +796,10 @@ function Dashboard() {
                         <div style={{ background: barCol, width: `${progress}%`, height: '100%', borderRadius: 6, transition: 'width 0.4s ease' }} />
                       </div>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{c.nombreJours ? `${progress}% · ${c.nombreJours}j prévus` : `${progress}% d'avancement`}</span>
-                        <span style={{ fontSize: 11, fontWeight: 600, color: retardJ > 0 ? '#ef4444' : j === 0 ? '#f59e0b' : '#10b981' }}>
-                          {retardJ > 0 ? `En retard ${retardJ}j` : j === 0 ? "Fin aujourd'hui" : j !== null ? `${j}j restants` : '—'}
+                        <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                          {joursRealises !== null && c.nombreJours ? `${joursRealises} / ${c.nombreJours} jours` : `${progress}% d'avancement`}
                         </span>
+                        <span style={{ fontSize: 11, fontWeight: 600, color: statutJours.couleur }}>{statutJours.label}</span>
                       </div>
                     </div>
                   );
@@ -842,9 +848,10 @@ function Dashboard() {
             <button onClick={naviguerAgents} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 11, color: '#2563eb', fontWeight: 600, padding: 0, fontFamily: 'inherit' }}>Tout voir →</button>
           </div>
           {agentAlertes.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '28px 0', color: 'var(--text-muted)', fontSize: 13 }}>
-              <CheckCircle size={28} strokeWidth={1.5} style={{ color: '#10b981', marginBottom: 8, display: 'block', margin: '0 auto 8px' }} />
-              Aucune alerte active
+            <div style={{ textAlign: 'center', padding: '28px 16px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+              <ShieldCheck size={32} strokeWidth={1.5} style={{ color: '#10b981' }} />
+              <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--text-primary)' }}>Tout est sous contrôle</div>
+              <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Aucune alerte détectée sur vos chantiers</div>
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 9, maxHeight: 340, overflowY: 'auto' }}>

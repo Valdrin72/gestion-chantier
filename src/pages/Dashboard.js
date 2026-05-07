@@ -760,11 +760,17 @@ function Dashboard() {
                   const j = joursParChantier[c.id];
                   const retardJ = j !== null && j < 0 ? Math.abs(j) : 0;
                   const mPct = couts.montantTotal > 0 && couts.totalCoutsReel > 0 && couts.margeReelPct !== null ? Math.round(couts.margeReelPct) : null;
-                  const barCol = mPct !== null ? (mPct > 20 ? '#10B981' : mPct > 10 ? '#F59E0B' : '#EF4444') : (retardJ > 0 ? '#EF4444' : '#94A3B8');
                   const joursTotal = c.nombreJours || 0;
                   const joursEcoules = c.dateDebut
                     ? Math.max(0, Math.floor((Date.now() - new Date(c.dateDebut).getTime()) / 86400000))
                     : null;
+                  const margeVal = parseFloat(couts?.margeReelPct) || 0;
+                  const sansCouts = !couts?.margeReelPct;
+                  const avancementVal = sansCouts ? 0 : Math.min(Math.round(((joursEcoules || 0) / (joursTotal || 1)) * 100), 100);
+                  const couleurBarre = sansCouts ? '#CBD5E1'
+                    : margeVal > 20 ? '#10B981'
+                    : margeVal > 10 ? '#F59E0B'
+                    : '#EF4444';
                   const statutJours = retardJ > 0 ? { label: `En retard ${retardJ}j`, couleur: '#ef4444' }
                     : j === 0 ? { label: "Fin aujourd'hui", couleur: '#f59e0b' }
                     : j !== null && j <= 3 ? { label: `${j}j restants`, couleur: '#f59e0b' }
@@ -795,8 +801,8 @@ function Dashboard() {
                           </div>
                         ))}
                       </div>
-                      <div style={{ height: 4, borderRadius: 2, background: '#E2E8F0', margin: '8px 0', overflow: 'hidden' }}>
-                        <div style={{ height: '100%', borderRadius: 2, width: `${Math.min(progress, 100)}%`, background: barCol, transition: 'width 0.4s ease' }} />
+                      <div style={{ height: 4, background: '#E2E8F0', borderRadius: 2, margin: '10px 0 6px 0' }}>
+                        <div style={{ height: '100%', width: `${avancementVal}%`, background: couleurBarre, borderRadius: 2, transition: 'width 0.3s ease' }} />
                       </div>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>

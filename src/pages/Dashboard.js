@@ -674,7 +674,7 @@ function Dashboard() {
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 28, flexWrap: 'wrap', gap: 14 }}>
         <div>
           <div style={{ fontSize: 26, fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.5px', lineHeight: 1.2 }}>
-            Bonjour{profil ? `, ${profil.nom.split(' ')[0]}` : ''} 👋</div>
+            Bonjour, {profil?.nom?.split(' ')[0] || 'Direction'} 👋</div>
           <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: '4px 0 0' }}>
             {new Date().toLocaleDateString('fr-CH', { weekday: 'long', day: 'numeric', month: 'long' })} · {actifs.length} chantier{actifs.length !== 1 ? 's' : ''} actif{actifs.length !== 1 ? 's' : ''}
           </p>
@@ -760,8 +760,11 @@ function Dashboard() {
                   const j = joursParChantier[c.id];
                   const retardJ = j !== null && j < 0 ? Math.abs(j) : 0;
                   const mPct = couts.montantTotal > 0 && couts.totalCoutsReel > 0 && couts.margeReelPct !== null ? Math.round(couts.margeReelPct) : null;
-                  const barCol = mPct !== null ? (mPct > 20 ? '#10b981' : mPct >= 10 ? '#f59e0b' : '#ef4444') : (retardJ > 0 ? '#ef4444' : '#94a3b8');
-                  const joursRealises = c.nombreJours ? Math.round((progress / 100) * c.nombreJours) : null;
+                  const barCol = mPct !== null ? (mPct > 20 ? '#10B981' : mPct > 10 ? '#F59E0B' : '#EF4444') : (retardJ > 0 ? '#EF4444' : '#94A3B8');
+                  const joursTotal = c.nombreJours || 0;
+                  const joursEcoules = c.dateDebut
+                    ? Math.max(0, Math.floor((Date.now() - new Date(c.dateDebut).getTime()) / 86400000))
+                    : null;
                   const statutJours = retardJ > 0 ? { label: `En retard ${retardJ}j`, couleur: '#ef4444' }
                     : j === 0 ? { label: "Fin aujourd'hui", couleur: '#f59e0b' }
                     : j !== null && j <= 3 ? { label: `${j}j restants`, couleur: '#f59e0b' }
@@ -792,12 +795,14 @@ function Dashboard() {
                           </div>
                         ))}
                       </div>
-                      <div style={{ background: 'var(--bg-hover)', borderRadius: 6, height: 5, overflow: 'hidden', marginBottom: 7 }}>
-                        <div style={{ background: barCol, width: `${progress}%`, height: '100%', borderRadius: 6, transition: 'width 0.4s ease' }} />
+                      <div style={{ height: 4, borderRadius: 2, background: '#E2E8F0', margin: '8px 0', overflow: 'hidden' }}>
+                        <div style={{ height: '100%', borderRadius: 2, width: `${Math.min(progress, 100)}%`, background: barCol, transition: 'width 0.4s ease' }} />
                       </div>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-                          {joursRealises !== null && c.nombreJours ? `${joursRealises} / ${c.nombreJours} jours` : `${progress}% d'avancement`}
+                          {joursTotal > 0
+                            ? `${joursEcoules !== null ? joursEcoules : '—'} / ${joursTotal} jours`
+                            : `${progress}% d'avancement`}
                         </span>
                         <span style={{ fontSize: 11, fontWeight: 600, color: statutJours.couleur }}>{statutJours.label}</span>
                       </div>

@@ -366,7 +366,8 @@ function Dashboard() {
       return { niveau: 'critique', score: 2 };
 
     // Attention : retard interne 1-5j OU renta < 10% OU avancement faible OU dépassement jours OU faible marge réelle
-    if (retardJ >= 1 || (r !== null && r < 10) || (aCommence && avancement < 20) ||
+    // Note : avancement < 20% ne déclenche Attention que si des heures ont été saisies
+    if (retardJ >= 1 || (r !== null && r < 10) || (aCommence && avancement < 20 && reel && !reel.aucuneSaisie) ||
         (reel && reel.enDepassement) || (reel && !reel.aucuneSaisie && reel.rentabilitePct < 15))
       return { niveau: 'attention', score: 1 };
 
@@ -633,9 +634,10 @@ function Dashboard() {
   }, [actifs, parametres.employes, devis]);
 
   const BADGE_STATUT_DASH = {
-    ok:       { label: 'Rentable',  bg: '#D1FAE5', color: '#065F46' },
-    attention:{ label: 'Attention', bg: '#FEF3C7', color: '#92400E' },
-    critique: { label: 'Danger',    bg: '#FEE2E2', color: '#991B1B' },
+    ok:        { label: 'En cours',  bg: '#D1FAE5', color: '#065F46' },
+    attention: { label: 'Attention', bg: '#FEF3C7', color: '#92400E' },
+    critique:  { label: 'Danger',    bg: '#FEE2E2', color: '#991B1B' },
+    neutre:    { label: 'Planifié',  bg: 'var(--bg-glass-2)', color: 'var(--text-muted)' },
   };
 
   // ── Helpers JSX (conservés pour compatibilité) ──────────────
@@ -753,7 +755,6 @@ function Dashboard() {
             : <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                 {[...actifs].sort((a, b) => calculerPriorite(b).score - calculerPriorite(a).score).slice(0, 3).map(c => {
                   const priorite = calculerPriorite(c);
-                  const statBadge = BADGE_STATUT_DASH[priorite.niveau];
                   const montantCA = calculerCA(c, devis);
                   const couts = coutsMap.get(c.id) || {};
                   const progress = Math.max(0, Math.min(100, Number(c.avancement ?? 0)));
@@ -761,6 +762,9 @@ function Dashboard() {
                   const joursTotal = c.nombreJours || 0;
                   // Jours réellement travaillés = dates distinctes dans le journal des heures
                   const joursRealises = new Set((c.journal || []).map(e => e.date).filter(Boolean)).size;
+                  const statBadge = joursRealises === 0
+                    ? BADGE_STATUT_DASH.neutre
+                    : BADGE_STATUT_DASH[priorite.niveau];
                   const joursRestants = joursTotal > 0 ? Math.max(0, joursTotal - joursRealises) : null;
                   const margeVal = parseFloat(couts?.margeReelPct) || 0;
                   const sansCouts = !couts?.margeReelPct;

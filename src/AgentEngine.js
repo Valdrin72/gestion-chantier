@@ -264,7 +264,13 @@ export function runRapportAuto({ chantiers, factures, devis, parametres, dernier
       }
     }
 
-    if (!estLundi || !heureSuffisante) {
+    // Rattrapage : aucun rapport depuis plus de 7 jours → générer même hors lundi
+    const ageDernierRapportMs = dernierRapport?.timestamp
+      ? (now.getTime() - new Date(dernierRapport.timestamp).getTime())
+      : Infinity;
+    const rattrapage = ageDernierRapportMs > 7 * 24 * 60 * 60 * 1000;
+
+    if (!rattrapage && (!estLundi || !heureSuffisante)) {
       console.log('[AGENT-RapportAuto] Pas lundi ou trop tôt, rapport non généré');
       return null;
     }
@@ -301,10 +307,13 @@ export function runRapportAuto({ chantiers, factures, devis, parametres, dernier
       return j !== null && j < 0;
     });
 
+    const labelSemaine = debutSemaine.toLocaleDateString('fr-CH', { day: '2-digit', month: '2-digit' });
     const rapport = {
       id: uid('rapport'),
       timestamp: Date.now(),
-      semaine: `Semaine du ${debutSemaine.toLocaleDateString('fr-CH', { day: '2-digit', month: '2-digit' })}`,
+      semaine: rattrapage && !estLundi
+        ? `Rapport de rattrapage — semaine du ${labelSemaine}`
+        : `Semaine du ${labelSemaine}`,
       heuresSaisies: Math.round(heuresSemaine),
       caFacture: Math.round(caFactureSemaine),
       nbActifs: actifs.length,

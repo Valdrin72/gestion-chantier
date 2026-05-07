@@ -30,7 +30,6 @@ const NAV_FALLBACK = {
   employes:     'dashboard',
   planning:     'chantiers',
   statistiques: 'dashboard',
-  qualite:      'chantiers',
   rapport:      'dashboard',
   analyse:      'dashboard',
   parametres:   'dashboard',
@@ -133,7 +132,6 @@ function App() {
     const LEGACY = { 'Validé': 'accepté', 'Signé': 'accepté', 'Envoyé': 'envoyé', 'Refusé': 'refusé', 'Brouillon': 'brouillon', 'Annulé': 'refusé' };
     return charger('cyna_devis', donneesInitiales.devis, Array.isArray).map(d => ({ ...d, statut: LEGACY[d.statut] || d.statut }));
   });
-  const [qualiteData, setQualiteDataState] = useState(() => charger('cyna_qualite', {}));
   const [factures, setFacturesState] = useState(() => charger('cyna_factures', [], Array.isArray));
   const [paiementsData, setPaiementsDataState] = useState(() => charger('cyna_paiements', {}));
   // photosData conservé en localStorage pour migration future, non exposé à l'UI
@@ -167,7 +165,6 @@ function App() {
   const setFactures      = (data) => { setFacturesState(data);      sauvegarderLocal('cyna_factures',   data); };
   const setClients       = (data) => { setClientsState(data);       sauvegarderLocal('cyna_clients',    data); };
   const setDevis         = (data) => { setDevisState(data);         sauvegarderLocal('cyna_devis',      data); };
-  const setQualiteData   = (data) => { setQualiteDataState(data);   sauvegarderLocal('cyna_qualite',    data); };
   const setPaiementsData = (data) => { setPaiementsDataState(data); sauvegarderLocal('cyna_paiements',  data); };
 
   // setChantiers accepte valeur directe ou updater fonctionnel (Planning, Heures utilisent prev =>)
@@ -259,7 +256,7 @@ function App() {
           {page === 'clients'      && <Clients clients={clients} setClients={setClients} chantiers={chantiers} devis={devis} naviguer={naviguer} />}
           {page === 'employes'     && <Employes parametres={parametres} setParametres={setParametres} chantiers={chantiers} naviguer={naviguer} />}
           {page === 'planning'     && <PlanningPage chantiers={chantiers} setChantiers={setChantiers} clients={clients} devis={devis} factures={factures} naviguer={naviguer} />}
-          {page === 'rapport'      && <RapportsPage chantiers={chantiers} clients={clients} devis={devis} parametres={parametres} setParametres={setParametres} paiementsData={paiementsData} qualiteData={qualiteData} periodeGlobale={periodeGlobale} naviguer={naviguer} />}
+          {page === 'rapport'      && <RapportsPage chantiers={chantiers} clients={clients} devis={devis} parametres={parametres} setParametres={setParametres} paiementsData={paiementsData} periodeGlobale={periodeGlobale} naviguer={naviguer} />}
           {page === 'agents'       && <Agents {...agentState} />}
           {page === 'parametres'   && <Parametres parametres={parametres} setParametres={setParametres} clients={clients} setClients={setClients} chantiers={chantiers} devis={devis} naviguer={naviguer} />}
           {page === 'heures'       && <Heures chantiers={chantiers} parametres={parametres} setChantiers={setChantiers} />}

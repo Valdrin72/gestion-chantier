@@ -5,7 +5,7 @@ import Analyse from '../Analyse';
 import Marges from '../Marges';
 
 // ── Rapport + Statistiques + Analyse ─────────────────────────────────────
-function RapportsPage({ chantiers, clients, devis, parametres, setParametres, paiementsData, qualiteData, periodeGlobale, naviguer }) {
+function RapportsPage({ chantiers, clients, devis, parametres, setParametres, paiementsData, periodeGlobale, naviguer }) {
   const [onglet, setOnglet] = useState('marges');
   const tabs = [
     { id: 'marges',       label: 'Marges' },
@@ -26,9 +26,9 @@ function RapportsPage({ chantiers, clients, devis, parametres, setParametres, pa
         ))}
       </div>
       {onglet === 'marges'       && <Marges chantiers={chantiers} clients={clients} devis={devis} parametres={parametres} />}
-      {onglet === 'rapport'      && <Rapport chantiers={chantiers} clients={clients} devis={devis} parametres={parametres} paiementsData={paiementsData} qualiteData={qualiteData} naviguer={naviguer} />}
+      {onglet === 'rapport'      && <Rapport chantiers={chantiers} clients={clients} devis={devis} parametres={parametres} paiementsData={paiementsData} naviguer={naviguer} />}
       {onglet === 'statistiques' && <Statistiques chantiers={chantiers} clients={clients} devis={devis} parametres={parametres} periodeGlobale={periodeGlobale} />}
-      {onglet === 'analyse'      && <Analyse chantiers={chantiers} clients={clients} devis={devis} parametres={parametres} setParametres={setParametres} paiementsData={paiementsData} qualiteData={qualiteData} />}
+      {onglet === 'analyse'      && <Analyse chantiers={chantiers} clients={clients} devis={devis} parametres={parametres} setParametres={setParametres} paiementsData={paiementsData} />}
     </div>
   );
 }

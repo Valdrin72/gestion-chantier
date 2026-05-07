@@ -30,7 +30,7 @@ const getSemaineSuivante = () => {
   };
 };
 
-export default function Rapport({ chantiers, clients, devis = [], parametres, paiementsData, qualiteData }) {
+export default function Rapport({ chantiers, clients, devis = [], parametres, paiementsData }) {
   const [semaine] = useState(getSemaine());
   const semaineSuivante = getSemaineSuivante();
 
@@ -59,14 +59,6 @@ export default function Rapport({ chantiers, clients, devis = [], parametres, pa
     return t + getPaiements(c.id).filter(p => isAttente(p) && new Date(p.dateEcheance) < today).reduce((s, p) => s + (parseFloat(p.montant) || 0), 0);
   }, 0);
 
-  const getScoreQualite = (chantierId) => {
-    const totalItems = 40;
-    const coches = Object.values(qualiteData).filter((v, i) => {
-      const key = Object.keys(qualiteData)[i];
-      return key.startsWith(`${chantierId}_`) && !key.endsWith('_notes') && v === true;
-    }).length;
-    return totalItems > 0 ? Math.round((coches / totalItems) * 100) : 0;
-  };
 
   const chantiersSemaineProchaine = chantiers.filter(c => {
     if (!c.dateDebut) return false;
@@ -76,8 +68,6 @@ export default function Rapport({ chantiers, clients, devis = [], parametres, pa
     const fin = new Date(calculerDateFinOuvrables(c.dateDebut, c.nombreJours, c.inclusSamedi));
     return debut <= finSP && fin >= debutSP;
   });
-
-  const couleurScore = (pct) => pct >= 80 ? '#10b981' : pct >= 50 ? '#f59e0b' : '#ef4444';
 
   return (
     <div>
@@ -125,7 +115,7 @@ export default function Rapport({ chantiers, clients, devis = [], parametres, pa
         {chantiersEnCours.length === 0 ? <p style={{ color: 'var(--text-secondary)' }}>Aucun chantier en cours</p> : (
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead><tr>
-              {['Chantier', 'Client', 'Avancement', 'Jours restants', 'Marge', 'Qualité'].map(h => (
+              {['Chantier', 'Client', 'Avancement', 'Jours restants', 'Marge'].map(h => (
                 <th key={h} style={DS.th}>{h}</th>
               ))}
             </tr></thead>
@@ -135,7 +125,6 @@ export default function Rapport({ chantiers, clients, devis = [], parametres, pa
                 const al = getAlerte(j);
                 const couts = calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis);
                 const client = clients.find(cl => cl.id === c.clientId);
-                const scoreQ = getScoreQualite(c.id);
                 return (
                   <tr key={c.id} style={{ borderBottom: '1px solid var(--ds-td-border)' }}>
                     <td style={{ padding: '12px 15px' }}><strong>{c.nom}</strong><div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>{c.numero}</div></td>
@@ -165,11 +154,6 @@ export default function Rapport({ chantiers, clients, devis = [], parametres, pa
                     <td style={{ padding: '12px 15px' }}>
                       <span style={{ background: (parseFloat(couts.margeReelPct) >= 15 ? '#10b98118' : '#ef444418'), color: parseFloat(couts.margeReelPct) >= 15 ? '#10b981' : '#ef4444', fontWeight: 600, padding: '3px 10px', borderRadius: '12px', fontSize: '12px' }}>
                         {couts.margeReelPct}%
-                      </span>
-                    </td>
-                    <td style={{ padding: '12px 15px' }}>
-                      <span style={{ background: couleurScore(scoreQ) + '18', color: couleurScore(scoreQ), fontWeight: 600, padding: '3px 10px', borderRadius: '12px', fontSize: '12px' }}>
-                        {scoreQ}%
                       </span>
                     </td>
                   </tr>
@@ -218,41 +202,6 @@ export default function Rapport({ chantiers, clients, devis = [], parametres, pa
             })}
           </div>
         )}
-      </div>
-
-      {/* QUALITÉ */}
-      <div style={carteStyle}>
-        <div className="ds-card-title">Contrôle qualité en cours</div>
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead><tr>
-            {['Chantier', 'Score qualité', 'Statut'].map(h => (
-              <th key={h} style={DS.th}>{h}</th>
-            ))}
-          </tr></thead>
-          <tbody>
-            {chantiersEnCours.map((c, i) => {
-              const score = getScoreQualite(c.id);
-              return (
-                <tr key={c.id} style={{ borderBottom: '1px solid var(--ds-td-border)' }}>
-                  <td style={{ padding: '12px 15px' }}><strong>{c.nom}</strong></td>
-                  <td style={{ padding: '12px 15px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <div style={{ background: 'var(--border)', borderRadius: '10px', height: '8px', width: '100px' }}>
-                        <div style={{ background: `linear-gradient(90deg, ${couleurScore(score)}, ${couleurScore(score)}cc)`, width: `${score}%`, height: '8px', borderRadius: '10px', boxShadow: `0 0 6px ${couleurScore(score)}55` }} />
-                      </div>
-                      <span style={{ fontWeight: 'bold', color: couleurScore(score) }}>{score}%</span>
-                    </div>
-                  </td>
-                  <td style={{ padding: '12px 15px' }}>
-                    <span style={{ background: couleurScore(score) + '18', color: couleurScore(score), fontWeight: 600, padding: '3px 12px', borderRadius: '12px', fontSize: '12px' }}>
-                      {score >= 80 ? 'Bon' : score >= 50 ? 'À améliorer' : 'Critique'}
-                    </span>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
       </div>
 
       {/* PRÉVISIONS SEMAINE SUIVANTE */}

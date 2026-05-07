@@ -6,7 +6,7 @@ import Rapport from './Rapport';
 
 const carteStyle = DS.card;
 
-export default function Analyse({ chantiers, clients, devis = [], parametres, setParametres, paiementsData, qualiteData }) {
+export default function Analyse({ chantiers, clients, devis = [], parametres, setParametres, paiementsData }) {
   const [onglet, setOnglet] = useState('rentabilite');
   const [tauxChargesSociales, setTauxChargesSociales] = useState(parametres.parametres?.tauxChargesSociales || 25);
   const [tauxImpots, setTauxImpots] = useState(parametres.parametres?.tauxImpots || 15);
@@ -882,7 +882,7 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
       )}
 
       {onglet === 'rapport' && (
-        <Rapport chantiers={chantiers} clients={clients} devis={devis} parametres={parametres} paiementsData={paiementsData || {}} qualiteData={qualiteData || {}} />
+        <Rapport chantiers={chantiers} clients={clients} devis={devis} parametres={parametres} paiementsData={paiementsData || {}} />
       )}
     </div>
   );

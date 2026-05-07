@@ -1,6 +1,6 @@
 import React from 'react';
 import {
-  HardHat, CheckSquare, Pencil, Trash2, AlertTriangle,
+  HardHat, Pencil, Trash2, AlertTriangle,
   ChevronRight, DollarSign, Clock,
 } from 'lucide-react';
 import {
@@ -266,7 +266,6 @@ function ChantierDetail({ chantier, detailOnglet, setDetailOnglet, modeCompleter
             style={{ ...btnPrimaire, background: 'linear-gradient(135deg, #7c3aed, #6d28d9)', border: '1px solid #7c3aed55' }}
           ><Clock size={15} /> Saisir heures</button>
         )}
-        <button onClick={() => naviguer('qualite', { chantierActif: c.id })} style={{ ...DS.btnGhost }}><CheckSquare size={15} /> Qualité</button>
         <button onClick={() => naviguer('finances', { chantierActif: c.id })} style={{ ...DS.btnGhost }}><DollarSign size={15} /> Finances</button>
         <button onClick={() => onSupprimer(c.id)} style={btnDanger}><Trash2 size={14} /> Supprimer</button>
       </div>

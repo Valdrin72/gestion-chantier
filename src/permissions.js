@@ -5,7 +5,7 @@
 
 export const PERMISSIONS = {
   direction: {
-    pages: ['dashboard', 'chantiers', 'devis', 'factures', 'clients', 'employes', 'planning', 'statistiques', 'qualite', 'paiements', 'parametres', 'rapport', 'analyse', 'importpdf', 'metrage', 'photos'],
+    pages: ['dashboard', 'chantiers', 'devis', 'factures', 'clients', 'employes', 'planning', 'statistiques', 'paiements', 'parametres', 'rapport', 'analyse', 'importpdf', 'metrage', 'photos'],
     actions: {
       voirFinances:       true,
       modifierPrix:       true,
@@ -23,7 +23,7 @@ export const PERMISSIONS = {
   },
 
   conducteur: {
-    pages: ['dashboard', 'chantiers', 'employes', 'planning', 'qualite', 'importpdf', 'metrage', 'photos'],
+    pages: ['dashboard', 'chantiers', 'employes', 'planning', 'importpdf', 'metrage', 'photos'],
     actions: {
       voirFinances:       false,
       modifierPrix:       false,
@@ -59,7 +59,7 @@ export const PERMISSIONS = {
   },
 
   chef_equipe: {
-    pages: ['dashboard', 'chantiers', 'planning', 'qualite'],
+    pages: ['dashboard', 'chantiers', 'planning'],
     actions: {
       voirFinances:       false,
       modifierPrix:       false,

@@ -109,18 +109,24 @@ function ChantierDetail({ chantier, detailOnglet, setDetailOnglet, modeCompleter
   const client = clients.find(cl => cl.id === c.clientId);
   const directeurTravaux = c.directeurTravauxId ? parametres.employes.find(e => e.id === parseInt(c.directeurTravauxId)) : null;
   const fmtK = (n) => fmtN(n);
-  const facturesLiees = factures.filter(f => parseInt(f.chantierId) === c.id);
+  const facturesLiees = factures.filter(f => String(f.chantierId) === String(c.id));
   const montantFactureLie = facturesLiees.reduce((s, f) => s + (parseFloat(f.montantTTC) || 0), 0);
-  const montantPayeLie    = facturesLiees.reduce((s, f) => s + (parseFloat(f.montantPaye) || 0), 0);
-  const devisTotal = calculerCA(c, devis);
-  const pctFacture = devisTotal > 0 ? Math.min(Math.round((montantFactureLie / devisTotal) * 100), 100) : 0;
-  const tresorerieEcart = devisTotal > 0 ? etat.avancementPct - pctFacture : 0;
+  const montantPayeLie    = facturesLiees.reduce((s, f) => {
+    const viaHistorique = (f.paiementsHistorique || []).reduce((acc, p) => acc + (parseFloat(p.montant) || 0), 0);
+    const viaScalaire   = parseFloat(f.montantPaye) || 0;
+    return s + (viaHistorique > 0 ? viaHistorique : viaScalaire);
+  }, 0);
+  const devisTotal = calculerCA(c, devis) || 0;
+  const _pctFactureRaw = devisTotal > 0 ? (montantFactureLie / devisTotal) * 100 : 0;
+  const pctFacture = isNaN(_pctFactureRaw) ? 0 : Math.min(Math.round(_pctFactureRaw), 100);
+  const tresorerieEcart = devisTotal > 0 ? (etat.avancementPct || 0) - pctFacture : 0;
   const tresorerieConfig = tresorerieEcart > 30
     ? { icone: 'warning', label: 'Travail non facturé — risque de trésorerie', couleur: C.danger }
     : tresorerieEcart > 15
       ? { icone: 'warning', label: 'Facturation en retard', couleur: C.warning }
       : null;
-  const pctEncaisse = devisTotal > 0 ? Math.min(Math.round((montantPayeLie / devisTotal) * 100), 100) : 0;
+  const _pctEncaisseRaw = devisTotal > 0 ? (montantPayeLie / devisTotal) * 100 : 0;
+  const pctEncaisse = isNaN(_pctEncaisseRaw) ? 0 : Math.min(Math.round(_pctEncaisseRaw), 100);
 
   const alertesChantier = (() => {
     const list = [];

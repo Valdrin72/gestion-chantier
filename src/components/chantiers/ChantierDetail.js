@@ -37,6 +37,11 @@ function ChantierDetail({ chantier, detailOnglet, setDetailOnglet, modeCompleter
   const coherenceDetail = assertEtatCoherent(etat);
   const j = joursOuvrableRestants(c.dateDebut, c.nombreJours, c.inclusSamedi);
 
+  // Jours basés sur le journal (même logique que le dashboard)
+  const joursRealises = new Set((c.journal || []).map(e => e.date).filter(Boolean)).size;
+  const joursPlannedTotal = c.nombreJours || 0;
+  const joursRestants = joursPlannedTotal > 0 ? joursPlannedTotal - joursRealises : null;
+
   const modeChantier = etat.avancementPct === 0 ? 'INIT'
     : etat.avancementPct >= 95 ? 'FINAL'
     : 'PROJECTION';
@@ -83,15 +88,15 @@ function ChantierDetail({ chantier, detailOnglet, setDetailOnglet, modeCompleter
     return { texte, conclusion };
   })();
   const perfMessageCourt = (() => {
-    if (j === null || !c.dateDebut) return '';
-    if (j < 0) {
-      const r = Math.abs(j);
+    if (joursRestants === null) return '';
+    if (joursRestants < 0) {
+      const r = Math.abs(joursRestants);
       return perfRatio !== null && perfRatio > 1.1
-        ? `+${r}j de retard — action nécessaire`
-        : `+${r}j de retard — surveiller`;
+        ? `+${r}j de dépassement — action nécessaire`
+        : `+${r}j de dépassement — surveiller`;
     }
-    if (j === 0) return 'Dernier jour prévu';
-    return `${j}j restants`;
+    if (joursRestants === 0) return 'Dernier jour prévu';
+    return `${joursRestants}j restants`;
   })();
   const perfDetail = `${etat.totalJoursReels} j réalisés sur ${etat.totalJoursPrevus} j prévus`;
 
@@ -130,11 +135,11 @@ function ChantierDetail({ chantier, detailOnglet, setDetailOnglet, modeCompleter
 
   const alertesChantier = (() => {
     const list = [];
-    if (j !== null && j < 0) {
-      const abs = Math.abs(j);
-      list.push({ id: 'delai', texte: `Dépassement de délai — ${abs} jour${abs > 1 ? 's' : ''} de retard sur la planification`, gravite: 'critique', icone: 'danger' });
-    } else if (j !== null && j <= 3 && j >= 0) {
-      list.push({ id: 'fin_proche', texte: `Fin imminente — ${j === 0 ? "dernier jour aujourd'hui" : `${j} jour${j > 1 ? 's' : ''} restant${j > 1 ? 's' : ''}`}`, gravite: 'warning', icone: 'warning' });
+    if (joursRestants !== null && joursRestants < 0) {
+      const abs = Math.abs(joursRestants);
+      list.push({ id: 'delai', texte: `Dépassement de délai — ${abs} jour${abs > 1 ? 's' : ''} de plus que prévu`, gravite: 'critique', icone: 'danger' });
+    } else if (joursRestants !== null && joursRestants <= 3 && joursRestants >= 0) {
+      list.push({ id: 'fin_proche', texte: `Fin imminente — ${joursRestants === 0 ? "dernier jour aujourd'hui" : `${joursRestants} jour${joursRestants > 1 ? 's' : ''} restant${joursRestants > 1 ? 's' : ''}`}`, gravite: 'warning', icone: 'warning' });
     }
     if (etat.projectionDisponible && etat.margeEstimeePct !== null) {
       if (etat.margeEstimee < 0) {

@@ -4,7 +4,7 @@
  * Chaque agent est une fonction pure qui reçoit les données et retourne des alertes/résultats.
  */
 
-import { calculerCA, calculerCoutsChantier, joursOuvrableRestants, isChantierActif, fmtN } from './donnees';
+import { calculerCA, calculerCoutsChantier, isChantierActif, fmtN } from './donnees';
 
 // ── Identifiant unique d'alerte ──────────────────────────────
 const uid = (prefix) => `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
@@ -32,7 +32,8 @@ export function runAlerteChantier({ chantiers, devis, parametres }) {
         c, parametres.employes, parametres.localites, parametres.parametres, devis
       );
       const ca = calculerCA(c, devis);
-      const joursRestants = joursOuvrableRestants(c.dateDebut, parseInt(c.nombreJours) || 0, c.inclusSamedi);
+      const joursRealisesC = new Set((c.journal || []).map(e => e.date).filter(Boolean)).size;
+      const joursRestants = c.nombreJours > 0 ? c.nombreJours - joursRealisesC : null;
       const retardJ = joursRestants !== null && joursRestants < 0 ? Math.abs(joursRestants) : 0;
 
       // Marge — seuils configurables
@@ -312,7 +313,8 @@ export function runRapportAuto({ chantiers, factures, devis, parametres, dernier
 
     // Chantiers en retard
     const enRetard = actifs.filter(c => {
-      const j = joursOuvrableRestants(c.dateDebut, parseInt(c.nombreJours) || 0, c.inclusSamedi);
+      const rC = new Set((c.journal || []).map(e => e.date).filter(Boolean)).size;
+      const j = c.nombreJours > 0 ? c.nombreJours - rC : null;
       return j !== null && j < 0;
     });
 

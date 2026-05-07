@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback } from 'react';
-import { calculerDateFinOuvrables, joursOuvrableRestants, getAlerte } from './donnees';
+import { calculerDateFinOuvrables, getAlerte } from './donnees';
 import { DS } from './ds';
 import { TOUS_STATUTS } from './constants/statuts';
 
@@ -201,7 +201,8 @@ export default function Planning({ chantiers, setChantiers, clients, naviguer })
             </div>
           ) : (
             chantiersDuMois.map(c => {
-              const jours = joursOuvrableRestants(c.dateDebut, parseInt(c.nombreJours) || 0, c.inclusSamedi);
+              const joursRealises_ = new Set((c.journal || []).map(e => e.date).filter(Boolean)).size;
+              const jours = c.nombreJours > 0 ? c.nombreJours - joursRealises_ : null;
               const progress = Math.max(0, Math.min(100, parseFloat(c.avancement) || 0));
               const dateFin = calculerDateFinOuvrables(c.dateDebut, parseInt(c.nombreJours) || 0, c.inclusSamedi);
               const barColor = jours === null ? '#94a3b8' : jours < 0 ? '#ef4444' : jours <= 3 ? '#f59e0b' : '#10b981';

@@ -4,7 +4,7 @@ import {
   ChevronRight, DollarSign, Clock,
 } from 'lucide-react';
 import {
-  fmtN, calculerDateFinOuvrables, joursOuvrableRestants,
+  fmtN, calculerDateFinOuvrables,
   getAlerteChantier, getChantierStatus, C,
   assertEtatValide, assertEtatCoherent,
   sommeAvenants, calculerCA, isChantierActif,
@@ -35,9 +35,8 @@ function ChantierDetail({ chantier, detailOnglet, setDetailOnglet, modeCompleter
   const patternChantier = c.typeChantier && patterns[c.typeChantier] ? patterns[c.typeChantier] : null;
   assertEtatValide(etat);
   const coherenceDetail = assertEtatCoherent(etat);
-  const j = joursOuvrableRestants(c.dateDebut, c.nombreJours, c.inclusSamedi);
 
-  // Jours basés sur le journal (même logique que le dashboard)
+  // Source unique : journal des heures (même logique que le dashboard)
   const joursRealises = new Set((c.journal || []).map(e => e.date).filter(Boolean)).size;
   const joursPlannedTotal = c.nombreJours || 0;
   const joursRestants = joursPlannedTotal > 0 ? joursPlannedTotal - joursRealises : null;
@@ -184,20 +183,17 @@ function ChantierDetail({ chantier, detailOnglet, setDetailOnglet, modeCompleter
     couleur: etat.avancementPct === 0 ? '#78909c' : perfConfig ? perfConfig.couleur : C.secondaire,
   };
 
-  const joursCalendaire = joursOuvrableRestants(c.dateDebut, c.nombreJours, c.inclusSamedi);
   const planTile = (() => {
-    if (!c.dateDebut || !c.nombreJours)
-      return { val: '—', label: 'Pas de dates définies', couleur: '#78909c' };
-    if (joursCalendaire === null)
-      return { val: '—', label: 'Calcul impossible', couleur: '#78909c' };
-    if (etat.totalJoursReels === 0)
+    if (!c.nombreJours)
+      return { val: '—', label: 'Pas de durée définie', couleur: '#78909c' };
+    if (joursRealises === 0)
       return { val: `${c.nombreJours}j`, label: 'Durée prévue — non démarré', couleur: '#78909c' };
-    if (joursCalendaire > 0)
-      return { val: `${joursCalendaire}j restants`, label: `${etat.avancementPct}% réalisé`, couleur: C.secondaire };
-    if (joursCalendaire === 0)
+    if (joursRestants !== null && joursRestants > 0)
+      return { val: `${joursRestants}j restants`, label: `${etat.avancementPct}% réalisé`, couleur: C.secondaire };
+    if (joursRestants === 0)
       return { val: 'Dernier jour', label: `${etat.avancementPct}% réalisé`, couleur: C.warning };
-    const retard = Math.abs(joursCalendaire);
-    return { val: `+${retard}j de retard`, label: `${etat.avancementPct}% réalisé`, couleur: retard > 5 ? C.danger : C.warning };
+    const retard = Math.abs(joursRestants);
+    return { val: `+${retard}j de dépassement`, label: `${etat.avancementPct}% réalisé`, couleur: retard > 5 ? C.danger : C.warning };
   })();
 
   const critAlert = alertesChantier.find(a => a.gravite === 'critique');

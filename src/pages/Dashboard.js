@@ -5,7 +5,7 @@ import {
 } from 'lucide-react';
 import { LineChart, Line, PieChart, Pie, Cell, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 import {
-  fmtN, calculerDateFinOuvrables, joursOuvrableRestants, estRetardJustifie,
+  fmtN, calculerDateFinOuvrables, estRetardJustifie,
   calculerCoutsChantier, statutRentabilite, C, getIntervallesPeriode,
   facturesInPeriode, calculerRentabiliteReelle, calculerEtatChantier,
   calculerCA, isChantierActif, isChantierComptable,
@@ -44,7 +44,10 @@ function Dashboard() {
 
   const joursParChantier = useMemo(() => {
     const map = {};
-    chantiers.forEach(c => { map[c.id] = joursOuvrableRestants(c.dateDebut, c.nombreJours, c.inclusSamedi); });
+    chantiers.forEach(c => {
+      const realises = new Set((c.journal || []).map(e => e.date).filter(Boolean)).size;
+      map[c.id] = c.nombreJours > 0 ? c.nombreJours - realises : null;
+    });
     return map;
   }, [chantiers]);
 

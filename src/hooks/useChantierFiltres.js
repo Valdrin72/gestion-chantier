@@ -1,5 +1,4 @@
 import { useState, useMemo } from 'react';
-import { joursOuvrableRestants } from '../donnees';
 import { useApp } from '../context/AppContext';
 
 export function useChantierFiltres() {
@@ -15,7 +14,10 @@ export function useChantierFiltres() {
 
   const joursParChantier = useMemo(() => {
     const map = {};
-    chantiersFiltres.forEach(c => { map[c.id] = joursOuvrableRestants(c.dateDebut, c.nombreJours, c.inclusSamedi); });
+    chantiersFiltres.forEach(c => {
+      const realises = new Set((c.journal || []).map(e => e.date).filter(Boolean)).size;
+      map[c.id] = c.nombreJours > 0 ? c.nombreJours - realises : null;
+    });
     return map;
   }, [chantiersFiltres]);
 

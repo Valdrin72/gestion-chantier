@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { fmtN, calculerCoutsChantier, calculerCA, joursOuvrableRestants, getAlerte, calculerDateFinOuvrables, isChantierActif } from './donnees';
+import { fmtN, calculerCoutsChantier, calculerCA, getAlerte, calculerDateFinOuvrables, isChantierActif } from './donnees';
 import { DS } from './ds';
 
 const carteStyle = DS.card;
@@ -39,7 +39,8 @@ export default function Rapport({ chantiers, clients, devis = [], parametres, pa
   const chantiersPlanifies = chantiers.filter(c => c.statut === 'Planifié');
 
   const alertes = chantiers.filter(c => {
-    const j = joursOuvrableRestants(c.dateDebut, c.nombreJours, c.inclusSamedi);
+    const r = new Set((c.journal || []).map(e => e.date).filter(Boolean)).size;
+    const j = c.nombreJours > 0 ? c.nombreJours - r : null;
     return j !== null && j <= (parametres.parametres?.joursAlerte || 5) && c.statut !== 'Terminé';
   });
 
@@ -84,7 +85,8 @@ export default function Rapport({ chantiers, clients, devis = [], parametres, pa
         <div className="alert-banner alert-banner-danger" style={{ marginBottom: '20px' }}>
           <div style={{ fontWeight: 'bold', color: '#ef4444', fontSize: '16px', marginBottom: '10px' }}>{alertes.length} alerte(s) urgente(s) cette semaine !</div>
           {alertes.map(c => {
-            const j = joursOuvrableRestants(c.dateDebut, c.nombreJours, c.inclusSamedi);
+            const r = new Set((c.journal || []).map(e => e.date).filter(Boolean)).size;
+            const j = c.nombreJours > 0 ? c.nombreJours - r : null;
             const al = getAlerte(j);
             return <div key={c.id} style={{ color: '#ef4444', marginBottom: '4px' }}>▶ <strong>{c.nom}</strong> — {al?.texte}</div>;
           })}
@@ -121,7 +123,8 @@ export default function Rapport({ chantiers, clients, devis = [], parametres, pa
             </tr></thead>
             <tbody>
               {chantiersEnCours.map((c, i) => {
-                const j = joursOuvrableRestants(c.dateDebut, c.nombreJours, c.inclusSamedi);
+                const r = new Set((c.journal || []).map(e => e.date).filter(Boolean)).size;
+                const j = c.nombreJours > 0 ? c.nombreJours - r : null;
                 const al = getAlerte(j);
                 const couts = calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis);
                 const client = clients.find(cl => cl.id === c.clientId);

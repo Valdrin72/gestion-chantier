@@ -851,6 +851,31 @@ function Dashboard() {
               </div>
             ))}
           </div>
+          {(() => {
+            const totalCA  = donneesMensuelles.reduce((s, d) => s + (d.CA || 0), 0);
+            const totalEnc = donneesMensuelles.reduce((s, d) => s + (d.Encaissements || 0), 0);
+            const totalCts = donneesMensuelles.reduce((s, d) => s + (d.Couts || 0), 0);
+            const margeBrute = totalCA - totalCts;
+            const margePct = totalCA > 0 ? Math.round((margeBrute / totalCA) * 100) : null;
+            const tauxEnc = totalCA > 0 ? Math.round((totalEnc / totalCA) * 100) : null;
+            const couleurMarge = margePct === null ? 'var(--text-muted)' : margePct >= 20 ? '#10b981' : margePct >= 10 ? '#f59e0b' : '#ef4444';
+            const tiles = [
+              { label: 'CA cumulé',     val: `CHF ${fmtN(totalCA)}`,  sub: '4 sem.',                              couleur: '#3b82f6' },
+              { label: 'Encaissé',      val: `CHF ${fmtN(totalEnc)}`, sub: tauxEnc !== null ? `${tauxEnc}% du CA` : '—',  couleur: '#10b981' },
+              { label: 'Marge brute',   val: `CHF ${fmtN(margeBrute)}`, sub: margePct !== null ? `${margePct}% marge`  : '—', couleur: couleurMarge },
+            ];
+            return (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginTop: 16, paddingTop: 14, borderTop: '1px solid var(--border)' }}>
+                {tiles.map(t => (
+                  <div key={t.label} style={{ background: 'var(--bg-glass-2)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 12px', textAlign: 'center' }}>
+                    <div style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-muted)', marginBottom: 4 }}>{t.label}</div>
+                    <div style={{ fontSize: 14, fontWeight: 800, color: t.couleur, letterSpacing: '-0.3px', lineHeight: 1.1 }}>{t.val}</div>
+                    <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 3 }}>{t.sub}</div>
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
         </div>
 
         {/* ── COLONNE DROITE : Alertes agents IA ── */}

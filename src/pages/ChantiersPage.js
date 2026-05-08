@@ -13,7 +13,7 @@ const sanitiser = (obj) => {
 };
 
 function Chantiers() {
-  const { chantiers, setChantiers, devis = [], parametres, naviguer, contexte } = useApp();
+  const { chantiers, setChantiers, devis = [], factures = [], setFactures, parametres, naviguer, contexte } = useApp();
   const { filtre, setFiltre, chantiersFiltres, joursParChantier } = useChantierFiltres();
 
   const [vue, setVue] = useState('liste');
@@ -99,8 +99,13 @@ function Chantiers() {
 
   const supprimer = (id) => {
     const c = chantiers.find(ch => ch.id === id);
-    if (!window.confirm(`Supprimer le chantier "${c?.nom}" ? Cette action est irréversible.`)) return;
+    const facturesLiees = factures.filter(f => String(f.chantierId) === String(id));
+    const msg = facturesLiees.length > 0
+      ? `Supprimer le chantier "${c?.nom}" et ses ${facturesLiees.length} facture(s) liée(s) ? Cette action est irréversible.`
+      : `Supprimer le chantier "${c?.nom}" ? Cette action est irréversible.`;
+    if (!window.confirm(msg)) return;
     setChantiers(chantiers.filter(ch => ch.id !== id));
+    if (facturesLiees.length > 0) setFactures(factures.filter(f => String(f.chantierId) !== String(id)));
     setSelected(null);
     setVue('liste');
   };

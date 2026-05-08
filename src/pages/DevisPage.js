@@ -452,7 +452,22 @@ function Devis() {
                             title="Modifier"
                           ><Pencil size={14} /></button>
                           <button
-                            onClick={() => { if (window.confirm(`Supprimer le devis "${d.numero}" ?`)) setDevis(devis.filter(dv => dv.id !== d.id)); }}
+                            onClick={() => {
+                              const chantiersLies = chantiers.filter(ch => String(ch.devisId) === String(d.id));
+                              const facturesLiees = factures.filter(f => chantiersLies.some(ch => String(ch.id) === String(f.chantierId)) || String(f.devisId) === String(d.id));
+                              const lignes = [`Supprimer le devis "${d.numero}" ?`];
+                              if (chantiersLies.length > 0) lignes.push(`→ ${chantiersLies.length} chantier(s) lié(s) seront aussi supprimé(s)`);
+                              if (facturesLiees.length > 0) lignes.push(`→ ${facturesLiees.length} facture(s) liée(s) seront aussi supprimée(s)`);
+                              lignes.push('Cette action est irréversible.');
+                              if (!window.confirm(lignes.join('\n'))) return;
+                              const idsChantiers = new Set(chantiersLies.map(ch => ch.id));
+                              setDevis(devis.filter(dv => dv.id !== d.id));
+                              if (idsChantiers.size > 0) setChantiers(chantiers.filter(ch => !idsChantiers.has(ch.id)));
+                              if (facturesLiees.length > 0) {
+                                const idsFactures = new Set(facturesLiees.map(f => f.id));
+                                setFactures(factures.filter(f => !idsFactures.has(f.id)));
+                              }
+                            }}
                             style={{ ...DS.iconBtn, color: '#EF4444' }}
                             title="Supprimer"
                           ><Trash2 size={14} /></button>

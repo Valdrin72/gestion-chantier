@@ -6,12 +6,12 @@ export function Sidebar({ sidebarOuvert, setSidebarOuvert, navAutorisees, page, 
     <>
       {sidebarOuvert && <div className="sidebar-overlay" onClick={() => setSidebarOuvert(false)} />}
       <aside className={`sidebar${sidebarOuvert ? ' sidebar-open' : ''}`}>
-        <div className="sidebar-logo">
+        <div className="sidebar-logo" style={{ padding: '16px 12px' }}>
           <img
             src={`${process.env.PUBLIC_URL}/logo-cyna.png`}
             alt="CYNA"
             style={{
-              height: 36,
+              height: 24,
               width: 'auto',
               objectFit: 'contain',
               flexShrink: 0,

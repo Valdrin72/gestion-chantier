@@ -401,14 +401,15 @@ export default function Finances({
 }) {
   const [onglet, setOnglet] = useState('tresorerie');
 
-  // ── Exclure les factures orphelines (chantier ou devis supprimé) ──
+  // ── Exclure les factures orphelines (chantier, devis ou client supprimé) ──
   const facturesOrphelines = useMemo(() =>
     factures.filter(f => {
       if (f.chantierId && !chantiers.some(ch => String(ch.id) === String(f.chantierId))) return true;
-      if (!f.chantierId && f.devisId && !devis.some(d => String(d.id) === String(f.devisId))) return true;
+      if (f.devisId   && !devis.some(d   => String(d.id)   === String(f.devisId)))   return true;
+      if (f.clientId  && !clients.some(cl => String(cl.id)  === String(f.clientId)))  return true;
       return false;
     })
-  , [factures, chantiers, devis]);
+  , [factures, chantiers, devis, clients]);
 
   const facturesValides = useMemo(() =>
     factures.filter(f => !facturesOrphelines.some(o => o.id === f.id))
@@ -532,7 +533,7 @@ export default function Finances({
       )}
       <div style={{ display: onglet === 'factures' ? 'block' : 'none' }}>
         <Factures
-          factures={factures}
+          factures={facturesValides}
           onSave={onSave}
           clients={clients}
           chantiers={chantiers}

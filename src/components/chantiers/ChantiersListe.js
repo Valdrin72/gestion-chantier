@@ -1,6 +1,6 @@
 import React from 'react';
 import {
-  HardHat, X, Pencil, AlertTriangle, ChevronRight, DollarSign, Clock, Eye, TrendingUp,
+  HardHat, X, Pencil, Trash2, AlertTriangle, ChevronRight, DollarSign, Clock, Eye, TrendingUp,
 } from 'lucide-react';
 import {
   fmtN, calculerCoutsChantier, C, calculerEtatChantier,
@@ -18,6 +18,7 @@ function ChantiersListe({
   setFiltre,
   onSelect,
   onModifier,
+  onSupprimer,
   formSlot,
 }) {
   const { chantiers, clients, devis = [], parametres, naviguer, contexte } = useApp();
@@ -262,6 +263,13 @@ function ChantiersListe({
                             style={DS.iconBtn}
                             title="Modifier"
                           ><Pencil size={14} /></button>
+                          {onSupprimer && (
+                            <button
+                              onClick={() => { if (window.confirm(`Supprimer "${c.nom || c.numero}" ?`)) onSupprimer(c.id); }}
+                              style={{ ...DS.iconBtn, color: '#ef4444' }}
+                              title="Supprimer"
+                            ><Trash2 size={14} /></button>
+                          )}
                         </div>
                       </td>
                     </tr>

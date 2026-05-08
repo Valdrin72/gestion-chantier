@@ -139,6 +139,7 @@ function Chantiers() {
       setFiltre={setFiltre}
       onSelect={(c) => { setSelected(c); setVue('detail'); setDetailOnglet('vue'); }}
       onModifier={ouvrirModification}
+      onSupprimer={supprimer}
       formSlot={ajout && (
         <ChantierForm
           form={form}

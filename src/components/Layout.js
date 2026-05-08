@@ -91,12 +91,7 @@ export function Topbar({ setSidebarOuvert, canGoBack, page, revenirArriere, navA
         )}
         <span className="topbar-title">{navAutorisees.find(n => n.id === page)?.label || 'Dashboard'}</span>
       </div>
-      <div className="topbar-right">
-        <button className="topbar-icon-btn" onClick={toggleDarkMode} title={darkMode ? 'Mode clair' : 'Mode sombre'}>
-          {darkMode ? <Sun size={18} strokeWidth={2} /> : <Moon size={18} strokeWidth={2} />}
-        </button>
-        <div className="topbar-avatar">{profil.nom.substring(0, 2).toUpperCase()}</div>
-      </div>
+      <div className="topbar-right" />
     </header>
   );
 }

@@ -10,9 +10,6 @@ export function Sidebar({ sidebarOuvert, setSidebarOuvert, navAutorisees, page, 
           <div className="sidebar-logo-icon"><BarChart2 size={17} strokeWidth={1.8} style={{ color: '#fff' }} /></div>
           <div className="sidebar-logo-name">CYNA</div>
         </div>
-        <button className="sidebar-cta" onClick={() => { naviguer('chantiers'); setSidebarOuvert(false); }}>
-          <Plus size={16} strokeWidth={2.6} /> Nouveau chantier
-        </button>
         <nav className="sidebar-nav">
           {navAutorisees.map(item => (
             <button
@@ -31,6 +28,9 @@ export function Sidebar({ sidebarOuvert, setSidebarOuvert, navAutorisees, page, 
             </button>
           ))}
         </nav>
+        <button className="sidebar-cta" onClick={() => { naviguer('devis'); setSidebarOuvert(false); }}>
+          <Plus size={16} strokeWidth={2.6} /> Nouveau devis
+        </button>
         <button className="sidebar-theme-toggle" onClick={toggleDarkMode} title={darkMode ? 'Mode clair' : 'Mode sombre'}>
           <div className={`sidebar-toggle-track${darkMode ? ' on' : ''}`}>
             <div className="sidebar-toggle-thumb" />

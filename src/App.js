@@ -6,7 +6,7 @@ import {
 import { Sidebar, Topbar, MobileNav } from './components/Layout';
 import { donneesInitiales, migrerJournal, migrerDevisId } from './donnees';
 import Finances from './pages/FinancesPage';
-import Login, { PROFILS } from './Login';
+import { PROFILS } from './Login';
 import useAgents from './useAgents';
 import Agents from './Agents';
 import Heures from './Heures';
@@ -136,12 +136,7 @@ function App() {
   const [paiementsData, setPaiementsDataState] = useState(() => charger('cyna_paiements', {}));
   // photosData conservé en localStorage pour migration future, non exposé à l'UI
   const [actionsLog, setActionsLogState] = useState(() => charger('cyna_actions', []));
-  const [profil, setProfil] = useState(() => {
-    const stored = charger('cyna_profil', null);
-    if (!stored || !stored.id) return null;
-    // Revalider contre les profils connus — empêche la manipulation du localStorage
-    return PROFILS.find(p => p.id === stored.id) || null;
-  });
+  const [profil, setProfil] = useState(() => PROFILS[0]);
 
   // ── Modal Saisie Heures — rendu au niveau App pour ne pas re-rendre Chantiers ──
   // On stocke l'id, pas le snapshot — le chantier est dérivé en live depuis chantiers[]
@@ -216,10 +211,6 @@ function App() {
     { id: 'agents',     label: 'Agents IA',   Icon: Bot,             labelCourt: 'Agents' },
     { id: 'parametres', label: 'Paramètres',  Icon: Settings,        labelCourt: 'Config' },
   ];
-
-  if (!profil) {
-    return <Login onLogin={(p) => { setProfil(p); localStorage.setItem('cyna_profil', JSON.stringify(p)); }} />;
-  }
 
   const pagesAutorisees = profil.pages || [];
   const navAutorisees = navItems.filter(item => pagesAutorisees.includes(item.id));

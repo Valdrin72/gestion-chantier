@@ -1,5 +1,5 @@
 import React from 'react';
-import { BarChart2, Plus, Sun, Moon, LogOut, Menu, X, ChevronRight } from 'lucide-react';
+import { BarChart2, Plus, Sun, Moon, Menu, X, ChevronRight } from 'lucide-react';
 
 export function Sidebar({ sidebarOuvert, setSidebarOuvert, navAutorisees, page, naviguer, darkMode, toggleDarkMode, profil, setProfil }) {
   return (
@@ -44,9 +44,6 @@ export function Sidebar({ sidebarOuvert, setSidebarOuvert, navAutorisees, page, 
             <div className="sidebar-profile-name">{profil.nom}</div>
             <div className="sidebar-profile-role">{profil.id}</div>
           </div>
-          <button className="sidebar-logout" onClick={() => { setProfil(null); localStorage.removeItem('cyna_profil'); }} title="Changer de profil">
-            <LogOut size={14} strokeWidth={2} />
-          </button>
         </div>
       </aside>
     </>

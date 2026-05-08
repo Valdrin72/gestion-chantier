@@ -8,7 +8,7 @@ export function Sidebar({ sidebarOuvert, setSidebarOuvert, navAutorisees, page, 
       <aside className={`sidebar${sidebarOuvert ? ' sidebar-open' : ''}`}>
         <div className="sidebar-logo">
           <img
-            src={`${process.env.PUBLIC_URL}/Logo.png.png`}
+            src={`${process.env.PUBLIC_URL}/logo-cyna.png`}
             alt="CYNA"
             style={{
               height: 36,

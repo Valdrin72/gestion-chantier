@@ -1,5 +1,5 @@
 import React from 'react';
-import { BarChart2, Plus, Sun, Moon, Menu, X, ChevronRight } from 'lucide-react';
+import { Plus, Sun, Moon, Menu, X, ChevronRight } from 'lucide-react';
 
 export function Sidebar({ sidebarOuvert, setSidebarOuvert, navAutorisees, page, naviguer, darkMode, toggleDarkMode, profil, setProfil }) {
   return (
@@ -7,8 +7,17 @@ export function Sidebar({ sidebarOuvert, setSidebarOuvert, navAutorisees, page, 
       {sidebarOuvert && <div className="sidebar-overlay" onClick={() => setSidebarOuvert(false)} />}
       <aside className={`sidebar${sidebarOuvert ? ' sidebar-open' : ''}`}>
         <div className="sidebar-logo">
-          <div className="sidebar-logo-icon"><BarChart2 size={17} strokeWidth={1.8} style={{ color: '#fff' }} /></div>
-          <div className="sidebar-logo-name">CYNA</div>
+          <img
+            src={`${process.env.PUBLIC_URL}/Logo.png.png`}
+            alt="CYNA"
+            style={{
+              height: 36,
+              width: 'auto',
+              maxWidth: '100%',
+              objectFit: 'contain',
+              filter: darkMode ? 'brightness(0) invert(1)' : 'none',
+            }}
+          />
         </div>
         <nav className="sidebar-nav">
           {navAutorisees.map(item => (

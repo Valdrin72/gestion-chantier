@@ -28,7 +28,7 @@ export function Sidebar({ sidebarOuvert, setSidebarOuvert, navAutorisees, page, 
             </button>
           ))}
         </nav>
-        <button className="sidebar-cta" onClick={() => { naviguer('devis'); setSidebarOuvert(false); }}>
+        <button className="sidebar-cta" onClick={() => { naviguer('devis', { ouvrirNouveau: true }); setSidebarOuvert(false); }}>
           <Plus size={16} strokeWidth={2.6} /> Nouveau devis
         </button>
         <button className="sidebar-theme-toggle" onClick={toggleDarkMode} title={darkMode ? 'Mode clair' : 'Mode sombre'}>

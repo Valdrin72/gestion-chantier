@@ -26,6 +26,11 @@ function Devis() {
   };
   const [form, setForm] = useState(vide);
 
+  // Ouverture directe du formulaire depuis la sidebar
+  React.useEffect(() => {
+    if (contexte?.ouvrirNouveau) { setForm(vide); setAjout(true); }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Préremplissage depuis Import PDF
   React.useEffect(() => {
     if (!contexte?.prixPropose && !contexte?.lignes?.length) return;

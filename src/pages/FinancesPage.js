@@ -161,10 +161,10 @@ function Tresorerie({ factures = [], chantiers = [], clients = [], devis = [] })
       {/* ── KPIs ── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 14, marginBottom: 28 }}>
         {[
-          { label: 'À encaisser (total)', val: `CHF ${fmt(data.totalAEncaisser)}`, couleur: '#3b82f6', Icon: Clock,       sub: `${data.impayees.length} facture${data.impayees.length !== 1 ? 's' : ''}` },
-          { label: 'En retard',           val: `CHF ${fmt(data.totalRetard)}`,     couleur: '#ef4444', Icon: AlertTriangle, sub: data.totalRetard > 0 ? 'Action immédiate' : 'Aucun retard' },
-          { label: 'Cette semaine',       val: `CHF ${fmt(data.totalCetteSemaine)}`,couleur: '#f59e0b', Icon: Zap,          sub: 'Échéance dans 7j' },
-          { label: 'À facturer (potentiel)',val: `CHF ${fmt(data.totalAFacturer)}`,couleur: '#10b981', Icon: TrendingUp,   sub: `${data.aFacturer.length} chantier${data.aFacturer.length !== 1 ? 's' : ''}` },
+          { label: 'À encaisser (total)', val: `CHF ${fmt(data.totalAEncaisser)}`, couleur: '#3b82f6', Icon: Clock,       sub: `${data.impayees.length} facture${data.impayees.length !== 1 ? 's' : ''} impayée${data.impayees.length !== 1 ? 's' : ''} en cours`, desc: 'Solde restant à recevoir sur toutes les factures ouvertes' },
+          { label: 'En retard',           val: `CHF ${fmt(data.totalRetard)}`,     couleur: '#ef4444', Icon: AlertTriangle, sub: data.totalRetard > 0 ? 'Action immédiate requise' : 'Aucun retard', desc: 'Factures dont la date d\'échéance est dépassée' },
+          { label: 'Cette semaine',       val: `CHF ${fmt(data.totalCetteSemaine)}`,couleur: '#f59e0b', Icon: Zap,          sub: 'Échéances dans les 7 prochains jours', desc: 'Montant à encaisser d\'ici 7 jours' },
+          { label: 'À facturer (potentiel)',val: `CHF ${fmt(data.totalAFacturer)}`,couleur: '#10b981', Icon: TrendingUp,   sub: `${data.aFacturer.length} chantier${data.aFacturer.length !== 1 ? 's' : ''} — selon avancement`, desc: 'CA × avancement% − déjà facturé, sur chantiers actifs' },
         ].map(k => (
           <div key={k.label} style={{ background: 'var(--ds-card-bg)', border: '1px solid var(--ds-card-border)', borderRadius: 14, padding: '18px 20px', boxShadow: 'var(--ds-card-shadow)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
@@ -175,6 +175,7 @@ function Tresorerie({ factures = [], chantiers = [], clients = [], devis = [] })
             </div>
             <div style={{ fontSize: 22, fontWeight: 900, color: 'var(--text-primary)', letterSpacing: '-0.5px', lineHeight: 1.1 }}>{k.val}</div>
             <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 5 }}>{k.sub}</div>
+            {k.desc && <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 4, fontStyle: 'italic', opacity: 0.75 }}>{k.desc}</div>}
           </div>
         ))}
       </div>
@@ -400,11 +401,16 @@ export default function Finances({
 }) {
   const [onglet, setOnglet] = useState('tresorerie');
 
+  // ── Exclure les factures orphelines (chantier supprimé) ──────
+  const facturesValides = useMemo(() =>
+    factures.filter(f => !f.chantierId || chantiers.some(ch => String(ch.id) === String(f.chantierId)))
+  , [factures, chantiers]);
+
   // ── Factures filtrées par période ────────────────────────────
   const facturesPeriode = useMemo(() => {
     const { debut, fin } = getIntervallesPeriode(periodeGlobale);
-    return factures.filter(f => facturesInPeriode(f, debut, fin));
-  }, [factures, periodeGlobale]);
+    return facturesValides.filter(f => facturesInPeriode(f, debut, fin));
+  }, [facturesValides, periodeGlobale]);
 
   // ── KPIs synthèse (filtrés par période) ─────────────────────
   const kpis = useMemo(() => {
@@ -442,10 +448,10 @@ export default function Finances({
       {/* ── KPIs résumé — gradients saturés (identiques Dashboard) ── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 28 }}>
         {[
-          { label: 'Total facturé',  val: `CHF ${fmt(kpis.totalFacture)}`,  gradient: 'linear-gradient(135deg, #1E40AF 0%, #3B82F6 100%)', glow: 'rgba(59,130,246,0.32)',   Icon: FileText },
-          { label: 'Total encaissé', val: `CHF ${fmt(kpis.totalPaye)}`,     gradient: 'linear-gradient(135deg, #065F46 0%, #10B981 100%)', glow: 'rgba(16,185,129,0.32)',  Icon: DollarSign },
-          { label: 'En attente',     val: `CHF ${fmt(kpis.enAttente)}`,     gradient: 'linear-gradient(135deg, #92400E 0%, #F59E0B 100%)', glow: 'rgba(245,158,11,0.32)', Icon: Clock },
-          { label: 'En retard',      val: `CHF ${fmt(kpis.enRetard)}`,      gradient: 'linear-gradient(135deg, #991B1B 0%, #EF4444 100%)', glow: 'rgba(239,68,68,0.32)',   Icon: AlertTriangle },
+          { label: 'Total facturé',  val: `CHF ${fmt(kpis.totalFacture)}`,  sub: 'Montant émis sur la période', gradient: 'linear-gradient(135deg, #1E40AF 0%, #3B82F6 100%)', glow: 'rgba(59,130,246,0.32)',   Icon: FileText },
+          { label: 'Total encaissé', val: `CHF ${fmt(kpis.totalPaye)}`,     sub: 'Paiements reçus des clients',  gradient: 'linear-gradient(135deg, #065F46 0%, #10B981 100%)', glow: 'rgba(16,185,129,0.32)',  Icon: DollarSign },
+          { label: 'En attente',     val: `CHF ${fmt(kpis.enAttente)}`,     sub: 'Pas encore échu',              gradient: 'linear-gradient(135deg, #92400E 0%, #F59E0B 100%)', glow: 'rgba(245,158,11,0.32)', Icon: Clock },
+          { label: 'En retard',      val: `CHF ${fmt(kpis.enRetard)}`,      sub: 'Échéance dépassée — à relancer', gradient: 'linear-gradient(135deg, #991B1B 0%, #EF4444 100%)', glow: 'rgba(239,68,68,0.32)',   Icon: AlertTriangle },
         ].map(k => (
           <div key={k.label} style={{
             background: k.gradient, borderRadius: 16, padding: '22px 20px', minHeight: 130,
@@ -460,6 +466,7 @@ export default function Finances({
             </div>
             <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.72)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 6 }}>{k.label}</div>
             <div style={{ fontSize: 26, fontWeight: 900, color: '#ffffff', letterSpacing: '-0.8px', lineHeight: 1, position: 'relative' }}>{k.val}</div>
+            <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.6)', marginTop: 8, position: 'relative' }}>{k.sub}</div>
           </div>
         ))}
       </div>
@@ -496,7 +503,7 @@ export default function Finances({
 
       {/* ── Contenu ── */}
       {onglet === 'tresorerie' && (
-        <Tresorerie factures={factures} chantiers={chantiers} clients={clients} devis={devis} />
+        <Tresorerie factures={facturesValides} chantiers={chantiers} clients={clients} devis={devis} />
       )}
       <div style={{ display: onglet === 'factures' ? 'block' : 'none' }}>
         <Factures

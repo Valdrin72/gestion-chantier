@@ -10,31 +10,6 @@ const PROFILS = [
     description: 'Accès complet à toutes les fonctionnalités',
     pages: ['dashboard', 'chantiers', 'devis', 'heures', 'finances', 'planning', 'rapport', 'agents', 'parametres'],
   },
-  {
-    id: 'conducteur',
-    nom: 'Conducteur de travaux',
-    icone: '◉',
-    couleur: C.warning,
-    description: 'Chantiers, planning, qualité et équipes',
-    pages: ['dashboard', 'chantiers', 'heures', 'planning', 'parametres'],
-  },
-  {
-    id: 'administratif',
-    nom: 'Administratif',
-    icone: '',
-    couleur: C.info,
-    description: 'Clients, devis, paiements et statistiques',
-    pages: ['dashboard', 'devis', 'finances', 'rapport', 'parametres'],
-    
-  },
-  {
-    id: 'chef_equipe',
-    nom: "Chef d'équipe",
-    icone: '',
-    couleur: C.secondaire,
-    description: 'Accès à ses chantiers uniquement',
-    pages: ['dashboard', 'chantiers', 'planning'],
-  },
 ];
 
 export default function Login({ onLogin }) {

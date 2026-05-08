@@ -711,7 +711,7 @@ function Dashboard() {
         {[
           { label: "CA en cours", Icon: DollarSign, page: 'devis',
             valeur: `CHF ${fmtN(kpi.caEnCours)}`,
-            sous: kpi.nbChantiersActifs > 0 ? `${kpi.nbChantiersActifs} chantier${kpi.nbChantiersActifs !== 1 ? 's' : ''} en cours · devis signés` : 'Aucun chantier en cours',
+            sous: kpi.nbChantiersActifs > 0 ? `${kpi.nbChantiersActifs} chantier${kpi.nbChantiersActifs !== 1 ? 's' : ''} · En cours + Planifiés` : 'Aucun chantier en cours',
             ...DS.kpi.blue },
           { label: 'Marge moyenne', Icon: TrendingUp, page: 'analyse',
             valeur: kpi.rentaMoyenne !== null ? `${Math.round(kpi.rentaMoyenne)}%` : '—',

@@ -97,7 +97,7 @@ export default function Rapport({ chantiers, clients, devis = [], parametres, pa
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24 }}>
         {[
           { label: 'EN COURS',      val: chantiersEnCours.length,      gradient: 'linear-gradient(135deg, #1E40AF 0%, #3B82F6 100%)', glow: 'rgba(59,130,246,0.32)', badge: `${chantiersPlanifies.length} planifiés` },
-          { label: 'CA TOTAL',      val: `CHF ${fmtN(caTotal)}`,        gradient: 'linear-gradient(135deg, #065F46 0%, #10B981 100%)', glow: 'rgba(16,185,129,0.32)', badge: `CHF ${fmtN(totalPaiementsRecus)} reçus` },
+          { label: 'CA TOUS CHANTIERS', val: `CHF ${fmtN(caTotal)}`,        gradient: 'linear-gradient(135deg, #065F46 0%, #10B981 100%)', glow: 'rgba(16,185,129,0.32)', badge: `CHF ${fmtN(totalPaiementsRecus)} reçus` },
           { label: 'EN ATTENTE',    val: `CHF ${fmtN(totalPaiementsAttente)}`, gradient: 'linear-gradient(135deg, #92400E 0%, #F59E0B 100%)', glow: 'rgba(245,158,11,0.32)' },
           { label: 'EN RETARD',     val: `CHF ${fmtN(totalPaiementsRetard)}`,  gradient: totalPaiementsRetard > 0 ? 'linear-gradient(135deg, #991B1B 0%, #EF4444 100%)' : 'linear-gradient(135deg, #065F46 0%, #10B981 100%)', glow: totalPaiementsRetard > 0 ? 'rgba(239,68,68,0.32)' : 'rgba(16,185,129,0.32)' },
         ].map(k => (

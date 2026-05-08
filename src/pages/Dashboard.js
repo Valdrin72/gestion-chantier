@@ -687,7 +687,7 @@ function Dashboard() {
               src={`${process.env.PUBLIC_URL}/logo-cyna-tech.png`}
               alt="CYNA Tech"
               className="logo-cyna-tech-inline"
-              style={{ height: 26, width: 'auto', objectFit: 'contain', verticalAlign: 'middle' }}
+              style={{ height: 20, width: 'auto', objectFit: 'contain', verticalAlign: 'middle' }}
             />
           </div>
           <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: '4px 0 0' }}>

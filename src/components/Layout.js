@@ -14,14 +14,19 @@ export function Sidebar({ sidebarOuvert, setSidebarOuvert, navAutorisees, page, 
               height: 36,
               width: 'auto',
               objectFit: 'contain',
-              filter: darkMode ? 'brightness(0) invert(1)' : 'none',
               flexShrink: 0,
             }}
           />
-          <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.1 }}>
-            <span style={{ fontSize: 17, fontWeight: 700, letterSpacing: '0.18em', color: '#ffffff', fontFamily: "'Helvetica Neue', Arial, sans-serif", textTransform: 'uppercase' }}>CYNA</span>
-            <span style={{ fontSize: 11, fontWeight: 400, letterSpacing: '0.22em', color: 'rgba(255,255,255,0.65)', fontFamily: "'Helvetica Neue', Arial, sans-serif", textTransform: 'uppercase' }}>Tech</span>
-          </div>
+          <img
+            src={`${process.env.PUBLIC_URL}/logo-cyna-tech.png`}
+            alt="CYNA Tech"
+            style={{
+              height: 18,
+              width: 'auto',
+              objectFit: 'contain',
+              filter: darkMode ? 'invert(1)' : 'none',
+            }}
+          />
         </div>
         <nav className="sidebar-nav">
           {navAutorisees.map(item => (

@@ -11,8 +11,9 @@ export function Sidebar({ sidebarOuvert, setSidebarOuvert, navAutorisees, page, 
             src={`${process.env.PUBLIC_URL}/logo-cyna-tech.png`}
             alt="CYNA Tech"
             style={{
-              height: 22,
+              height: 16,
               width: 'auto',
+              maxWidth: '100%',
               objectFit: 'contain',
               filter: darkMode ? 'invert(1)' : 'none',
             }}
@@ -47,13 +48,11 @@ export function Sidebar({ sidebarOuvert, setSidebarOuvert, navAutorisees, page, 
           <span>{darkMode ? 'Mode clair' : 'Mode sombre'}</span>
         </button>
         <div className="sidebar-profile">
-          <div className="sidebar-avatar" style={{ background: 'transparent', padding: 2 }}>
-            <img
-              src={`${process.env.PUBLIC_URL}/logo-cyna.png`}
-              alt="CYNA"
-              style={{ width: '100%', height: '100%', objectFit: 'contain' }}
-            />
-          </div>
+          <img
+            src={`${process.env.PUBLIC_URL}/logo-cyna.png`}
+            alt="CYNA"
+            style={{ height: 32, width: 'auto', objectFit: 'contain', flexShrink: 0 }}
+          />
           <div className="sidebar-profile-info">
             <div className="sidebar-profile-name">{profil.nom}</div>
             <div className="sidebar-profile-role">{profil.id}</div>

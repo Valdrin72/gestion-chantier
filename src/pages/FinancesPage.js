@@ -401,10 +401,18 @@ export default function Finances({
 }) {
   const [onglet, setOnglet] = useState('tresorerie');
 
-  // ── Exclure les factures orphelines (chantier supprimé) ──────
+  // ── Exclure les factures orphelines (chantier ou devis supprimé) ──
+  const facturesOrphelines = useMemo(() =>
+    factures.filter(f => {
+      if (f.chantierId && !chantiers.some(ch => String(ch.id) === String(f.chantierId))) return true;
+      if (!f.chantierId && f.devisId && !devis.some(d => String(d.id) === String(f.devisId))) return true;
+      return false;
+    })
+  , [factures, chantiers, devis]);
+
   const facturesValides = useMemo(() =>
-    factures.filter(f => !f.chantierId || chantiers.some(ch => String(ch.id) === String(f.chantierId)))
-  , [factures, chantiers]);
+    factures.filter(f => !facturesOrphelines.some(o => o.id === f.id))
+  , [factures, facturesOrphelines]);
 
   // ── Factures filtrées par période ────────────────────────────
   const facturesPeriode = useMemo(() => {
@@ -444,6 +452,23 @@ export default function Finances({
           </div>
         </div>
       </div>
+
+      {/* ── Alerte données orphelines ── */}
+      {facturesOrphelines.length > 0 && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 18px', borderRadius: 12, marginBottom: 18, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)', borderLeft: '4px solid #ef4444' }}>
+          <AlertTriangle size={16} style={{ color: '#ef4444', flexShrink: 0 }} />
+          <div style={{ flex: 1, fontSize: 13, color: 'var(--text-primary)' }}>
+            <strong>{facturesOrphelines.length} facture{facturesOrphelines.length > 1 ? 's' : ''} orpheline{facturesOrphelines.length > 1 ? 's' : ''}</strong>
+            {' '}— liée{facturesOrphelines.length > 1 ? 's' : ''} à un chantier ou devis supprimé. Ces montants sont exclus des calculs.
+          </div>
+          <button
+            onClick={() => { if (window.confirm(`Supprimer définitivement ${facturesOrphelines.length} facture(s) orpheline(s) ?`)) onSave(factures.filter(f => !facturesOrphelines.some(o => o.id === f.id))); }}
+            style={{ padding: '6px 14px', borderRadius: 8, border: '1px solid rgba(239,68,68,0.4)', background: 'rgba(239,68,68,0.12)', color: '#ef4444', fontSize: 12, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}
+          >
+            Supprimer
+          </button>
+        </div>
+      )}
 
       {/* ── KPIs résumé — gradients saturés (identiques Dashboard) ── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 28 }}>

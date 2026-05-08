@@ -6,22 +6,12 @@ export function Sidebar({ sidebarOuvert, setSidebarOuvert, navAutorisees, page, 
     <>
       {sidebarOuvert && <div className="sidebar-overlay" onClick={() => setSidebarOuvert(false)} />}
       <aside className={`sidebar${sidebarOuvert ? ' sidebar-open' : ''}`}>
-        <div className="sidebar-logo" style={{ padding: '16px 12px' }}>
-          <img
-            src={`${process.env.PUBLIC_URL}/logo-cyna.png`}
-            alt="CYNA"
-            style={{
-              height: 44,
-              width: 'auto',
-              objectFit: 'contain',
-              flexShrink: 0,
-            }}
-          />
+        <div className="sidebar-logo" style={{ padding: '18px 16px' }}>
           <img
             src={`${process.env.PUBLIC_URL}/logo-cyna-tech.png`}
             alt="CYNA Tech"
             style={{
-              height: 14,
+              height: 22,
               width: 'auto',
               objectFit: 'contain',
               filter: darkMode ? 'invert(1)' : 'none',
@@ -57,7 +47,13 @@ export function Sidebar({ sidebarOuvert, setSidebarOuvert, navAutorisees, page, 
           <span>{darkMode ? 'Mode clair' : 'Mode sombre'}</span>
         </button>
         <div className="sidebar-profile">
-          <div className="sidebar-avatar">{profil.nom.substring(0, 2).toUpperCase()}</div>
+          <div className="sidebar-avatar" style={{ background: 'transparent', padding: 2 }}>
+            <img
+              src={`${process.env.PUBLIC_URL}/logo-cyna.png`}
+              alt="CYNA"
+              style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+            />
+          </div>
           <div className="sidebar-profile-info">
             <div className="sidebar-profile-name">{profil.nom}</div>
             <div className="sidebar-profile-role">{profil.id}</div>

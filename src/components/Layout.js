@@ -11,7 +11,7 @@ export function Sidebar({ sidebarOuvert, setSidebarOuvert, navAutorisees, page, 
             src={`${process.env.PUBLIC_URL}/logo-cyna.png`}
             alt="CYNA"
             style={{
-              height: 24,
+              height: 44,
               width: 'auto',
               objectFit: 'contain',
               flexShrink: 0,
@@ -21,7 +21,7 @@ export function Sidebar({ sidebarOuvert, setSidebarOuvert, navAutorisees, page, 
             src={`${process.env.PUBLIC_URL}/logo-cyna-tech.png`}
             alt="CYNA Tech"
             style={{
-              height: 18,
+              height: 14,
               width: 'auto',
               objectFit: 'contain',
               filter: darkMode ? 'invert(1)' : 'none',

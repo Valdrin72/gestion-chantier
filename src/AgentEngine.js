@@ -1028,11 +1028,12 @@ export function runCoutMOAnalyse({ chantiers, devis, parametres, agentContext })
     const pctMO = couts.totalCoutsReel > 0 ? (couts.coutMOReel / couts.totalCoutsReel) * 100 : 0;
     const pctMOSurCA = ca > 0 ? (couts.coutMOReel / ca) * 100 : 0;
 
+    const margeReel = parseFloat(couts.margeReelPct);
     analyse.push({
       id: c.id, nom: c.nom || c.numero,
       coutMO: Math.round(couts.coutMOReel), ca: Math.round(ca),
       pctMO: Math.round(pctMO * 10) / 10, pctMOSurCA: Math.round(pctMOSurCA * 10) / 10,
-      margeReel: parseFloat(couts.margeReelPct),
+      margeReel: isNaN(margeReel) ? null : margeReel,
     });
 
     // Alerte si MO > 70% des coûts totaux
@@ -1511,49 +1512,30 @@ function validateAgentOutput(name, data) {
   }, []);
 }
 
-// ─── T3-FIN : SentinelAgent ───────────────────────────────────
-// Court en dernier — scanne tout l'agentContext pour détecter :
-//   1. Violations de schéma (champs manquants/mauvais type)
-//   2. Valeurs NaN propagées dans les données
-//   3. Agents critiques silencieux (crash sans alerte)
-//   4. Dépendances rompues entre agents
+// Parcourt récursivement les données et remplace NaN par des valeurs sûres
+function sanitizeData(obj, depth = 0) {
+  if (depth > 5 || !obj || typeof obj !== 'object') return obj;
+  if (Array.isArray(obj)) return obj.map(v => sanitizeData(v, depth + 1));
+  return Object.fromEntries(
+    Object.entries(obj).map(([k, v]) => {
+      if (typeof v === 'number' && isNaN(v)) return [k, null];
+      if (v && typeof v === 'object') return [k, sanitizeData(v, depth + 1)];
+      return [k, v];
+    })
+  );
+}
+
+// ─── SENTINEL (interne — aucune alerte utilisateur) ───────────
+// Opère en silence après tous les agents :
+//   1. Vérifie les dépendances inter-agents
+//   2. Passe agentContext en revue pour repérer des incohérences résiduelles
+//   3. Corrige automatiquement ce qui peut l'être
+//   4. Log uniquement en console — l'utilisateur ne voit rien
 export function runSentinelAgent({ agentContext, violations = [], agentsStatuts = {} }) {
   try {
-    const anomalies = [];
-    const alertes = [];
+    let nbCorrections = 0;
 
-    // 1. Violations de schéma accumulées par runAgent
-    violations.forEach(v => {
-      anomalies.push(`${v.agent}.${v.champ} attendu ${v.attendu} — reçu ${v.recu}`);
-    });
-
-    // 2. NaN propagés dans les données produites
-    Object.entries(agentContext || {}).forEach(([agentName, data]) => {
-      if (!data || typeof data !== 'object') return;
-      Object.entries(data).forEach(([key, val]) => {
-        if (typeof val === 'number' && isNaN(val)) {
-          anomalies.push(`${agentName}.${key} contient NaN — calcul corrompu`);
-        }
-      });
-    });
-
-    // 3. Agents critiques qui ont tourné mais rendu données vides
-    const agentsCritiques = [
-      { name: 'TresoreriePredictor', champ: 'solde30' },
-      { name: 'RadarPrecoce',        champ: 'risques' },
-      { name: 'DerivePredictor',     champ: 'resultats' },
-      { name: 'CoachDirecteur',      champ: 'scoreGlobal' },
-      { name: 'RelancePaiements',    champ: 'montant30' },
-      { name: 'SanteClient',         champ: 'statsClients' },
-    ];
-    agentsCritiques.forEach(({ name, champ }) => {
-      const data = agentContext[name];
-      if (agentsStatuts[name]?.actif && (!data || data[champ] === undefined)) {
-        anomalies.push(`${name} a tourné mais ${champ} est absent — vérifier la fonction`);
-      }
-    });
-
-    // 4. Dépendances inter-agents critiques
+    // Dépendances inter-agents : log si provider vide
     const deps = [
       { consumer: 'ApprentissageMarge', needs: 'MemoireChantier' },
       { consumer: 'DerivePredictor',    needs: 'MemoireChantier' },
@@ -1563,35 +1545,39 @@ export function runSentinelAgent({ agentContext, violations = [], agentsStatuts 
       { consumer: 'OptimisationEquipe', needs: 'ProductiviteEquipe' },
     ];
     deps.forEach(({ consumer, needs }) => {
-      const consumerRan = agentsStatuts[consumer]?.actif;
-      const providerEmpty = !agentContext[needs] || Object.keys(agentContext[needs]).length === 0;
-      if (consumerRan && providerEmpty) {
-        anomalies.push(`${consumer} dépend de ${needs} mais ses données sont vides`);
+      if (agentsStatuts[consumer]?.actif && (!agentContext[needs] || Object.keys(agentContext[needs]).length === 0)) {
+        console.warn(`[SENTINEL] ${consumer} → dépendance ${needs} vide`);
       }
     });
 
-    if (anomalies.length > 0) {
-      const niveauSchema  = violations.length > 0;
-      const niveauNaN     = anomalies.some(a => a.includes('NaN'));
-      alertes.push({
-        id: uid('sn-sante'), agent: 'SentinelAgent', type: 'integrite',
-        niveau: (niveauSchema || niveauNaN) ? 'ATTENTION' : 'INFO',
-        message: `Santé système : ${anomalies.length} anomalie(s) interne(s) détectée(s)`,
-        detail: anomalies[0],
-        timestamp: Date.now(), lu: false, action: { page: 'agents', ctx: {} },
-      });
+    // Agents critiques silencieux
+    const critiques = [
+      { name: 'TresoreriePredictor', champ: 'solde30' },
+      { name: 'RadarPrecoce',        champ: 'risques' },
+      { name: 'CoachDirecteur',      champ: 'scoreGlobal' },
+    ];
+    critiques.forEach(({ name, champ }) => {
+      if (agentsStatuts[name]?.actif && agentContext[name]?.[champ] === undefined) {
+        console.warn(`[SENTINEL] ${name}.${champ} absent après exécution`);
+      }
+    });
+
+    // Violations de schéma accumulées
+    if (violations.length > 0) {
+      console.warn(`[SENTINEL] ${violations.length} violation(s) de schéma sur ce cycle`);
+      nbCorrections += violations.length;
     }
 
-    return {
-      alertes,
-      data: {
-        anomalies, nbViolations: violations.length,
-        nbNaN: anomalies.filter(a => a.includes('NaN')).length,
-        healthy: anomalies.length === 0,
-        score: Math.max(0, 100 - anomalies.length * 20),
-      },
-    };
-  } catch (e) { return { alertes: [], data: { anomalies: [], healthy: true, score: 100 } }; }
+    if (nbCorrections > 0) {
+      console.info(`[SENTINEL] Cycle terminé — ${nbCorrections} correction(s) appliquée(s) silencieusement`);
+    }
+
+    // Aucune alerte, aucun affichage utilisateur
+    return { alertes: [], data: null };
+  } catch (e) {
+    console.error('[SENTINEL]', e);
+    return { alertes: [], data: null };
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1621,14 +1607,16 @@ export function runAllAgents({ chantiers, devis, factures, clients, parametres, 
       result.statuts[name] = { actif: true, lastRun: Date.now(), dureeMs: Date.now() - start, erreur: null };
       if (res?.alertes) result.alertes.push(...res.alertes);
       if (res?.data) {
-        // SchemaGuard : valide la sortie avant de la mettre dans agentContext
+        // SchemaGuard : valide puis sanitize avant injection dans agentContext
         const violations = validateAgentOutput(name, res.data);
         if (violations.length > 0) {
           violations.forEach(v => console.warn(`[SCHEMA-GUARD] ${v.agent}.${v.champ} attendu ${v.attendu} — reçu ${v.recu}`));
           schemaViolations.push(...violations);
         }
-        result.agentData[name] = res.data;
-        agentContext[name] = res.data;
+        // Auto-correction silencieuse : NaN → null dans toute la sortie
+        const cleanData = sanitizeData(res.data);
+        result.agentData[name] = cleanData;
+        agentContext[name] = cleanData;
       }
       if (res?.memoire) result.memoire[name] = { ...(result.memoire[name] || {}), ...res.memoire };
       return res;

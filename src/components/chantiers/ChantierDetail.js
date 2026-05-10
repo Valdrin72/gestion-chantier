@@ -153,6 +153,16 @@ function ChantierDetail({ chantier, detailOnglet, setDetailOnglet, modeCompleter
         list.push({ id: 'mo_elevee', texte: `Main d'œuvre élevée — ${Math.round(pctMO)}% du coût total (seuil 60%)`, gravite: 'warning', icone: 'warning' });
       }
     }
+    // Samedi travaillé sans flag inclusSamedi → la durée affichée peut être sous-estimée
+    const datesSamediJournal = (c.journal || []).map(e => e.date).filter(d => d && new Date(d + 'T00:00:00').getDay() === 6);
+    if (datesSamediJournal.length > 0 && !c.inclusSamedi) {
+      list.push({ id: 'samedi_non_planifie', texte: `${datesSamediJournal.length} samedi(s) travaillé(s) non inclus dans la durée planifiée — activez "Inclus samedi" dans le planning`, gravite: 'warning', icone: 'warning' });
+    }
+    // Démarrage avant acceptation du devis
+    const devisLie = devis.find(d => String(d.id) === String(c.devisId));
+    if (c.dateDebut && devisLie?.dateAcceptation && c.dateDebut < devisLie.dateAcceptation) {
+      list.push({ id: 'avt_devis', texte: `Démarrage avant signature du devis (${c.dateDebut} < acceptation ${devisLie.dateAcceptation})`, gravite: 'warning', icone: 'warning' });
+    }
     return list.sort((a, b) => (b.gravite === 'critique' ? 1 : 0) - (a.gravite === 'critique' ? 1 : 0));
   })();
 

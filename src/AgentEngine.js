@@ -498,6 +498,106 @@ export function runConflitsPlanning({ chantiers, parametres, agentContext }) {
   return { alertes, data: { conflits, empChantiers } };
 }
 
+// ─── T2-A10b : PlanningCohérence ─────────────────────────────
+export function runPlanningCoherence({ chantiers, devis, parametres }) {
+  const alertes = [];
+  const todayStr = new Date().toISOString().split('T')[0];
+
+  chantiers.forEach(c => {
+    const devisLie = devis.find(d => String(d.id) === String(c.devisId));
+    const journal = c.journal || [];
+
+    // 1. Démarrage avant acceptation du devis
+    if (c.dateDebut && devisLie?.dateAcceptation && c.dateDebut < devisLie.dateAcceptation) {
+      alertes.push({
+        id: uid('pc-avt'),
+        agent: 'PlanningCoherence',
+        type: 'coherence_planning',
+        niveau: 'ATTENTION',
+        message: `${c.nom || c.numero} — démarré avant la signature du devis`,
+        detail: `Début chantier : ${c.dateDebut} · Acceptation devis : ${devisLie.dateAcceptation}`,
+        chantier_id: c.id,
+        timestamp: Date.now(),
+        lu: false,
+        action: { page: 'chantiers', ctx: { chantierActif: c.id } },
+      });
+    }
+
+    // 2. Heures de samedi saisies sans inclusSamedi activé
+    const datesSamedi = journal
+      .map(e => e.date)
+      .filter(d => d && new Date(d + 'T00:00:00').getDay() === 6);
+    if (datesSamedi.length > 0 && !c.inclusSamedi) {
+      alertes.push({
+        id: uid('pc-sam'),
+        agent: 'PlanningCoherence',
+        type: 'samedi_non_planifie',
+        niveau: 'INFO',
+        message: `${c.nom || c.numero} — ${datesSamedi.length} samedi(s) travaillé(s) sans flag "Inclus samedi"`,
+        detail: `Samedi(s) : ${datesSamedi.slice(0, 3).join(', ')}${datesSamedi.length > 3 ? '…' : ''} · Activez "Inclus samedi" sur le planning pour un calcul de durée correct`,
+        chantier_id: c.id,
+        timestamp: Date.now(),
+        lu: false,
+        action: { page: 'planning', ctx: {} },
+      });
+    }
+
+    // 3. Dates dans le futur dans le journal (anomalie saisie)
+    const datesFutures = journal.map(e => e.date).filter(d => d && d > todayStr);
+    if (datesFutures.length > 0) {
+      alertes.push({
+        id: uid('pc-fut'),
+        agent: 'PlanningCoherence',
+        type: 'date_future_journal',
+        niveau: 'ATTENTION',
+        message: `${c.nom || c.numero} — ${datesFutures.length} entrée(s) de journal avec date future`,
+        detail: `Dates : ${datesFutures.slice(0, 3).join(', ')} · Vérifier la saisie`,
+        chantier_id: c.id,
+        timestamp: Date.now(),
+        lu: false,
+        action: { page: 'heures', ctx: {} },
+      });
+    }
+
+    // 4. joursRealises vs avancement manuel : incohérence détectée
+    const joursRealises = new Set(journal.map(e => e.date).filter(Boolean)).size;
+    const avancementManuel = parseFloat(c.avancement) || 0;
+    const joursPlannifies = parseInt(c.nombreJours) || 0;
+    if (joursPlannifies > 0 && joursRealises > 0 && avancementManuel > 0) {
+      const avancementJournal = Math.min(100, Math.round(joursRealises / joursPlannifies * 100));
+      const ecart = Math.abs(avancementManuel - avancementJournal);
+      if (ecart >= 20) {
+        alertes.push({
+          id: uid('pc-av'),
+          agent: 'PlanningCoherence',
+          type: 'avancement_incoherent',
+          niveau: 'INFO',
+          message: `${c.nom || c.numero} — avancement manuel (${avancementManuel}%) vs journal (${avancementJournal}%)`,
+          detail: `${joursRealises}j réalisés sur ${joursPlannifies}j prévus · Écart de ${ecart}% avec l'avancement saisi manuellement`,
+          chantier_id: c.id,
+          timestamp: Date.now(),
+          lu: false,
+          action: { page: 'chantiers', ctx: { chantierActif: c.id } },
+        });
+      }
+    }
+  });
+
+  const samediParChantier = chantiers
+    .filter(c => !c.inclusSamedi && (c.journal || []).some(e => e.date && new Date(e.date + 'T00:00:00').getDay() === 6))
+    .map(c => ({ id: c.id, nom: c.nom || c.numero }));
+
+  return {
+    alertes,
+    data: {
+      chantiersAvantDevis: alertes.filter(a => a.type === 'coherence_planning').length,
+      samediParChantier,
+      datesFutures: alertes.filter(a => a.type === 'date_future_journal').length,
+      avancementIncoherents: alertes.filter(a => a.type === 'avancement_incoherent').length,
+    },
+  };
+}
+
 // ─── T2-A11 : ApprentissageMarge ─────────────────────────────
 export function runApprentissageMarge({ chantiers, devis, parametres, agentContext, memoire = {} }) {
   const alertes = [];
@@ -996,6 +1096,7 @@ export function runAllAgents({ chantiers, devis, factures, clients, parametres, 
 
   // ── TIER 2 (reçoit agentContext Tier 1) ──
   runAgent('ConflitsPlanning',     (m) => runConflitsPlanning({ chantiers, parametres, agentContext }));
+  runAgent('PlanningCoherence',    (m) => runPlanningCoherence({ chantiers, devis, parametres }));
   runAgent('ApprentissageMarge',   (m) => runApprentissageMarge({ chantiers, devis, parametres, agentContext, memoire: m }));
   runAgent('SanteClient',          (m) => runSanteClient({ chantiers, clients, devis, factures, parametres, agentContext }));
   runAgent('ProjectionAnnuelle',   (m) => runProjectionAnnuelle({ chantiers, factures, devis, parametres, agentContext, memoire: m }));

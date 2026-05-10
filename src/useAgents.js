@@ -21,7 +21,7 @@ const AGENTS_PAR_DEFAUT = {
   RapportAuto: true, MemoireChantier: true, ProductiviteEquipe: true,
   RelancePaiements: true, AnomaliesDonnees: true, OptimisationFacturation: true,
   // Tier 2
-  ConflitsPlanning: true, ApprentissageMarge: true, SanteClient: true,
+  ConflitsPlanning: true, PlanningCoherence: true, ApprentissageMarge: true, SanteClient: true,
   ProjectionAnnuelle: true, BenchmarkTypeTravaux: true, ConformiteBTP: true,
   // Tier 3
   RadarPrecoce: true, DSOAnalyse: true, Saisonnierte: true,

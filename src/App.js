@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
   LayoutDashboard, HardHat, FileText, Calendar,
-  ClipboardList, Settings, DollarSign, Clock, Bot,
+  ClipboardList, Settings, DollarSign, Clock, Bot, Shield,
 } from 'lucide-react';
 import { Sidebar, Topbar, MobileNav } from './components/Layout';
 import { donneesInitiales, migrerJournal, migrerDevisId } from './donnees';
@@ -18,6 +18,7 @@ import Clients from './pages/ClientsPage';
 import Employes from './pages/EmployesPage';
 import PlanningPage from './pages/PlanningPage';
 import RapportsPage from './pages/RapportsPage';
+import AuditApp from './AuditApp';
 import Parametres from './pages/ParametresPage';
 import { AppProvider } from './context/AppContext';
 
@@ -209,6 +210,7 @@ function App() {
     { id: 'planning',   label: 'Planning',    Icon: Calendar,        labelCourt: 'Planning' },
     { id: 'rapport',    label: 'Rapports',    Icon: ClipboardList,   labelCourt: 'Rapports' },
     { id: 'agents',     label: 'Agents IA',   Icon: Bot,             labelCourt: 'Agents' },
+    { id: 'audit',      label: 'Audit IA',    Icon: Shield,          labelCourt: 'Audit' },
     { id: 'parametres', label: 'Paramètres',  Icon: Settings,        labelCourt: 'Config' },
   ];
 
@@ -249,6 +251,7 @@ function App() {
           {page === 'planning'     && <PlanningPage chantiers={chantiers} setChantiers={setChantiers} clients={clients} devis={devis} factures={factures} parametres={parametres} naviguer={naviguer} />}
           {page === 'rapport'      && <RapportsPage chantiers={chantiers} clients={clients} devis={devis} factures={factures} parametres={parametres} setParametres={setParametres} paiementsData={paiementsData} periodeGlobale={periodeGlobale} naviguer={naviguer} />}
           {page === 'agents'       && <Agents {...agentState} />}
+          {page === 'audit'        && <AuditApp chantiers={chantiers} devis={devis} factures={factures} clients={clients} parametres={parametres} />}
           {page === 'parametres'   && <Parametres parametres={parametres} setParametres={setParametres} clients={clients} setClients={setClients} chantiers={chantiers} devis={devis} naviguer={naviguer} />}
           {page === 'heures'       && <Heures chantiers={chantiers} parametres={parametres} setChantiers={setChantiers} />}
         </main>

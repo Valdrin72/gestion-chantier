@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
-import { fmtN, sommeAvenants } from './donnees';
+import { fmtN, calculerCA } from './donnees';
 import { DS } from './ds';
 
 const carteStyle = DS.card;
 const inputStyle = DS.input;
 const labelStyle = DS.label;
 
-export default function Paiements({ chantiers, clients, paiementsData, setPaiementsData, hideHeader = false }) {
+export default function Paiements({ chantiers, clients, devis = [], paiementsData, setPaiementsData, hideHeader = false }) {
   const [chantierSelectionne, setChantierSelectionne] = useState(null);
   const [ajoutPaiement, setAjoutPaiement] = useState(false);
   const [form, setForm] = useState({ type: 'Acompte', montant: '', dateEcheance: '', statut: 'En attente', notes: '' });
@@ -14,7 +14,8 @@ export default function Paiements({ chantiers, clients, paiementsData, setPaieme
   // ===== CALCULS =====
   const getPaiements = (chantierId) => paiementsData[chantierId] || [];
 
-  const getMontantTotal = (chantier) => (parseFloat(chantier.montantDevis) || 0) + sommeAvenants(chantier);
+  // Source unique : CA depuis le devis lié (calculerCA) — jamais chantier.montantDevis
+  const getMontantTotal = (chantier) => calculerCA(chantier, devis) || 0;
 
   const isPaye = (p) => ['Payé','payé','payee','Payee'].includes(p.statut);
   const isAttente = (p) => ['En attente','en attente','envoyee','partielle','retard'].includes(p.statut);

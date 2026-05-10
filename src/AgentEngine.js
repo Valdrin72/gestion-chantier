@@ -1,443 +1,1014 @@
 /**
- * CYNA — Agent Engine
- * 5 agents autonomes d'analyse locale (aucune API externe).
- * Chaque agent est une fonction pure qui reçoit les données et retourne des alertes/résultats.
+ * CYNA — Agent Engine v2
+ * 20 agents autonomes en 3 tiers :
+ *   Tier 1 (9) — analyse pure, pas de dépendance inter-agents
+ *   Tier 2 (6) — intelligence croisée, lit les résultats Tier 1
+ *   Tier 3 (5) — synthèse, lit tout + accumule la mémoire long-terme
+ *
+ * Chaque agent reçoit : { données métier, agentContext, memoire }
+ * Chaque agent retourne : { alertes, data, memoire }
+ *   - alertes  : tableau d'alertes à afficher
+ *   - data     : résultats spécifiques passés aux agents suivants
+ *   - memoire  : données à persister pour les prochains runs
  */
 
-import { calculerCA, calculerCoutsChantier, isChantierActif, fmtN } from './donnees';
+import { calculerCA, calculerCoutsChantier, isChantierActif, fmtN, heuresEmploye, SEUILS } from './donnees';
 
-// ── Identifiant unique d'alerte ──────────────────────────────
 const uid = (prefix) => `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
 
-// ─────────────────────────────────────────────────────────────
-// AGENT 1 — AlerteChantier
-// Vérifie marge, retard, dépassement budget sur tous les chantiers actifs
-// ─────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════
+// TIER 1 — ANALYSE PURE (9 agents)
+// ═══════════════════════════════════════════════════════════════
+
+// ─── T1-A1 : AlerteChantier ───────────────────────────────────
 export function runAlerteChantier({ chantiers, devis, parametres }) {
   const alertes = [];
   const actifs = chantiers.filter(isChantierActif);
-
-  const config = parametres?.agentsConfig?.alerteChantier || {
-    seuilMargeDanger: 0,
-    seuilMargeAttention: 15,
-    seuilRetardAttention: 3,
-    seuilRetardCritique: 7,
-    seuilBudgetAttention: 5,
-    seuilBudgetDanger: 20,
+  const cfg = parametres?.agentsConfig?.alerteChantier || {
+    seuilMargeDanger: 0, seuilMargeAttention: SEUILS.margeLimite,
+    seuilRetardAttention: 3, seuilRetardCritique: 7,
+    seuilBudgetAttention: 5, seuilBudgetDanger: 20,
   };
+  const data = { chantiersEnDanger: [], chantiersOk: 0 };
 
   actifs.forEach(c => {
     try {
-      const couts = calculerCoutsChantier(
-        c, parametres.employes, parametres.localites, parametres.parametres, devis
-      );
-      const ca = calculerCA(c, devis);
-      const joursRealisesC = new Set((c.journal || []).map(e => e.date).filter(Boolean)).size;
-      const joursRestants = c.nombreJours > 0 ? c.nombreJours - joursRealisesC : null;
+      const couts = calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis);
+      const joursR = new Set((c.journal || []).map(e => e.date).filter(Boolean)).size;
+      const joursRestants = c.nombreJours > 0 ? c.nombreJours - joursR : null;
       const retardJ = joursRestants !== null && joursRestants < 0 ? Math.abs(joursRestants) : 0;
 
-      // Marge — seuils configurables
       if (couts.montantTotal > 0 && couts.totalCoutsReel > 0) {
         const marge = parseFloat(couts.margeReelPct);
-        if (marge < config.seuilMargeDanger) {
-          alertes.push({
-            id: uid('ac-perte'),
-            agent: 'AlerteChantier',
-            type: 'marge',
-            niveau: 'DANGER',
+        if (marge < cfg.seuilMargeDanger) {
+          data.chantiersEnDanger.push({ id: c.id, nom: c.nom || c.numero, marge, deficit: Math.abs(Math.round(couts.margeReel)) });
+          alertes.push({ id: uid('ac-perte'), agent: 'AlerteChantier', type: 'marge', niveau: 'DANGER',
             message: `${c.nom || c.numero} — chantier à perte · marge ${marge.toFixed(1)}%`,
             detail: `Déficit estimé : CHF ${fmtN(Math.abs(Math.round(couts.margeReel)))}`,
-            chantier_id: c.id,
-            timestamp: Date.now(),
-            lu: false,
-            action: { page: 'chantiers', ctx: { chantierActif: c.id } },
-          });
-        } else if (marge < config.seuilMargeAttention) {
-          alertes.push({
-            id: uid('ac-marge'),
-            agent: 'AlerteChantier',
-            type: 'marge',
-            niveau: 'ATTENTION',
+            chantier_id: c.id, timestamp: Date.now(), lu: false, action: { page: 'chantiers', ctx: { chantierActif: c.id } } });
+        } else if (marge < cfg.seuilMargeAttention) {
+          alertes.push({ id: uid('ac-marge'), agent: 'AlerteChantier', type: 'marge', niveau: 'ATTENTION',
             message: `${c.nom || c.numero} — marge faible à ${marge.toFixed(1)}%`,
-            detail: `Seuil cible : ${config.seuilMargeAttention}% · écart : ${(config.seuilMargeAttention - marge).toFixed(1)} pts`,
-            chantier_id: c.id,
-            timestamp: Date.now(),
-            lu: false,
-            action: { page: 'chantiers', ctx: { chantierActif: c.id } },
-          });
-        }
+            detail: `Seuil cible : ${cfg.seuilMargeAttention}% · écart : ${(cfg.seuilMargeAttention - marge).toFixed(1)} pts`,
+            chantier_id: c.id, timestamp: Date.now(), lu: false, action: { page: 'chantiers', ctx: { chantierActif: c.id } } });
+        } else data.chantiersOk++;
       }
 
-      // Retard — seuils configurables
-      if (retardJ > config.seuilRetardAttention) {
-        alertes.push({
-          id: uid('ac-retard'),
-          agent: 'AlerteChantier',
-          type: 'retard',
-          niveau: retardJ > config.seuilRetardCritique ? 'CRITIQUE' : 'ATTENTION',
+      if (retardJ > cfg.seuilRetardAttention) {
+        alertes.push({ id: uid('ac-retard'), agent: 'AlerteChantier', type: 'retard',
+          niveau: retardJ > cfg.seuilRetardCritique ? 'CRITIQUE' : 'ATTENTION',
           message: `${c.nom || c.numero} — retard de ${retardJ} jour${retardJ > 1 ? 's' : ''}`,
           detail: `Fin prévue dépassée de ${retardJ}j ouvrables`,
-          chantier_id: c.id,
-          timestamp: Date.now(),
-          lu: false,
-          action: { page: 'chantiers', ctx: { chantierActif: c.id } },
-        });
+          chantier_id: c.id, timestamp: Date.now(), lu: false, action: { page: 'chantiers', ctx: { chantierActif: c.id } } });
       }
 
-      // Budget dépassé — seuils configurables
       if (couts.totalCoutsPrevu > 0 && couts.totalCoutsReel > 0) {
-        const depassPct = ((couts.totalCoutsReel - couts.totalCoutsPrevu) / couts.totalCoutsPrevu) * 100;
-        if (depassPct > config.seuilBudgetAttention) {
-          alertes.push({
-            id: uid('ac-budget'),
-            agent: 'AlerteChantier',
-            type: 'budget',
-            niveau: depassPct > config.seuilBudgetDanger ? 'DANGER' : 'ATTENTION',
-            message: `${c.nom || c.numero} — budget dépassé de ${depassPct.toFixed(0)}%`,
+        const dep = ((couts.totalCoutsReel - couts.totalCoutsPrevu) / couts.totalCoutsPrevu) * 100;
+        if (dep > cfg.seuilBudgetAttention) {
+          alertes.push({ id: uid('ac-budget'), agent: 'AlerteChantier', type: 'budget',
+            niveau: dep > cfg.seuilBudgetDanger ? 'DANGER' : 'ATTENTION',
+            message: `${c.nom || c.numero} — budget dépassé de ${dep.toFixed(0)}%`,
             detail: `Prévu CHF ${fmtN(Math.round(couts.totalCoutsPrevu))} · Réel CHF ${fmtN(Math.round(couts.totalCoutsReel))}`,
-            chantier_id: c.id,
-            timestamp: Date.now(),
-            lu: false,
-            action: { page: 'chantiers', ctx: { chantierActif: c.id } },
-          });
+            chantier_id: c.id, timestamp: Date.now(), lu: false, action: { page: 'chantiers', ctx: { chantierActif: c.id } } });
         }
       }
-    } catch (e) {
-      console.warn('[AGENT-AlerteChantier] Erreur sur chantier', c.id, e);
-    }
+    } catch (e) { console.warn('[T1-AlerteChantier]', c.id, e); }
   });
 
-  console.log(`[AGENT-AlerteChantier] ${alertes.length} alerte(s) générée(s)`);
-  return alertes;
+  return { alertes, data };
 }
 
-// ─────────────────────────────────────────────────────────────
-// AGENT 2 — SuiviDevis
-// Détecte les devis acceptés sans facture liée
-// ─────────────────────────────────────────────────────────────
+// ─── T1-A2 : SuiviDevis ──────────────────────────────────────
 export function runSuiviDevis({ devis, factures, clients }) {
   const alertes = [];
   const now = Date.now();
-
   const devisAcceptes = (devis || []).filter(d =>
-    ['Accepté', 'accepte', 'accepté', 'Signé', 'signe'].includes(d.statut)
+    ['accepté', 'accepte', 'signé', 'signe'].includes((d.statut || '').toLowerCase())
   );
+  const data = { nbSansFacture: 0, caPotentiel: 0, tauxConversion: 0 };
+  const nbTotal = (devis || []).length;
+  const nbAcceptes = devisAcceptes.length;
+  data.tauxConversion = nbTotal > 0 ? Math.round((nbAcceptes / nbTotal) * 100) : 0;
 
   devisAcceptes.forEach(d => {
     try {
-      const aFacture = (factures || []).some(f =>
-        String(f.devisId) === String(d.id)
-      );
-      if (aFacture) return;
-
+      if ((factures || []).some(f => String(f.devisId) === String(d.id))) return;
       const dateRef = d.dateAcceptation || d.dateEmission || d.date;
       if (!dateRef) return;
-
       const joursDepuis = Math.floor((now - new Date(dateRef)) / 86400000);
-      if (joursDepuis < 3) return; // grace period
-
+      if (joursDepuis < 3) return;
       const client = (clients || []).find(cl => String(cl.id) === String(d.clientId));
       const nomClient = client ? `${client.prenom || ''} ${client.nom || ''}`.trim() || client.entreprise : 'Client inconnu';
       const dateStr = new Date(dateRef).toLocaleDateString('fr-CH', { day: '2-digit', month: '2-digit', year: '2-digit' });
-
-      alertes.push({
-        id: uid('sd'),
-        agent: 'SuiviDevis',
-        type: 'suivi_devis',
+      data.nbSansFacture++;
+      data.caPotentiel += parseFloat(d.montantHT || d.prixPropose) || 0;
+      alertes.push({ id: uid('sd'), agent: 'SuiviDevis', type: 'suivi_devis',
         niveau: joursDepuis > 7 ? 'ATTENTION' : 'INFO',
         message: `Devis ${d.numero || '#' + d.id} — ${nomClient} — aucune facture créée`,
         detail: `Accepté le ${dateStr} · il y a ${joursDepuis} jour${joursDepuis > 1 ? 's' : ''}`,
-        devis_id: d.id,
-        timestamp: Date.now(),
-        lu: false,
-        action: { page: 'devis', ctx: { devisActif: d.id } },
-      });
-    } catch (e) {
-      console.warn('[AGENT-SuiviDevis] Erreur sur devis', d.id, e);
-    }
+        devis_id: d.id, timestamp: Date.now(), lu: false, action: { page: 'devis', ctx: { devisActif: d.id } } });
+    } catch (e) { console.warn('[T1-SuiviDevis]', d.id, e); }
   });
 
-  console.log(`[AGENT-SuiviDevis] ${alertes.length} devis sans facture`);
-  return alertes;
+  return { alertes, data };
 }
 
-// ─────────────────────────────────────────────────────────────
-// AGENT 3 — TrésoreriePredictor
-// Prédit le solde à J+30 et J+60
-// ─────────────────────────────────────────────────────────────
+// ─── T1-A3 : TrésoreriePredictor ─────────────────────────────
 export function runTresoreriePredictor({ chantiers, factures, devis, parametres }) {
   try {
     const now = new Date();
     const SEUIL_ALERTE = parseFloat(parametres?.parametres?.seuilTresorerie) || 10000;
     const chargesMensuelles = parseFloat(parametres?.parametres?.chargesMensuelles) || 0;
-
-    // Encaissements attendus = factures envoyées/partiellement payées
-    const facturesOuvertes = (factures || []).filter(f =>
-      ['envoyee', 'partielle', 'retard'].includes(f.statut)
-    );
+    const facturesOuvertes = (factures || []).filter(f => ['envoyee', 'partielle', 'retard'].includes(f.statut));
     const totalEncaissement = facturesOuvertes.reduce((s, f) =>
-      s + Math.max(0, (parseFloat(f.montantTTC) || 0) - (parseFloat(f.montantPaye) || 0)), 0
-    );
+      s + Math.max(0, (parseFloat(f.montantTTC) || 0) - (parseFloat(f.montantPaye) || 0)), 0);
 
-    // Encaissements dans 30j vs 60j selon échéances
-    let encaissement30 = 0, encaissement60 = 0;
+    let enc30 = 0, enc60 = 0, enc90 = 0;
     const j30 = new Date(now); j30.setDate(now.getDate() + 30);
     const j60 = new Date(now); j60.setDate(now.getDate() + 60);
+    const j90 = new Date(now); j90.setDate(now.getDate() + 90);
 
     facturesOuvertes.forEach(f => {
       const restant = Math.max(0, (parseFloat(f.montantTTC) || 0) - (parseFloat(f.montantPaye) || 0));
       const echeance = f.dateEcheance ? new Date(f.dateEcheance) : null;
-      if (!echeance || echeance <= j30) encaissement30 += restant;
-      else if (echeance <= j60) encaissement60 += restant;
+      if (!echeance || echeance <= j30) enc30 += restant;
+      else if (echeance <= j60) enc60 += restant;
+      else if (echeance <= j90) enc90 += restant;
     });
 
-    // Décaissements prévus — charges proratisées sur le mois en cours pour J+30
     const finMois = new Date(now.getFullYear(), now.getMonth() + 1, 0);
     const joursRestantsMois = finMois.getDate() - now.getDate();
-    const joursTotalMois = finMois.getDate();
-    const chargesProratisees = joursTotalMois > 0
-      ? chargesMensuelles * (joursRestantsMois / joursTotalMois)
-      : chargesMensuelles;
-    const decaissement30 = chargesProratisees;
-    const decaissement60 = chargesProratisees + chargesMensuelles;
-
-    const solde30 = encaissement30 - decaissement30;
-    const solde60 = (encaissement30 + encaissement60) - decaissement60;
+    const dec30 = chargesMensuelles * (joursRestantsMois / finMois.getDate());
+    const dec60 = dec30 + chargesMensuelles;
+    const dec90 = dec60 + chargesMensuelles;
+    const solde30 = enc30 - dec30;
+    const solde60 = (enc30 + enc60) - dec60;
+    const solde90 = (enc30 + enc60 + enc90) - dec90;
 
     const alertes = [];
-    if (solde30 < SEUIL_ALERTE && totalEncaissement > 0) {
-      alertes.push({
-        id: uid('tp-j30'),
-        agent: 'TresoreriePredictor',
-        type: 'tresorerie',
+    if (totalEncaissement > 0 && solde30 < SEUIL_ALERTE) {
+      alertes.push({ id: uid('tp-j30'), agent: 'TresoreriePredictor', type: 'tresorerie',
         niveau: solde30 < 0 ? 'DANGER' : 'ATTENTION',
         message: `Trésorerie J+30 estimée : CHF ${fmtN(Math.round(solde30))}`,
-        detail: `Encaissements attendus CHF ${fmtN(Math.round(encaissement30))} · Charges CHF ${fmtN(Math.round(decaissement30))}`,
-        timestamp: Date.now(),
-        lu: false,
-        action: { page: 'finances', ctx: {} },
-      });
-    }
-    if (solde60 < SEUIL_ALERTE && totalEncaissement > 0) {
-      alertes.push({
-        id: uid('tp-j60'),
-        agent: 'TresoreriePredictor',
-        type: 'tresorerie_j60',
-        niveau: 'INFO',
-        message: `Solde prévu à J+60 : CHF ${fmtN(Math.round(solde60))} — en dessous du seuil`,
-        detail: `Encaissements cumulés CHF ${fmtN(Math.round(encaissement30 + encaissement60))} · Charges CHF ${fmtN(Math.round(decaissement60))}`,
-        timestamp: Date.now(),
-        lu: false,
-        action: { page: 'finances', ctx: {} },
-      });
+        detail: `Encaissements CHF ${fmtN(Math.round(enc30))} · Charges CHF ${fmtN(Math.round(dec30))}`,
+        timestamp: Date.now(), lu: false, action: { page: 'finances', ctx: {} } });
     }
 
-    console.log(`[AGENT-TresoreriePredictor] J+30: CHF ${Math.round(solde30)} · J+60: CHF ${Math.round(solde60)}`);
-    return {
-      alertes,
-      predictions: {
-        encaissement30: Math.round(encaissement30),
-        encaissement60: Math.round(encaissement60),
-        decaissement30: Math.round(decaissement30),
-        decaissement60: Math.round(decaissement60),
-        solde30: Math.round(solde30),
-        solde60: Math.round(solde60),
-        totalEnAttente: Math.round(totalEncaissement),
-        seuilAlerte: SEUIL_ALERTE,
-        alerte: solde30 < SEUIL_ALERTE,
-      },
+    const data = {
+      encaissement30: Math.round(enc30), encaissement60: Math.round(enc60), encaissement90: Math.round(enc90),
+      decaissement30: Math.round(dec30), decaissement60: Math.round(dec60), decaissement90: Math.round(dec90),
+      solde30: Math.round(solde30), solde60: Math.round(solde60), solde90: Math.round(solde90),
+      totalEnAttente: Math.round(totalEncaissement), seuilAlerte: SEUIL_ALERTE, alerte: solde30 < SEUIL_ALERTE,
     };
+    return { alertes, data };
   } catch (e) {
-    console.warn('[AGENT-TresoreriePredictor] Erreur', e);
-    return { alertes: [], predictions: {} };
+    console.warn('[T1-TresoreriePredictor]', e);
+    return { alertes: [], data: {} };
   }
 }
 
-// ─────────────────────────────────────────────────────────────
-// AGENT 4 — RapportAuto
-// Génère un résumé hebdomadaire (lundi matin)
-// ─────────────────────────────────────────────────────────────
+// ─── T1-A4 : RapportAuto ─────────────────────────────────────
 export function runRapportAuto({ chantiers, factures, devis, parametres, dernierRapport }) {
   try {
     const now = new Date();
     const estLundi = now.getDay() === 1;
     const heureSuffisante = now.getHours() >= 7;
-
-    // Ne génère pas si déjà fait cette semaine
     if (dernierRapport) {
       const debut = new Date(now);
-      debut.setDate(now.getDate() - now.getDay() + 1); // lundi de cette semaine
+      debut.setDate(now.getDate() - now.getDay() + 1);
       debut.setHours(0, 0, 0, 0);
-      if (new Date(dernierRapport.timestamp) >= debut) {
-        console.log('[AGENT-RapportAuto] Rapport déjà généré cette semaine');
-        return null;
-      }
+      if (new Date(dernierRapport.timestamp) >= debut) return { alertes: [], data: null };
     }
+    const ageDernierMs = dernierRapport?.timestamp ? now.getTime() - new Date(dernierRapport.timestamp).getTime() : Infinity;
+    const rattrapage = ageDernierMs > 7 * 86400000;
+    if (!rattrapage && (!estLundi || !heureSuffisante)) return { alertes: [], data: null };
 
-    // Rattrapage : aucun rapport depuis plus de 7 jours → générer même hors lundi
-    const ageDernierRapportMs = dernierRapport?.timestamp
-      ? (now.getTime() - new Date(dernierRapport.timestamp).getTime())
-      : Infinity;
-    const rattrapage = ageDernierRapportMs > 7 * 24 * 60 * 60 * 1000;
-
-    if (!rattrapage && (!estLundi || !heureSuffisante)) {
-      console.log('[AGENT-RapportAuto] Pas lundi ou trop tôt, rapport non généré');
-      return null;
-    }
-
-    // Données de la semaine écoulée
-    const debutSemaine = new Date(now);
-    debutSemaine.setDate(now.getDate() - 7);
-
+    const debutSemaine = new Date(now); debutSemaine.setDate(now.getDate() - 7);
     const actifs = chantiers.filter(isChantierActif);
-    const terminesRecemment = chantiers.filter(c =>
-      ['Terminé', 'Facturé', 'Clôturé'].includes(c.statut) &&
-      c.dateFin && new Date(c.dateFin) >= debutSemaine
-    );
-
-    // Heures saisies cette semaine
+    const enRetard = actifs.filter(c => {
+      const r = new Set((c.journal || []).map(e => e.date).filter(Boolean)).size;
+      return c.nombreJours > 0 && c.nombreJours - r < 0;
+    });
     let heuresSemaine = 0;
     actifs.forEach(c => {
       (c.journal || []).forEach(entry => {
         if (!entry.date || new Date(entry.date) < debutSemaine) return;
-        (entry.employes || []).forEach(e => {
-          heuresSemaine += parseFloat(e.heuresTravaillees) || 0;
-        });
+        (entry.employes || []).forEach(e => { heuresSemaine += parseFloat(e.heuresTravaillees) || 0; });
       });
     });
-
-    // CA facturé cette semaine
     const caFactureSemaine = (factures || [])
       .filter(f => f.dateEmission && new Date(f.dateEmission) >= debutSemaine)
       .reduce((s, f) => s + (parseFloat(f.montantTTC) || 0), 0);
 
-    // Chantiers en retard
-    const enRetard = actifs.filter(c => {
-      const rC = new Set((c.journal || []).map(e => e.date).filter(Boolean)).size;
-      const j = c.nombreJours > 0 ? c.nombreJours - rC : null;
-      return j !== null && j < 0;
-    });
-
-    const labelSemaine = debutSemaine.toLocaleDateString('fr-CH', { day: '2-digit', month: '2-digit' });
     const rapport = {
-      id: uid('rapport'),
-      timestamp: Date.now(),
-      semaine: rattrapage && !estLundi
-        ? `Rapport de rattrapage — semaine du ${labelSemaine}`
-        : `Semaine du ${labelSemaine}`,
-      heuresSaisies: Math.round(heuresSemaine),
-      caFacture: Math.round(caFactureSemaine),
-      nbActifs: actifs.length,
-      nbTermines: terminesRecemment.length,
-      nbEnRetard: enRetard.length,
-      chantierRetard: enRetard.map(c => c.nom || c.numero),
-      nouveau: true,
+      id: uid('rapport'), timestamp: Date.now(),
+      semaine: `Semaine du ${debutSemaine.toLocaleDateString('fr-CH', { day: '2-digit', month: '2-digit' })}`,
+      heuresSaisies: Math.round(heuresSemaine), caFacture: Math.round(caFactureSemaine),
+      nbActifs: actifs.length, nbTermines: chantiers.filter(c => ['terminé', 'facturé', 'clôturé'].includes((c.statut || '').toLowerCase()) && c.dateFin && new Date(c.dateFin) >= debutSemaine).length,
+      nbEnRetard: enRetard.length, chantierRetard: enRetard.map(c => c.nom || c.numero), nouveau: true,
     };
-
-    console.log('[AGENT-RapportAuto] Rapport hebdomadaire généré', rapport);
-    return rapport;
-  } catch (e) {
-    console.warn('[AGENT-RapportAuto] Erreur', e);
-    return null;
-  }
+    return { alertes: [], data: rapport };
+  } catch (e) { return { alertes: [], data: null }; }
 }
 
-// ─────────────────────────────────────────────────────────────
-// AGENT 5 — MémoireChantier
-// Calcule les patterns d'écart budget par type de chantier
-// ─────────────────────────────────────────────────────────────
+// ─── T1-A5 : MémoireChantier ─────────────────────────────────
 export function runMemoireChantier({ chantiers, devis, parametres }) {
   try {
-    const STATUTS_TERMINES = ['Terminé', 'Facturé', 'Clôturé'];
-    const termines = chantiers.filter(c => STATUTS_TERMINES.includes(c.statut));
-
+    const STATUTS_TERMINES = ['terminé', 'facturé', 'clôturé'];
+    const termines = chantiers.filter(c => STATUTS_TERMINES.includes((c.statut || '').toLowerCase()));
     const patterns = {};
 
     termines.forEach(c => {
       try {
-        const type = c.typeChantier || c.type || 'Autre';
-        const couts = calculerCoutsChantier(
-          c, parametres.employes, parametres.localites, parametres.parametres, devis
-        );
+        const type = c.typeChantier || (c.typesTravaux?.[0]) || 'Autre';
+        const couts = calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis);
         if (couts.totalCoutsPrevu <= 0 || couts.totalCoutsReel <= 0) return;
-
         const ecartPct = ((couts.totalCoutsReel - couts.totalCoutsPrevu) / couts.totalCoutsPrevu) * 100;
-
-        if (!patterns[type]) patterns[type] = { type, ecarts: [], count: 0 };
+        const ca = calculerCA(c, devis);
+        const marge = ca > 0 ? ((ca - couts.totalCoutsReel) / ca) * 100 : null;
+        if (!patterns[type]) patterns[type] = { type, ecarts: [], marges: [], durees: [], count: 0 };
         patterns[type].ecarts.push(ecartPct);
+        if (marge !== null) patterns[type].marges.push(marge);
+        const dureeReelle = new Set((c.journal || []).map(e => e.date).filter(Boolean)).size;
+        if (dureeReelle > 0 && c.nombreJours > 0) patterns[type].durees.push(dureeReelle / c.nombreJours);
         patterns[type].count++;
-      } catch (e) {
-        // silencieux sur chantier individuel
-      }
+      } catch {}
     });
 
-    // Calcul des moyennes
     Object.keys(patterns).forEach(type => {
       const p = patterns[type];
-      p.ecartMoyen = p.ecarts.reduce((s, v) => s + v, 0) / p.ecarts.length;
-      p.ecartMedian = [...p.ecarts].sort((a, b) => a - b)[Math.floor(p.ecarts.length / 2)];
-      delete p.ecarts; // économie mémoire
+      const avg = arr => arr.length ? arr.reduce((s, v) => s + v, 0) / arr.length : null;
+      const sorted = (arr) => [...arr].sort((a, b) => a - b);
+      p.ecartMoyen = avg(p.ecarts);
+      p.ecartMedian = p.ecarts.length ? sorted(p.ecarts)[Math.floor(p.ecarts.length / 2)] : null;
+      p.margeMoyenne = avg(p.marges);
+      p.ratioTempsMoyen = avg(p.durees);
+      delete p.ecarts; delete p.marges; delete p.durees;
     });
 
-    console.log(`[AGENT-MemoireChantier] ${Object.keys(patterns).length} type(s) de chantier analysé(s)`, patterns);
-    return patterns;
-  } catch (e) {
-    console.warn('[AGENT-MemoireChantier] Erreur', e);
-    return {};
-  }
+    return { alertes: [], data: patterns };
+  } catch (e) { return { alertes: [], data: {} }; }
 }
 
-// ─────────────────────────────────────────────────────────────
-// ORCHESTRATEUR — Lance tous les agents et retourne l'état consolidé
-// ─────────────────────────────────────────────────────────────
-export function runAllAgents({ chantiers, devis, factures, clients, parametres, dernierRapport, agentsActifs }) {
-  const enabled = agentsActifs || {
-    AlerteChantier: true,
-    SuiviDevis: true,
-    TresoreriePredictor: true,
-    RapportAuto: true,
-    MemoireChantier: true,
-  };
+// ─── T1-A6 : ProductivitéEquipe ──────────────────────────────
+export function runProductiviteEquipe({ chantiers, parametres, memoire = {} }) {
+  try {
+    const employes = (parametres?.employes || []).filter(e => e.actif !== false);
+    const alertes = [];
+    const statsParEmploye = {};
+    const now = new Date();
+    const semaine = new Date(now); semaine.setDate(now.getDate() - 7);
+
+    employes.forEach(emp => {
+      let heuresTotal = 0, heuresSemaine = 0, joursActifs = 0, chantiersActifs = 0;
+      const parChantier = [];
+
+      chantiers.forEach(c => {
+        const heures = heuresEmploye(c.journal || [], emp.id);
+        if (heures === 0) return;
+        const heuresSem = heuresEmploye(
+          (c.journal || []).filter(e => new Date(e.date) >= semaine),
+          emp.id
+        );
+        const joursC = new Set((c.journal || []).filter(e =>
+          (e.employes || []).some(ej => String(ej.employeId) === String(emp.id) && parseFloat(ej.heuresTravaillees) > 0)
+        ).map(e => e.date)).size;
+        heuresTotal += heures;
+        heuresSemaine += heuresSem;
+        joursActifs += joursC;
+        if (isChantierActif(c)) chantiersActifs++;
+        parChantier.push({ nom: c.nom || c.numero, heures, joursC });
+      });
+
+      const tarifJour = parseFloat(emp.tarifJour) || 0;
+      const coutReel = (heuresTotal / 8) * tarifJour;
+      const moyenneHeuresJour = joursActifs > 0 ? heuresTotal / joursActifs : 0;
+
+      // Alerte si surcharge semaine (>45h)
+      if (heuresSemaine > 45) {
+        alertes.push({ id: uid('pe-surcharge'), agent: 'ProductiviteEquipe', type: 'rh',
+          niveau: 'ATTENTION',
+          message: `${emp.nom} — surcharge hebdomadaire : ${heuresSemaine}h cette semaine`,
+          detail: `CCT Romande : 41–45h max · dépassement de ${Math.round(heuresSemaine - 41)}h`,
+          timestamp: Date.now(), lu: false, action: { page: 'heures', ctx: {} } });
+      }
+
+      // Alerte si sous-activité (employé actif, < 20h semaine)
+      if (chantiersActifs > 0 && heuresSemaine > 0 && heuresSemaine < 20) {
+        alertes.push({ id: uid('pe-sous'), agent: 'ProductiviteEquipe', type: 'rh',
+          niveau: 'INFO',
+          message: `${emp.nom} — sous-activité : ${heuresSemaine}h cette semaine`,
+          detail: `Présence faible sur ${chantiersActifs} chantier(s) actif(s)`,
+          timestamp: Date.now(), lu: false, action: { page: 'heures', ctx: {} } });
+      }
+
+      statsParEmploye[emp.id] = {
+        id: emp.id, nom: emp.nom, poste: emp.poste,
+        heuresTotal, heuresSemaine, joursActifs, chantiersActifs,
+        moyenneHeuresJour: Math.round(moyenneHeuresJour * 10) / 10,
+        coutReel: Math.round(coutReel), tarifJour,
+        parChantier: parChantier.sort((a, b) => b.heures - a.heures).slice(0, 5),
+      };
+    });
+
+    // Mémorise les totaux hebdomadaires
+    const hist = memoire.historique || [];
+    hist.unshift({ semaine: semaine.toISOString().split('T')[0], statsParEmploye, timestamp: Date.now() });
+
+    return { alertes, data: { statsParEmploye, nbEmployes: employes.length }, memoire: { historique: hist.slice(0, 12) } };
+  } catch (e) { console.warn('[T1-ProductiviteEquipe]', e); return { alertes: [], data: {}, memoire: {} }; }
+}
+
+// ─── T1-A7 : RelancePaiements ─────────────────────────────────
+export function runRelancePaiements({ factures, clients, memoire = {} }) {
+  try {
+    const alertes = [];
+    const now = Date.now();
+    const facturesOuvertes = (factures || []).filter(f => ['envoyee', 'partielle', 'retard'].includes(f.statut));
+    const stats = { nb30: 0, nb60: 0, nb90: 0, montant30: 0, montant60: 0, montant90: 0, dsoParClient: {} };
+
+    facturesOuvertes.forEach(f => {
+      const dateRef = f.dateEmission || f.dateFacture || f.creeLe;
+      if (!dateRef) return;
+      const jours = Math.floor((now - new Date(dateRef)) / 86400000);
+      const restant = Math.max(0, (parseFloat(f.montantTTC) || 0) - (parseFloat(f.montantPaye) || 0));
+      const client = (clients || []).find(c => String(c.id) === String(f.clientId));
+      const nomClient = client?.entreprise || `${client?.prenom || ''} ${client?.nom || ''}`.trim() || 'Inconnu';
+
+      if (jours >= 90) {
+        stats.nb90++; stats.montant90 += restant;
+        alertes.push({ id: uid('rp-90'), agent: 'RelancePaiements', type: 'paiement', niveau: 'DANGER',
+          message: `${nomClient} — facture en retard depuis ${jours} jours`,
+          detail: `CHF ${fmtN(Math.round(restant))} — relance urgente requise (3ème niveau)`,
+          timestamp: now, lu: false, action: { page: 'finances', ctx: {} } });
+      } else if (jours >= 60) {
+        stats.nb60++; stats.montant60 += restant;
+        alertes.push({ id: uid('rp-60'), agent: 'RelancePaiements', type: 'paiement', niveau: 'ATTENTION',
+          message: `${nomClient} — facture impayée depuis ${jours} jours`,
+          detail: `CHF ${fmtN(Math.round(restant))} — 2ème relance recommandée`,
+          timestamp: now, lu: false, action: { page: 'finances', ctx: {} } });
+      } else if (jours >= 30) {
+        stats.nb30++; stats.montant30 += restant;
+        alertes.push({ id: uid('rp-30'), agent: 'RelancePaiements', type: 'paiement', niveau: 'INFO',
+          message: `${nomClient} — facture à relancer (${jours}j)`,
+          detail: `CHF ${fmtN(Math.round(restant))} — 1ère relance si non réglée`,
+          timestamp: now, lu: false, action: { page: 'finances', ctx: {} } });
+      }
+
+      // DSO par client
+      const cid = String(f.clientId);
+      if (!stats.dsoParClient[cid]) stats.dsoParClient[cid] = { nom: nomClient, totalJours: 0, nb: 0 };
+      stats.dsoParClient[cid].totalJours += jours;
+      stats.dsoParClient[cid].nb++;
+    });
+
+    Object.values(stats.dsoParClient).forEach(c => { c.dso = c.nb > 0 ? Math.round(c.totalJours / c.nb) : 0; });
+
+    // Mémorise DSO historique
+    const hist = memoire.dsoHistorique || [];
+    const dsoMoyen = facturesOuvertes.length > 0
+      ? Math.round(Object.values(stats.dsoParClient).reduce((s, c) => s + c.totalJours, 0) / Math.max(1, Object.values(stats.dsoParClient).reduce((s, c) => s + c.nb, 0)))
+      : 0;
+    hist.unshift({ date: new Date().toISOString().split('T')[0], dsoMoyen, nb30: stats.nb30, nb60: stats.nb60, nb90: stats.nb90 });
+
+    return { alertes, data: stats, memoire: { dsoHistorique: hist.slice(0, 52) } };
+  } catch (e) { return { alertes: [], data: {}, memoire: {} }; }
+}
+
+// ─── T1-A8 : AnomaliesDonnées ─────────────────────────────────
+export function runAnomaliesDonnees({ chantiers, devis, factures, clients, parametres }) {
+  const alertes = [];
+  const anomalies = [];
+
+  // Chantier sans devis lié
+  chantiers.forEach(c => {
+    if (!c.devisId && isChantierActif(c)) {
+      anomalies.push(`Chantier "${c.nom || c.numero}" actif sans devis — CA incalculable`);
+      alertes.push({ id: uid('ad-nodev'), agent: 'AnomaliesDonnees', type: 'donnees', niveau: 'ATTENTION',
+        message: `Chantier "${c.nom || c.numero}" — aucun devis lié`,
+        detail: 'CA et marges incalculables tant que le devis n\'est pas attaché',
+        chantier_id: c.id, timestamp: Date.now(), lu: false, action: { page: 'chantiers', ctx: { chantierActif: c.id } } });
+    }
+    // Facture liée à un client supprimé
+    if (c.clientId && !(clients || []).some(cl => String(cl.id) === String(c.clientId))) {
+      anomalies.push(`Chantier "${c.nom || c.numero}" — clientId orphelin`);
+    }
+  });
+
+  // Facture sans clientId
+  (factures || []).forEach(f => {
+    if (!f.clientId) anomalies.push(`Facture ${f.numero || f.id} sans clientId`);
+    if (!f.chantierId && !f.devisId) anomalies.push(`Facture ${f.numero || f.id} sans lien chantier/devis`);
+  });
+
+  // Employé sans tarifJour
+  (parametres?.employes || []).filter(e => e.actif !== false).forEach(emp => {
+    if (!emp.tarifJour || emp.tarifJour <= 0) {
+      anomalies.push(`Employé ${emp.nom} — tarifJour manquant ou nul`);
+      alertes.push({ id: uid('ad-tarif'), agent: 'AnomaliesDonnees', type: 'donnees', niveau: 'ATTENTION',
+        message: `${emp.nom} — tarif journalier manquant`,
+        detail: 'Les coûts MO de cet employé sont incorrects dans tous les calculs',
+        timestamp: Date.now(), lu: false, action: { page: 'employes', ctx: {} } });
+    }
+  });
+
+  const score = Math.max(0, 100 - anomalies.length * 8);
+  return { alertes, data: { anomalies, score, nbAnomalies: anomalies.length } };
+}
+
+// ─── T1-A9 : OptimisationFacturation ─────────────────────────
+export function runOptimisationFacturation({ chantiers, factures, devis, parametres }) {
+  const alertes = [];
+  const opportunites = [];
+
+  chantiers.forEach(c => {
+    if (!isChantierActif(c) && (c.statut || '').toLowerCase() !== 'planifié') return;
+    const ca = calculerCA(c, devis);
+    if (!ca || ca <= 0) return;
+
+    const joursR = new Set((c.journal || []).map(e => e.date).filter(Boolean)).size;
+    const avancement = c.nombreJours > 0 ? Math.min(100, Math.round((joursR / c.nombreJours) * 100)) : parseFloat(c.avancement) || 0;
+    if (avancement < 25) return;
+
+    const dejaFacture = (factures || [])
+      .filter(f => String(f.chantierId) === String(c.id))
+      .reduce((s, f) => s + (parseFloat(f.montantHT || f.montantTTC) || 0), 0);
+
+    const facturable = Math.max(0, ca * (avancement / 100) - dejaFacture);
+    if (facturable < 1000) return;
+
+    opportunites.push({ id: c.id, nom: c.nom || c.numero, avancement, ca, dejaFacture, facturable: Math.round(facturable) });
+
+    if (facturable > 5000) {
+      alertes.push({ id: uid('of-fact'), agent: 'OptimisationFacturation', type: 'facturation',
+        niveau: facturable > 20000 ? 'ATTENTION' : 'INFO',
+        message: `${c.nom || c.numero} — CHF ${fmtN(Math.round(facturable))} facturable`,
+        detail: `Avancement : ${avancement}% · Déjà facturé : CHF ${fmtN(Math.round(dejaFacture))}`,
+        chantier_id: c.id, timestamp: Date.now(), lu: false, action: { page: 'factures', ctx: {} } });
+    }
+  });
+
+  const totalFacturable = opportunites.reduce((s, o) => s + o.facturable, 0);
+  return { alertes, data: { opportunites, totalFacturable } };
+}
+
+// ═══════════════════════════════════════════════════════════════
+// TIER 2 — INTELLIGENCE CROISÉE (6 agents)
+// ═══════════════════════════════════════════════════════════════
+
+// ─── T2-A10 : ConflitsPlanning ────────────────────────────────
+export function runConflitsPlanning({ chantiers, parametres, agentContext }) {
+  const alertes = [];
+  const actifs = chantiers.filter(isChantierActif);
+  const conflits = [];
+
+  // Détecte les chantiers sans équipe assignée
+  actifs.forEach(c => {
+    if (!c.equipe || c.equipe.length === 0) {
+      alertes.push({ id: uid('cp-noeq'), agent: 'ConflitsPlanning', type: 'planning', niveau: 'ATTENTION',
+        message: `${c.nom || c.numero} — aucune équipe assignée`,
+        detail: 'Chantier actif sans membres d\'équipe — saisie d\'heures impossible',
+        chantier_id: c.id, timestamp: Date.now(), lu: false, action: { page: 'chantiers', ctx: { chantierActif: c.id } } });
+    }
+  });
+
+  // Détecte les employés sur trop de chantiers simultanés (> 2 actifs)
+  const empChantiers = {};
+  actifs.forEach(c => {
+    (c.equipe || []).forEach(m => {
+      const eid = String(m.employeId);
+      if (!empChantiers[eid]) empChantiers[eid] = [];
+      empChantiers[eid].push(c.nom || c.numero);
+    });
+  });
+
+  const statsProductivite = agentContext?.ProductiviteEquipe?.statsParEmploye || {};
+  Object.entries(empChantiers).forEach(([eid, noms]) => {
+    if (noms.length > 3) {
+      const emp = (parametres?.employes || []).find(e => String(e.id) === eid);
+      const nom = emp?.nom || `Employé #${eid}`;
+      conflits.push({ employeId: eid, nom, nbChantiers: noms.length, chantiers: noms });
+      alertes.push({ id: uid('cp-surp'), agent: 'ConflitsPlanning', type: 'planning', niveau: 'ATTENTION',
+        message: `${nom} — sur ${noms.length} chantiers actifs simultanément`,
+        detail: `Dispersion risquée : ${noms.slice(0, 3).join(', ')}${noms.length > 3 ? '...' : ''}`,
+        timestamp: Date.now(), lu: false, action: { page: 'planning', ctx: {} } });
+    }
+  });
+
+  return { alertes, data: { conflits, empChantiers } };
+}
+
+// ─── T2-A11 : ApprentissageMarge ─────────────────────────────
+export function runApprentissageMarge({ chantiers, devis, parametres, agentContext, memoire = {} }) {
+  const alertes = [];
+  const patterns = agentContext?.MemoireChantier || {};
+  const predictions = [];
+
+  chantiers.filter(isChantierActif).forEach(c => {
+    const type = c.typeChantier || (c.typesTravaux?.[0]) || 'Autre';
+    const pattern = patterns[type];
+    if (!pattern || pattern.count < 2) return;
+
+    const couts = calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis);
+    if (couts.totalCoutsPrevu <= 0) return;
+
+    // Prédiction basée sur l'écart historique moyen
+    const coutPredictif = couts.totalCoutsPrevu * (1 + (pattern.ecartMoyen || 0) / 100);
+    const ca = calculerCA(c, devis);
+    const margePredictive = ca > 0 ? ((ca - coutPredictif) / ca) * 100 : null;
+
+    predictions.push({ chantierId: c.id, nom: c.nom || c.numero, type, ecartHistorique: pattern.ecartMoyen, margePredictive, coutPredictif: Math.round(coutPredictif), count: pattern.count });
+
+    if (margePredictive !== null && margePredictive < SEUILS.margeLimite) {
+      alertes.push({ id: uid('am-pred'), agent: 'ApprentissageMarge', type: 'prediction', niveau: 'ATTENTION',
+        message: `${c.nom || c.numero} — marge finale prédite à ${margePredictive.toFixed(1)}%`,
+        detail: `Basé sur ${pattern.count} chantiers "${type}" similaires · écart habituel +${pattern.ecartMoyen?.toFixed(1)}%`,
+        chantier_id: c.id, timestamp: Date.now(), lu: false, action: { page: 'chantiers', ctx: { chantierActif: c.id } } });
+    }
+  });
+
+  // Accumule la confiance des prédictions
+  const hist = memoire.predictionsHistorique || [];
+  hist.unshift({ date: new Date().toISOString().split('T')[0], nb: predictions.length, timestamp: Date.now() });
+
+  return { alertes, data: { predictions }, memoire: { predictionsHistorique: hist.slice(0, 24) } };
+}
+
+// ─── T2-A12 : SantéClient ─────────────────────────────────────
+export function runSanteClient({ chantiers, clients, devis, factures, parametres, agentContext }) {
+  const alertes = [];
+  const dsoData = agentContext?.RelancePaiements?.dsoParClient || {};
+  const statsClients = [];
+
+  (clients || []).forEach(cl => {
+    const mesChantiers = chantiers.filter(c => String(c.clientId) === String(cl.id));
+    if (mesChantiers.length === 0) return;
+
+    const avecCA = mesChantiers.filter(c => calculerCA(c, devis) !== null);
+    const caTotal = avecCA.reduce((s, c) => s + calculerCA(c, devis), 0);
+    const coutTotal = avecCA.reduce((s, c) => s + calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis).totalCoutsReel, 0);
+    const marge = caTotal > 0 ? ((caTotal - coutTotal) / caTotal) * 100 : null;
+    const facturesClient = (factures || []).filter(f => String(f.clientId) === String(cl.id));
+    const totalFacture = facturesClient.reduce((s, f) => s + (parseFloat(f.montantTTC) || 0), 0);
+    const totalPaye = facturesClient.reduce((s, f) => s + (parseFloat(f.montantPaye) || 0), 0);
+    const dso = dsoData[String(cl.id)]?.dso || 0;
+
+    const nom = cl.entreprise || `${cl.prenom || ''} ${cl.nom || ''}`.trim();
+    statsClients.push({ id: cl.id, nom, caTotal, marge, totalFacture, totalPaye, dso, nbChantiers: mesChantiers.length });
+
+    // Alerte client mauvais payeur (DSO > 45j)
+    if (dso > 45) {
+      alertes.push({ id: uid('sc-dso'), agent: 'SanteClient', type: 'client', niveau: dso > 75 ? 'DANGER' : 'ATTENTION',
+        message: `${nom} — délai de paiement moyen : ${dso} jours`,
+        detail: `Standard BTP Suisse : 30 jours · Écart : +${dso - 30}j`,
+        timestamp: Date.now(), lu: false, action: { page: 'finances', ctx: {} } });
+    }
+
+    // Alerte marge faible sur client
+    if (marge !== null && marge < SEUILS.margeLimite && caTotal > 20000) {
+      alertes.push({ id: uid('sc-marge'), agent: 'SanteClient', type: 'client', niveau: 'ATTENTION',
+        message: `${nom} — marge faible : ${marge.toFixed(1)}% sur CHF ${fmtN(Math.round(caTotal))}`,
+        detail: `Ce client génère peu de rentabilité — réviser les tarifs`,
+        timestamp: Date.now(), lu: false, action: { page: 'rapport', ctx: {} } });
+    }
+  });
+
+  statsClients.sort((a, b) => b.caTotal - a.caTotal);
+  return { alertes, data: { statsClients, topClients: statsClients.slice(0, 5) } };
+}
+
+// ─── T2-A13 : ProjectionAnnuelle ──────────────────────────────
+export function runProjectionAnnuelle({ chantiers, factures, devis, parametres, agentContext, memoire = {} }) {
+  try {
+    const now = new Date();
+    const annee = now.getFullYear();
+    const moisActuel = now.getMonth(); // 0-11
+    const tresorerie = agentContext?.TresoreriePredictor || {};
+
+    // CA réalisé cette année
+    const chantiersAnnee = chantiers.filter(c => {
+      const d = new Date(c.dateDebut || c.creeLe);
+      return d.getFullYear() === annee && calculerCA(c, devis) !== null;
+    });
+    const caRealise = chantiersAnnee.reduce((s, c) => s + calculerCA(c, devis), 0);
+    const moyenneMensuelle = moisActuel > 0 ? caRealise / (moisActuel + 1) : caRealise;
+    const projectionAnnuelle = moyenneMensuelle * 12;
+    const moisRestants = 11 - moisActuel;
+    const caProjecte = caRealise + moyenneMensuelle * moisRestants;
+
+    // Pipeline commercial (devis en cours)
+    const devisEnAttente = (devis || []).filter(d => ['en attente', 'envoyé', 'envoyee'].includes((d.statut || '').toLowerCase()));
+    const caPipeline = devisEnAttente.reduce((s, d) => s + (parseFloat(d.montantHT || d.prixPropose) || 0), 0);
+
+    // Coûts réels year-to-date
+    const coutsRealises = chantiersAnnee.reduce((s, c) => s + calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis).totalCoutsReel, 0);
+    const margeYTD = caRealise > 0 ? ((caRealise - coutsRealises) / caRealise) * 100 : null;
+
+    // Chargement objectif depuis localStorage
+    let objectifCA = null;
+    try { const obj = JSON.parse(localStorage.getItem('cyna_objectifs') || '{}'); objectifCA = obj.caAnnuel || null; } catch {}
+    const txAtteinte = objectifCA && objectifCA > 0 ? Math.round((caProjecte / objectifCA) * 100) : null;
+
+    const alertes = [];
+    if (txAtteinte !== null && txAtteinte < 80) {
+      alertes.push({ id: uid('pa-obj'), agent: 'ProjectionAnnuelle', type: 'projection', niveau: 'ATTENTION',
+        message: `Objectif annuel : projection à ${txAtteinte}% seulement`,
+        detail: `Projeté CHF ${fmtN(Math.round(caProjecte))} vs objectif CHF ${fmtN(Math.round(objectifCA))}`,
+        timestamp: Date.now(), lu: false, action: { page: 'rapport', ctx: {} } });
+    }
+
+    // Mémorise les projections mensuelles
+    const hist = memoire.projHistorique || [];
+    hist.unshift({ date: new Date().toISOString().split('T')[0], caRealise: Math.round(caRealise), caProjecte: Math.round(caProjecte), margeYTD, timestamp: Date.now() });
+
+    const data = {
+      caRealise: Math.round(caRealise), moyenneMensuelle: Math.round(moyenneMensuelle),
+      caProjecte: Math.round(caProjecte), projectionAnnuelle: Math.round(projectionAnnuelle),
+      coutsRealises: Math.round(coutsRealises), margeYTD,
+      caPipeline: Math.round(caPipeline), nbDevisEnAttente: devisEnAttente.length,
+      objectifCA, txAtteinte, moisRestants,
+    };
+    return { alertes, data, memoire: { projHistorique: hist.slice(0, 24) } };
+  } catch (e) { return { alertes: [], data: {}, memoire: {} }; }
+}
+
+// ─── T2-A14 : BenchmarkTypeTravaux ────────────────────────────
+export function runBenchmarkTypeTravaux({ chantiers, devis, parametres, agentContext }) {
+  const alertes = [];
+  const patterns = agentContext?.MemoireChantier || {};
+  const benchmark = [];
+
+  (parametres?.typesTravaux || []).forEach(t => {
+    const chantiersDuType = chantiers.filter(c => (c.typesTravaux || []).includes(t.nom) && calculerCA(c, devis) !== null);
+    if (chantiersDuType.length === 0) return;
+
+    const caTotal = chantiersDuType.reduce((s, c) => s + calculerCA(c, devis), 0);
+    const coutTotal = chantiersDuType.reduce((s, c) => s + calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis).totalCoutsReel, 0);
+    const marge = caTotal > 0 ? ((caTotal - coutTotal) / caTotal) * 100 : null;
+    const pattern = patterns[t.nom];
+
+    benchmark.push({
+      nom: t.nom, nbChantiers: chantiersDuType.length, caTotal, marge,
+      margeCible: 20, ecartCible: marge !== null ? marge - 20 : null,
+      margeMoyenneHistorique: pattern?.margeMoyenne || null,
+      ecartHistorique: pattern?.ecartMoyen || null,
+    });
+
+    if (marge !== null && marge < SEUILS.margeLimite) {
+      alertes.push({ id: uid('bt-marge'), agent: 'BenchmarkTypeTravaux', type: 'benchmark', niveau: 'ATTENTION',
+        message: `Type "${t.nom}" — marge globale : ${marge.toFixed(1)}% (objectif ≥ ${SEUILS.margeRentable}%)`,
+        detail: `${chantiersDuType.length} chantier(s) · CA CHF ${fmtN(Math.round(caTotal))}`,
+        timestamp: Date.now(), lu: false, action: { page: 'rapport', ctx: {} } });
+    }
+  });
+
+  benchmark.sort((a, b) => (a.marge ?? -999) - (b.marge ?? -999));
+  return { alertes, data: { benchmark } };
+}
+
+// ─── T2-A15 : ConformitéBTP ───────────────────────────────────
+export function runConformiteBTP({ chantiers, parametres, agentContext }) {
+  const alertes = [];
+  const violations = [];
+  const statsHeures = agentContext?.ProductiviteEquipe?.statsParEmploye || {};
+
+  // Vérifie dépassement 8h/jour par employé par chantier
+  chantiers.forEach(c => {
+    (c.journal || []).forEach(entry => {
+      (entry.employes || []).forEach(ej => {
+        const h = parseFloat(ej.heuresTravaillees) || 0;
+        if (h > 10) {
+          const emp = (parametres?.employes || []).find(e => String(e.id) === String(ej.employeId));
+          const nom = emp?.nom || `Employé #${ej.employeId}`;
+          violations.push(`${nom} — ${h}h le ${entry.date} sur "${c.nom || c.numero}"`);
+        }
+      });
+    });
+  });
+
+  // Alerte si violations CCT détectées
+  if (violations.length > 0) {
+    alertes.push({ id: uid('cb-cct'), agent: 'ConformiteBTP', type: 'conformite', niveau: 'ATTENTION',
+      message: `${violations.length} dépassement(s) horaire(s) CCT détecté(s)`,
+      detail: `CCT Romande : max 10h/jour · ${violations[0]}`,
+      timestamp: Date.now(), lu: false, action: { page: 'heures', ctx: {} } });
+  }
+
+  // Vérifie employés sans LPP (< 22 ans ou > 70 ans non géré)
+  (parametres?.employes || []).filter(e => e.actif !== false).forEach(emp => {
+    if (!emp.tarifDejaCharge && (!parametres?.parametres?.coefficientMainOeuvre || parametres.parametres.coefficientMainOeuvre < 1.3)) {
+      violations.push(`${emp.nom} — coefficient MO insuffisant (< 1.30) pour couvrir les charges sociales GE`);
+    }
+  });
+
+  return { alertes, data: { violations, nbViolations: violations.length } };
+}
+
+// ═══════════════════════════════════════════════════════════════
+// TIER 3 — SYNTHÈSE (5 agents)
+// ═══════════════════════════════════════════════════════════════
+
+// ─── T3-A16 : RadarPrécoce ────────────────────────────────────
+export function runRadarPrecoce({ chantiers, devis, parametres, agentContext }) {
+  const alertes = [];
+  const risques = [];
+
+  chantiers.filter(isChantierActif).forEach(c => {
+    let score = 0;
+    const facteurs = [];
+
+    // Facteur 1 : marge faible
+    const couts = calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis);
+    if (couts.montantTotal > 0 && couts.totalCoutsReel > 0) {
+      const marge = parseFloat(couts.margeReelPct);
+      if (marge < 0) { score += 40; facteurs.push(`marge à perte (${marge.toFixed(1)}%)`); }
+      else if (marge < SEUILS.margeLimite) { score += 20; facteurs.push(`marge faible (${marge.toFixed(1)}%)`); }
+    }
+
+    // Facteur 2 : retard
+    const joursR = new Set((c.journal || []).map(e => e.date).filter(Boolean)).size;
+    const joursRestants = c.nombreJours > 0 ? c.nombreJours - joursR : null;
+    if (joursRestants !== null && joursRestants < -7) { score += 30; facteurs.push(`retard critique (${Math.abs(joursRestants)}j)`); }
+    else if (joursRestants !== null && joursRestants < 0) { score += 15; facteurs.push(`retard (${Math.abs(joursRestants)}j)`); }
+
+    // Facteur 3 : budget dépassé
+    if (couts.totalCoutsPrevu > 0 && couts.totalCoutsReel > 0) {
+      const dep = ((couts.totalCoutsReel - couts.totalCoutsPrevu) / couts.totalCoutsPrevu) * 100;
+      if (dep > 20) { score += 25; facteurs.push(`budget +${dep.toFixed(0)}%`); }
+      else if (dep > 5) { score += 10; facteurs.push(`budget +${dep.toFixed(0)}%`); }
+    }
+
+    // Facteur 4 : prédiction ApprentissageMarge négative
+    const pred = (agentContext?.ApprentissageMarge?.predictions || []).find(p => p.chantierId === c.id);
+    if (pred?.margePredictive < SEUILS.margeLimite) { score += 15; facteurs.push(`prédiction historique : ${pred.margePredictive.toFixed(1)}%`); }
+
+    if (score >= 30) {
+      risques.push({ chantierId: c.id, nom: c.nom || c.numero, score, facteurs, niveau: score >= 60 ? 'CRITIQUE' : score >= 40 ? 'DANGER' : 'ATTENTION' });
+      alertes.push({ id: uid('rp-radar'), agent: 'RadarPrecoce', type: 'radar', niveau: score >= 60 ? 'CRITIQUE' : score >= 40 ? 'DANGER' : 'ATTENTION',
+        message: `${c.nom || c.numero} — score de risque : ${score}/100`,
+        detail: `Facteurs : ${facteurs.join(' · ')}`,
+        chantier_id: c.id, timestamp: Date.now(), lu: false, action: { page: 'chantiers', ctx: { chantierActif: c.id } } });
+    }
+  });
+
+  risques.sort((a, b) => b.score - a.score);
+  return { alertes, data: { risques } };
+}
+
+// ─── T3-A17 : DSOMoyen ────────────────────────────────────────
+export function runDSOAnalyse({ agentContext, memoire = {} }) {
+  try {
+    const dsoData = agentContext?.RelancePaiements;
+    if (!dsoData) return { alertes: [], data: {}, memoire };
+
+    const dsoParClient = Object.values(dsoData.dsoParClient || {});
+    const dsoMoyen = dsoParClient.length > 0
+      ? Math.round(dsoParClient.reduce((s, c) => s + (c.dso || 0), 0) / dsoParClient.length)
+      : 0;
+
+    const hist = memoire.historique || [];
+    const tendance = hist.length >= 3
+      ? dsoMoyen - hist[2].dso
+      : 0;
+
+    const alertes = [];
+    if (dsoMoyen > 45) {
+      alertes.push({ id: uid('dso-alert'), agent: 'DSOAnalyse', type: 'tresorerie', niveau: dsoMoyen > 60 ? 'DANGER' : 'ATTENTION',
+        message: `DSO moyen : ${dsoMoyen} jours (standard BTP Suisse : 30j)`,
+        detail: tendance > 5 ? `Tendance haussière +${tendance}j en 3 runs — situation qui se dégrade` : `Écart de ${dsoMoyen - 30} jours sur la norme suisse`,
+        timestamp: Date.now(), lu: false, action: { page: 'finances', ctx: {} } });
+    }
+
+    hist.unshift({ date: new Date().toISOString().split('T')[0], dso: dsoMoyen, tendance, timestamp: Date.now() });
+
+    return { alertes, data: { dsoMoyen, tendance, historique: hist.slice(0, 12), dsoParClient }, memoire: { historique: hist.slice(0, 52) } };
+  } catch (e) { return { alertes: [], data: {}, memoire }; }
+}
+
+// ─── T3-A18 : SaisonniertéPrévisionnelle ─────────────────────
+export function runSaisonnierte({ chantiers, devis, memoire = {} }) {
+  try {
+    const maintenant = new Date();
+    const moisLabels = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc'];
+
+    // Analyse historique : répartition des démarrages par mois
+    const demarragesParMois = Array(12).fill(0);
+    const caParMois = Array(12).fill(0);
+
+    chantiers.forEach(c => {
+      if (!c.dateDebut) return;
+      const m = new Date(c.dateDebut).getMonth();
+      demarragesParMois[m]++;
+      const ca = calculerCA(c, devis);
+      if (ca) caParMois[m] += ca;
+    });
+
+    const total = demarragesParMois.reduce((s, v) => s + v, 0);
+    const saisonParMois = demarragesParMois.map((v, i) => ({
+      mois: moisLabels[i], index: i,
+      count: v, pct: total > 0 ? Math.round((v / total) * 100) : 0,
+      ca: Math.round(caParMois[i]),
+      intensite: v === 0 ? 'creux' : v < total / 14 ? 'faible' : v > total / 7 ? 'fort' : 'moyen',
+    }));
+
+    // Prochains 3 mois
+    const prochainsMois = [1, 2, 3].map(offset => {
+      const idx = (maintenant.getMonth() + offset) % 12;
+      return saisonParMois[idx];
+    });
+
+    const alertes = [];
+    const prochainCreux = prochainsMois.find(m => m.intensite === 'creux' || m.intensite === 'faible');
+    if (prochainCreux && total > 5) {
+      alertes.push({ id: uid('sa-creux'), agent: 'Saisonnierte', type: 'planification', niveau: 'INFO',
+        message: `Période creuse historique prévue en ${prochainCreux.mois}`,
+        detail: `Historiquement ${prochainCreux.count} démarrage(s) en ${prochainCreux.mois} — anticiper le pipeline commercial`,
+        timestamp: Date.now(), lu: false, action: { page: 'devis', ctx: {} } });
+    }
+
+    const hist = memoire.saisonHistorique || [];
+    hist.unshift({ annee: maintenant.getFullYear(), saisonParMois, timestamp: Date.now() });
+
+    return { alertes, data: { saisonParMois, prochainsMois, total }, memoire: { saisonHistorique: hist.slice(0, 5) } };
+  } catch (e) { return { alertes: [], data: {}, memoire }; }
+}
+
+// ─── T3-A19 : CoûtMOAnalyse ───────────────────────────────────
+export function runCoutMOAnalyse({ chantiers, devis, parametres, agentContext }) {
+  const alertes = [];
+  const analyse = [];
+
+  chantiers.forEach(c => {
+    const ca = calculerCA(c, devis);
+    if (!ca || ca <= 0) return;
+    const couts = calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis);
+    if (couts.totalCoutsReel <= 0) return;
+
+    const pctMO = couts.totalCoutsReel > 0 ? (couts.coutMOReel / couts.totalCoutsReel) * 100 : 0;
+    const pctMOSurCA = ca > 0 ? (couts.coutMOReel / ca) * 100 : 0;
+
+    analyse.push({
+      id: c.id, nom: c.nom || c.numero,
+      coutMO: Math.round(couts.coutMOReel), ca: Math.round(ca),
+      pctMO: Math.round(pctMO * 10) / 10, pctMOSurCA: Math.round(pctMOSurCA * 10) / 10,
+      margeReel: parseFloat(couts.margeReelPct),
+    });
+
+    // Alerte si MO > 70% des coûts totaux
+    if (pctMO > 70 && couts.coutMOReel > 5000) {
+      alertes.push({ id: uid('mo-fort'), agent: 'CoutMOAnalyse', type: 'couts', niveau: 'INFO',
+        message: `${c.nom || c.numero} — MO à ${pctMO.toFixed(0)}% des coûts`,
+        detail: `CHF ${fmtN(Math.round(couts.coutMOReel))} en main-d'œuvre · vérifier coefficient charges`,
+        chantier_id: c.id, timestamp: Date.now(), lu: false, action: { page: 'chantiers', ctx: { chantierActif: c.id } } });
+    }
+  });
+
+  const moyen = analyse.length > 0 ? analyse.reduce((s, a) => s + a.pctMO, 0) / analyse.length : 0;
+  analyse.sort((a, b) => b.pctMO - a.pctMO);
+
+  return { alertes, data: { analyse, pctMOMoyen: Math.round(moyen * 10) / 10 } };
+}
+
+// ─── T3-A20 : CoachDirecteur ──────────────────────────────────
+export function runCoachDirecteur({ chantiers, devis, factures, parametres, agentContext, memoire = {} }) {
+  try {
+    const priorites = [];
+
+    // Priorité 1 : chantiers à risque critique (RadarPrecoce)
+    const risques = agentContext?.RadarPrecoce?.risques || [];
+    const critiqueRisque = risques.filter(r => r.niveau === 'CRITIQUE' || r.niveau === 'DANGER');
+    if (critiqueRisque.length > 0) {
+      priorites.push({
+        rang: 1, icone: '🔴', categorie: 'URGENT',
+        action: `Intervenir sur ${critiqueRisque[0].nom}`,
+        detail: `Score de risque ${critiqueRisque[0].score}/100 · ${critiqueRisque[0].facteurs[0]}`,
+        impact: 'Financier critique', page: 'chantiers',
+      });
+    }
+
+    // Priorité 2 : encaissements urgents (RelancePaiements)
+    const relances = agentContext?.RelancePaiements;
+    if (relances?.montant90 > 5000) {
+      priorites.push({
+        rang: priorites.length + 1, icone: '🟠', categorie: 'TRÉSORERIE',
+        action: `Relancer ${relances.nb90} facture(s) en retard >90 jours`,
+        detail: `CHF ${fmtN(Math.round(relances.montant90))} à récupérer d'urgence`,
+        impact: 'Cash-flow', page: 'finances',
+      });
+    }
+
+    // Priorité 3 : facturation possible (OptimisationFacturation)
+    const factOpti = agentContext?.OptimisationFacturation;
+    if (factOpti?.totalFacturable > 10000) {
+      priorites.push({
+        rang: priorites.length + 1, icone: '🟢', categorie: 'REVENUS',
+        action: `Facturer CHF ${fmtN(Math.round(factOpti.totalFacturable))} disponibles`,
+        detail: `${factOpti.opportunites?.length || 0} chantier(s) à facturer selon avancement`,
+        impact: 'CA immédiat', page: 'factures',
+      });
+    }
+
+    // Priorité 4 : projection annuelle
+    const proj = agentContext?.ProjectionAnnuelle;
+    if (proj?.txAtteinte !== null && proj?.txAtteinte < 80) {
+      priorites.push({
+        rang: priorites.length + 1, icone: '📊', categorie: 'COMMERCIAL',
+        action: `Renforcer le pipeline — objectif annuel à ${proj.txAtteinte}%`,
+        detail: `${proj.nbDevisEnAttente} devis en attente · CHF ${fmtN(Math.round(proj.caPipeline))} potentiel`,
+        impact: 'CA annuel', page: 'devis',
+      });
+    }
+
+    // Priorité 5 : données manquantes
+    const anomalies = agentContext?.AnomaliesDonnees;
+    if (anomalies?.score < 80) {
+      priorites.push({
+        rang: priorites.length + 1, icone: '⚠️', categorie: 'DONNÉES',
+        action: `Corriger ${anomalies.nbAnomalies} anomalie(s) de données`,
+        detail: anomalies.anomalies?.[0] || 'Chantiers sans devis, employés sans tarif...',
+        impact: 'Fiabilité calculs', page: 'chantiers',
+      });
+    }
+
+    // Résumé global
+    const nbAlertesTotal = Object.values(agentContext || {}).reduce((s, d) => s + (d?.alertes?.length || 0), 0);
+    const scoreGlobal = Math.max(0, 100 - critiqueRisque.length * 20 - (relances?.nb90 || 0) * 10 - (anomalies?.nbAnomalies || 0) * 5);
+
+    const hist = memoire.coachHistorique || [];
+    hist.unshift({ date: new Date().toISOString().split('T')[0], scoreGlobal, nbPriorites: priorites.length, timestamp: Date.now() });
+
+    const data = { priorites: priorites.slice(0, 5), scoreGlobal, nbAlertesTotal, synthese: `Score entreprise : ${scoreGlobal}/100` };
+    return { alertes: [], data, memoire: { coachHistorique: hist.slice(0, 52) } };
+  } catch (e) { return { alertes: [], data: { priorites: [], scoreGlobal: 0 }, memoire }; }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ORCHESTRATEUR — 3 tiers, communication inter-agents
+// ═══════════════════════════════════════════════════════════════
+export function runAllAgents({ chantiers, devis, factures, clients, parametres, dernierRapport, agentsActifs, memoire = {} }) {
+  const enabled = agentsActifs || {};
+  const isEnabled = (name) => enabled[name] !== false; // actif par défaut
 
   const result = {
-    alertes: [],
-    predictions: {},
-    patterns: {},
-    rapport: null,
-    statuts: {},
+    alertes: [], predictions: {}, patterns: {}, rapport: null,
+    statuts: {}, agentData: {}, memoire: { ...memoire },
   };
 
+  const agentContext = {}; // Accumule les résultats pour les agents suivants
+
   const runAgent = (name, fn) => {
-    if (!enabled[name]) {
+    if (!isEnabled(name)) {
       result.statuts[name] = { actif: false, lastRun: null, erreur: null };
-      return;
+      return null;
     }
     try {
       const start = Date.now();
-      const res = fn();
+      const agentMemoire = (memoire && memoire[name]) ? memoire[name] : {};
+      const res = fn(agentMemoire);
       result.statuts[name] = { actif: true, lastRun: Date.now(), dureeMs: Date.now() - start, erreur: null };
+      if (res?.alertes) result.alertes.push(...res.alertes);
+      if (res?.data) {
+        result.agentData[name] = res.data;
+        agentContext[name] = res.data; // Disponible pour les agents suivants
+      }
+      if (res?.memoire) result.memoire[name] = { ...(result.memoire[name] || {}), ...res.memoire };
       return res;
     } catch (e) {
-      console.error(`[AGENT-${name}] Erreur critique`, e);
+      console.error(`[AGENT-${name}]`, e);
       result.statuts[name] = { actif: true, lastRun: Date.now(), erreur: e.message };
       return null;
     }
   };
 
-  const a1 = runAgent('AlerteChantier', () => runAlerteChantier({ chantiers, devis, parametres }));
-  if (a1) result.alertes.push(...a1);
+  // ── TIER 1 ──
+  runAgent('AlerteChantier',          (m) => runAlerteChantier({ chantiers, devis, parametres }));
+  runAgent('SuiviDevis',              (m) => runSuiviDevis({ devis, factures, clients }));
+  const a3 = runAgent('TresoreriePredictor', (m) => runTresoreriePredictor({ chantiers, factures, devis, parametres }));
+  if (a3?.data) result.predictions = a3.data;
+  const a4 = runAgent('RapportAuto',  (m) => runRapportAuto({ chantiers, factures, devis, parametres, dernierRapport }));
+  if (a4?.data) result.rapport = a4.data;
+  const a5 = runAgent('MemoireChantier', (m) => runMemoireChantier({ chantiers, devis, parametres }));
+  if (a5?.data) result.patterns = a5.data;
+  runAgent('ProductiviteEquipe',      (m) => runProductiviteEquipe({ chantiers, parametres, memoire: m }));
+  runAgent('RelancePaiements',        (m) => runRelancePaiements({ factures, clients, memoire: m }));
+  runAgent('AnomaliesDonnees',        (m) => runAnomaliesDonnees({ chantiers, devis, factures, clients, parametres }));
+  runAgent('OptimisationFacturation', (m) => runOptimisationFacturation({ chantiers, factures, devis, parametres }));
 
-  const a2 = runAgent('SuiviDevis', () => runSuiviDevis({ devis, factures, clients }));
-  if (a2) result.alertes.push(...a2);
+  // ── TIER 2 (reçoit agentContext Tier 1) ──
+  runAgent('ConflitsPlanning',     (m) => runConflitsPlanning({ chantiers, parametres, agentContext }));
+  runAgent('ApprentissageMarge',   (m) => runApprentissageMarge({ chantiers, devis, parametres, agentContext, memoire: m }));
+  runAgent('SanteClient',          (m) => runSanteClient({ chantiers, clients, devis, factures, parametres, agentContext }));
+  runAgent('ProjectionAnnuelle',   (m) => runProjectionAnnuelle({ chantiers, factures, devis, parametres, agentContext, memoire: m }));
+  runAgent('BenchmarkTypeTravaux', (m) => runBenchmarkTypeTravaux({ chantiers, devis, parametres, agentContext }));
+  runAgent('ConformiteBTP',        (m) => runConformiteBTP({ chantiers, parametres, agentContext }));
 
-  const a3 = runAgent('TresoreriePredictor', () => runTresoreriePredictor({ chantiers, factures, devis, parametres }));
-  if (a3) { result.alertes.push(...a3.alertes); result.predictions = a3.predictions; }
+  // ── TIER 3 (reçoit agentContext Tier 1 + 2) ──
+  runAgent('RadarPrecoce',    (m) => runRadarPrecoce({ chantiers, devis, parametres, agentContext }));
+  runAgent('DSOAnalyse',      (m) => runDSOAnalyse({ agentContext, memoire: m }));
+  runAgent('Saisonnierte',    (m) => runSaisonnierte({ chantiers, devis, memoire: m }));
+  runAgent('CoutMOAnalyse',   (m) => runCoutMOAnalyse({ chantiers, devis, parametres, agentContext }));
+  runAgent('CoachDirecteur',  (m) => runCoachDirecteur({ chantiers, devis, factures, parametres, agentContext, memoire: m }));
 
-  const a4 = runAgent('RapportAuto', () => runRapportAuto({ chantiers, factures, devis, parametres, dernierRapport }));
-  if (a4) result.rapport = a4;
-
-  const a5 = runAgent('MemoireChantier', () => runMemoireChantier({ chantiers, devis, parametres }));
-  if (a5) result.patterns = a5;
-
+  console.log(`[ORCHESTRATEUR] ${result.alertes.length} alerte(s) · ${Object.keys(result.statuts).length} agents exécutés`);
   return result;
 }

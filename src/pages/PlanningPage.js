@@ -3,7 +3,7 @@ import Planning from '../Planning';
 import Calendrier from '../Calendrier';
 
 // ── Planning + Calendrier ─────────────────────────────────────────────────
-function PlanningPage({ chantiers, setChantiers, clients, devis, factures, naviguer }) {
+function PlanningPage({ chantiers, setChantiers, clients, devis, factures, parametres, naviguer }) {
   const [onglet, setOnglet] = useState('planning');
   const tabs = [{ id: 'planning', label: 'Planning' }, { id: 'calendrier', label: 'Calendrier' }];
   const pillActive = { background: '#EEF2FF', color: '#4F46E5', border: '1px solid transparent' };
@@ -18,7 +18,7 @@ function PlanningPage({ chantiers, setChantiers, clients, devis, factures, navig
           </button>
         ))}
       </div>
-      {onglet === 'planning'   && <Planning chantiers={chantiers} setChantiers={setChantiers} clients={clients} naviguer={naviguer} />}
+      {onglet === 'planning'   && <Planning chantiers={chantiers} setChantiers={setChantiers} clients={clients} parametres={parametres} naviguer={naviguer} />}
       {onglet === 'calendrier' && <Calendrier chantiers={chantiers} clients={clients} devis={devis} factures={factures} />}
     </div>
   );

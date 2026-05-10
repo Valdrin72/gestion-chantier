@@ -7,10 +7,11 @@ const MOIS = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 
 const JOURS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
 const PALETTE = ['#3b82f6','#10b981','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#f97316','#ec4899'];
 
-export default function Planning({ chantiers, setChantiers, clients, naviguer }) {
+export default function Planning({ chantiers, setChantiers, clients, parametres, naviguer }) {
   const [moisActuel, setMoisActuel] = useState(new Date().getMonth());
   const [anneeActuelle, setAnneeActuelle] = useState(new Date().getFullYear());
   const [modal, setModal] = useState(null); // null ou { chantier, form }
+  const [showOptimiseur, setShowOptimiseur] = useState(false);
 
   // couleurStatut importé depuis ds.js — source unique DS.statuts
 
@@ -153,6 +154,72 @@ export default function Planning({ chantiers, setChantiers, clients, naviguer })
     return map;
   }, [chantiersDuMois]);
 
+  // ── Optimiseur d'équipe ────────────────────────────────────────
+  const suggestionsOptimiseur = useMemo(() => {
+    const employes = (parametres?.employes || []).filter(e => e.actif !== false);
+    if (employes.length === 0 || chantiers.length === 0) return { employes, suggestions: [] };
+
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+
+    // Chantiers actifs (En cours ou Planifié), insensible à la casse
+    const chantiersActifs = chantiers
+      .filter(c => {
+        const s = (c.statut || '').trim().toLowerCase();
+        return s === 'en cours' || s === 'planifié';
+      })
+      .map(c => {
+        const joursR = new Set((c.journal || []).map(e => e.date).filter(Boolean)).size;
+        const joursRestants = c.nombreJours > 0 ? c.nombreJours - joursR : null;
+        return { ...c, _joursRestants: joursRestants };
+      })
+      // Trier par urgence : jours restants les plus courts en premier, null à la fin
+      .sort((a, b) => {
+        if (a._joursRestants === null && b._joursRestants === null) return 0;
+        if (a._joursRestants === null) return 1;
+        if (b._joursRestants === null) return -1;
+        return a._joursRestants - b._joursRestants;
+      });
+
+    if (chantiersActifs.length === 0) return { employes, suggestions: [] };
+
+    // Calculer la charge de chaque employé (nombre de chantiers actifs où il est affecté)
+    const chargeParEmp = {};
+    employes.forEach(e => { chargeParEmp[e.id] = 0; });
+    chantiersActifs.forEach(ch => {
+      (ch.equipe || []).forEach(m => {
+        if (chargeParEmp[m.employeId] !== undefined) chargeParEmp[m.employeId]++;
+      });
+    });
+
+    const suggestions = chantiersActifs.map(c => {
+      // Trier les employés par charge croissante puis alphabétiquement
+      const empsTries = [...employes].sort((a, b) => {
+        const diff = (chargeParEmp[a.id] || 0) - (chargeParEmp[b.id] || 0);
+        if (diff !== 0) return diff;
+        return (a.nom || '').localeCompare(b.nom || '');
+      });
+
+      const nb = parseInt(c.nombrePersonnes) || 2;
+      const typeChantier = (c.typeChantier || c.typesTravaux?.[0] || '').toLowerCase();
+
+      const equipes = empsTries.slice(0, nb).map(e => {
+        const charge = chargeParEmp[e.id] || 0;
+        const posteMatch = typeChantier && (e.poste || '').toLowerCase().includes(typeChantier.split(' ')[0]);
+        let raison;
+        if (charge === 0 && posteMatch) raison = 'Disponible · Spécialité correspondante';
+        else if (charge === 0) raison = 'Disponible';
+        else if (posteMatch) raison = `Spécialité correspondante · ${charge} chantier(s) en cours`;
+        else raison = `${charge} chantier(s) en cours`;
+
+        return { nom: e.nom, poste: e.poste, charge, raison };
+      });
+
+      return { chantier: c, joursRestants: c._joursRestants, equipes };
+    });
+
+    return { employes, suggestions };
+  }, [chantiers, parametres]);
+
   return (
     <div>
       {/* ── HEADER ──────────────────────────────────────────────── */}
@@ -168,8 +235,110 @@ export default function Planning({ chantiers, setChantiers, clients, naviguer })
           <button onClick={moisPrecedent} style={btnNav}>←</button>
           <button onClick={() => { setMoisActuel(new Date().getMonth()); setAnneeActuelle(new Date().getFullYear()); }} style={btnNav}>Aujourd'hui</button>
           <button onClick={moisSuivant} style={btnNav}>→</button>
+          <button
+            onClick={() => setShowOptimiseur(v => !v)}
+            style={{
+              background: showOptimiseur ? 'rgba(139,92,246,0.18)' : 'rgba(139,92,246,0.08)',
+              color: '#8b5cf6',
+              border: `1px solid ${showOptimiseur ? 'rgba(139,92,246,0.5)' : 'rgba(139,92,246,0.25)'}`,
+              borderRadius: 8, padding: '6px 14px', cursor: 'pointer',
+              fontSize: 13, fontWeight: 600, fontFamily: 'inherit',
+              transition: 'all 0.15s',
+            }}
+          >
+            ✨ Optimiser l'équipe
+          </button>
         </div>
       </div>
+
+      {/* ── PANNEAU OPTIMISEUR ──────────────────────────────────── */}
+      {showOptimiseur && (
+        <div style={{ ...DS.card, marginBottom: 24 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+            <div>
+              <div style={{ fontWeight: 800, fontSize: 16, color: 'var(--text-primary)' }}>
+                ✨ Suggestions IA — Affectation optimale
+              </div>
+              <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 3 }}>
+                Basé sur la charge actuelle et les spécialités
+              </div>
+            </div>
+            <button
+              onClick={() => setShowOptimiseur(false)}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: 'var(--text-muted)', fontFamily: 'inherit', lineHeight: 1, padding: '4px 8px' }}
+              aria-label="Fermer"
+            >×</button>
+          </div>
+
+          {suggestionsOptimiseur.employes.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '24px 0', color: 'var(--text-muted)', fontSize: 13 }}>
+              Ajoutez des employés dans Paramètres pour obtenir des suggestions
+            </div>
+          ) : suggestionsOptimiseur.suggestions.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '24px 0', color: 'var(--text-muted)', fontSize: 13 }}>
+              Aucun chantier actif à optimiser
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {suggestionsOptimiseur.suggestions.map(({ chantier: c, joursRestants, equipes }, idx) => {
+                const urgenceColor = joursRestants === null ? '#94a3b8' : joursRestants < 0 ? '#ef4444' : joursRestants <= 3 ? '#f59e0b' : '#10b981';
+                const accentColor = PALETTE[idx % PALETTE.length];
+                return (
+                  <div key={c.id} style={{ background: 'var(--bg-hover)', borderRadius: 12, padding: '14px 16px', borderLeft: `4px solid ${accentColor}` }}>
+                    {/* En-tête chantier */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                      <div>
+                        <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-primary)' }}>
+                          {c.nom || c.numero}
+                        </div>
+                        {c.typeChantier || c.typesTravaux?.[0] ? (
+                          <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
+                            {c.typeChantier || c.typesTravaux?.[0]}
+                          </div>
+                        ) : null}
+                      </div>
+                      <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                        <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-muted)', marginBottom: 2 }}>
+                          Jours restants
+                        </div>
+                        <div style={{ fontSize: 14, fontWeight: 800, color: urgenceColor }}>
+                          {joursRestants === null ? '—' : joursRestants < 0 ? `${Math.abs(joursRestants)}j retard` : joursRestants === 0 ? 'Fin auj.' : `${joursRestants}j`}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Équipe suggérée */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      {equipes.map((emp, i) => (
+                        <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--bg-card)', borderRadius: 8, padding: '8px 12px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <div style={{ width: 30, height: 30, borderRadius: '50%', background: `${accentColor}22`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, color: accentColor, flexShrink: 0 }}>
+                              {(emp.nom || '?').charAt(0).toUpperCase()}
+                            </div>
+                            <div>
+                              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>{emp.nom || '—'}</div>
+                              {emp.poste && <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{emp.poste}</div>}
+                            </div>
+                          </div>
+                          <div style={{ textAlign: 'right' }}>
+                            <div style={{ fontSize: 11, color: emp.charge === 0 ? '#10b981' : emp.charge >= 3 ? '#ef4444' : '#f59e0b', fontWeight: 600 }}>
+                              {emp.raison}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          <div style={{ marginTop: 16, paddingTop: 12, borderTop: '1px solid var(--border)', fontSize: 11, color: 'var(--text-muted)', textAlign: 'center' }}>
+            Ces suggestions sont basées sur la charge actuelle. Modifiez les équipes dans la fiche chantier.
+          </div>
+        </div>
+      )}
 
       {/* ── LAYOUT 2 COLONNES ───────────────────────────────────── */}
       <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 20, alignItems: 'start' }}>

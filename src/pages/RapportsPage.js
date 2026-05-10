@@ -4,6 +4,7 @@ import Rapport from '../Rapport';
 import Analyse from '../Analyse';
 import Marges from '../Marges';
 import SimulateurCroissance from '../SimulateurCroissance';
+import BenchmarkMarche from '../BenchmarkMarche';
 
 // ── Rapport + Statistiques + Analyse + Simulateur ────────────────────────
 function RapportsPage({ chantiers, clients, devis, parametres, setParametres, paiementsData, periodeGlobale, naviguer, factures }) {
@@ -14,6 +15,7 @@ function RapportsPage({ chantiers, clients, devis, parametres, setParametres, pa
     { id: 'statistiques', label: 'Statistiques' },
     { id: 'analyse',      label: 'Analyse' },
     { id: 'simulateur',   label: '📈 Simulateur' },
+    { id: 'benchmark',    label: '🏆 Benchmark' },
   ];
   const pillActive = { background: '#EEF2FF', color: '#4F46E5', border: '1px solid transparent' };
   const pillInactive = { background: 'transparent', color: 'var(--text-muted)', border: '1px solid var(--border)' };
@@ -32,6 +34,7 @@ function RapportsPage({ chantiers, clients, devis, parametres, setParametres, pa
       {onglet === 'statistiques' && <Statistiques chantiers={chantiers} clients={clients} devis={devis} parametres={parametres} periodeGlobale={periodeGlobale} />}
       {onglet === 'analyse'      && <Analyse chantiers={chantiers} clients={clients} devis={devis} parametres={parametres} setParametres={setParametres} paiementsData={paiementsData} periodeGlobale={periodeGlobale} />}
       {onglet === 'simulateur'   && <SimulateurCroissance chantiers={chantiers} devis={devis} factures={factures || []} parametres={parametres} />}
+      {onglet === 'benchmark'    && <BenchmarkMarche chantiers={chantiers} devis={devis} parametres={parametres} />}
     </div>
   );
 }

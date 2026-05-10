@@ -6,6 +6,7 @@ import {
 import { fmtN, C, creerFactureDepuisDevis } from '../donnees';
 import { DS } from '../ds';
 import { useApp } from '../context/AppContext';
+import AssistantDevisIA from '../AssistantDevisIA';
 
 const inputStyle = DS.input;
 const labelStyle = DS.label;
@@ -171,6 +172,15 @@ function Devis() {
           <div style={{ marginBottom: 20 }}>
             <div className="ds-card-title" style={{ margin: 0 }}>{form.id ? 'Modifier' : 'Nouveau'} devis</div>
           </div>
+          {!form.id && (
+            <AssistantDevisIA
+              chantiers={chantiers}
+              devis={devis}
+              parametres={parametres}
+              form={form}
+              onApply={patch => setForm(prev => ({ ...prev, ...patch }))}
+            />
+          )}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr 1fr 1fr', gap: '14px', marginBottom: 20 }}>
             <div><label style={labelStyle}>Numéro</label><input value={form.numero} onChange={e => setForm({ ...form, numero: e.target.value })} style={inputStyle} /></div>
             <div><label style={labelStyle}>Client</label>

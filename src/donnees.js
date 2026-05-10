@@ -297,7 +297,13 @@ export const calculerCoutsChantier = (chantier, employes, localites, cfg = {}, d
   const budgetRestant = totalCoutsPrevu - totalCoutsReel;
   // rad = estimation du coût pour finir à ce rythme (RAD réel métier BTP)
   // = (coutReel / avancement%) × (100 - avancement%)
-  const avancement = parseFloat(chantier.avancement) || 0;
+  // Source avancement : journal si des jours sont saisis (cohérent avec calculerEtatChantier),
+  // sinon fallback sur la valeur manuelle (chantier non démarré).
+  const joursReelsPourAv = new Set(journalCouts.map(e => e.date).filter(Boolean)).size;
+  const avancementJournal = nbJours > 0 && joursReelsPourAv > 0
+    ? Math.min(100, Math.round((joursReelsPourAv / nbJours) * 100))
+    : 0;
+  const avancement = avancementJournal || parseFloat(chantier.avancement) || 0;
   const rad = (avancement > 0 && totalCoutsReel > 0)
     ? (totalCoutsReel / avancement) * (100 - avancement)
     : null;
@@ -343,13 +349,13 @@ export const calculerCoutsChantier = (chantier, employes, localites, cfg = {}, d
 
   // Écarts par poste (réel − prévu), positif = dépassement
   const ecartEquipe = coutEquipeReel - coutEquipePrevu;
-  const ecartEquipePct = coutEquipePrevu > 0 ? (((coutEquipeReel - coutEquipePrevu) / coutEquipePrevu) * 100).toFixed(1) : '0';
+  const ecartEquipePct = coutEquipePrevu > 0 ? Math.round(((coutEquipeReel - coutEquipePrevu) / coutEquipePrevu) * 1000) / 10 : 0;
   const ecartMateriel = coutMaterielReel - coutMaterielPrevu;
-  const ecartMaterielPct = coutMaterielPrevu > 0 ? (((coutMaterielReel - coutMaterielPrevu) / coutMaterielPrevu) * 100).toFixed(1) : '0';
+  const ecartMaterielPct = coutMaterielPrevu > 0 ? Math.round(((coutMaterielReel - coutMaterielPrevu) / coutMaterielPrevu) * 1000) / 10 : 0;
   const ecartSousTraitance = coutSousTraitanceReel - coutSousTraitancePrevu;
-  const ecartSousTraitancePct = coutSousTraitancePrevu > 0 ? (((coutSousTraitanceReel - coutSousTraitancePrevu) / coutSousTraitancePrevu) * 100).toFixed(1) : '0';
+  const ecartSousTraitancePct = coutSousTraitancePrevu > 0 ? Math.round(((coutSousTraitanceReel - coutSousTraitancePrevu) / coutSousTraitancePrevu) * 1000) / 10 : 0;
   const ecartAutres = autresCoutsReel - autresCoutsPrevu;
-  const ecartAutresPct = autresCoutsPrevu > 0 ? (((autresCoutsReel - autresCoutsPrevu) / autresCoutsPrevu) * 100).toFixed(1) : '0';
+  const ecartAutresPct = autresCoutsPrevu > 0 ? Math.round(((autresCoutsReel - autresCoutsPrevu) / autresCoutsPrevu) * 1000) / 10 : 0;
 
   // Alertes dépassement budget
   const depassementBudget = totalCoutsReel > totalCoutsPrevu && totalCoutsPrevu > 0;
@@ -422,8 +428,8 @@ export const calculerDevis = (form, parametres) => {
   const margeExtra  = parseFloat(parametres.plafondCredi) / 100;
 
   // Règles métier — prix = coût × (1 + taux_marge)
-  // Garantit toujours : prixMin ≤ prixConseille ≤ prixPlafond
-  const prixMinRentable = totalRevient * (1 + Math.min(margeMin, margeCible));
+  // prixMinRentable utilise toujours margeMin (jamais margeCible) — plancher absolu
+  const prixMinRentable = totalRevient * (1 + margeMin);
   const prixConseille   = totalRevient * (1 + margeCible);
   const prixPlafond     = totalRevient * (1 + margeCible + margeExtra);
   const prixPropose = parseFloat(form.prixPropose) || prixConseille;
@@ -448,18 +454,19 @@ export const calculerDevis = (form, parametres) => {
 
 /**
  * Calcul devis client (mode réel — devis signé).
- * Basé uniquement sur le CA signé et les coûts directs (matériel + transport + sous-traitance).
- * Formules : coûtTotal = mat + transp + ST, marge = CA − coûtTotal, marge% = marge / CA × 100
+ * coutMO : coût main d'œuvre (optionnel, passé par l'appelant depuis calculerCoutsChantier si disponible).
+ * Formules : coûtTotal = coutMO + mat + transp + ST, marge = CA − coûtTotal, marge% = marge / CA × 100
  */
-export const calculerDevisClient = (devis) => {
+export const calculerDevisClient = (devis, coutMO = 0) => {
   const chiffreAffaires   = parseFloat(devis.prixPropose)       || 0;
+  const coutMainOeuvre    = parseFloat(coutMO)                  || 0;
   const coutMateriel      = parseFloat(devis.coutMateriel)      || 0;
   const coutTransport     = parseFloat(devis.coutTransport)     || 0;
   const coutSousTraitance = parseFloat(devis.coutSousTraitance) || 0;
-  const coutTotal         = coutMateriel + coutTransport + coutSousTraitance;
+  const coutTotal         = coutMainOeuvre + coutMateriel + coutTransport + coutSousTraitance;
   const marge             = chiffreAffaires - coutTotal;
   const margePct          = chiffreAffaires > 0 ? (marge / chiffreAffaires) * 100 : 0;
-  return { chiffreAffaires, coutMateriel, coutTransport, coutSousTraitance, coutTotal, marge, margePct };
+  return { chiffreAffaires, coutMainOeuvre, coutMateriel, coutTransport, coutSousTraitance, coutTotal, marge, margePct };
 };
 
 // ===== C =====
@@ -494,18 +501,21 @@ export const calculerJoursRestants = (chantier) => {
  */
 export const calculerRentabiliteEquipe = (chantier, parametres) => {
   const employes = parametres?.employes || [];
+  const coefficient = parseFloat(parametres?.parametres?.coefficientMainOeuvre) || 1.0;
   // Source unique : journal (heuresTravaillees) — aucun fallback
   const journalEq = chantier.journal || [];
   const getJoursReelsEq = (m) => heuresEmploye(journalEq, parseInt(m.employeId)) / 8;
   const membres = (chantier.equipe || []).map(m => {
     const emp = employes.find(e => e.id === parseInt(m.employeId));
     const joursReels = getJoursReelsEq(m);
-    const coutTotal = (emp?.tarifJour || 0) * joursReels;
+    const tarifJourBrut = emp?.tarifJour || 0;
+    const tarifJour = emp?.tarifDejaCharge ? tarifJourBrut : tarifJourBrut * coefficient;
+    const coutTotal = tarifJour * joursReels;
     return {
       employeId: m.employeId,
       nom: emp?.nom || 'Inconnu',
       poste: emp?.poste || m.role || '—',
-      tarifJour: emp?.tarifJour || 0,
+      tarifJour,
       joursRealises: joursReels,
       coutTotal,
     };
@@ -1090,9 +1100,10 @@ export const calculerEtatChantier = (chantier, employes = [], devisList = []) =>
   const coutMOReel = membreDetail.reduce((s, m) => s + m.cout, 0);
 
   // ── F. Coût total réel ────────────────────────────────────────────────
-  const coutMateriel     = parseFloat(chantier.materielReel)         || 0;
-  const coutSousTraitance= parseFloat(chantier.sousTraitanceReelle)  || 0;
-  const coutAutres       = parseFloat(chantier.autresCoutsReels)     || 0;
+  // Fallback sur les anciens noms de champs pour rétrocompatibilité
+  const coutMateriel      = parseFloat(chantier.materielReel)          || parseFloat(chantier.coutMaterielReel)      || 0;
+  const coutSousTraitance = parseFloat(chantier.sousTraitanceReelle)   || parseFloat(chantier.coutSousTraitanceReel) || 0;
+  const coutAutres        = parseFloat(chantier.autresCoutsReels)      || parseFloat(chantier.autresCoutsReel)       || 0;
   const coutImprevus     = imprevus.reduce(
     (s, imp) => s + (parseFloat(imp.montant) || 0), 0
   );

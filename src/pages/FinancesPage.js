@@ -43,7 +43,7 @@ function Tresorerie({ factures = [], chantiers = [], clients = [], devis = [] })
 
     // ── 2. Chantiers à facturer ──────────────────────────────────
     const aFacturer = chantiers
-      .filter(c => ['En cours', 'Terminé', 'Planifié'].includes(c.statut) && c.devisId)
+      .filter(c => ['en cours', 'terminé', 'planifié'].includes(c.statut?.trim().toLowerCase()) && c.devisId)
       .map(c => {
         const ca = calculerCA(c, devis);
         if (!ca || ca <= 0) return null;
@@ -95,13 +95,14 @@ function Tresorerie({ factures = [], chantiers = [], clients = [], devis = [] })
     const ticketMoyen    = nbFactures > 0 ? caTotalFacture / nbFactures : 0;
     const tauxEncaissement = caTotalFacture > 0 ? Math.round((encaisseTotal / caTotalFacture) * 100) : 0;
 
-    // Délai moyen paiement (sur factures payées, depuis dateFacture jusqu'au dernier paiement)
+    // Délai moyen paiement (sur factures payées, depuis dateEmission jusqu'au dernier paiement)
     const delais = factActives
-      .filter(f => f.statut === 'payee' && f.dateFacture && (f.paiementsHistorique || []).length > 0)
+      .filter(f => f.statut === 'payee' && (f.dateEmission || f.dateFacture || f.creeLe) && (f.paiementsHistorique || []).length > 0)
       .map(f => {
         const last = [...f.paiementsHistorique].sort((a, b) => (a.date || '').localeCompare(b.date || '')).pop();
         if (!last?.date) return null;
-        const d = Math.round((new Date(last.date) - new Date(f.dateFacture)) / 86400000);
+        const dateRef = f.dateEmission || f.dateFacture || f.creeLe;
+        const d = Math.round((new Date(last.date) - new Date(dateRef)) / 86400000);
         return d >= 0 ? d : null;
       })
       .filter(d => d !== null);

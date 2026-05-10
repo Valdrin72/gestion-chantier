@@ -1,10 +1,10 @@
 import React, { useMemo } from 'react';
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { DS } from './ds';
-import { calculerCoutsChantier, fmtN } from './donnees';
+import { calculerCoutsChantier, fmtN, SEUILS } from './donnees';
 import KpiCard from './components/ui/KpiCard';
 
-const seuils = { bon: 20, ok: 10 };
+const seuils = { bon: SEUILS.margeRentable, ok: SEUILS.margeLimite };
 
 function statutMarge(pct) {
   if (pct === null) return { label: 'N/D', bg: '#F1F5F9', color: '#94A3B8', Icon: Minus };

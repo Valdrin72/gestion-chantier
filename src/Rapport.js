@@ -36,19 +36,19 @@ export default function Rapport({ chantiers, clients, devis = [], parametres, pa
 
   // ===== CALCULS =====
   const chantiersEnCours = chantiers.filter(isChantierActif);
-  const chantiersPlanifies = chantiers.filter(c => c.statut === 'Planifié');
+  const chantiersPlanifies = chantiers.filter(c => c.statut?.trim().toLowerCase() === 'planifié');
 
   const alertes = chantiers.filter(c => {
     const r = new Set((c.journal || []).map(e => e.date).filter(Boolean)).size;
     const j = c.nombreJours > 0 ? c.nombreJours - r : null;
-    return j !== null && j <= (parametres.parametres?.joursAlerte || 5) && c.statut !== 'Terminé';
+    return j !== null && j <= (parametres.parametres?.joursAlerte || 5) && c.statut?.trim().toLowerCase() !== 'terminé';
   });
 
   const caTotal = chantiers.filter(c => calculerCA(c, devis) !== null).reduce((t, c) => t + calculerCA(c, devis), 0);
 
   const getPaiements = (chantierId) => paiementsData[chantierId] || [];
-  const isPaye = (p) => ['Payé','payé','payee','Payee'].includes(p.statut);
-  const isAttente = (p) => ['En attente','en attente','envoyee','partielle','retard'].includes(p.statut);
+  const isPaye = (p) => ['payé', 'payee', 'payée'].includes(p.statut?.trim().toLowerCase());
+  const isAttente = (p) => ['en attente', 'envoyee', 'envoyée', 'partielle', 'retard'].includes(p.statut?.trim().toLowerCase());
   const totalPaiementsRecus = chantiers.reduce((t, c) => {
     return t + getPaiements(c.id).filter(isPaye).reduce((s, p) => s + (parseFloat(p.montant) || 0), 0);
   }, 0);

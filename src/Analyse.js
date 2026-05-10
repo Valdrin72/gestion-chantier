@@ -1,24 +1,29 @@
 import React, { useState, useMemo } from 'react';
-import { C, fmtN, calculerCoutsChantier, calculerCA, statutRentabilite, isChantierActif, heuresEmploye } from './donnees';
+import { C, fmtN, calculerCoutsChantier, calculerCA, statutRentabilite, isChantierActif, heuresEmploye, getIntervallesPeriode, chantiersInPeriode, couleurMarge, SEUILS } from './donnees';
 import { DS } from './ds';
 import Statistiques from './Statistiques';
 import Rapport from './Rapport';
 
 const carteStyle = DS.card;
 
-export default function Analyse({ chantiers, clients, devis = [], parametres, setParametres, paiementsData }) {
+export default function Analyse({ chantiers, clients, devis = [], parametres, setParametres, paiementsData, periodeGlobale = 'annee' }) {
   const [onglet, setOnglet] = useState('rentabilite');
   const [tauxChargesSociales, setTauxChargesSociales] = useState(parametres.parametres?.tauxChargesSociales || 25);
   const [tauxImpots, setTauxImpots] = useState(parametres.parametres?.tauxImpots || 15);
   const [tauxFraisGeneraux, setTauxFraisGeneraux] = useState(parametres.parametres?.tauxFraisGeneraux || 12);
   const [taxSaved, setTaxSaved] = useState(false);
 
-  const couleurMarge = (pct) => parseFloat(pct) >= 20 ? '#10b981' : parseFloat(pct) >= 15 ? '#f59e0b' : '#ef4444';
   const couleurEcart = (pct) => parseFloat(pct) <= 5 ? '#10b981' : parseFloat(pct) <= 15 ? '#f59e0b' : '#ef4444';
 
+  // ===== FILTRE PAR PÉRIODE GLOBALE (cohérent avec Dashboard et Statistiques) =====
+  const chantiersPeriode = useMemo(() => {
+    const { debut, fin } = getIntervallesPeriode(periodeGlobale);
+    return chantiers.filter(c => chantiersInPeriode(c, debut, fin));
+  }, [chantiers, periodeGlobale]);
+
   // ===== CALCULS GLOBAUX (uniquement chantiers avec devis pour CA et marges) =====
-  const chantiersAvecDevis = chantiers.filter(c => calculerCA(c, devis) !== null);
-  const nbSansDevis = chantiers.length - chantiersAvecDevis.length;
+  const chantiersAvecDevis = chantiersPeriode.filter(c => calculerCA(c, devis) !== null);
+  const nbSansDevis = chantiersPeriode.length - chantiersAvecDevis.length;
   const caTotal = chantiersAvecDevis.reduce((t, c) => t + calculerCA(c, devis), 0);
   const coutsTotal = chantiersAvecDevis.reduce((t, c) => t + calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis).totalCoutsReel, 0);
   const margeAvantCharges = caTotal - coutsTotal;
@@ -45,8 +50,8 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
   const moisRestants = 11 - moisActuel;
   const caPrevisionnel = caRealise + (moyenneMensuelle * moisRestants);
 
-  // ===== DONNÉES PAR CHANTIER =====
-  const donneesChantiers = chantiers.map(c => {
+  // ===== DONNÉES PAR CHANTIER (filtrés par période) =====
+  const donneesChantiers = chantiersPeriode.map(c => {
     const couts = calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis);
     const montantTotal = calculerCA(c, devis); // null si aucun devis lié
     const caDisponible = montantTotal !== null;
@@ -74,21 +79,21 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
     const depassements = [];
     if (parseFloat(ecartBudget) > 10) depassements.push(`Budget dépassé de ${ecartBudget}%`);
     if (parseFloat(ecartJours) > 10) depassements.push(`Jours dépassés de ${ecartJours}%`);
-    if (parseFloat(couts.margeReelPct) < 15) depassements.push(`Marge critique ${couts.margeReelPct}%`);
+    if (parseFloat(couts.margeReelPct) < SEUILS.margeLimite) depassements.push(`Marge critique ${couts.margeReelPct}%`);
 
     return { ...c, couts, montantTotal, ecartBudget, coutParHeure, caParHeure, coutParM2, caParM2, margeParM2, ecartJours, tauxFacturation, heuresPrevu, heuresRealise, joursPrevu, joursReel, depassements };
   });
 
-  // ===== DONNÉES PAR EMPLOYÉ =====
+  // ===== DONNÉES PAR EMPLOYÉ (filtrés par période) =====
   const donneesEmployes = parametres.employes.map(emp => {
     // Source unique : journal (cohérent avec calculerCoutsChantier)
-    const joursTotal = chantiers.reduce((t, c) => {
+    const joursTotal = chantiersPeriode.reduce((t, c) => {
       const heures = heuresEmploye(c.journal || [], emp.id);
       return t + heures / 8;
     }, 0);
     const heuresTotal = joursTotal * 8;
     const coutTotal = joursTotal * emp.tarifJour;
-    const caGenere = chantiers.reduce((t, c) => {
+    const caGenere = chantiersPeriode.reduce((t, c) => {
       const heures = heuresEmploye(c.journal || [], emp.id);
       if (heures === 0) return t;
       const pctJours = joursTotal > 0 ? (heures / 8) / joursTotal : 0;
@@ -103,9 +108,9 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
     return { ...emp, joursTotal, heuresTotal, coutTotal, caGenere, coutHoraire, productivite, chargesSoc, coutReel };
   }).filter(e => e.joursTotal > 0);
 
-  // ===== RENTABILITÉ PAR MÉTRÉ (uniquement chantiers avec devis) =====
+  // ===== RENTABILITÉ PAR MÉTRÉ (uniquement chantiers avec devis, période filtrée) =====
   const donneesMetres = parametres.typesTravaux.map(t => {
-    const tous = chantiers.filter(c => (c.typesTravaux || []).includes(t.nom));
+    const tous = chantiersPeriode.filter(c => (c.typesTravaux || []).includes(t.nom));
     const avecDevis = tous.filter(c => calculerCA(c, devis) !== null);
     const surface = avecDevis.reduce((s, c) => s + (parseFloat(c.surface) || 0), 0);
     const ca = avecDevis.reduce((s, c) => s + calculerCA(c, devis), 0);
@@ -118,9 +123,9 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
     return { nom: t.nom, count: tous.length, nbAvecDevis: avecDevis.length, surface, ca, couts, marge, caParM2, coutParM2, margeParM2, margePct };
   }).filter(t => t.count > 0);
 
-  // ===== DONNÉES PAR CLIENT (uniquement chantiers avec devis pour CA/marge) =====
+  // ===== DONNÉES PAR CLIENT (uniquement chantiers avec devis pour CA/marge, période filtrée) =====
   const donneesClients = useMemo(() => clients.map(cl => {
-    const tous = chantiers.filter(c => c.clientId === cl.id);
+    const tous = chantiersPeriode.filter(c => c.clientId === cl.id);
     const avecDevis = tous.filter(c => calculerCA(c, devis) !== null);
     const cs = avecDevis; // alias pour clarté
     const ca = cs.reduce((t, c) => t + calculerCA(c, devis), 0);
@@ -130,7 +135,7 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
     const enCours = tous.filter(isChantierActif).length;
     const termines = tous.filter(c => c.statut === 'Terminé').length;
     return { ...cl, nbChantiers: tous.length, nbAvecDevis: avecDevis.length, ca, couts, marge, margePct, enCours, termines };
-  }).filter(cl => cl.nbChantiers > 0).sort((a, b) => b.ca - a.ca), [clients, chantiers, parametres, devis]);
+  }).filter(cl => cl.nbChantiers > 0).sort((a, b) => b.ca - a.ca), [clients, chantiersPeriode, parametres, devis]);
 
   // ===== OBJECTIFS =====
   const chargerObjectifs = () => {
@@ -146,9 +151,9 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
     try { localStorage.setItem('cyna_objectifs', JSON.stringify(data)); } catch {}
   };
 
-  // ===== DÉRIVE DEVIS → RÉALITÉ PAR TYPE DE TRAVAUX =====
+  // ===== DÉRIVE DEVIS → RÉALITÉ PAR TYPE DE TRAVAUX (période filtrée) =====
   const donneesDerive = useMemo(() => parametres.typesTravaux.map(t => {
-    const chantiersDuType = chantiers.filter(c =>
+    const chantiersDuType = chantiersPeriode.filter(c =>
       (c.typesTravaux || []).includes(t.nom) && calculerCA(c, devis) !== null
     );
     if (chantiersDuType.length === 0) return null;
@@ -187,7 +192,7 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
     })();
 
     return { nom: t.nom, count: lignes.length, lignes, ecartJoursMoyen, ecartCoutMoyen, margePrevuMoyenne, margeReelMoyenne, perteMarge, signal };
-  }).filter(Boolean).sort((a, b) => (b.ecartCoutMoyen ?? 0) - (a.ecartCoutMoyen ?? 0)), [chantiers, devis, parametres]);
+  }).filter(Boolean).sort((a, b) => (b.ecartCoutMoyen ?? 0) - (a.ecartCoutMoyen ?? 0)), [chantiersPeriode, devis, parametres]);
 
   const onglets = [
     { id: 'rentabilite', label: 'Rentabilité nette' },

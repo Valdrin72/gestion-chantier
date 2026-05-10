@@ -2,6 +2,23 @@
 // CYNA SÀRL — DONNÉES & CALCULS MÉTIER
 // =============================================
 
+// ===== SEUILS DE RENTABILITÉ BTP SUISSE — SOURCE UNIQUE DE VÉRITÉ =====
+// Tous les modules (Dashboard, Marges, Analyse, Statistiques, ChantierDetail)
+// doivent importer ces constantes. Ne jamais dupliquer ces valeurs.
+export const SEUILS = {
+  margeRentable: 20,  // ≥20% → Rentable (vert)
+  margeLimite:   15,  // 15–19.9% → Limite (orange)
+  // <15% → Non rentable (rouge)
+};
+
+/** Retourne la couleur hex correspondant à un pourcentage de marge. */
+export const couleurMarge = (pct) => {
+  const v = parseFloat(pct) || 0;
+  if (v >= SEUILS.margeRentable) return '#10b981';
+  if (v >= SEUILS.margeLimite)   return '#f59e0b';
+  return '#ef4444';
+};
+
 // ===== FORMATEUR DE NOMBRE — APOSTROPHE SUISSE =====
 // Usage : fmtN(12000) → "12'000"  |  fmtN(1500.5, 2) → "1'500.50"
 export const fmtN = (n, dec = 0) => {
@@ -392,9 +409,9 @@ export const calculerCoutsChantier = (chantier, employes, localites, cfg = {}, d
 // ===== STATUT RENTABILITÉ =====
 export const statutRentabilite = (margeReelPct) => {
   const v = parseFloat(margeReelPct) || 0;
-  if (v >= 20) return { label: 'Rentable',      couleur: '#10b981' };
-  if (v >= 15) return { label: 'Limite',         couleur: '#f59e0b' };
-  return             { label: 'Non rentable',    couleur: '#ef4444' };
+  if (v >= SEUILS.margeRentable) return { label: 'Rentable',      couleur: '#10b981' };
+  if (v >= SEUILS.margeLimite)   return { label: 'Limite',         couleur: '#f59e0b' };
+  return                                 { label: 'Non rentable',    couleur: '#ef4444' };
 };
 
 // ===== CALCUL DEVIS =====

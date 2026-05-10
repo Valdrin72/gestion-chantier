@@ -3,7 +3,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
   LineChart, Line, PieChart, Pie, Cell, ResponsiveContainer
 } from 'recharts';
-import { calculerCoutsChantier, calculerCA, C, fmtN, getIntervallesPeriode, getPeriodeLabel, chantiersInPeriode, calculerEcartChantier, calculerRentabiliteEquipe } from './donnees';
+import { calculerCoutsChantier, calculerCA, C, fmtN, getIntervallesPeriode, getPeriodeLabel, chantiersInPeriode, calculerEcartChantier, calculerRentabiliteEquipe, SEUILS, couleurMarge } from './donnees';
 import { DS } from './ds';
 
 const carteStyle = DS.card;
@@ -31,12 +31,13 @@ export default function Statistiques({ chantiers, clients, devis = [], parametre
   const coutsTotaux = filtresAvecDevis.reduce((t, c) => t + calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis).totalCoutsReel, 0);
   const rentabilite = caTotal - coutsTotaux;
   const margeGlobale = caTotal > 0 ? ((rentabilite / caTotal) * 100).toFixed(1) : 0;
-  const couleurMarge = (pct) => parseFloat(pct) >= 20 ? C.secondaire : parseFloat(pct) >= 15 ? C.warning : C.danger;
 
-  // ===== DONNÉES MENSUELLES (sur chantiers filtrés avec devis) =====
+  // ===== DONNÉES MENSUELLES (sur TOUS les chantiers filtrés par l'année du picker) =====
+  // Le picker "année" contrôle le graphique mensuel indépendamment de periodeGlobale.
+  // Les KPI globaux en haut restent basés sur periodeGlobale (chantiersFiltres).
   const mois = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc'];
   const donneesMensuelles = mois.map((m, i) => {
-    const tousMois = chantiersFiltres.filter(c => {
+    const tousMois = chantiers.filter(c => {
       const d = new Date(c.dateDebut);
       return d.getMonth() === i && d.getFullYear() === parseInt(periode);
     });

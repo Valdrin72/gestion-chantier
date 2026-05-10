@@ -799,39 +799,61 @@ function Dashboard() {
                           : { label: '—', couleur: 'var(--text-muted)' };
                   return (
                     <div key={c.id} onClick={() => naviguer('chantiers', { chantierActif: c.id })}
-                      style={{ padding: '14px', borderRadius: 12, border: '1px solid var(--dash-border)', cursor: 'pointer', background: 'var(--bg-glass)', transition: 'all 0.15s' }}
-                      onMouseEnter={e => { e.currentTarget.style.borderColor = '#3b82f6'; e.currentTarget.style.background = 'var(--bg-hover)'; }}
-                      onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--dash-border)'; e.currentTarget.style.background = 'var(--bg-glass)'; }}
+                      style={{ display: 'flex', alignItems: 'center', gap: 0, borderRadius: 14, border: '1px solid var(--dash-border)', cursor: 'pointer', background: 'var(--ds-card-bg)', overflow: 'hidden', transition: 'all 0.15s' }}
+                      onMouseEnter={e => { e.currentTarget.style.borderColor = '#3b82f6'; e.currentTarget.style.boxShadow = '0 2px 12px rgba(59,130,246,0.1)'; }}
+                      onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--dash-border)'; e.currentTarget.style.boxShadow = 'none'; }}
                     >
-                      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 10, gap: 8 }}>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--text-primary)', marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.nom || c.numero}</div>
-                          <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{[c.ville, c.canton].filter(Boolean).join(' · ')}</div>
-                        </div>
-                        <span style={{ background: statBadge.bg, color: statBadge.color, borderRadius: 20, padding: '2px 9px', fontSize: 10, fontWeight: 700, flexShrink: 0 }}>{statBadge.label}</span>
-                      </div>
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6, marginBottom: 10 }}>
-                        {[
-                          { label: 'CA', val: montantCA ? `CHF ${fmtN(montantCA)}` : '—' },
-                          { label: 'Coût', val: couts.totalCoutsReel > 0 ? `CHF ${fmtN(Math.round(couts.totalCoutsReel))}` : '—' },
-                          { label: 'Marge', val: mPct !== null ? `${mPct}%` : '—', couleur: mPct !== null ? (mPct >= 15 ? '#10b981' : mPct >= 0 ? '#f59e0b' : '#ef4444') : undefined },
-                        ].map(m => (
-                          <div key={m.label} style={{ background: 'var(--bg-glass-2)', borderRadius: 8, padding: '6px 8px', textAlign: 'center' }}>
-                            <div style={{ fontSize: 9, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', marginBottom: 2 }}>{m.label}</div>
-                            <div style={{ fontSize: 11, fontWeight: 700, color: m.couleur || 'var(--text-primary)' }}>{m.val}</div>
+                      {/* Vignette */}
+                      <div style={{ width: 56, minWidth: 56, alignSelf: 'stretch', background: couleurBarre === '#10B981' ? 'linear-gradient(160deg,#0f4c35,#1a6b4a)' : couleurBarre === '#F59E0B' ? 'linear-gradient(160deg,#78350f,#b45309)' : couleurBarre === '#EF4444' ? 'linear-gradient(160deg,#7f1d1d,#b91c1c)' : 'linear-gradient(160deg,#1e293b,#334155)', flexShrink: 0 }} />
+
+                      {/* Contenu */}
+                      <div style={{ flex: 1, padding: '14px 16px', minWidth: 0, display: 'flex', alignItems: 'center', gap: 16 }}>
+                        {/* Nom + badge */}
+                        <div style={{ flex: '0 1 180px', minWidth: 0 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, flexWrap: 'wrap' }}>
+                            <span style={{ fontWeight: 700, fontSize: 13, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.nom || c.numero}</span>
+                            <span style={{ background: statBadge.bg, color: statBadge.color, borderRadius: 20, padding: '2px 8px', fontSize: 10, fontWeight: 700, flexShrink: 0, whiteSpace: 'nowrap' }}>{statBadge.label}</span>
                           </div>
-                        ))}
-                      </div>
-                      <div style={{ height: 4, background: '#E2E8F0', borderRadius: 2, margin: '10px 0 6px 0' }}>
-                        <div style={{ height: '100%', width: `${avancementVal}%`, background: couleurBarre, borderRadius: 2, transition: 'width 0.3s ease' }} />
-                      </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-                          {joursTotal > 0
-                            ? `${joursRealises} / ${joursTotal} jours travaillés`
-                            : `${progress}% d'avancement`}
-                        </span>
-                        <span style={{ fontSize: 11, fontWeight: 600, color: statutJours.couleur }}>{statutJours.label}</span>
+                          <div style={{ display: 'flex', gap: 16 }}>
+                            <div>
+                              <div style={{ fontSize: 9, color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>CA</div>
+                              <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)' }}>{montantCA ? `CHF ${fmtN(montantCA)}` : '—'}</div>
+                            </div>
+                            <div>
+                              <div style={{ fontSize: 9, color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Coût</div>
+                              <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)' }}>{couts.totalCoutsReel > 0 ? `CHF ${fmtN(Math.round(couts.totalCoutsReel))}` : '—'}</div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Séparateur */}
+                        <div style={{ width: 1, alignSelf: 'stretch', background: 'var(--dash-border)', flexShrink: 0 }} />
+
+                        {/* Marge */}
+                        <div style={{ flex: '0 0 90px', textAlign: 'left' }}>
+                          <div style={{ fontSize: 9, color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>Marge</div>
+                          {mPct !== null && couts.margeReel !== undefined
+                            ? <>
+                                <div style={{ fontSize: 13, fontWeight: 800, color: mPct >= 15 ? '#10b981' : mPct >= 0 ? '#f59e0b' : '#ef4444' }}>CHF {fmtN(Math.round(couts.margeReel ?? 0))}</div>
+                                <div style={{ fontSize: 11, fontWeight: 600, color: mPct >= 15 ? '#10b981' : mPct >= 0 ? '#f59e0b' : '#ef4444' }}>{mPct}%</div>
+                              </>
+                            : <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>—</div>
+                          }
+                        </div>
+
+                        {/* Séparateur */}
+                        <div style={{ width: 1, alignSelf: 'stretch', background: 'var(--dash-border)', flexShrink: 0 }} />
+
+                        {/* Jours + barre */}
+                        <div style={{ flex: '0 0 120px' }}>
+                          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 6 }}>
+                            {joursTotal > 0 ? `${joursRealises} / ${joursTotal} jours` : `${progress}%`}
+                          </div>
+                          <div style={{ height: 5, background: 'var(--dash-border)', borderRadius: 3, marginBottom: 5 }}>
+                            <div style={{ height: '100%', width: `${avancementVal}%`, background: couleurBarre, borderRadius: 3, transition: 'width 0.3s ease' }} />
+                          </div>
+                          <div style={{ fontSize: 11, fontWeight: 600, color: statutJours.couleur }}>{statutJours.label}</div>
+                        </div>
                       </div>
                     </div>
                   );

@@ -175,7 +175,7 @@ export default function Heures({ chantiers = [], parametres = {}, setChantiers }
       </div>
 
       {/* KPI grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24 }}>
+      <div className="kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'var(--g4)', gap: 16, marginBottom: 24 }}>
         {KPI_ITEMS.map(k => (
           <KpiCard key={k.label} label={k.label} value={k.value} gradient={k.gradient} glow={k.glow} badge={k.badge} />
         ))}

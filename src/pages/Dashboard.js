@@ -714,7 +714,7 @@ function Dashboard() {
       </div>
 
       {/* ── KPI CARDS ────────────────────────────────────────── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'var(--g4)', gap: 16, marginBottom: 24 }}>
+      <div className="kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'var(--g4)', gap: 16, marginBottom: 24 }}>
         {[
           { label: "CA en cours", Icon: DollarSign, page: 'devis',
             valeur: `CHF ${fmtN(kpi.caEnCours)}`,
@@ -844,7 +844,7 @@ function Dashboard() {
                       onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--dash-border)'; e.currentTarget.style.boxShadow = 'none'; }}
                     >
                       {/* Contenu */}
-                      <div style={{ flex: 1, padding: '14px 16px', minWidth: 0, display: 'flex', alignItems: 'center', gap: 16 }}>
+                      <div className="dash-chantier-row" style={{ flex: 1, padding: '14px 16px', minWidth: 0, display: 'flex', alignItems: 'center', gap: 16 }}>
                         {/* Nom + badge */}
                         <div style={{ flex: '0 1 180px', minWidth: 0 }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, flexWrap: 'wrap' }}>
@@ -864,7 +864,7 @@ function Dashboard() {
                         </div>
 
                         {/* Séparateur */}
-                        <div style={{ width: 1, alignSelf: 'stretch', background: 'var(--dash-border)', flexShrink: 0 }} />
+                        <div className="dash-sep" style={{ width: 1, alignSelf: 'stretch', background: 'var(--dash-border)', flexShrink: 0 }} />
 
                         {/* Marge */}
                         <div style={{ flex: '0 0 90px', textAlign: 'left' }}>
@@ -879,7 +879,7 @@ function Dashboard() {
                         </div>
 
                         {/* Séparateur */}
-                        <div style={{ width: 1, alignSelf: 'stretch', background: 'var(--dash-border)', flexShrink: 0 }} />
+                        <div className="dash-sep" style={{ width: 1, alignSelf: 'stretch', background: 'var(--dash-border)', flexShrink: 0 }} />
 
                         {/* Jours + barre */}
                         <div style={{ flex: '0 0 120px' }}>

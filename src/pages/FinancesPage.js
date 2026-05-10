@@ -473,7 +473,7 @@ export default function Finances({
       )}
 
       {/* ── KPIs résumé — gradients saturés (identiques Dashboard) ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'var(--g4)', gap: 14, marginBottom: 28 }}>
+      <div className="kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'var(--g4)', gap: 14, marginBottom: 28 }}>
         {[
           { label: 'Total facturé',  val: `CHF ${fmt(kpis.totalFacture)}`,  sub: 'Montant émis sur la période', gradient: 'linear-gradient(135deg, #1E40AF 0%, #3B82F6 100%)', glow: 'rgba(59,130,246,0.32)',   Icon: FileText },
           { label: 'Total encaissé', val: `CHF ${fmt(kpis.totalPaye)}`,     sub: 'Paiements reçus des clients',  gradient: 'linear-gradient(135deg, #065F46 0%, #10B981 100%)', glow: 'rgba(16,185,129,0.32)',  Icon: DollarSign },

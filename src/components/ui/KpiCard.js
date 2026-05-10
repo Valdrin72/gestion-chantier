@@ -1,10 +1,11 @@
 import React from 'react';
 
-export default function KpiCard({ label, value, icon: Icon, gradient, glow, badge, trend, onClick, style }) {
+export default function KpiCard({ label, value, icon: Icon, gradient, glow, badge, trend, onClick, style, className }) {
   const glowColor = glow || 'rgba(0,0,0,0.2)';
   return (
     <div
       onClick={onClick}
+      className={`kpi-card${className ? ' ' + className : ''}`}
       style={{
         background: gradient || 'linear-gradient(135deg, #1E40AF 0%, #3B82F6 100%)',
         borderRadius: 16,
@@ -41,7 +42,7 @@ export default function KpiCard({ label, value, icon: Icon, gradient, glow, badg
         {label}
       </div>
       {/* Value */}
-      <div style={{ fontSize: 28, fontWeight: 900, color: '#ffffff', letterSpacing: '-0.8px', lineHeight: 1, marginBottom: 8, position: 'relative' }}>
+      <div className="kpi-val" style={{ fontSize: 28, fontWeight: 900, color: '#ffffff', letterSpacing: '-0.8px', lineHeight: 1, marginBottom: 8, position: 'relative' }}>
         {value}
       </div>
       {/* Badge + trend */}

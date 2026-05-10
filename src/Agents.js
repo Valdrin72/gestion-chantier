@@ -520,6 +520,46 @@ export default function Agents({
               </div>
             </div>
           )}
+
+          {/* Dérive Prédictive */}
+          {agentData?.DerivePredictor?.resultats?.length > 0 && (
+            <div>
+              <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 12 }}>Dérive Prédictive — Trajectoire par chantier actif</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {agentData.DerivePredictor.resultats.map(r => {
+                  const couleur = r.statut === 'rouge' ? '#ef4444' : r.statut === 'orange' ? '#f59e0b' : '#10b981';
+                  const bg = r.statut === 'rouge' ? '#fef2f2' : r.statut === 'orange' ? '#fffbeb' : '#f0fdf4';
+                  return (
+                    <div key={r.chantierId} style={{ background: bg, border: `1px solid ${couleur}30`, borderRadius: 12, padding: '14px 18px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <div style={{ width: 8, height: 8, borderRadius: '50%', background: couleur, flexShrink: 0 }} />
+                          <span style={{ fontWeight: 700, fontSize: 13, color: 'var(--text-primary)' }}>{r.nom}</span>
+                          <span style={{ fontSize: 11, fontWeight: 700, color: couleur, background: `${couleur}18`, padding: '2px 8px', borderRadius: 20 }}>{r.statutTexte}</span>
+                        </div>
+                        <div style={{ display: 'flex', gap: 16, fontSize: 12, color: 'var(--text-muted)' }}>
+                          <span>Avancement <strong style={{ color: 'var(--text-primary)' }}>{r.avancement}%</strong></span>
+                          <span>Marge estimée <strong style={{ color: couleur }}>{r.margeEstimeePct >= 0 ? '+' : ''}{r.margeEstimeePct}%</strong></span>
+                          <span>EAC <strong style={{ color: 'var(--text-primary)' }}>CHF {fmtN(r.EAC)}</strong></span>
+                          {r.deriveJours !== null && r.deriveJours > 0 && (
+                            <span>Dérive délai <strong style={{ color: '#f59e0b' }}>+{r.deriveJours}j</strong></span>
+                          )}
+                          <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>Confiance {r.confiance}</span>
+                        </div>
+                      </div>
+                      {/* Barre EAC vs CA */}
+                      <div style={{ marginTop: 10, height: 6, background: 'rgba(0,0,0,0.08)', borderRadius: 3, overflow: 'hidden' }}>
+                        <div style={{ height: '100%', width: `${Math.min(100, r.CA > 0 ? (r.EAC / r.CA) * 100 : 0)}%`, background: couleur, borderRadius: 3, transition: 'width 0.4s' }} />
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'var(--text-muted)', marginTop: 3 }}>
+                        <span>Coût projeté CHF {fmtN(r.EAC)}</span><span>CA CHF {fmtN(r.CA)}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -620,12 +660,60 @@ export default function Agents({
           ONGLET RAPPORTS
       ══════════════════════════════════════════════════════ */}
       {onglet === 'rapports' && (
-        <div>
-          {rapports.length === 0 ? (
-            <div style={{ ...DS.card, textAlign: 'center', padding: '40px 20px', color: 'var(--text-muted)', fontSize: 13 }}>
-              Aucun rapport généré — RapportAuto crée un résumé chaque lundi matin
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+
+          {/* ── Rapport IA en langage naturel ── */}
+          {agentData?.RapportNaturel?.paras?.length > 0 ? (
+            <div>
+              <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 12 }}>Rapport IA — Analyse en langage naturel</div>
+              <div style={{ ...DS.card, padding: '24px 28px', borderLeft: '4px solid #8b5cf6' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+                  <span style={{ fontSize: 20 }}>🤖</span>
+                  <div>
+                    <div style={{ fontWeight: 800, fontSize: 14, color: 'var(--text-primary)' }}>Résumé exécutif</div>
+                    <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{agentData.RapportNaturel.date}</div>
+                  </div>
+                  {agentData.RapportNaturel.scoreEntreprise !== null && (
+                    <div style={{ marginLeft: 'auto', textAlign: 'center' }}>
+                      <div style={{ fontSize: 28, fontWeight: 900, color: agentData.RapportNaturel.scoreEntreprise >= 70 ? '#10b981' : agentData.RapportNaturel.scoreEntreprise >= 40 ? '#f59e0b' : '#ef4444' }}>
+                        {agentData.RapportNaturel.scoreEntreprise}
+                      </div>
+                      <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 700 }}>SCORE /100</div>
+                    </div>
+                  )}
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                  {agentData.RapportNaturel.paras.map((para, i) => (
+                    <div key={i} style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                      <div style={{ width: 24, height: 24, borderRadius: '50%', background: '#8b5cf614', border: '1px solid #8b5cf630', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: '#8b5cf6', flexShrink: 0 }}>
+                        {i + 1}
+                      </div>
+                      <p style={{ margin: 0, fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.7 }}>{para}</p>
+                    </div>
+                  ))}
+                </div>
+                {agentData.RapportNaturel.actionPrincipale && (
+                  <div style={{ marginTop: 20, padding: '12px 16px', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 10 }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: '#1d4ed8', textTransform: 'uppercase', marginBottom: 4 }}>Action prioritaire recommandée</div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: '#1e40af' }}>{agentData.RapportNaturel.actionPrincipale.icone} {agentData.RapportNaturel.actionPrincipale.action}</div>
+                    <div style={{ fontSize: 12, color: '#3b82f6', marginTop: 2 }}>{agentData.RapportNaturel.actionPrincipale.detail}</div>
+                  </div>
+                )}
+              </div>
             </div>
           ) : (
+            <div style={{ ...DS.card, textAlign: 'center', padding: '28px 20px', color: 'var(--text-muted)', fontSize: 13 }}>
+              Rapport IA non encore généré — forcez une exécution des agents pour obtenir votre résumé exécutif
+            </div>
+          )}
+
+          {/* ── Rapports hebdomadaires RapportAuto ── */}
+          <div>
+            {rapports.length === 0 ? (
+              <div style={{ ...DS.card, textAlign: 'center', padding: '40px 20px', color: 'var(--text-muted)', fontSize: 13 }}>
+                Aucun rapport hebdomadaire généré — RapportAuto crée un résumé chaque lundi matin
+              </div>
+            ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               {rapports.map(r => (
                 <div key={r.id} style={{ ...DS.card, padding: '18px 22px' }}>
@@ -656,7 +744,8 @@ export default function Agents({
                 </div>
               ))}
             </div>
-          )}
+            )}
+          </div>
         </div>
       )}
 

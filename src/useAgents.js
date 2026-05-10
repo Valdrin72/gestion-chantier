@@ -22,10 +22,10 @@ const AGENTS_PAR_DEFAUT = {
   RelancePaiements: true, AnomaliesDonnees: true, OptimisationFacturation: true,
   // Tier 2
   ConflitsPlanning: true, PlanningCoherence: true, ApprentissageMarge: true, SanteClient: true,
-  ProjectionAnnuelle: true, BenchmarkTypeTravaux: true, ConformiteBTP: true,
+  ProjectionAnnuelle: true, BenchmarkTypeTravaux: true, ConformiteBTP: true, DerivePredictor: true,
   // Tier 3
   RadarPrecoce: true, DSOAnalyse: true, Saisonnierte: true,
-  CoutMOAnalyse: true, CoachDirecteur: true,
+  CoutMOAnalyse: true, RapportNaturel: true, CoachDirecteur: true,
 };
 
 function loadState() {

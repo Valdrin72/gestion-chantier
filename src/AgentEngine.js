@@ -804,6 +804,69 @@ export function runConformiteBTP({ chantiers, parametres, agentContext }) {
   return { alertes, data: { violations, nbViolations: violations.length } };
 }
 
+// ─── T2-A17b : DerivePredictor ────────────────────────────────────
+export function runDerivePredictor({ chantiers, devis, parametres, agentContext }) {
+  const resultats = [];
+
+  chantiers.filter(isChantierActif).forEach(c => {
+    const couts = calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis);
+    const joursRealises = new Set((c.journal || []).map(e => e.date).filter(Boolean)).size;
+    const avancement = Math.min(100, Math.max(0, parseFloat(c.avancement) || 0));
+    const CA = couts.montantTotal || 0;
+
+    if (avancement < 15 || joursRealises === 0 || CA === 0) return;
+    const coutActuel = couts.totalCoutsReel || 0;
+    if (coutActuel === 0) return;
+
+    // EAC = coût à l'achèvement projeté
+    const EAC = coutActuel / (avancement / 100);
+    const margeEstimee = CA - EAC;
+    const margeEstimeePct = Math.round((margeEstimee / CA) * 1000) / 10;
+
+    // Dérive budget
+    const depassementBudget = EAC - (couts.totalCoutsPrevu || 0);
+    const pctDepassement = couts.totalCoutsPrevu > 0
+      ? Math.round((depassementBudget / couts.totalCoutsPrevu) * 1000) / 10
+      : null;
+
+    // Dérive délai
+    const vitesse = avancement / joursRealises; // %/jour
+    const joursNecessaires = vitesse > 0 ? Math.round(100 / vitesse) : null;
+    const deriveJours = joursNecessaires !== null && c.nombreJours > 0
+      ? joursNecessaires - c.nombreJours
+      : null;
+
+    const confiance = avancement >= 60 ? 'élevée' : avancement >= 30 ? 'moyenne' : 'faible';
+
+    let statut = 'vert';
+    let statutTexte = 'Dans les objectifs';
+    if (margeEstimeePct < 0) { statut = 'rouge'; statutTexte = 'Perte estimée'; }
+    else if (margeEstimeePct < SEUILS.margeLimite) { statut = 'orange'; statutTexte = 'Marge faible'; }
+    else if (pctDepassement !== null && pctDepassement > 15) { statut = 'orange'; statutTexte = 'Dérive budget'; }
+
+    resultats.push({
+      chantierId: c.id, nom: c.nom || c.numero, avancement,
+      coutActuel: Math.round(coutActuel), EAC: Math.round(EAC), CA: Math.round(CA),
+      margeEstimee: Math.round(margeEstimee), margeEstimeePct,
+      depassementBudget: Math.round(depassementBudget), pctDepassement,
+      joursRealises, joursNecessaires, deriveJours, confiance, statut, statutTexte,
+    });
+  });
+
+  resultats.sort((a, b) => ({ rouge: 0, orange: 1, vert: 2 }[a.statut] ?? 2) - ({ rouge: 0, orange: 1, vert: 2 }[b.statut] ?? 2));
+
+  const alertes = resultats.filter(r => r.statut !== 'vert').map(r => ({
+    id: uid('dp-d'), agent: 'DerivePredictor', type: 'derive_budget',
+    niveau: r.statut === 'rouge' ? 'CRITIQUE' : 'ATTENTION',
+    message: `${r.nom} — ${r.statutTexte} · marge estimée ${r.margeEstimeePct}%`,
+    detail: `EAC CHF ${fmtN(r.EAC)} · Avancement ${r.avancement}% · Confiance ${r.confiance}`,
+    chantier_id: r.chantierId, timestamp: Date.now(), lu: false,
+    action: { page: 'chantiers', ctx: { chantierActif: r.chantierId } },
+  }));
+
+  return { alertes, data: { resultats } };
+}
+
 // ═══════════════════════════════════════════════════════════════
 // TIER 3 — SYNTHÈSE (5 agents)
 // ═══════════════════════════════════════════════════════════════
@@ -969,6 +1032,82 @@ export function runCoutMOAnalyse({ chantiers, devis, parametres, agentContext })
   return { alertes, data: { analyse, pctMOMoyen: Math.round(moyen * 10) / 10 } };
 }
 
+// ─── T3-A21 : RapportNaturel ─────────────────────────────────
+export function runRapportNaturel({ chantiers, factures, agentContext, memoire = {} }) {
+  try {
+    const now = new Date();
+    const dateStr = now.toLocaleDateString('fr-CH', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+
+    const actifs = chantiers.filter(isChantierActif);
+    const risques = agentContext?.RadarPrecoce?.risques || [];
+    const derives = agentContext?.DerivePredictor?.resultats || [];
+    const coach = agentContext?.CoachDirecteur;
+    const treso = agentContext?.TresoreriePredictor;
+    const relances = agentContext?.RelancePaiements;
+    const projection = agentContext?.ProjectionAnnuelle;
+
+    const paras = [];
+
+    // § 1 — Situation générale
+    const nbActifs = actifs.length;
+    const enDerive = derives.filter(d => d.statut !== 'vert').length;
+    const enBonne = derives.filter(d => d.statut === 'vert').length;
+    if (nbActifs === 0) {
+      paras.push('Aucun chantier actif en ce moment. C\'est le moment idéal pour préparer vos prochains devis et renforcer votre pipeline commercial.');
+    } else if (enDerive === 0) {
+      paras.push(`Bonne nouvelle : vos ${nbActifs} chantier${nbActifs > 1 ? 's' : ''} actif${nbActifs > 1 ? 's' : ''} se déroulent conformément aux objectifs. Aucune dérive budgétaire détectée.`);
+    } else {
+      paras.push(`Vous avez ${nbActifs} chantier${nbActifs > 1 ? 's' : ''} actif${nbActifs > 1 ? 's' : ''}. ${enDerive} nécessite${enDerive > 1 ? 'nt' : ''} une attention sur la rentabilité, tandis que ${enBonne} se déroule${enBonne !== 1 ? 'nt' : ''} bien.`);
+    }
+
+    // § 2 — Trésorerie
+    const j30 = treso?.j30 || 0;
+    const montantRetard = relances?.montantTotal || 0;
+    if (j30 > 0 && montantRetard > 0) {
+      paras.push(`Côté trésorerie, CHF ${fmtN(Math.round(j30))} sont attendus sous 30 jours. Attention : CHF ${fmtN(Math.round(montantRetard))} de factures restent impayées — des relances s'imposent.`);
+    } else if (j30 > 0) {
+      paras.push(`Côté trésorerie, CHF ${fmtN(Math.round(j30))} sont attendus sous 30 jours. La situation est saine.`);
+    } else if (montantRetard > 0) {
+      paras.push(`Attention : CHF ${fmtN(Math.round(montantRetard))} de factures sont impayées. Une relance active est recommandée pour maintenir votre cash-flow.`);
+    }
+
+    // § 3 — Alerte critique
+    const critiqueRisque = risques.filter(r => r.niveau === 'CRITIQUE' || r.niveau === 'DANGER');
+    if (critiqueRisque.length > 0) {
+      const r1 = critiqueRisque[0];
+      paras.push(`Point de vigilance : ${r1.nom} affiche un score de risque de ${r1.score}/100 (${r1.facteurs.slice(0, 2).join(', ')}). Une action correctrice est recommandée cette semaine.`);
+    }
+
+    // § 4 — Action prioritaire CoachDirecteur
+    if (coach?.priorites?.length > 0) {
+      const p1 = coach.priorites[0];
+      paras.push(`Action prioritaire : ${p1.action}. ${p1.detail}.`);
+    }
+
+    // § 5 — Objectif annuel
+    if (projection?.txAtteinte !== null && projection?.txAtteinte !== undefined) {
+      const tx = projection.txAtteinte;
+      if (tx >= 100) paras.push(`Excellent : votre objectif annuel est atteint à ${tx}%. Continuez sur cette lancée.`);
+      else if (tx >= 80) paras.push(`Votre objectif annuel est atteint à ${tx}%. Le pipeline en cours devrait permettre de clôturer positivement.`);
+      else paras.push(`Votre objectif annuel n'est atteint qu'à ${tx}%. Il est encore temps d'intensifier votre activité commerciale.`);
+    }
+
+    const rapport = {
+      id: uid('rn'), date: dateStr, timestamp: now.getTime(),
+      scoreEntreprise: coach?.scoreGlobal ?? null,
+      paras, texte: paras.join('\n\n'),
+      nbChantiers: nbActifs,
+      nbAlertes: risques.length + derives.filter(d => d.statut !== 'vert').length,
+      actionPrincipale: coach?.priorites?.[0] || null,
+    };
+
+    const hist = (memoire.historique || []);
+    hist.unshift({ date: now.toISOString().split('T')[0], score: rapport.scoreEntreprise, timestamp: now.getTime() });
+
+    return { alertes: [], data: rapport, memoire: { historique: hist.slice(0, 52) } };
+  } catch (e) { return { alertes: [], data: { paras: [], texte: '' }, memoire }; }
+}
+
 // ─── T3-A20 : CoachDirecteur ──────────────────────────────────
 export function runCoachDirecteur({ chantiers, devis, factures, parametres, agentContext, memoire = {} }) {
   try {
@@ -1102,12 +1241,14 @@ export function runAllAgents({ chantiers, devis, factures, clients, parametres, 
   runAgent('ProjectionAnnuelle',   (m) => runProjectionAnnuelle({ chantiers, factures, devis, parametres, agentContext, memoire: m }));
   runAgent('BenchmarkTypeTravaux', (m) => runBenchmarkTypeTravaux({ chantiers, devis, parametres, agentContext }));
   runAgent('ConformiteBTP',        (m) => runConformiteBTP({ chantiers, parametres, agentContext }));
+  runAgent('DerivePredictor',      (m) => runDerivePredictor({ chantiers, devis, parametres, agentContext }));
 
   // ── TIER 3 (reçoit agentContext Tier 1 + 2) ──
   runAgent('RadarPrecoce',    (m) => runRadarPrecoce({ chantiers, devis, parametres, agentContext }));
   runAgent('DSOAnalyse',      (m) => runDSOAnalyse({ agentContext, memoire: m }));
   runAgent('Saisonnierte',    (m) => runSaisonnierte({ chantiers, devis, memoire: m }));
   runAgent('CoutMOAnalyse',   (m) => runCoutMOAnalyse({ chantiers, devis, parametres, agentContext }));
+  runAgent('RapportNaturel',   (m) => runRapportNaturel({ chantiers, factures, agentContext, memoire: m }));
   runAgent('CoachDirecteur',  (m) => runCoachDirecteur({ chantiers, devis, factures, parametres, agentContext, memoire: m }));
 
   console.log(`[ORCHESTRATEUR] ${result.alertes.length} alerte(s) · ${Object.keys(result.statuts).length} agents exécutés`);

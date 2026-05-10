@@ -21,7 +21,12 @@ function ChantiersListe({
   onSupprimer,
   formSlot,
 }) {
-  const { chantiers, clients, devis = [], parametres, naviguer, contexte } = useApp();
+  const { chantiers, clients, devis = [], parametres, naviguer, contexte, agentState } = useApp();
+  const deriveMap = React.useMemo(() => {
+    const map = {};
+    (agentState?.agentData?.DerivePredictor?.resultats || []).forEach(r => { map[r.chantierId] = r; });
+    return map;
+  }, [agentState]);
   const couleurStatut = couleurStatutDS;
 
   // KPIs
@@ -199,6 +204,7 @@ function ChantiersListe({
                 {scored.map(({ c, etatC, decision }) => {
                   const client = clients.find(cl => cl.id === c.clientId);
                   const sc = couleurStatut(c.statut);
+                  const derive = deriveMap[c.id];
                   const initiales = (c.nom || '').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
                   const avancePct = Math.min(100, Math.max(0, etatC.avancementPct || 0));
                   return (
@@ -244,6 +250,11 @@ function ChantiersListe({
                           background: decision.couleur + '18', border: `1px solid ${decision.couleur}40`,
                           borderRadius: 20, padding: '3px 10px', whiteSpace: 'nowrap', display: 'inline-block',
                         }}>{decision.label}</span>
+                        {derive && (
+                          <div style={{ marginTop: 4, fontSize: 10, fontWeight: 700, color: derive.statut === 'rouge' ? '#ef4444' : derive.statut === 'orange' ? '#f59e0b' : '#10b981', whiteSpace: 'nowrap' }}>
+                            EAC {derive.margeEstimeePct > 0 ? '+' : ''}{derive.margeEstimeePct}% · {derive.confiance}
+                          </div>
+                        )}
                       </td>
                       <td style={DS.td}>
                         <span style={{

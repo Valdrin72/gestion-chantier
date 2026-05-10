@@ -1,14 +1,13 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
   LayoutDashboard, HardHat, FileText, Calendar,
-  ClipboardList, Settings, DollarSign, Clock, Bot, Shield,
+  ClipboardList, Settings, DollarSign, Clock, Bot,
 } from 'lucide-react';
 import { Sidebar, Topbar, MobileNav } from './components/Layout';
 import { donneesInitiales, migrerJournal, migrerDevisId } from './donnees';
 import Finances from './pages/FinancesPage';
 import { PROFILS } from './Login';
 import useAgents from './useAgents';
-import Agents from './Agents';
 import Heures from './Heures';
 import ModalSaisieHeures from './components/ModalSaisieHeures';
 import Dashboard from './pages/Dashboard';
@@ -18,7 +17,7 @@ import Clients from './pages/ClientsPage';
 import Employes from './pages/EmployesPage';
 import PlanningPage from './pages/PlanningPage';
 import RapportsPage from './pages/RapportsPage';
-import AuditApp from './AuditApp';
+import CentreIA from './pages/CentreIA';
 import Parametres from './pages/ParametresPage';
 import { AppProvider } from './context/AppContext';
 
@@ -209,8 +208,7 @@ function App() {
     { id: 'finances',   label: 'Finances',    Icon: DollarSign,      labelCourt: 'Finances', badge: nbFacturesRetard || null },
     { id: 'planning',   label: 'Planning',    Icon: Calendar,        labelCourt: 'Planning' },
     { id: 'rapport',    label: 'Rapports',    Icon: ClipboardList,   labelCourt: 'Rapports' },
-    { id: 'agents',     label: 'Agents IA',   Icon: Bot,             labelCourt: 'Agents' },
-    { id: 'audit',      label: 'Audit IA',    Icon: Shield,          labelCourt: 'Audit' },
+    { id: 'agents',     label: 'Centre IA',   Icon: Bot,             labelCourt: 'Centre IA' },
     { id: 'parametres', label: 'Paramètres',  Icon: Settings,        labelCourt: 'Config' },
   ];
 
@@ -250,8 +248,7 @@ function App() {
           {page === 'employes'     && <Employes parametres={parametres} setParametres={setParametres} chantiers={chantiers} naviguer={naviguer} />}
           {page === 'planning'     && <PlanningPage chantiers={chantiers} setChantiers={setChantiers} clients={clients} devis={devis} factures={factures} parametres={parametres} naviguer={naviguer} />}
           {page === 'rapport'      && <RapportsPage chantiers={chantiers} clients={clients} devis={devis} factures={factures} parametres={parametres} setParametres={setParametres} paiementsData={paiementsData} periodeGlobale={periodeGlobale} naviguer={naviguer} />}
-          {page === 'agents'       && <Agents {...agentState} />}
-          {page === 'audit'        && <AuditApp chantiers={chantiers} devis={devis} factures={factures} clients={clients} parametres={parametres} />}
+          {page === 'agents'       && <CentreIA />}
           {page === 'parametres'   && <Parametres parametres={parametres} setParametres={setParametres} clients={clients} setClients={setClients} chantiers={chantiers} devis={devis} naviguer={naviguer} />}
           {page === 'heures'       && <Heures chantiers={chantiers} parametres={parametres} setChantiers={setChantiers} />}
         </main>

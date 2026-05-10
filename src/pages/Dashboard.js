@@ -754,6 +754,46 @@ function Dashboard() {
         ))}
       </div>
 
+      {/* ── BANDEAU INTELLIGENCE IA ──────────────────────────────── */}
+      {(() => {
+        const scoreDirecteur = agentState?.scoreGlobal ?? null;
+        const alertesCritiques = agentAlertes.filter(a => a.niveau === 'CRITIQUE').length;
+        const alertesAttention = agentAlertes.filter(a => a.niveau === 'ATTENTION').length;
+        const derives = agentState?.agentData?.DerivePredictor?.resultats?.filter(r => r.statut !== 'vert') || [];
+        if (scoreDirecteur === null && agentAlertes.length === 0) return null;
+        const scoreColor = scoreDirecteur >= 70 ? '#10b981' : scoreDirecteur >= 40 ? '#f59e0b' : '#ef4444';
+        return (
+          <div onClick={() => naviguer('agents')} style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '12px 18px', marginBottom: 20, borderRadius: 12, background: 'var(--bg-glass-2)', border: '1px solid var(--border)', cursor: 'pointer', flexWrap: 'wrap', transition: 'border-color 0.15s' }}
+            onMouseEnter={e => e.currentTarget.style.borderColor = '#4F46E5'}
+            onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border)'}
+          >
+            <span style={{ fontSize: 16 }}>🤖</span>
+            <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.6px', marginRight: 4 }}>Intelligence IA</span>
+            {scoreDirecteur !== null && (
+              <span style={{ display: 'flex', alignItems: 'center', gap: 5, background: scoreColor + '18', border: `1px solid ${scoreColor}30`, borderRadius: 20, padding: '3px 10px' }}>
+                <span style={{ fontSize: 11, fontWeight: 800, color: scoreColor }}>Score {scoreDirecteur}/100</span>
+              </span>
+            )}
+            {alertesCritiques > 0 && (
+              <span style={{ display: 'flex', alignItems: 'center', gap: 4, background: '#ef444418', border: '1px solid #ef444430', borderRadius: 20, padding: '3px 10px' }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: '#ef4444' }}>🔴 {alertesCritiques} critique{alertesCritiques > 1 ? 's' : ''}</span>
+              </span>
+            )}
+            {alertesAttention > 0 && (
+              <span style={{ display: 'flex', alignItems: 'center', gap: 4, background: '#f59e0b18', border: '1px solid #f59e0b30', borderRadius: 20, padding: '3px 10px' }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: '#f59e0b' }}>⚠️ {alertesAttention} attention</span>
+              </span>
+            )}
+            {derives.length > 0 && (
+              <span style={{ display: 'flex', alignItems: 'center', gap: 4, background: '#8b5cf618', border: '1px solid #8b5cf630', borderRadius: 20, padding: '3px 10px' }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: '#8b5cf6' }}>📈 {derives.length} chantier{derives.length > 1 ? 's' : ''} en dérive</span>
+              </span>
+            )}
+            <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--text-muted)', fontWeight: 500 }}>Voir le Centre IA →</span>
+          </div>
+        );
+      })()}
+
       {/* ── LIGNE 2 : CHANTIERS · FINANCIER · ALERTES ────────────── */}
       <div style={{ display: 'grid', gridTemplateColumns: '1.25fr 1fr 0.75fr', gap: 16, marginBottom: 20 }}>
 

@@ -8,7 +8,7 @@ const PROFILS = [
     icone: '◈',
     couleur: C.primaire,
     description: 'Accès complet à toutes les fonctionnalités',
-    pages: ['dashboard', 'chantiers', 'devis', 'heures', 'finances', 'planning', 'rapport', 'agents', 'audit', 'parametres'],
+    pages: ['dashboard', 'chantiers', 'devis', 'heures', 'finances', 'planning', 'rapport', 'agents', 'parametres'],
   },
 ];
 

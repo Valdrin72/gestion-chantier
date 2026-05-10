@@ -20,6 +20,7 @@ import RapportsPage from './pages/RapportsPage';
 import CentreIA from './pages/CentreIA';
 import Parametres from './pages/ParametresPage';
 import { AppProvider } from './context/AppContext';
+import InstallPWA from './components/InstallPWA';
 
 // Fallback par page quand l'historique est vide
 const NAV_FALLBACK = {
@@ -277,6 +278,7 @@ function App() {
         />
       </div>
     </div>
+    <InstallPWA />
     </AppProvider>
   );
 }

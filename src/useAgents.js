@@ -172,6 +172,6 @@ export default function useAgents({ chantiers, devis, factures, clients, paramet
     agentsActifs, agentsStatuts, agentsLogs, agentData,
     dernierRun, running, nbNonLues, hasNouveauRapport,
     scoreGlobal, priorites, memoire: memoireRef.current,
-    marquerLu, marquerTousLus, toggleAgent, forcerExecution, effacerMemoire,
+    marquerLu, marquerTousLus, toggleAgent, forcerExecution,
   };
 }

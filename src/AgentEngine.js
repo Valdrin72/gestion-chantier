@@ -818,8 +818,19 @@ export function runDerivePredictor({ chantiers, devis, parametres, agentContext 
     const coutActuel = couts.totalCoutsReel || 0;
     if (coutActuel === 0) return;
 
-    // EAC = coût à l'achèvement projeté
-    const EAC = coutActuel / (avancement / 100);
+    // Calibrage mémoire — correction basée sur l'historique de ce type de chantier
+    const type = c.typeChantier || c.typesTravaux?.[0];
+    const memPatterns = agentContext?.MemoireChantier || {};
+    const pattern = type && memPatterns[type];
+    // Si ≥3 chantiers du même type terminés → appliquer le facteur de dérive historique
+    const facteurCalibration = (pattern && pattern.count >= 3 && pattern.ecartMoyen !== null)
+      ? 1 + Math.max(0, pattern.ecartMoyen / 100)
+      : 1;
+    const memCalibree = facteurCalibration > 1;
+
+    // EAC = coût à l'achèvement projeté (calibré par la mémoire si disponible)
+    const EAC_brut = coutActuel / (avancement / 100);
+    const EAC = Math.round(EAC_brut * facteurCalibration);
     const margeEstimee = CA - EAC;
     const margeEstimeePct = Math.round((margeEstimee / CA) * 1000) / 10;
 
@@ -829,14 +840,19 @@ export function runDerivePredictor({ chantiers, devis, parametres, agentContext 
       ? Math.round((depassementBudget / couts.totalCoutsPrevu) * 1000) / 10
       : null;
 
-    // Dérive délai
+    // Dérive délai — calibrée par le ratio temps historique si disponible
     const vitesse = avancement / joursRealises; // %/jour
-    const joursNecessaires = vitesse > 0 ? Math.round(100 / vitesse) : null;
+    const ratioTemps = (pattern && pattern.count >= 3 && pattern.ratioTempsMoyen !== null)
+      ? pattern.ratioTempsMoyen
+      : 1;
+    const joursNecessaires = vitesse > 0 ? Math.round((100 / vitesse) * ratioTemps) : null;
     const deriveJours = joursNecessaires !== null && c.nombreJours > 0
       ? joursNecessaires - c.nombreJours
       : null;
 
-    const confiance = avancement >= 60 ? 'élevée' : avancement >= 30 ? 'moyenne' : 'faible';
+    const confiance = memCalibree
+      ? (avancement >= 60 ? 'élevée (+mémoire)' : avancement >= 30 ? 'moyenne (+mémoire)' : 'faible (+mémoire)')
+      : (avancement >= 60 ? 'élevée' : avancement >= 30 ? 'moyenne' : 'faible');
 
     let statut = 'vert';
     let statutTexte = 'Dans les objectifs';
@@ -850,6 +866,8 @@ export function runDerivePredictor({ chantiers, devis, parametres, agentContext 
       margeEstimee: Math.round(margeEstimee), margeEstimeePct,
       depassementBudget: Math.round(depassementBudget), pctDepassement,
       joursRealises, joursNecessaires, deriveJours, confiance, statut, statutTexte,
+      memCalibree, typeChantier: type || null,
+      nbHistorique: pattern?.count || 0,
     });
   });
 

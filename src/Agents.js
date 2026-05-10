@@ -152,7 +152,7 @@ export default function Agents({
   agentsActifs, agentsStatuts, agentsLogs, alertes, predictions,
   patterns, rapports, dernierRun, running, nbNonLues, agentData = {},
   scoreGlobal, priorites = [], memoire = {},
-  toggleAgent, forcerExecution, marquerLu, marquerTousLus, effacerMemoire,
+  toggleAgent, forcerExecution, marquerLu, marquerTousLus,
 }) {
   const [onglet, setOnglet] = useState('coach');
   const [expanded, setExpanded] = useState({});
@@ -418,13 +418,9 @@ export default function Agents({
                                     </div>
                                   ))}
                                   {agent.apprentissage && memoire[agent.id] && (
-                                    <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
-                                      <Brain size={12} style={{ color: '#15803d' }} />
-                                      <span style={{ fontSize: 11, color: '#15803d' }}>Mémoire accumulée disponible</span>
-                                      <button onClick={() => effacerMemoire && effacerMemoire(agent.id)}
-                                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', fontSize: 11, display: 'flex', alignItems: 'center', gap: 3 }}>
-                                        <Trash2 size={10} /> Effacer
-                                      </button>
+                                    <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 6, padding: '6px 10px', background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 8 }}>
+                                      <Brain size={12} color="#15803d" />
+                                      <span style={{ fontSize: 11, color: '#15803d', fontWeight: 600 }}>Mémoire active — calibrage en cours</span>
                                     </div>
                                   )}
                                 </div>
@@ -539,12 +535,17 @@ export default function Agents({
                           <span style={{ fontWeight: 700, fontSize: 13, color: 'var(--text-primary)' }}>{r.nom}</span>
                           <span style={{ fontSize: 11, fontWeight: 700, color: couleur, background: `${couleur}18`, padding: '2px 8px', borderRadius: 20 }}>{r.statutTexte}</span>
                         </div>
-                        <div style={{ display: 'flex', gap: 16, fontSize: 12, color: 'var(--text-muted)' }}>
+                        <div style={{ display: 'flex', gap: 16, fontSize: 12, color: 'var(--text-muted)', flexWrap: 'wrap' }}>
                           <span>Avancement <strong style={{ color: 'var(--text-primary)' }}>{r.avancement}%</strong></span>
                           <span>Marge estimée <strong style={{ color: couleur }}>{r.margeEstimeePct >= 0 ? '+' : ''}{r.margeEstimeePct}%</strong></span>
                           <span>EAC <strong style={{ color: 'var(--text-primary)' }}>CHF {fmtN(r.EAC)}</strong></span>
                           {r.deriveJours !== null && r.deriveJours > 0 && (
                             <span>Dérive délai <strong style={{ color: '#f59e0b' }}>+{r.deriveJours}j</strong></span>
+                          )}
+                          {r.memCalibree && (
+                            <span style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 10, color: '#15803d', background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 20, padding: '1px 8px' }}>
+                              <Brain size={9} /> Calibré mémoire ({r.nbHistorique} chantiers)
+                            </span>
                           )}
                           <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>Confiance {r.confiance}</span>
                         </div>
@@ -570,16 +571,14 @@ export default function Agents({
       ══════════════════════════════════════════════════════ */}
       {onglet === 'memoire' && (
         <div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-            <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: 0 }}>
-              Les agents marqués <strong>APPREND</strong> accumulent de la connaissance entre les runs. Plus ils tournent, plus ils sont précis.
-            </p>
-            {effacerMemoire && (
-              <button onClick={() => effacerMemoire(null)}
-                style={{ ...DS.btnGhost, fontSize: 12, padding: '5px 12px', display: 'flex', alignItems: 'center', gap: 6, color: '#ef4444', borderColor: '#fecaca' }}>
-                <Trash2 size={12} /> Effacer toute la mémoire
-              </button>
-            )}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20, padding: '12px 16px', background: 'linear-gradient(135deg,#f0fdf4,#dcfce7)', border: '1px solid #86efac', borderRadius: 12 }}>
+            <Brain size={18} color="#15803d" />
+            <div>
+              <div style={{ fontWeight: 700, fontSize: 13, color: '#14532d' }}>Mémoire permanente — jamais effacée</div>
+              <div style={{ fontSize: 12, color: '#15803d', marginTop: 2 }}>
+                Chaque exécution enrichit la connaissance. Plus les agents tournent, plus leurs prédictions sont précises.
+              </div>
+            </div>
           </div>
 
           {/* MémoireChantier patterns */}
@@ -638,17 +637,16 @@ export default function Agents({
                     <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 3 }}>{agent.nom}</div>
                     {hasData ? (
                       <>
-                        <div style={{ fontSize: 12, color: '#15803d', marginBottom: 3 }}>
-                          <Brain size={11} style={{ marginRight: 4 }} />
-                          {histLen} entrée{histLen > 1 ? 's' : ''} accumulée{histLen > 1 ? 's' : ''}
+                        <div style={{ fontSize: 12, color: '#15803d', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
+                          <Brain size={11} />
+                          {histLen} entrée{histLen > 1 ? 's' : ''} · précision croissante
                         </div>
-                        <button onClick={() => effacerMemoire && effacerMemoire(agent.id)}
-                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', fontSize: 11, padding: 0, display: 'flex', alignItems: 'center', gap: 3 }}>
-                          <Trash2 size={10} /> Réinitialiser
-                        </button>
+                        <div style={{ height: 4, background: 'var(--border)', borderRadius: 2, overflow: 'hidden' }}>
+                          <div style={{ height: '100%', width: `${Math.min(100, histLen * 10)}%`, background: '#10b981', borderRadius: 2, transition: 'width 0.4s' }} />
+                        </div>
                       </>
                     ) : (
-                      <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Pas encore de données accumulées</div>
+                      <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>En attente de données…</div>
                     )}
                   </div>
                 </div>

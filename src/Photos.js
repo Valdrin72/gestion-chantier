@@ -141,7 +141,7 @@ export default function Photos({ chantiers, photosData, setPhotosData }) {
         <div onClick={() => fileRef.current?.click()}
           style={{ border: `2px dashed rgba(59,130,246,0.4)`, borderRadius: '14px', padding: '20px', textAlign: 'center', background: 'rgba(59,130,246,0.05)', cursor: 'pointer', marginBottom: '20px', transition: 'border-color 0.18s' }}>
           {chargement ? (
-            <div style={{ color: categorieInfo.couleur, fontWeight: 'bold' }}>⏳ Chargement des photos...</div>
+            <div style={{ color: categorieInfo.couleur, fontWeight: 'bold' }}>Chargement des photos...</div>
           ) : (
             <>
               <div style={{ fontSize: '30px', color: 'var(--text-muted)' }}>◎</div>

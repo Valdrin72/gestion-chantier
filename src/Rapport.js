@@ -88,7 +88,7 @@ export default function Rapport({ chantiers, clients, devis = [], parametres, pa
             const r = new Set((c.journal || []).map(e => e.date).filter(Boolean)).size;
             const j = c.nombreJours > 0 ? c.nombreJours - r : null;
             const al = getAlerte(j);
-            return <div key={c.id} style={{ color: '#ef4444', marginBottom: '4px' }}>▶ <strong>{c.nom}</strong> — {al?.texte}</div>;
+            return <div key={c.id} style={{ color: '#ef4444', marginBottom: '4px' }}>› <strong>{c.nom}</strong> — {al?.texte}</div>;
           })}
         </div>
       )}
@@ -173,7 +173,7 @@ export default function Rapport({ chantiers, clients, devis = [], parametres, pa
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '15px', marginBottom: '20px' }}>
           {[
             { label: 'Reçus', val: `CHF ${fmtN(totalPaiementsRecus)}`, couleur: '#10b981', bg: 'rgba(16,185,129,0.12)' },
-            { label: '⏳ En attente', val: `CHF ${fmtN(totalPaiementsAttente)}`, couleur: '#f59e0b', bg: 'rgba(245,158,11,0.12)' },
+            { label: 'En attente', val: `CHF ${fmtN(totalPaiementsAttente)}`, couleur: '#f59e0b', bg: 'rgba(245,158,11,0.12)' },
             { label: 'En retard', val: `CHF ${fmtN(totalPaiementsRetard)}`, couleur: '#ef4444', bg: 'rgba(239,68,68,0.12)' },
           ].map(s => (
             <div key={s.label} style={{ background: s.bg, border: `2px solid ${s.couleur}`, borderRadius: '10px', padding: '15px', textAlign: 'center' }}>

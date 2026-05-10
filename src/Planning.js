@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback } from 'react';
-import { Zap } from 'lucide-react';
+import { Zap, Calendar } from 'lucide-react';
 import { calculerDateFinOuvrables, getAlerte } from './donnees';
 import { DS } from './ds';
 import { TOUS_STATUTS } from './constants/statuts';
@@ -365,7 +365,7 @@ export default function Planning({ chantiers, setChantiers, clients, parametres,
           {/* Chantiers du mois */}
           {chantiersDuMois.length === 0 ? (
             <div style={{ ...DS.card, textAlign: 'center', padding: '48px 24px', color: 'var(--text-muted)' }}>
-              <div style={{ fontSize: 32, marginBottom: 12 }}>📅</div>
+              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 12 }}><Calendar size={32} color="var(--text-muted)" /></div>
               <div style={{ fontWeight: 600, fontSize: 15 }}>Aucun chantier ce mois</div>
               <div style={{ fontSize: 13, marginTop: 6 }}>Changez de mois ou planifiez un chantier</div>
             </div>

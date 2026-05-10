@@ -30,7 +30,7 @@ function ChantiersListe({
   const couleurStatut = couleurStatutDS;
 
   // KPIs
-  const nbEnCours = chantiers.filter(c => c.statut === 'En cours').length;
+  const nbEnCours = chantiers.filter(c => (c.statut || '').toLowerCase() === 'en cours').length;
   const nbEnRetard = chantiersFiltres.filter(c => { const j = joursParChantier[c.id]; return j !== null && j < 0; }).length;
   const caTotal = chantiersFiltres.reduce((t, c) => t + (calculerCA(c, devis) || 0), 0);
   const joursPlanifies = chantiersFiltres.reduce((t, c) => t + (parseInt(c.nombreJours) || 0), 0);

@@ -119,7 +119,7 @@ export default function Paiements({ chantiers, clients, devis = [], paiementsDat
             {[
               { label: 'Total devis', val: `CHF ${fmtN(montantTotal)}`, couleur: '#10b981', bg: 'rgba(16,185,129,0.12)' },
               { label: 'Encaissé', val: `CHF ${fmtN(montantPaye)}`, couleur: '#10b981', bg: 'rgba(16,185,129,0.12)' },
-              { label: '⏳ En attente', val: `CHF ${fmtN(getMontantEnAttente(c.id))}`, couleur: '#f59e0b', bg: 'rgba(245,158,11,0.12)' },
+              { label: 'En attente', val: `CHF ${fmtN(getMontantEnAttente(c.id))}`, couleur: '#f59e0b', bg: 'rgba(245,158,11,0.12)' },
               { label: 'Restant', val: `CHF ${fmtN(montantRestant)}`, couleur: montantRestant > 0 ? '#ef4444' : '#10b981', bg: montantRestant > 0 ? 'rgba(239,68,68,0.12)' : 'rgba(16,185,129,0.12)' },
             ].map(s => (
               <div key={s.label} style={{ background: s.bg, border: `2px solid ${s.couleur}`, borderRadius: '10px', padding: '12px', textAlign: 'center' }}>
@@ -305,7 +305,7 @@ export default function Paiements({ chantiers, clients, devis = [], paiementsDat
         {[
           { label: 'CA Total', val: `CHF ${fmtN(totalCA)}`, couleur: '#10b981' },
           { label: 'Encaissé', val: `CHF ${fmtN(totalPaye)}`, couleur: '#10b981' },
-          { label: '⏳ En attente', val: `CHF ${fmtN(totalEnAttente)}`, couleur: '#f59e0b' },
+          { label: 'En attente', val: `CHF ${fmtN(totalEnAttente)}`, couleur: '#f59e0b' },
           { label: 'En retard', val: `CHF ${fmtN(totalEnRetard)}`, couleur: '#ef4444' },
         ].map(s => (
           <div key={s.label} className="premium-card" style={{

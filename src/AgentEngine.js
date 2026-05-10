@@ -1079,8 +1079,8 @@ export function runRapportNaturel({ chantiers, factures, agentContext, memoire =
     }
 
     // § 2 — Trésorerie
-    const j30 = treso?.j30 || 0;
-    const montantRetard = relances?.montantTotal || 0;
+    const j30 = treso?.solde30 || 0;
+    const montantRetard = (relances?.montant30 || 0) + (relances?.montant60 || 0) + (relances?.montant90 || 0);
     if (j30 > 0 && montantRetard > 0) {
       paras.push(`Côté trésorerie, CHF ${fmtN(Math.round(j30))} sont attendus sous 30 jours. Attention : CHF ${fmtN(Math.round(montantRetard))} de factures restent impayées — des relances s'imposent.`);
     } else if (j30 > 0) {
@@ -1192,7 +1192,7 @@ export function runPipelineCommercial({ devis, chantiers, clients, agentContext,
 // ─── T2-A23 : AlerteRisqueClient ──────────────────────────────
 export function runAlerteRisqueClient({ chantiers, clients, factures, agentContext }) {
   try {
-    const santesClients = agentContext?.SanteClient?.clients || [];
+    const santesClients = agentContext?.SanteClient?.statsClients || [];
     const clientsRisque = [];
     const alertes = [];
 
@@ -1200,7 +1200,7 @@ export function runAlerteRisqueClient({ chantiers, clients, factures, agentConte
       const chantiersClient = chantiers.filter(c => String(c.clientId) === String(client.id) && isChantierActif(c));
       if (chantiersClient.length === 0) return;
 
-      const sante = santesClients.find(s => String(s.clientId) === String(client.id));
+      const sante = santesClients.find(s => String(s.id) === String(client.id));
       const impayees = (factures || []).filter(f =>
         String(f.clientId) === String(client.id) &&
         ['en attente', 'impayée', 'impayee'].includes((f.statut || '').toLowerCase())
@@ -1216,7 +1216,7 @@ export function runAlerteRisqueClient({ chantiers, clients, factures, agentConte
       if (montantImpaye > 20000) { scoreRisque += 35; facteurs.push(`CHF ${fmtN(Math.round(montantImpaye))} impayés`); }
       else if (montantImpaye > 5000) { scoreRisque += 20; facteurs.push(`CHF ${fmtN(Math.round(montantImpaye))} impayés`); }
 
-      if (sante?.score < 40) { scoreRisque += 20; facteurs.push(`score fidélité ${sante.score}/100`); }
+      if (sante && sante.marge !== null && sante.marge < 10) { scoreRisque += 20; facteurs.push(`marge client faible (${sante.marge.toFixed(1)}%)`); }
       if (impayees.length >= 2) { scoreRisque += 15; facteurs.push(`${impayees.length} factures impayées`); }
 
       if (scoreRisque >= 30) {

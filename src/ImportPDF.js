@@ -542,7 +542,7 @@ export default function ImportPDF({ parametres, onCreerDevis, onCreerChantier, o
 
           {chargement && (
             <div style={{ textAlign: 'center', padding: '30px', color: 'var(--text-secondary)' }}>
-              <div style={{ fontSize: '30px', marginBottom: '10px' }}>⏳</div>
+              <div style={{ marginBottom: '10px', color: 'var(--text-secondary)' }}>...</div>
               <div style={{ fontWeight: 'bold' }}>Lecture du PDF en cours...</div>
               <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '5px' }}>Extraction et analyse du texte</div>
             </div>

@@ -451,7 +451,7 @@ export const calculerDevis = (form, parametres) => {
   const prixPlafond     = totalRevient * (1 + margeCible + margeExtra);
   const prixPropose = parseFloat(form.prixPropose) || prixConseille;
   const margeEstimee = prixPropose - totalRevient;
-  const tauxMarge = prixPropose > 0 ? ((margeEstimee / prixPropose) * 100).toFixed(1) : 0;
+  const tauxMarge = prixPropose > 0 ? Math.round((margeEstimee / prixPropose) * 1000) / 10 : 0;
 
   let positionnement = 'Marché';
   let niveauRisque = 'Faible';
@@ -714,7 +714,7 @@ export const genererNumeroFacture = (factures) => {
 export const calculerStatutFacture = (facture) => {
   const total = parseFloat(facture.montantTTC) || 0;
   const paye  = parseFloat(facture.montantPaye) || 0;
-  if (facture.statut === 'annulee') return 'annulee';
+  if ((facture.statut || '').toLowerCase() === 'annulee') return 'annulee';
   if (total > 0 && paye >= total) return 'payee';
   if (paye > 0 && paye < total)   return 'partielle';
   if (facture.dateEcheance && new Date(facture.dateEcheance) < new Date()) return 'retard';

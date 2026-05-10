@@ -166,9 +166,9 @@ function ChantierDetail({ chantier, detailOnglet, setDetailOnglet, modeCompleter
     return list.sort((a, b) => (b.gravite === 'critique' ? 1 : 0) - (a.gravite === 'critique' ? 1 : 0));
   })();
 
-  const chantierStatusBadge = ['En cours', 'Suspendu'].includes(c.statut) ? getChantierStatus(c) : null;
+  const chantierStatusBadge = ['en cours', 'suspendu'].includes((c.statut || '').toLowerCase()) ? getChantierStatus(c) : null;
   const devisSource = devis.find(d => String(d.id) === String(c.devisId));
-  const estNouveauPlanifie = modeCompleter && c.statut === 'Planifié';
+  const estNouveauPlanifie = modeCompleter && (c.statut || '').toLowerCase() === 'planifié';
 
   // ── Tuiles cockpit ──
   const margeTile = (() => {

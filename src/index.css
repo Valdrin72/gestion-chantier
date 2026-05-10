@@ -985,6 +985,17 @@ label { font-weight: 500; font-size: 12px; color: var(--text-secondary); }
   }
   .topbar-title { font-size: 15px; }
 
+  /* ── Cartes KPI : compactes sur mobile ── */
+  .kpi-card {
+    padding: 12px 14px !important;
+    min-height: auto !important;
+  }
+  .kpi-val {
+    font-size: 18px !important;
+    letter-spacing: -0.5px !important;
+    margin-bottom: 4px !important;
+  }
+
   /* Tables horizontalement scrollables */
   .main-area { -webkit-overflow-scrolling: touch; }
   table { min-width: 500px; }

@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Sparkles, ChevronDown, ChevronUp, Check } from 'lucide-react';
+import { Sparkles, ChevronDown, ChevronUp, Check, Award } from 'lucide-react';
 import { DS } from './ds';
 import { fmtN, calculerCoutsChantier, SEUILS } from './donnees';
 
@@ -166,7 +166,7 @@ export default function AssistantDevisIA({ chantiers = [], devis = [], parametre
                 )}
                 {suggestionActive.meilleur && (
                   <div style={{ marginTop: 10, padding: '8px 10px', background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.2)', borderRadius: 8, fontSize: 11, color: '#065f46' }}>
-                    🏆 Meilleur : {suggestionActive.meilleur.nom} — marge {suggestionActive.meilleur.marge?.toFixed(1)}%
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}><Award size={12} color="#059669" /> Meilleur : {suggestionActive.meilleur.nom} — marge {suggestionActive.meilleur.marge?.toFixed(1)}%</span>
                   </div>
                 )}
               </div>

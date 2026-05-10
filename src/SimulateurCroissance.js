@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { TrendingUp, Users, DollarSign, Target, Info } from 'lucide-react';
+import { TrendingUp, Users, DollarSign, Target, Info, CheckCircle, AlertTriangle } from 'lucide-react';
 import { DS } from './ds';
 import { fmtN, calculerCoutsChantier, SEUILS } from './donnees';
 
@@ -209,7 +209,10 @@ export default function SimulateurCroissance({ chantiers = [], devis = [], factu
           {/* Score global */}
           <div style={{ background: projection.rentable ? 'linear-gradient(135deg, #ecfdf5, #d1fae5)' : 'linear-gradient(135deg, #fff7ed, #fef3c7)', border: `1px solid ${couleurMarge}40`, borderRadius: 16, padding: '20px 24px' }}>
             <div style={{ fontSize: 12, fontWeight: 700, color: couleurMarge, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>
-              {projection.rentable ? '✅ Opération rentable' : '⚠️ Rentabilité à surveiller'}
+              <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                {projection.rentable ? <CheckCircle size={13} /> : <AlertTriangle size={13} />}
+                {projection.rentable ? 'Opération rentable' : 'Rentabilité à surveiller'}
+              </span>
             </div>
             <div style={{ fontSize: 32, fontWeight: 900, color: couleurMarge, fontVariantNumeric: 'tabular-nums' }}>
               {projection.margeNettePct >= 0 ? '+' : ''}{projection.margeNettePct}%

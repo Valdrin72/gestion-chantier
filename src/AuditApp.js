@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Shield, ShieldCheck, ShieldAlert, ShieldX, RefreshCw, ChevronDown, ChevronUp } from 'lucide-react';
+import { Shield, ShieldCheck, ShieldAlert, ShieldX, RefreshCw, ChevronDown, ChevronUp, CheckCircle, AlertTriangle, XCircle, Info, Lightbulb } from 'lucide-react';
 import { DS } from './ds';
 import { fmtN, calculerCA, calculerCoutsChantier, SEUILS } from './donnees';
 
@@ -8,7 +8,12 @@ const NIV = { ok: 'ok', warn: 'warn', err: 'err', info: 'info' };
 const NIV_POIDS = { err: -15, warn: -5, ok: 0, info: 0 };
 const NIV_COULEUR = { ok: '#10b981', warn: '#f59e0b', err: '#ef4444', info: '#3b82f6' };
 const NIV_BG = { ok: '#f0fdf4', warn: '#fffbeb', err: '#fef2f2', info: '#eff6ff' };
-const NIV_ICONE = { ok: '✅', warn: '⚠️', err: '🔴', info: '🔵' };
+function NIV_ICON({ niv, size = 14 }) {
+  if (niv === 'ok')   return <CheckCircle  size={size} color="#10b981" />;
+  if (niv === 'warn') return <AlertTriangle size={size} color="#f59e0b" />;
+  if (niv === 'err')  return <XCircle      size={size} color="#ef4444" />;
+  return <Info size={size} color="#3b82f6" />;
+}
 
 function runCheck({ id, categorie, titre, description, fn, data }) {
   try {
@@ -34,7 +39,7 @@ function CheckCard({ check, ouvert, onToggle }) {
   return (
     <div style={{ background: bg, border: `1px solid ${c}30`, borderRadius: 10, overflow: 'hidden', marginBottom: 6 }}>
       <div onClick={onToggle} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', cursor: 'pointer' }}>
-        <span style={{ fontSize: 14 }}>{NIV_ICONE[check.niveau]}</span>
+        <NIV_ICON niv={check.niveau} />
         <div style={{ flex: 1 }}>
           <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>{check.titre}</span>
           {check.valeur !== undefined && (
@@ -51,8 +56,9 @@ function CheckCard({ check, ouvert, onToggle }) {
           <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>{check.description}</div>
           {check.detail && <div style={{ fontSize: 12, color: c, fontWeight: 600, marginBottom: 4 }}>{check.detail}</div>}
           {check.recommandation && (
-            <div style={{ fontSize: 11, background: 'rgba(0,0,0,0.04)', borderRadius: 6, padding: '6px 10px', color: 'var(--text-muted)', marginTop: 6 }}>
-              💡 {check.recommandation}
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6, fontSize: 11, background: 'rgba(0,0,0,0.04)', borderRadius: 6, padding: '6px 10px', color: 'var(--text-muted)', marginTop: 6 }}>
+              <Lightbulb size={11} style={{ flexShrink: 0, marginTop: 1 }} />
+              {check.recommandation}
             </div>
           )}
           {check.items?.length > 0 && (
@@ -692,13 +698,13 @@ export default function AuditApp({ chantiers = [], devis = [], factures = [], cl
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
           {[
-            { label: 'Erreurs', nb: nbErreurs, couleur: '#ef4444', bg: '#fef2f2', icone: '🔴', impact: '-15 pts/erreur', filtre: 'err' },
-            { label: 'Avertissements', nb: nbWarnings, couleur: '#f59e0b', bg: '#fffbeb', icone: '⚠️', impact: '-5 pts/avert.', filtre: 'warn' },
-            { label: 'OK', nb: nbOk, couleur: '#10b981', bg: '#f0fdf4', icone: '✅', impact: 'Aucun impact', filtre: 'ok' },
+            { label: 'Erreurs', nb: nbErreurs, couleur: '#ef4444', bg: '#fef2f2', filtre: 'err', impact: '-15 pts/erreur' },
+            { label: 'Avertissements', nb: nbWarnings, couleur: '#f59e0b', bg: '#fffbeb', filtre: 'warn', impact: '-5 pts/avert.' },
+            { label: 'OK', nb: nbOk, couleur: '#10b981', bg: '#f0fdf4', filtre: 'ok', impact: 'Aucun impact' },
           ].map(k => (
             <button key={k.label} onClick={() => setFiltreNiveau(prev => prev === k.filtre ? 'Tous' : k.filtre)}
               style={{ background: filtreNiveau === k.filtre ? k.bg : 'var(--bg-card)', border: `2px solid ${filtreNiveau === k.filtre ? k.couleur : 'var(--ds-card-border)'}`, borderRadius: 14, padding: '20px 16px', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left', transition: 'all 0.15s' }}>
-              <div style={{ fontSize: 22, marginBottom: 6 }}>{k.icone}</div>
+              <div style={{ marginBottom: 8 }}><NIV_ICON niv={k.filtre} size={20} /></div>
               <div style={{ fontSize: 32, fontWeight: 900, color: k.couleur }}>{k.nb}</div>
               <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)', marginTop: 2 }}>{k.label}</div>
               <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 4 }}>{k.impact}</div>

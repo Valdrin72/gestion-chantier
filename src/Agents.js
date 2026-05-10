@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import {
-  Bot, AlertTriangle, FileText, TrendingUp, FileBarChart2, Brain,
+  Bot, AlertTriangle, FileText, TrendingUp, TrendingDown, FileBarChart2, Brain,
   ToggleLeft, ToggleRight, Play, CheckCircle, Clock, RefreshCw,
   ChevronDown, ChevronRight, Activity, Zap, Users, Shield,
   BarChart2, Target, Layers, AlertCircle, Star, Eye, Trash2,
@@ -250,7 +250,7 @@ export default function Agents({
                   <div style={{ width: 1, height: 60, background: 'var(--border)', flexShrink: 0 }} />
                   <div style={{ flex: 1 }}>
                     <div style={{ fontWeight: 700, fontSize: 16, color: 'var(--text-primary)', marginBottom: 6 }}>
-                      {scoreGlobal >= 80 ? '✅ Bonne santé d\'entreprise' : scoreGlobal >= 60 ? '⚠️ Situation à surveiller' : '🔴 Intervention requise'}
+                      {scoreGlobal >= 80 ? 'Bonne santé d\'entreprise' : scoreGlobal >= 60 ? 'Situation à surveiller' : 'Intervention requise'}
                     </div>
                     <div style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
                       Basé sur l'analyse de 20 agents · {alertes.filter(a => !a.lu).length} alertes non traitées · Synthèse en temps réel
@@ -264,7 +264,9 @@ export default function Agents({
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                 {priorites.map((p, i) => (
                   <div key={i} style={{ ...DS.card, padding: '16px 20px', display: 'flex', gap: 16, alignItems: 'flex-start', borderLeft: `4px solid ${i === 0 ? '#ef4444' : i === 1 ? '#f59e0b' : '#3b82f6'}` }}>
-                    <div style={{ fontSize: 24, flexShrink: 0, marginTop: 2 }}>{p.icone}</div>
+                    <div style={{ width: 32, height: 32, borderRadius: '50%', background: i === 0 ? '#fee2e2' : i === 1 ? '#fef3c7' : '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      {i === 0 ? <AlertTriangle size={15} color="#ef4444" /> : i === 1 ? <AlertCircle size={15} color="#f59e0b" /> : <Target size={15} color="#3b82f6" />}
+                    </div>
                     <div style={{ flex: 1 }}>
                       <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 5, flexWrap: 'wrap' }}>
                         <span style={{ background: i === 0 ? '#fee2e2' : i === 1 ? '#fef3c7' : '#eff6ff', color: i === 0 ? '#991b1b' : i === 1 ? '#92400e' : '#1e40af', borderRadius: 20, padding: '2px 10px', fontSize: 10, fontWeight: 700 }}>{p.categorie}</span>
@@ -513,7 +515,7 @@ export default function Agents({
                     <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 6 }}>{m.mois}</div>
                     <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 4 }}>{m.count} chantier(s) historiquement</div>
                     <div style={{ fontSize: 11, fontWeight: 700, color: m.intensite === 'fort' ? '#10b981' : m.intensite === 'moyen' ? '#f59e0b' : '#6b7280', textTransform: 'uppercase' }}>
-                      {m.intensite === 'fort' ? '📈 Période forte' : m.intensite === 'creux' ? '📉 Période creuse' : '📊 Période normale'}
+                      {m.intensite === 'fort' ? <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><TrendingUp size={11} /> Période forte</span> : m.intensite === 'creux' ? <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><TrendingDown size={11} /> Période creuse</span> : <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><BarChart2 size={11} /> Période normale</span>}
                     </div>
                   </div>
                 ))}
@@ -668,7 +670,7 @@ export default function Agents({
               <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 12 }}>Rapport IA — Analyse en langage naturel</div>
               <div style={{ ...DS.card, padding: '24px 28px', borderLeft: '4px solid #8b5cf6' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
-                  <span style={{ fontSize: 20 }}>🤖</span>
+                  <Bot size={20} color="#8b5cf6" />
                   <div>
                     <div style={{ fontWeight: 800, fontSize: 14, color: 'var(--text-primary)' }}>Résumé exécutif</div>
                     <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{agentData.RapportNaturel.date}</div>

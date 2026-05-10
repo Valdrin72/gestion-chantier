@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import {
-  HardHat, Users, TrendingUp, Plus, AlertTriangle,
+  HardHat, Users, TrendingUp, Plus, AlertTriangle, XCircle,
   ChevronRight, CheckCircle, ShieldCheck, DollarSign, Bell, Clock, CreditCard, Bot,
 } from 'lucide-react';
 import { LineChart, Line, PieChart, Pie, Cell, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
@@ -767,7 +767,7 @@ function Dashboard() {
             onMouseEnter={e => e.currentTarget.style.borderColor = '#4F46E5'}
             onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border)'}
           >
-            <span style={{ fontSize: 16 }}>🤖</span>
+            <Bot size={15} color="#8b5cf6" />
             <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.6px', marginRight: 4 }}>Intelligence IA</span>
             {scoreDirecteur !== null && (
               <span style={{ display: 'flex', alignItems: 'center', gap: 5, background: scoreColor + '18', border: `1px solid ${scoreColor}30`, borderRadius: 20, padding: '3px 10px' }}>
@@ -776,17 +776,17 @@ function Dashboard() {
             )}
             {alertesCritiques > 0 && (
               <span style={{ display: 'flex', alignItems: 'center', gap: 4, background: '#ef444418', border: '1px solid #ef444430', borderRadius: 20, padding: '3px 10px' }}>
-                <span style={{ fontSize: 11, fontWeight: 700, color: '#ef4444' }}>🔴 {alertesCritiques} critique{alertesCritiques > 1 ? 's' : ''}</span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 700, color: '#ef4444' }}><XCircle size={12} /> {alertesCritiques} critique{alertesCritiques > 1 ? 's' : ''}</span>
               </span>
             )}
             {alertesAttention > 0 && (
               <span style={{ display: 'flex', alignItems: 'center', gap: 4, background: '#f59e0b18', border: '1px solid #f59e0b30', borderRadius: 20, padding: '3px 10px' }}>
-                <span style={{ fontSize: 11, fontWeight: 700, color: '#f59e0b' }}>⚠️ {alertesAttention} attention</span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 700, color: '#f59e0b' }}><AlertTriangle size={12} /> {alertesAttention} attention</span>
               </span>
             )}
             {derives.length > 0 && (
               <span style={{ display: 'flex', alignItems: 'center', gap: 4, background: '#8b5cf618', border: '1px solid #8b5cf630', borderRadius: 20, padding: '3px 10px' }}>
-                <span style={{ fontSize: 11, fontWeight: 700, color: '#8b5cf6' }}>📈 {derives.length} chantier{derives.length > 1 ? 's' : ''} en dérive</span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 700, color: '#8b5cf6' }}><TrendingUp size={12} /> {derives.length} chantier{derives.length > 1 ? 's' : ''} en dérive</span>
               </span>
             )}
             <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--text-muted)', fontWeight: 500 }}>Voir le Centre IA →</span>

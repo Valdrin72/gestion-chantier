@@ -1118,7 +1118,7 @@ export function runCoachDirecteur({ chantiers, devis, factures, parametres, agen
     const critiqueRisque = risques.filter(r => r.niveau === 'CRITIQUE' || r.niveau === 'DANGER');
     if (critiqueRisque.length > 0) {
       priorites.push({
-        rang: 1, icone: '🔴', categorie: 'URGENT',
+        rang: 1, icone: 'urgent', categorie: 'URGENT',
         action: `Intervenir sur ${critiqueRisque[0].nom}`,
         detail: `Score de risque ${critiqueRisque[0].score}/100 · ${critiqueRisque[0].facteurs[0]}`,
         impact: 'Financier critique', page: 'chantiers',
@@ -1129,7 +1129,7 @@ export function runCoachDirecteur({ chantiers, devis, factures, parametres, agen
     const relances = agentContext?.RelancePaiements;
     if (relances?.montant90 > 5000) {
       priorites.push({
-        rang: priorites.length + 1, icone: '🟠', categorie: 'TRÉSORERIE',
+        rang: priorites.length + 1, icone: 'tresorerie', categorie: 'TRÉSORERIE',
         action: `Relancer ${relances.nb90} facture(s) en retard >90 jours`,
         detail: `CHF ${fmtN(Math.round(relances.montant90))} à récupérer d'urgence`,
         impact: 'Cash-flow', page: 'finances',
@@ -1140,7 +1140,7 @@ export function runCoachDirecteur({ chantiers, devis, factures, parametres, agen
     const factOpti = agentContext?.OptimisationFacturation;
     if (factOpti?.totalFacturable > 10000) {
       priorites.push({
-        rang: priorites.length + 1, icone: '🟢', categorie: 'REVENUS',
+        rang: priorites.length + 1, icone: 'revenus', categorie: 'REVENUS',
         action: `Facturer CHF ${fmtN(Math.round(factOpti.totalFacturable))} disponibles`,
         detail: `${factOpti.opportunites?.length || 0} chantier(s) à facturer selon avancement`,
         impact: 'CA immédiat', page: 'factures',
@@ -1151,7 +1151,7 @@ export function runCoachDirecteur({ chantiers, devis, factures, parametres, agen
     const proj = agentContext?.ProjectionAnnuelle;
     if (proj?.txAtteinte !== null && proj?.txAtteinte < 80) {
       priorites.push({
-        rang: priorites.length + 1, icone: '📊', categorie: 'COMMERCIAL',
+        rang: priorites.length + 1, icone: 'commercial', categorie: 'COMMERCIAL',
         action: `Renforcer le pipeline — objectif annuel à ${proj.txAtteinte}%`,
         detail: `${proj.nbDevisEnAttente} devis en attente · CHF ${fmtN(Math.round(proj.caPipeline))} potentiel`,
         impact: 'CA annuel', page: 'devis',
@@ -1162,7 +1162,7 @@ export function runCoachDirecteur({ chantiers, devis, factures, parametres, agen
     const anomalies = agentContext?.AnomaliesDonnees;
     if (anomalies?.score < 80) {
       priorites.push({
-        rang: priorites.length + 1, icone: '⚠️', categorie: 'DONNÉES',
+        rang: priorites.length + 1, icone: 'donnees', categorie: 'DONNÉES',
         action: `Corriger ${anomalies.nbAnomalies} anomalie(s) de données`,
         detail: anomalies.anomalies?.[0] || 'Chantiers sans devis, employés sans tarif...',
         impact: 'Fiabilité calculs', page: 'chantiers',

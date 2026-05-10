@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useCallback } from 'react';
+import { Zap } from 'lucide-react';
 import { calculerDateFinOuvrables, getAlerte } from './donnees';
 import { DS } from './ds';
 import { TOUS_STATUTS } from './constants/statuts';
@@ -246,7 +247,7 @@ export default function Planning({ chantiers, setChantiers, clients, parametres,
               transition: 'all 0.15s',
             }}
           >
-            ✨ Optimiser l'équipe
+            <Zap size={14} style={{ marginRight: 5 }} />Optimiser l'équipe
           </button>
         </div>
       </div>
@@ -257,7 +258,7 @@ export default function Planning({ chantiers, setChantiers, clients, parametres,
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
             <div>
               <div style={{ fontWeight: 800, fontSize: 16, color: 'var(--text-primary)' }}>
-                ✨ Suggestions IA — Affectation optimale
+                <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Zap size={15} />Suggestions IA — Affectation optimale</span>
               </div>
               <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 3 }}>
                 Basé sur la charge actuelle et les spécialités

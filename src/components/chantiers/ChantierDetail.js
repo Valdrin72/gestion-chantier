@@ -1,6 +1,6 @@
 import React from 'react';
 import {
-  HardHat, Pencil, Trash2, AlertTriangle,
+  HardHat, Pencil, Trash2, AlertTriangle, CheckCircle,
   ChevronRight, DollarSign, Clock,
 } from 'lucide-react';
 import {
@@ -243,7 +243,7 @@ function ChantierDetail({ chantier, detailOnglet, setDetailOnglet, modeCompleter
 
       {estNouveauPlanifie && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, background: 'linear-gradient(135deg, #ecfdf5, #d1fae5)', border: '1px solid #6ee7b7', borderRadius: 12, padding: '14px 18px', marginBottom: 16 }}>
-          <span style={{ fontSize: 22 }}>🎉</span>
+          <CheckCircle size={22} color="#059669" />
           <div style={{ flex: 1 }}>
             <div style={{ fontWeight: 700, color: '#065f46', fontSize: 14 }}>Chantier créé avec succès</div>
             <div style={{ fontSize: 12, color: '#047857', marginTop: 2 }}>Complétez les informations (adresse, équipe, dates), puis passez en cours et saisissez les heures.</div>

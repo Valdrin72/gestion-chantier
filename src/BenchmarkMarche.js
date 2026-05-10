@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { TrendingUp, TrendingDown, Minus, Award, AlertTriangle, CheckCircle, Lightbulb } from 'lucide-react';
 import { DS } from './ds';
 import { fmtN, calculerCoutsChantier, calculerCA, SEUILS } from './donnees';
 
@@ -212,8 +212,8 @@ export default function BenchmarkMarche({ chantiers = [], devis = [], parametres
                 <tr key={i} style={{ borderBottom: '1px solid var(--border)', background: estMeilleur ? '#f0fdf440' : estPire ? '#fef2f240' : 'transparent' }}>
                   <td style={{ padding: '12px 14px', fontWeight: 600 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      {estMeilleur && <span title="Meilleur type">🏆</span>}
-                      {estPire && <span title="À améliorer">⚠️</span>}
+                      {estMeilleur && <Award size={14} color="#f59e0b" title="Meilleur type" />}
+                      {estPire && <AlertTriangle size={14} color="#f59e0b" title="À améliorer" />}
                       {label}
                     </div>
                   </td>
@@ -227,11 +227,11 @@ export default function BenchmarkMarche({ chantiers = [], devis = [], parametres
                   </td>
                   <td style={{ padding: '12px 14px', textAlign: 'center' }}>
                     {g.marge >= SEUILS.margeRentable ? (
-                      <span style={{ fontSize: 11, fontWeight: 700, color: '#10b981' }}>✅ Rentable</span>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 700, color: '#10b981' }}><CheckCircle size={12} /> Rentable</span>
                     ) : g.marge >= SEUILS.margeLimite ? (
-                      <span style={{ fontSize: 11, fontWeight: 700, color: '#f59e0b' }}>⚠️ Limite</span>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 700, color: '#f59e0b' }}><AlertTriangle size={12} /> Limite</span>
                     ) : g.marge !== null ? (
-                      <span style={{ fontSize: 11, fontWeight: 700, color: '#ef4444' }}>🔴 Non rentable</span>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 700, color: '#ef4444' }}><TrendingDown size={12} /> Non rentable</span>
                     ) : <span style={{ color: 'var(--text-muted)' }}>—</span>}
                   </td>
                 </tr>
@@ -246,13 +246,13 @@ export default function BenchmarkMarche({ chantiers = [], devis = [], parametres
         <div style={{ marginTop: 16, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           {donneesActives[0]?.marge !== null && (
             <div style={{ padding: '14px 16px', background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 12, fontSize: 12 }}>
-              <div style={{ fontWeight: 700, color: '#15803d', marginBottom: 4 }}>💡 Type le plus rentable</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 700, color: '#15803d', marginBottom: 4 }}><Lightbulb size={13} /> Type le plus rentable</div>
               <div style={{ color: '#166534' }}><strong>{donneesActives[0].nom}</strong> — marge de {Math.round(donneesActives[0].marge * 10) / 10}% sur {donneesActives[0].nbChantiers} chantier{donneesActives[0].nbChantiers > 1 ? 's' : ''}. Priorisez ce type de contrat.</div>
             </div>
           )}
           {donneesActives[donneesActives.length - 1]?.marge !== null && donneesActives[donneesActives.length - 1].marge < SEUILS.margeRentable && (
             <div style={{ padding: '14px 16px', background: '#fffbeb', border: '1px solid #fcd34d', borderRadius: 12, fontSize: 12 }}>
-              <div style={{ fontWeight: 700, color: '#92400e', marginBottom: 4 }}>📉 Type à améliorer</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 700, color: '#92400e', marginBottom: 4 }}><TrendingDown size={13} /> Type à améliorer</div>
               <div style={{ color: '#78350f' }}><strong>{donneesActives[donneesActives.length - 1].nom}</strong> — marge de {Math.round(donneesActives[donneesActives.length - 1].marge * 10) / 10}%. Revoir le pricing ou réduire les coûts sur ces chantiers.</div>
             </div>
           )}

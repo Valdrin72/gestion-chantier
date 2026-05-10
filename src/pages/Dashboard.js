@@ -803,9 +803,6 @@ function Dashboard() {
                       onMouseEnter={e => { e.currentTarget.style.borderColor = '#3b82f6'; e.currentTarget.style.boxShadow = '0 2px 12px rgba(59,130,246,0.1)'; }}
                       onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--dash-border)'; e.currentTarget.style.boxShadow = 'none'; }}
                     >
-                      {/* Vignette */}
-                      <div style={{ width: 56, minWidth: 56, alignSelf: 'stretch', background: couleurBarre === '#10B981' ? 'linear-gradient(160deg,#0f4c35,#1a6b4a)' : couleurBarre === '#F59E0B' ? 'linear-gradient(160deg,#78350f,#b45309)' : couleurBarre === '#EF4444' ? 'linear-gradient(160deg,#7f1d1d,#b91c1c)' : 'linear-gradient(160deg,#1e293b,#334155)', flexShrink: 0 }} />
-
                       {/* Contenu */}
                       <div style={{ flex: 1, padding: '14px 16px', minWidth: 0, display: 'flex', alignItems: 'center', gap: 16 }}>
                         {/* Nom + badge */}

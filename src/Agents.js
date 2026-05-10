@@ -164,6 +164,12 @@ const AGENTS_META = [
     details: ['Durée moyenne réelle par type', 'Ratio durée réelle / prévue', 'Alerte si dépassement systématique > 15%'],
     frequence: 'Toutes les heures', apprentissage: true,
   },
+  {
+    id: 'SentinelAgent', tier: 3, nom: 'Sentinel', Icon: Shield, couleur: '#dc2626',
+    description: 'Court en dernier — valide les schémas, détecte les NaN propagés et les dépendances rompues entre agents',
+    details: ['SchemaGuard : vérifie chaque sortie d\'agent contre son contrat', 'Détection NaN dans agentContext', 'Alerte si agent critique silencieux'],
+    frequence: 'Toutes les heures', apprentissage: false,
+  },
 ];
 
 const TIER_META = {
@@ -202,7 +208,7 @@ export default function Agents({
 
   const nbActifs = Object.values(agentsActifs || {}).filter(Boolean).length;
   const alertesNonLues = alertes.filter(a => !a.lu);
-  const agentsMeta20 = AGENTS_META; // 20 agents
+  const sentinelData = agentData?.SentinelAgent || null;
 
   return (
     <div>
@@ -214,7 +220,7 @@ export default function Agents({
             Agents IA — Système Multi-Agents
           </div>
           <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: '4px 0 0' }}>
-            {nbActifs}/{agentsMeta20.length} agents actifs · 3 tiers · apprentissage continu · {dernierRun ? `Dernière exécution ${fmtDiff(dernierRun)}` : 'Jamais exécuté'}
+            {nbActifs}/{AGENTS_META.length} agents actifs · 3 tiers · apprentissage continu · {dernierRun ? `Dernière exécution ${fmtDiff(dernierRun)}` : 'Jamais exécuté'}
           </p>
         </div>
         <button onClick={() => forcerExecution()} disabled={running}
@@ -228,7 +234,7 @@ export default function Agents({
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24 }}>
         {[
           { label: 'SCORE ENTREPRISE', val: scoreGlobal !== null ? `${scoreGlobal}/100` : '—', gradient: scoreGlobal >= 80 ? 'linear-gradient(135deg,#065F46,#10B981)' : scoreGlobal >= 60 ? 'linear-gradient(135deg,#92400E,#F59E0B)' : 'linear-gradient(135deg,#991B1B,#EF4444)', glow: 'rgba(16,185,129,0.32)', badge: scoreGlobal >= 80 ? 'Bonne santé' : scoreGlobal >= 60 ? 'À surveiller' : 'Attention requise' },
-          { label: 'AGENTS ACTIFS', val: `${nbActifs}/20`, gradient: 'linear-gradient(135deg,#1E40AF,#3B82F6)', glow: 'rgba(59,130,246,0.32)' },
+          { label: 'AGENTS ACTIFS', val: `${nbActifs}/${AGENTS_META.length}`, gradient: 'linear-gradient(135deg,#1E40AF,#3B82F6)', glow: 'rgba(59,130,246,0.32)' },
           { label: 'ALERTES ACTIVES', val: alertesNonLues.length, gradient: alertesNonLues.length > 0 ? 'linear-gradient(135deg,#991B1B,#EF4444)' : 'linear-gradient(135deg,#065F46,#10B981)', glow: 'rgba(239,68,68,0.32)', badge: alertesNonLues.length > 0 ? `${alertesNonLues.length} non lues` : 'Tout lu' },
           { label: 'MÉMOIRE ACCUMULÉE', val: `${Object.keys(memoire).length} agents`, gradient: 'linear-gradient(135deg,#4C1D95,#8B5CF6)', glow: 'rgba(139,92,246,0.32)', badge: 'Données persistées' },
         ].map(k => (
@@ -240,6 +246,40 @@ export default function Agents({
           </div>
         ))}
       </div>
+
+      {/* ── SENTINEL SANTÉ SYSTÈME ── */}
+      {sentinelData && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 14, marginBottom: 20,
+          padding: '14px 18px', borderRadius: 12,
+          background: sentinelData.healthy ? 'linear-gradient(135deg,#f0fdf4,#dcfce7)' : 'linear-gradient(135deg,#fffbeb,#fef3c7)',
+          border: `1px solid ${sentinelData.healthy ? '#86efac' : '#fcd34d'}`,
+        }}>
+          <div style={{
+            width: 44, height: 44, borderRadius: '50%', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
+            background: sentinelData.healthy ? '#dcfce7' : '#fef3c7',
+            border: `2px solid ${sentinelData.healthy ? '#4ade80' : '#f59e0b'}`,
+          }}>
+            {sentinelData.healthy
+              ? <CheckCircle size={20} color="#15803d" />
+              : <AlertTriangle size={20} color="#d97706" />}
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontWeight: 800, fontSize: 13, color: sentinelData.healthy ? '#14532d' : '#92400e' }}>
+              Santé système — {sentinelData.healthy ? 'Tous les agents fonctionnent normalement' : `${sentinelData.anomalies?.length || 0} anomalie(s) détectée(s)`}
+            </div>
+            <div style={{ fontSize: 12, color: sentinelData.healthy ? '#15803d' : '#b45309', marginTop: 3 }}>
+              {sentinelData.healthy
+                ? `Schémas validés · aucun NaN · dépendances intactes · score ${sentinelData.score}/100`
+                : sentinelData.anomalies?.[0] || 'Voir les alertes Sentinel dans l\'onglet Alertes'}
+            </div>
+          </div>
+          <div style={{ textAlign: 'right', flexShrink: 0 }}>
+            <div style={{ fontSize: 28, fontWeight: 900, color: sentinelData.healthy ? '#15803d' : '#d97706', lineHeight: 1 }}>{sentinelData.score}</div>
+            <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 700 }}>SANTÉ /100</div>
+          </div>
+        </div>
+      )}
 
       {/* ── ONGLETS ── */}
       <div style={{ display: 'flex', gap: 2, background: 'var(--bg-glass-2)', border: '1px solid var(--border)', borderRadius: 10, padding: 3, marginBottom: 24, width: 'fit-content', flexWrap: 'wrap' }}>

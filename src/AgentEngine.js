@@ -1467,6 +1467,134 @@ export function runCoachDirecteur({ chantiers, devis, factures, parametres, agen
 }
 
 // ═══════════════════════════════════════════════════════════════
+// SCHEMA GUARD — Contrat de sortie de chaque agent
+// Utilisé pour valider agentContext avant propagation
+// ═══════════════════════════════════════════════════════════════
+
+const AGENT_SCHEMAS = {
+  TresoreriePredictor:    { solde30: 'number', solde60: 'number', solde90: 'number', totalEnAttente: 'number' },
+  RelancePaiements:       { montant30: 'number', montant60: 'number', montant90: 'number', nb30: 'number', nb60: 'number', nb90: 'number', dsoParClient: 'object' },
+  SanteClient:            { statsClients: 'array', topClients: 'array' },
+  AnomaliesDonnees:       { anomalies: 'array', score: 'number', nbAnomalies: 'number' },
+  OptimisationFacturation:{ opportunites: 'array', totalFacturable: 'number' },
+  ProductiviteEquipe:     { statsParEmploye: 'object', nbEmployes: 'number' },
+  ApprentissageMarge:     { predictions: 'array' },
+  RadarPrecoce:           { risques: 'array' },
+  DerivePredictor:        { resultats: 'array' },
+  ProjectionAnnuelle:     { caRealise: 'number', caProjecte: 'number', moisRestants: 'number' },
+  ConflitsPlanning:       { conflits: 'array' },
+  CoachDirecteur:         { priorites: 'array', scoreGlobal: 'number' },
+  DSOAnalyse:             { dsoMoyen: 'number', tendance: 'number' },
+  BenchmarkTypeTravaux:   { benchmark: 'array' },
+  PipelineCommercial:     { enPipeline: 'number', caPipeline: 'number' },
+  AlerteRisqueClient:     { clientsRisque: 'array' },
+  OptimisationEquipe:     { suggestions: 'array', sousUtilises: 'array' },
+  ScoreOffre:             { scoresOffres: 'array' },
+  AnalyseCycles:          { cycles: 'array', nbTermines: 'number' },
+};
+
+function validateAgentOutput(name, data) {
+  const schema = AGENT_SCHEMAS[name];
+  if (!schema || !data) return [];
+  return Object.entries(schema).reduce((acc, [key, expectedType]) => {
+    const val = data[key];
+    if (val === undefined) {
+      acc.push({ agent: name, champ: key, attendu: expectedType, recu: 'undefined' });
+    } else if (val === null) {
+      if (!expectedType.includes('null')) acc.push({ agent: name, champ: key, attendu: expectedType, recu: 'null' });
+    } else {
+      const actual = Array.isArray(val) ? 'array' : typeof val;
+      if (typeof val === 'number' && isNaN(val)) acc.push({ agent: name, champ: key, attendu: expectedType, recu: 'NaN' });
+      else if (!expectedType.includes(actual)) acc.push({ agent: name, champ: key, attendu: expectedType, recu: actual });
+    }
+    return acc;
+  }, []);
+}
+
+// ─── T3-FIN : SentinelAgent ───────────────────────────────────
+// Court en dernier — scanne tout l'agentContext pour détecter :
+//   1. Violations de schéma (champs manquants/mauvais type)
+//   2. Valeurs NaN propagées dans les données
+//   3. Agents critiques silencieux (crash sans alerte)
+//   4. Dépendances rompues entre agents
+export function runSentinelAgent({ agentContext, violations = [], agentsStatuts = {} }) {
+  try {
+    const anomalies = [];
+    const alertes = [];
+
+    // 1. Violations de schéma accumulées par runAgent
+    violations.forEach(v => {
+      anomalies.push(`${v.agent}.${v.champ} attendu ${v.attendu} — reçu ${v.recu}`);
+    });
+
+    // 2. NaN propagés dans les données produites
+    Object.entries(agentContext || {}).forEach(([agentName, data]) => {
+      if (!data || typeof data !== 'object') return;
+      Object.entries(data).forEach(([key, val]) => {
+        if (typeof val === 'number' && isNaN(val)) {
+          anomalies.push(`${agentName}.${key} contient NaN — calcul corrompu`);
+        }
+      });
+    });
+
+    // 3. Agents critiques qui ont tourné mais rendu données vides
+    const agentsCritiques = [
+      { name: 'TresoreriePredictor', champ: 'solde30' },
+      { name: 'RadarPrecoce',        champ: 'risques' },
+      { name: 'DerivePredictor',     champ: 'resultats' },
+      { name: 'CoachDirecteur',      champ: 'scoreGlobal' },
+      { name: 'RelancePaiements',    champ: 'montant30' },
+      { name: 'SanteClient',         champ: 'statsClients' },
+    ];
+    agentsCritiques.forEach(({ name, champ }) => {
+      const data = agentContext[name];
+      if (agentsStatuts[name]?.actif && (!data || data[champ] === undefined)) {
+        anomalies.push(`${name} a tourné mais ${champ} est absent — vérifier la fonction`);
+      }
+    });
+
+    // 4. Dépendances inter-agents critiques
+    const deps = [
+      { consumer: 'ApprentissageMarge', needs: 'MemoireChantier' },
+      { consumer: 'DerivePredictor',    needs: 'MemoireChantier' },
+      { consumer: 'RadarPrecoce',       needs: 'ApprentissageMarge' },
+      { consumer: 'DSOAnalyse',         needs: 'RelancePaiements' },
+      { consumer: 'AlerteRisqueClient', needs: 'SanteClient' },
+      { consumer: 'OptimisationEquipe', needs: 'ProductiviteEquipe' },
+    ];
+    deps.forEach(({ consumer, needs }) => {
+      const consumerRan = agentsStatuts[consumer]?.actif;
+      const providerEmpty = !agentContext[needs] || Object.keys(agentContext[needs]).length === 0;
+      if (consumerRan && providerEmpty) {
+        anomalies.push(`${consumer} dépend de ${needs} mais ses données sont vides`);
+      }
+    });
+
+    if (anomalies.length > 0) {
+      const niveauSchema  = violations.length > 0;
+      const niveauNaN     = anomalies.some(a => a.includes('NaN'));
+      alertes.push({
+        id: uid('sn-sante'), agent: 'SentinelAgent', type: 'integrite',
+        niveau: (niveauSchema || niveauNaN) ? 'ATTENTION' : 'INFO',
+        message: `Santé système : ${anomalies.length} anomalie(s) interne(s) détectée(s)`,
+        detail: anomalies[0],
+        timestamp: Date.now(), lu: false, action: { page: 'agents', ctx: {} },
+      });
+    }
+
+    return {
+      alertes,
+      data: {
+        anomalies, nbViolations: violations.length,
+        nbNaN: anomalies.filter(a => a.includes('NaN')).length,
+        healthy: anomalies.length === 0,
+        score: Math.max(0, 100 - anomalies.length * 20),
+      },
+    };
+  } catch (e) { return { alertes: [], data: { anomalies: [], healthy: true, score: 100 } }; }
+}
+
+// ═══════════════════════════════════════════════════════════════
 // ORCHESTRATEUR — 3 tiers, communication inter-agents
 // ═══════════════════════════════════════════════════════════════
 export function runAllAgents({ chantiers, devis, factures, clients, parametres, dernierRapport, agentsActifs, memoire = {} }) {
@@ -1479,6 +1607,7 @@ export function runAllAgents({ chantiers, devis, factures, clients, parametres, 
   };
 
   const agentContext = {}; // Accumule les résultats pour les agents suivants
+  const schemaViolations = []; // Violations collectées pour SentinelAgent
 
   const runAgent = (name, fn) => {
     if (!isEnabled(name)) {
@@ -1492,8 +1621,14 @@ export function runAllAgents({ chantiers, devis, factures, clients, parametres, 
       result.statuts[name] = { actif: true, lastRun: Date.now(), dureeMs: Date.now() - start, erreur: null };
       if (res?.alertes) result.alertes.push(...res.alertes);
       if (res?.data) {
+        // SchemaGuard : valide la sortie avant de la mettre dans agentContext
+        const violations = validateAgentOutput(name, res.data);
+        if (violations.length > 0) {
+          violations.forEach(v => console.warn(`[SCHEMA-GUARD] ${v.agent}.${v.champ} attendu ${v.attendu} — reçu ${v.recu}`));
+          schemaViolations.push(...violations);
+        }
         result.agentData[name] = res.data;
-        agentContext[name] = res.data; // Disponible pour les agents suivants
+        agentContext[name] = res.data;
       }
       if (res?.memoire) result.memoire[name] = { ...(result.memoire[name] || {}), ...res.memoire };
       return res;
@@ -1541,6 +1676,9 @@ export function runAllAgents({ chantiers, devis, factures, clients, parametres, 
   runAgent('RapportNaturel',   (m) => runRapportNaturel({ chantiers, factures, agentContext, memoire: m }));
   runAgent('CoachDirecteur',  (m) => runCoachDirecteur({ chantiers, devis, factures, parametres, agentContext, memoire: m }));
 
-  console.log(`[ORCHESTRATEUR] ${result.alertes.length} alerte(s) · ${Object.keys(result.statuts).length} agents exécutés`);
+  // ── SENTINEL (toujours le dernier — scanne tout) ──
+  runAgent('SentinelAgent', () => runSentinelAgent({ agentContext, violations: schemaViolations, agentsStatuts: result.statuts }));
+
+  console.log(`[ORCHESTRATEUR] ${result.alertes.length} alerte(s) · ${Object.keys(result.statuts).length} agents exécutés · ${schemaViolations.length} violation(s) schéma`);
   return result;
 }

@@ -30,6 +30,8 @@ const AGENTS_PAR_DEFAUT = {
   // Nouveaux agents
   PipelineCommercial: true, AlerteRisqueClient: true,
   OptimisationEquipe: true, ScoreOffre: true,
+  // Surveillance système
+  SentinelAgent: true,
 };
 
 function loadState() {

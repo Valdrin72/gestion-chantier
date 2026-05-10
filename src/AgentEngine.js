@@ -1126,6 +1126,273 @@ export function runRapportNaturel({ chantiers, factures, agentContext, memoire =
   } catch (e) { return { alertes: [], data: { paras: [], texte: '' }, memoire }; }
 }
 
+// ─── T2-A22 : PipelineCommercial ─────────────────────────────
+export function runPipelineCommercial({ devis, chantiers, clients, agentContext, memoire = {} }) {
+  try {
+    const maintenant = Date.now();
+    const ONE_DAY = 86400000;
+
+    const enPipeline = (devis || []).filter(d => {
+      const s = (d.statut || '').toLowerCase();
+      return ['en attente', 'envoyé', 'envoyee', 'en cours', 'en negociation', 'en négociation'].includes(s);
+    });
+
+    const total = (devis || []).filter(d => d.statut && !['brouillon', 'draft'].includes((d.statut || '').toLowerCase())).length;
+    const acceptes = (devis || []).filter(d => ['accepté', 'accepte', 'signé', 'signe'].includes((d.statut || '').toLowerCase())).length;
+    const tauxConversion = total > 0 ? Math.round((acceptes / total) * 100) : null;
+
+    const caPipeline = enPipeline.reduce((s, d) => s + (parseFloat(d.montantHT || d.prixPropose) || 0), 0);
+
+    const enRetard = enPipeline.filter(d => {
+      if (!d.dateEmission) return false;
+      const jours = Math.floor((maintenant - new Date(d.dateEmission).getTime()) / ONE_DAY);
+      return jours > 15;
+    });
+
+    const alertes = [];
+
+    if (enPipeline.length === 0 && chantiers.filter(c => isChantierActif(c)).length < 2) {
+      alertes.push({
+        id: uid('pc-vide'), agent: 'PipelineCommercial', type: 'commercial', niveau: 'ATTENTION',
+        message: 'Pipeline commercial vide — aucun devis en cours de négociation',
+        detail: 'Risque de trou d\'activité dans 2–3 mois. Intensifier la prospection.',
+        timestamp: Date.now(), lu: false, action: { page: 'devis', ctx: {} },
+      });
+    }
+
+    if (enRetard.length > 0) {
+      alertes.push({
+        id: uid('pc-retard'), agent: 'PipelineCommercial', type: 'commercial', niveau: 'INFO',
+        message: `${enRetard.length} devis sans réponse depuis plus de 15 jours`,
+        detail: `CHF ${fmtN(Math.round(enRetard.reduce((s, d) => s + (parseFloat(d.montantHT || d.prixPropose) || 0), 0)))} en attente — relancer les prospects`,
+        timestamp: Date.now(), lu: false, action: { page: 'devis', ctx: {} },
+      });
+    }
+
+    if (tauxConversion !== null && tauxConversion < 40 && total > 3) {
+      alertes.push({
+        id: uid('pc-conv'), agent: 'PipelineCommercial', type: 'commercial', niveau: 'ATTENTION',
+        message: `Taux de conversion faible : ${tauxConversion}% (objectif ≥ 50%)`,
+        detail: `${acceptes} devis acceptés sur ${total} émis — revoir la stratégie de prix ou de présentation`,
+        timestamp: Date.now(), lu: false, action: { page: 'devis', ctx: {} },
+      });
+    }
+
+    const hist = memoire.historique || [];
+    hist.unshift({ date: new Date().toISOString().split('T')[0], caPipeline: Math.round(caPipeline), tauxConversion, nbEnPipeline: enPipeline.length, timestamp: Date.now() });
+
+    return {
+      alertes,
+      data: { enPipeline: enPipeline.length, caPipeline: Math.round(caPipeline), tauxConversion, enRetard: enRetard.length, historique: hist.slice(0, 12) },
+      memoire: { historique: hist.slice(0, 52) },
+    };
+  } catch (e) { return { alertes: [], data: {}, memoire }; }
+}
+
+// ─── T2-A23 : AlerteRisqueClient ──────────────────────────────
+export function runAlerteRisqueClient({ chantiers, clients, factures, agentContext }) {
+  try {
+    const santesClients = agentContext?.SanteClient?.clients || [];
+    const clientsRisque = [];
+    const alertes = [];
+
+    (clients || []).forEach(client => {
+      const chantiersClient = chantiers.filter(c => String(c.clientId) === String(client.id) && isChantierActif(c));
+      if (chantiersClient.length === 0) return;
+
+      const sante = santesClients.find(s => String(s.clientId) === String(client.id));
+      const impayees = (factures || []).filter(f =>
+        String(f.clientId) === String(client.id) &&
+        ['en attente', 'impayée', 'impayee'].includes((f.statut || '').toLowerCase())
+      );
+      const montantImpaye = impayees.reduce((s, f) => s + (parseFloat(f.montantHT) || 0), 0);
+
+      let scoreRisque = 0;
+      const facteurs = [];
+
+      if (sante?.dso > 60) { scoreRisque += 30; facteurs.push(`DSO ${sante.dso}j`); }
+      else if (sante?.dso > 45) { scoreRisque += 15; facteurs.push(`DSO ${sante.dso}j`); }
+
+      if (montantImpaye > 20000) { scoreRisque += 35; facteurs.push(`CHF ${fmtN(Math.round(montantImpaye))} impayés`); }
+      else if (montantImpaye > 5000) { scoreRisque += 20; facteurs.push(`CHF ${fmtN(Math.round(montantImpaye))} impayés`); }
+
+      if (sante?.score < 40) { scoreRisque += 20; facteurs.push(`score fidélité ${sante.score}/100`); }
+      if (impayees.length >= 2) { scoreRisque += 15; facteurs.push(`${impayees.length} factures impayées`); }
+
+      if (scoreRisque >= 30) {
+        const niveau = scoreRisque >= 60 ? 'DANGER' : 'ATTENTION';
+        clientsRisque.push({ clientId: client.id, nom: client.nom, scoreRisque, facteurs, niveau, chantiersActifs: chantiersClient.length });
+        alertes.push({
+          id: uid('arc-risque'), agent: 'AlerteRisqueClient', type: 'risque-client', niveau,
+          message: `Client "${client.nom}" — score de risque ${scoreRisque}/100`,
+          detail: `${facteurs.join(' · ')} · ${chantiersClient.length} chantier(s) actif(s)`,
+          timestamp: Date.now(), lu: false, action: { page: 'chantiers', ctx: {} },
+        });
+      }
+    });
+
+    clientsRisque.sort((a, b) => b.scoreRisque - a.scoreRisque);
+    return { alertes, data: { clientsRisque } };
+  } catch (e) { return { alertes: [], data: {} }; }
+}
+
+// ─── T2-A24 : OptimisationEquipe ──────────────────────────────
+export function runOptimisationEquipe({ chantiers, parametres, agentContext }) {
+  try {
+    const employes = (parametres?.employes || []).filter(e => e.actif !== false);
+    const statsEmployes = agentContext?.ProductiviteEquipe?.statsParEmploye || {};
+    const conflits = agentContext?.ConflitsPlanning?.conflits || [];
+
+    const sousUtilises = employes.filter(emp => {
+      const stat = statsEmployes[String(emp.id)];
+      return stat && stat.heuresMoyParJour < 4 && stat.joursActifs > 3;
+    });
+
+    const chantiersActifs = chantiers.filter(isChantierActif);
+    const chantiersManquants = chantiersActifs.filter(c => {
+      const dernierJournal = (c.journal || []).slice(-5);
+      const employesRecents = new Set();
+      dernierJournal.forEach(e => (e.employes || []).forEach(ej => employesRecents.add(ej.employeId)));
+      return employesRecents.size === 0;
+    });
+
+    const suggestions = [];
+    if (sousUtilises.length > 0 && chantiersManquants.length > 0) {
+      const nbSugg = Math.min(3, Math.min(sousUtilises.length, chantiersManquants.length));
+      for (let i = 0; i < nbSugg; i++) {
+        suggestions.push({
+          employeId: sousUtilises[i].id, employeNom: sousUtilises[i].nom,
+          chantierId: chantiersManquants[i].id, chantierNom: chantiersManquants[i].nom || chantiersManquants[i].numero,
+          raison: `${sousUtilises[i].nom} disponible — ${chantiersManquants[i].nom || chantiersManquants[i].numero} sans ressource récente`,
+        });
+      }
+    }
+
+    const alertes = [];
+    if (conflits.length > 2) {
+      alertes.push({
+        id: uid('oe-conflits'), agent: 'OptimisationEquipe', type: 'planification', niveau: 'ATTENTION',
+        message: `${conflits.length} conflits d'équipe détectés — réaffectation recommandée`,
+        detail: suggestions.length > 0 ? `Suggestion : ${suggestions[0].raison}` : 'Revoir la répartition des équipes',
+        timestamp: Date.now(), lu: false, action: { page: 'planning', ctx: {} },
+      });
+    }
+    if (chantiersManquants.length > 0 && sousUtilises.length === 0 && employes.length > 0) {
+      alertes.push({
+        id: uid('oe-manque'), agent: 'OptimisationEquipe', type: 'planification', niveau: 'INFO',
+        message: `${chantiersManquants.length} chantier(s) sans saisie d'heures récente`,
+        detail: 'Vérifier que le journal des heures est bien tenu à jour',
+        timestamp: Date.now(), lu: false, action: { page: 'heures', ctx: {} },
+      });
+    }
+
+    return { alertes, data: { suggestions, sousUtilises: sousUtilises.map(e => e.nom), chantiersManquants: chantiersManquants.map(c => c.nom || c.numero) } };
+  } catch (e) { return { alertes: [], data: {} }; }
+}
+
+// ─── T2-A25 : ScoreOffre ──────────────────────────────────────
+export function runScoreOffre({ devis, chantiers, parametres, agentContext }) {
+  try {
+    const memPatterns = agentContext?.MemoireChantier || {};
+    const benchmark = agentContext?.BenchmarkTypeTravaux?.benchmark || [];
+
+    const devisEnCours = (devis || []).filter(d => {
+      const s = (d.statut || '').toLowerCase();
+      return ['en attente', 'envoyé', 'envoyee', 'brouillon', 'draft'].includes(s);
+    });
+
+    const scoresOffres = devisEnCours.map(d => {
+      let score = 50;
+      const facteurs = [];
+      const montant = parseFloat(d.montantHT || d.prixPropose) || 0;
+      const type = (d.typesTravaux || [])[0] || d.typeChantier || null;
+
+      if (type) {
+        const pattern = memPatterns[type];
+        const bench = benchmark.find(b => b.nom === type);
+        if (pattern && pattern.count >= 2) {
+          if (pattern.margeMoyenne >= 20) { score += 20; facteurs.push(`Type rentable historiquement (${Math.round(pattern.margeMoyenne)}%)`); }
+          else if (pattern.margeMoyenne >= 15) { score += 10; facteurs.push(`Marge historique correcte (${Math.round(pattern.margeMoyenne)}%)`); }
+          else if (pattern.margeMoyenne < 10) { score -= 20; facteurs.push(`Type peu rentable (${Math.round(pattern.margeMoyenne)}%)`); }
+        }
+        if (bench && bench.marge !== null) {
+          if (bench.marge >= 20) { score += 10; facteurs.push('Type en bonne forme actuellement'); }
+          else if (bench.marge < 10) { score -= 10; facteurs.push('Type sous-performant actuellement'); }
+        }
+        if (pattern?.ecartMoyen > 15) { score -= 15; facteurs.push(`Dépassements fréquents sur ce type (+${Math.round(pattern.ecartMoyen)}%)`); }
+      }
+
+      if (montant > 100000) { score += 10; facteurs.push('Grand chantier — économies d\'échelle possibles'); }
+      else if (montant < 5000) { score -= 10; facteurs.push('Petit chantier — frais fixes proportionnellement élevés'); }
+
+      score = Math.min(100, Math.max(0, score));
+      const niveau = score >= 75 ? 'fort' : score >= 50 ? 'moyen' : 'faible';
+      return { devisId: d.id, reference: d.reference || d.numero || `Devis #${d.id}`, montant, type, score, niveau, facteurs };
+    });
+
+    const alertes = [];
+    scoresOffres.filter(o => o.niveau === 'faible' && o.montant > 10000).forEach(o => {
+      alertes.push({
+        id: uid('so-risque'), agent: 'ScoreOffre', type: 'commercial', niveau: 'ATTENTION',
+        message: `Devis "${o.reference}" — score rentabilité faible (${o.score}/100)`,
+        detail: o.facteurs[0] || 'Vérifier la marge avant signature',
+        timestamp: Date.now(), lu: false, action: { page: 'devis', ctx: {} },
+      });
+    });
+    scoresOffres.filter(o => o.niveau === 'fort').forEach(o => {
+      alertes.push({
+        id: uid('so-top'), agent: 'ScoreOffre', type: 'commercial', niveau: 'INFO',
+        message: `Devis "${o.reference}" — offre à fort potentiel (${o.score}/100)`,
+        detail: o.facteurs[0] || 'Priorité haute pour la signature',
+        timestamp: Date.now(), lu: false, action: { page: 'devis', ctx: {} },
+      });
+    });
+
+    return { alertes, data: { scoresOffres } };
+  } catch (e) { return { alertes: [], data: {} }; }
+}
+
+// ─── T3-A26 : AnalyseCycles ───────────────────────────────────
+export function runAnalyseCycles({ chantiers, devis, agentContext, memoire = {} }) {
+  try {
+    const termines = chantiers.filter(c => ['terminé', 'termine', 'terminée', 'terminee'].includes((c.statut || '').toLowerCase()));
+    const cyclesParType = {};
+
+    termines.forEach(c => {
+      if (!c.dateDebut || !c.dateFin) return;
+      const dureeReelle = Math.max(1, Math.round((new Date(c.dateFin) - new Date(c.dateDebut)) / 86400000));
+      const dureePrevu = parseFloat(c.nombreJours) || null;
+      const type = (c.typesTravaux || [])[0] || c.typeChantier || 'Autre';
+
+      if (!cyclesParType[type]) cyclesParType[type] = { count: 0, durees: [], ratios: [] };
+      cyclesParType[type].count++;
+      cyclesParType[type].durees.push(dureeReelle);
+      if (dureePrevu && dureePrevu > 0) cyclesParType[type].ratios.push(dureeReelle / dureePrevu);
+    });
+
+    const cycles = Object.entries(cyclesParType).map(([type, data]) => {
+      const dureeAvg = Math.round(data.durees.reduce((s, v) => s + v, 0) / data.count);
+      const ratioAvg = data.ratios.length > 0 ? Math.round((data.ratios.reduce((s, v) => s + v, 0) / data.ratios.length) * 100) / 100 : null;
+      return { type, count: data.count, dureeAvg, ratioAvg, depasse: ratioAvg !== null && ratioAvg > 1.15 };
+    }).sort((a, b) => b.count - a.count);
+
+    const alertes = [];
+    cycles.filter(c => c.depasse && c.count >= 2).forEach(c => {
+      alertes.push({
+        id: uid('cy-cycle'), agent: 'AnalyseCycles', type: 'planification', niveau: 'INFO',
+        message: `Type "${c.type}" : durée réelle +${Math.round((c.ratioAvg - 1) * 100)}% vs prévision`,
+        detail: `Durée moyenne : ${c.dureeAvg}j · ratio ×${c.ratioAvg} sur ${c.count} chantiers terminés`,
+        timestamp: Date.now(), lu: false, action: { page: 'rapport', ctx: {} },
+      });
+    });
+
+    const hist = memoire.historique || [];
+    hist.unshift({ date: new Date().toISOString().split('T')[0], cycles, timestamp: Date.now() });
+
+    return { alertes, data: { cycles, nbTermines: termines.length }, memoire: { historique: hist.slice(0, 12) } };
+  } catch (e) { return { alertes: [], data: {}, memoire }; }
+}
+
 // ─── T3-A20 : CoachDirecteur ──────────────────────────────────
 export function runCoachDirecteur({ chantiers, devis, factures, parametres, agentContext, memoire = {} }) {
   try {
@@ -1260,12 +1527,17 @@ export function runAllAgents({ chantiers, devis, factures, clients, parametres, 
   runAgent('BenchmarkTypeTravaux', (m) => runBenchmarkTypeTravaux({ chantiers, devis, parametres, agentContext }));
   runAgent('ConformiteBTP',        (m) => runConformiteBTP({ chantiers, parametres, agentContext }));
   runAgent('DerivePredictor',      (m) => runDerivePredictor({ chantiers, devis, parametres, agentContext }));
+  runAgent('PipelineCommercial',   (m) => runPipelineCommercial({ devis, chantiers, clients, agentContext, memoire: m }));
+  runAgent('AlerteRisqueClient',   (m) => runAlerteRisqueClient({ chantiers, clients, factures, agentContext }));
+  runAgent('OptimisationEquipe',   (m) => runOptimisationEquipe({ chantiers, parametres, agentContext }));
+  runAgent('ScoreOffre',           (m) => runScoreOffre({ devis, chantiers, parametres, agentContext }));
 
   // ── TIER 3 (reçoit agentContext Tier 1 + 2) ──
   runAgent('RadarPrecoce',    (m) => runRadarPrecoce({ chantiers, devis, parametres, agentContext }));
   runAgent('DSOAnalyse',      (m) => runDSOAnalyse({ agentContext, memoire: m }));
   runAgent('Saisonnierte',    (m) => runSaisonnierte({ chantiers, devis, memoire: m }));
   runAgent('CoutMOAnalyse',   (m) => runCoutMOAnalyse({ chantiers, devis, parametres, agentContext }));
+  runAgent('AnalyseCycles',   (m) => runAnalyseCycles({ chantiers, devis, agentContext, memoire: m }));
   runAgent('RapportNaturel',   (m) => runRapportNaturel({ chantiers, factures, agentContext, memoire: m }));
   runAgent('CoachDirecteur',  (m) => runCoachDirecteur({ chantiers, devis, factures, parametres, agentContext, memoire: m }));
 

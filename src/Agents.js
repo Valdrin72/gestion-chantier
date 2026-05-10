@@ -133,6 +133,37 @@ const AGENTS_META = [
     details: ['Lit tous les agents Tier 1+2+3', 'Score entreprise 0–100', 'Top 5 actions par impact'],
     frequence: 'Toutes les heures', apprentissage: true,
   },
+  // ── NOUVEAUX AGENTS ─────────────────────────────────────────
+  {
+    id: 'PipelineCommercial', tier: 2, nom: 'Pipeline Commercial', Icon: TrendingUp, couleur: '#0284c7',
+    description: 'Suit le pipeline devis → chantier : taux de conversion, CA en attente, devis sans réponse',
+    details: ['Taux de conversion (objectif ≥ 50%)', 'Devis sans réponse > 15j', 'Alerte pipeline vide'],
+    frequence: 'Toutes les heures', apprentissage: true,
+  },
+  {
+    id: 'AlerteRisqueClient', tier: 2, nom: 'Risque Client', Icon: AlertTriangle, couleur: '#dc2626',
+    description: 'Croise SanteClient + factures impayées pour scorer le risque de chaque client actif',
+    details: ['DSO élevé + factures impayées → score risque', 'Alerte si client à risque avec chantier en cours', 'Score 0–100 par client'],
+    frequence: 'Toutes les heures', apprentissage: false,
+  },
+  {
+    id: 'OptimisationEquipe', tier: 2, nom: 'Optimisation Équipe', Icon: Users, couleur: '#7c3aed',
+    description: 'Détecte les déséquilibres de charge et suggère des réaffectations d\'employés',
+    details: ['Employés sous-utilisés (< 4h/jour)', 'Chantiers sans saisie récente', 'Suggestions d\'affectation'],
+    frequence: 'Toutes les heures', apprentissage: false,
+  },
+  {
+    id: 'ScoreOffre', tier: 2, nom: 'Score Offre', Icon: Target, couleur: '#059669',
+    description: 'Calcule un score de rentabilité prédictive pour chaque devis en cours, basé sur l\'historique',
+    details: ['Score 0–100 par devis', 'Basé sur marges historiques par type', 'Alerte si offre à faible potentiel'],
+    frequence: 'Toutes les heures', apprentissage: false,
+  },
+  {
+    id: 'AnalyseCycles', tier: 3, nom: 'Analyse Cycles', Icon: Activity, couleur: '#0891b2',
+    description: 'Analyse les durées réelles vs prévues par type de chantier pour améliorer les devis futurs',
+    details: ['Durée moyenne réelle par type', 'Ratio durée réelle / prévue', 'Alerte si dépassement systématique > 15%'],
+    frequence: 'Toutes les heures', apprentissage: true,
+  },
 ];
 
 const TIER_META = {

@@ -26,6 +26,10 @@ const AGENTS_PAR_DEFAUT = {
   // Tier 3
   RadarPrecoce: true, DSOAnalyse: true, Saisonnierte: true,
   CoutMOAnalyse: true, RapportNaturel: true, CoachDirecteur: true,
+  AnalyseCycles: true,
+  // Nouveaux agents
+  PipelineCommercial: true, AlerteRisqueClient: true,
+  OptimisationEquipe: true, ScoreOffre: true,
 };
 
 function loadState() {

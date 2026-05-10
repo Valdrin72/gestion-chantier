@@ -98,6 +98,21 @@
   /* Glass surface tokens — dark mode par défaut */
   --surface-glass:        rgba(255,255,255,0.03);
   --surface-glass-hover:  rgba(255,255,255,0.06);
+
+  /* ── Grilles responsives (modifiées au breakpoint mobile) ── */
+  --g4:       repeat(4, 1fr);
+  --g3:       repeat(3, 1fr);
+  --g2:       1fr 1fr;
+  --g-dash:   1.25fr 1fr 0.75fr;
+  --g-params: 260px 1fr;
+  --g-form3:  1fr 1fr 1fr;
+  --g-form2:  1fr 1fr;
+  --g-devis:  1fr 2fr 1fr 1fr;
+  --g-emp:    1fr 1fr 1fr 1fr 1fr auto;
+  --g6:       repeat(6, 1fr);
+  --g-2a:     1fr 1fr auto;
+  --g-3a:     1fr 1fr 1fr auto;
+  --g-line:   2fr 1fr 1fr auto;
   --border-glass:         rgba(255,255,255,0.06);
   --border-glass-strong:  rgba(255,255,255,0.1);
   --divider:              rgba(255,255,255,0.06);
@@ -942,6 +957,23 @@ label { font-weight: 500; font-size: 12px; color: var(--text-secondary); }
 }
 
 @media (max-width: 767px) {
+  /* Grilles responsives */
+  :root {
+    --g4:       repeat(2, 1fr);
+    --g3:       1fr 1fr;
+    --g2:       1fr 1fr;
+    --g-dash:   1fr;
+    --g-params: 1fr;
+    --g-form3:  1fr 1fr;
+    --g-form2:  1fr;
+    --g-devis:  1fr 1fr;
+    --g-emp:    1fr 1fr;
+    --g6:       repeat(3, 1fr);
+    --g-2a:     1fr auto;
+    --g-3a:     1fr 1fr;
+    --g-line:   1fr 1fr;
+  }
+
   .app-main {
     padding: 16px 14px;
     padding-bottom: calc(68px + env(safe-area-inset-bottom, 8px));
@@ -952,6 +984,14 @@ label { font-weight: 500; font-size: 12px; color: var(--text-secondary); }
     gap: 8px;
   }
   .topbar-title { font-size: 15px; }
+
+  /* Tables horizontalement scrollables */
+  .main-area { -webkit-overflow-scrolling: touch; }
+  table { min-width: 500px; }
+  .ds-table-wrap, [style*="overflowX"] { -webkit-overflow-scrolling: touch; }
+
+  /* Modals : plein écran sur mobile */
+  .modal-content { max-height: 90vh !important; width: calc(100vw - 20px) !important; margin: 0 10px !important; }
 }
 
 /* ============================================================

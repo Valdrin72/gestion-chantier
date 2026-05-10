@@ -131,7 +131,7 @@ function Devis() {
           { label: 'DÉLAI MOYEN',         val: delaisMoyen !== null ? `${delaisMoyen}j` : '—', sous: 'depuis envoi', Icon: FileText, ...DS.kpi.purple },
         ];
         return (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 20 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'var(--g4)', gap: 16, marginBottom: 20 }}>
             {kpiItems.map(k => (
               <div key={k.label} style={{ background: k.gradient, borderRadius: 16, padding: '22px 20px', minHeight: 120, boxShadow: `0 4px 20px ${k.glow}, 0 1px 4px rgba(0,0,0,0.12)`, border: '1px solid rgba(255,255,255,0.15)', position: 'relative', overflow: 'hidden' }}>
                 <div style={{ position: 'absolute', right: -18, top: -18, width: 80, height: 80, borderRadius: '50%', background: 'rgba(255,255,255,0.1)' }} />
@@ -181,7 +181,7 @@ function Devis() {
               onApply={patch => setForm(prev => ({ ...prev, ...patch }))}
             />
           )}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr 1fr 1fr', gap: '14px', marginBottom: 20 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'var(--g-devis)', gap: '14px', marginBottom: 20 }}>
             <div><label style={labelStyle}>Numéro</label><input value={form.numero} onChange={e => setForm({ ...form, numero: e.target.value })} style={inputStyle} /></div>
             <div><label style={labelStyle}>Client</label>
               <select value={form.clientId} onChange={e => setForm({ ...form, clientId: parseInt(e.target.value) })} style={inputStyle}>
@@ -266,7 +266,7 @@ function Devis() {
               <div style={{ fontSize: 12, color: 'var(--text-muted)', fontStyle: 'italic' }}>Aucun avenant — cliquez sur "Ajouter un avenant" si des travaux supplémentaires ont été négociés.</div>
             )}
             {(form.avenants || []).map((a, i) => (
-              <div key={a.id} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr auto', gap: 8, marginBottom: 8, alignItems: 'center' }}>
+              <div key={a.id} style={{ display: 'grid', gridTemplateColumns: 'var(--g-2a)', gap: 8, marginBottom: 8, alignItems: 'center' }}>
                 <input
                   placeholder="Description (ex: Extension terrasse sud)"
                   value={a.description}
@@ -313,7 +313,7 @@ function Devis() {
               <div style={{ fontSize: 12, color: 'var(--text-muted)', fontStyle: 'italic' }}>Aucune heure en régie — cliquez sur "Ajouter une ligne" pour en saisir.</div>
             )}
             {(form.heuresRegie || []).map((r, i) => (
-              <div key={r.id} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr auto', gap: 8, marginBottom: 8, alignItems: 'center' }}>
+              <div key={r.id} style={{ display: 'grid', gridTemplateColumns: 'var(--g-line)', gap: 8, marginBottom: 8, alignItems: 'center' }}>
                 <input
                   placeholder="Description (ex: Travaux imprévus toiture)"
                   value={r.description}
@@ -522,7 +522,7 @@ function Devis() {
               </div>
 
               {/* Récap devis */}
-              <div style={{ background: 'var(--bg-glass)', border: '1px solid var(--ds-card-border)', borderRadius: 12, padding: '12px 16px', marginBottom: 20, display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+              <div style={{ background: 'var(--bg-glass)', border: '1px solid var(--ds-card-border)', borderRadius: 12, padding: '12px 16px', marginBottom: 20, display: 'grid', gridTemplateColumns: 'var(--g3)', gap: 12 }}>
                 <div>
                   <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 3 }}>Client</div>
                   <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>{client?.entreprise || client?.nom || '—'}</div>

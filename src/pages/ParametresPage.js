@@ -122,7 +122,7 @@ function Parametres({ parametres, setParametres, clients = [], setClients = () =
           </button>
         </div>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '260px 1fr', gap: 20, alignItems: 'start' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'var(--g-params)', gap: 20, alignItems: 'start' }}>
         {/* ── Sidebar nav ── */}
         <div style={{ ...DS.card, padding: 8 }}>
           {onglets.map(o => {
@@ -148,7 +148,7 @@ function Parametres({ parametres, setParametres, clients = [], setClients = () =
       {onglet === 'dashboard' && (
         <div style={carteStyle}>
           <div className="ds-card-title" style={{ marginBottom: '20px' }}>Paramètres du Dashboard</div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '15px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'var(--g-form3)', gap: '15px' }}>
             {[['Alerte jours restants', 'joursAlerte'], ['Nb chantiers affichés', 'nbChantiersAffiche'], ['Période stats (mois)', 'periodeStats']].map(([label, key]) => (
               <div key={key} style={{ background: 'var(--bg-glass-2)', border: '1px solid var(--border)', borderRadius: '12px', padding: '15px' }}>
                 <label style={labelStyle}>{label}</label>
@@ -164,7 +164,7 @@ function Parametres({ parametres, setParametres, clients = [], setClients = () =
       {onglet === 'chantiers' && (
         <div style={carteStyle}>
           <div className="ds-card-title" style={{ marginBottom: '20px' }}>Paramètres des Chantiers</div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'var(--g-form2)', gap: '20px' }}>
             <div>
               <div style={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', color: 'var(--text-muted)', marginBottom: '12px' }}>Statuts disponibles</div>
               {['À chiffrer', 'Devis envoyé', 'Validé', 'En préparation', 'Planifié', 'En cours', 'Suspendu', 'Terminé', 'Facturé', 'Clôturé'].map(s => (
@@ -187,7 +187,7 @@ function Parametres({ parametres, setParametres, clients = [], setClients = () =
       {onglet === 'devis' && (
         <div style={carteStyle}>
           <div className="ds-card-title" style={{ marginBottom: '20px' }}>Paramètres des Devis</div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '15px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'var(--g6)', gap: '15px' }}>
             {[['Marge cible (%)', 'margeCible'], ['Seuil min. (%)', 'seuilRentabiliteMin'], ['Plafond crédibilité (%)', 'plafondCredi'], ['Frais généraux (%)', 'tauxFraisGeneraux'], ['Coeff. MO', 'coefficientMainOeuvre'], ['TVA (%)', 'tauxTVA']].map(([label, key]) => (
               <div key={key} style={{ background: 'var(--bg-glass-2)', border: '1px solid var(--border)', borderRadius: '12px', padding: '15px' }}>
                 <label style={labelStyle}>{label}</label>
@@ -212,7 +212,7 @@ function Parametres({ parametres, setParametres, clients = [], setClients = () =
             </tbody>
           </table>
           <div style={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', color: 'var(--text-muted)', marginBottom: '12px', marginTop: '24px' }}>Ajouter un employé</div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr 1fr auto', gap: '10px', alignItems: 'end' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'var(--g-emp)', gap: '10px', alignItems: 'end' }}>
             {[['Nom', 'nom', 'Jean Martin'], ['CHF/jour', 'tarifJour', '350'], ['Téléphone', 'telephone', '079...'], ['Email', 'email', 'email@cyna.ch']].map(([label, key, ph]) => (
               <div key={key}><label style={labelStyle}>{label}</label>
                 <input type={key === 'tarifJour' ? 'number' : 'text'} placeholder={ph} value={nouvelEmploye[key]}
@@ -250,7 +250,7 @@ function Parametres({ parametres, setParametres, clients = [], setClients = () =
             </tbody>
           </table>
           <div style={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', color: 'var(--text-muted)', marginBottom: '12px', marginTop: '24px' }}>Ajouter une localité</div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: '10px', alignItems: 'end' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'var(--g-2a)', gap: '10px', alignItems: 'end' }}>
             <div><label style={labelStyle}>Ville</label><input placeholder="Fribourg" value={nouvelleLocalite.nom} onChange={e => setNouvelleLocalite({ ...nouvelleLocalite, nom: e.target.value })} style={inputStyle} /></div>
             <div><label style={labelStyle}>CHF/jour</label><input type="text" inputMode="numeric" placeholder="45" value={nouvelleLocalite.tarifJour ? fmtN(nouvelleLocalite.tarifJour) : ''} onChange={e => { const raw = e.target.value.replace(/'/g, '').replace(/[^0-9.]/g, ''); setNouvelleLocalite({ ...nouvelleLocalite, tarifJour: raw }); }} style={inputStyle} /></div>
             <button onClick={() => {
@@ -282,7 +282,7 @@ function Parametres({ parametres, setParametres, clients = [], setClients = () =
             </tbody>
           </table>
           <div style={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', color: 'var(--text-muted)', marginBottom: '12px', marginTop: '24px' }}>Ajouter un type</div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: '10px', alignItems: 'end' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'var(--g-3a)', gap: '10px', alignItems: 'end' }}>
             <div><label style={labelStyle}>Nom</label><input placeholder="Ex: Bardage" value={nouveauTravail.nom} onChange={e => setNouveauTravail({ ...nouveauTravail, nom: e.target.value })} style={inputStyle} /></div>
             <div><label style={labelStyle}>Unité</label>
               <select value={nouveauTravail.unite} onChange={e => setNouveauTravail({ ...nouveauTravail, unite: e.target.value })} style={inputStyle}>
@@ -330,7 +330,7 @@ function Parametres({ parametres, setParametres, clients = [], setClients = () =
       {onglet === 'paiements' && (
         <div style={carteStyle}>
           <div className="ds-card-title" style={{ marginBottom: '20px' }}>Paramètres Paiements</div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '15px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'var(--g-form3)', gap: '15px' }}>
             {[['Délai paiement (jours)', 'delaiPaiement', 30], ['Alerte retard (jours)', 'alerteRetardPaiement', 7], ['Acompte standard (%)', 'acompteStandard', 30]].map(([label, key, defaut]) => (
               <div key={key} style={{ background: 'var(--bg-glass-2)', border: '1px solid var(--border)', borderRadius: '12px', padding: '15px' }}>
                 <label style={labelStyle}>{label}</label>
@@ -346,7 +346,7 @@ function Parametres({ parametres, setParametres, clients = [], setClients = () =
       {onglet === 'rapport' && (
         <div style={carteStyle}>
           <div className="ds-card-title" style={{ marginBottom: '20px' }}>Paramètres du Rapport</div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '15px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'var(--g-form3)', gap: '15px' }}>
             {[['Seuil alerte chantier (jours)', 'joursAlerte', 5], ['Marge minimale alerte (%)', 'margeMinAlerte', 15], ['Montant retard alerte (CHF)', 'montantRetardAlerte', 1000]].map(([label, key, defaut]) => (
               <div key={key} style={{ background: 'var(--bg-glass-2)', border: '1px solid var(--border)', borderRadius: '12px', padding: '15px' }}>
                 <label style={labelStyle}>{label}</label>
@@ -369,7 +369,7 @@ function Parametres({ parametres, setParametres, clients = [], setClients = () =
 
           <div style={{ marginBottom: 22 }}>
             <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', color: 'var(--text-muted)', marginBottom: 12 }}>Seuils de marge</div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 15 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'var(--g-form2)', gap: 15 }}>
               <div style={{ background: 'var(--bg-glass-2)', border: '1px solid var(--border)', borderRadius: 12, padding: 15 }}>
                 <label style={labelStyle}>Seuil ATTENTION (%)</label>
                 <input type="number" min="0" max="100" value={agentConf.seuilMargeAttention}
@@ -389,7 +389,7 @@ function Parametres({ parametres, setParametres, clients = [], setClients = () =
 
           <div style={{ marginBottom: 22 }}>
             <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', color: 'var(--text-muted)', marginBottom: 12 }}>Seuils de retard</div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 15 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'var(--g-form2)', gap: 15 }}>
               <div style={{ background: 'var(--bg-glass-2)', border: '1px solid var(--border)', borderRadius: 12, padding: 15 }}>
                 <label style={labelStyle}>Seuil ATTENTION (jours)</label>
                 <input type="number" min="0" max="100" value={agentConf.seuilRetardAttention}
@@ -409,7 +409,7 @@ function Parametres({ parametres, setParametres, clients = [], setClients = () =
 
           <div>
             <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', color: 'var(--text-muted)', marginBottom: 12 }}>Seuils de dépassement budget</div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 15 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'var(--g-form2)', gap: 15 }}>
               <div style={{ background: 'var(--bg-glass-2)', border: '1px solid var(--border)', borderRadius: 12, padding: 15 }}>
                 <label style={labelStyle}>Seuil ATTENTION (%)</label>
                 <input type="number" min="0" max="100" value={agentConf.seuilBudgetAttention}
@@ -449,7 +449,7 @@ function Parametres({ parametres, setParametres, clients = [], setClients = () =
             </tbody>
           </table>
           <div style={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', color: 'var(--text-muted)', marginBottom: '12px', marginTop: '24px' }}>Ajouter un client</div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr 1fr auto', gap: '10px', alignItems: 'end' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'var(--g-emp)', gap: '10px', alignItems: 'end' }}>
             {[['Nom', 'nom', 'Dupont'], ['Prénom', 'prenom', 'Marc'], ['Entreprise', 'entreprise', 'Dupont SA'], ['Téléphone', 'telephone', '022...'], ['Email', 'email', 'email@...']].map(([label, key, ph]) => (
               <div key={key}><label style={labelStyle}>{label}</label>
                 <input type="text" placeholder={ph} value={nouveauClient[key]}

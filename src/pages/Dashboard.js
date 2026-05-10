@@ -714,7 +714,7 @@ function Dashboard() {
       </div>
 
       {/* ── KPI CARDS ────────────────────────────────────────── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'var(--g4)', gap: 16, marginBottom: 24 }}>
         {[
           { label: "CA en cours", Icon: DollarSign, page: 'devis',
             valeur: `CHF ${fmtN(kpi.caEnCours)}`,
@@ -795,7 +795,7 @@ function Dashboard() {
       })()}
 
       {/* ── LIGNE 2 : CHANTIERS · FINANCIER · ALERTES ────────────── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1.25fr 1fr 0.75fr', gap: 16, marginBottom: 20 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'var(--g-dash)', gap: 16, marginBottom: 20 }}>
 
         {/* ── COLONNE GAUCHE : Mes chantiers ── */}
         <div style={CARD}>
@@ -1013,7 +1013,7 @@ function Dashboard() {
       </div>
 
       {/* ── LIGNE 3 : RÉPARTITION COÛTS · AVANCEMENT · ACTIVITÉ ─── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 20 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'var(--g3)', gap: 16, marginBottom: 20 }}>
 
         {/* Répartition des coûts (donut) */}
         <div style={CARD}>

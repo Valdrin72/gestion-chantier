@@ -55,7 +55,7 @@ function ChantierForm({ form, setForm, erreurs, setErreurs, modeCompleter, onSau
         )}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '15px', marginBottom: '20px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'var(--g-form3)', gap: '15px', marginBottom: '20px' }}>
         {[['Numéro', 'numero', 'text', 'CH-2026-001'], ['Nom du chantier *', 'nom', 'text', 'Ex: Bureaux Dupont'], ['Conducteur', 'conducteur', 'text', 'Jean Martin'], ['Adresse', 'adresse', 'text', 'Rue...'], ['Canton', 'canton', 'text', 'GE'], ['Date de début *', 'dateDebut', 'date', ''], ['Jours ouvrables prévus *', 'nombreJours', 'number', '15'], ['Surface (m²)', 'surface', 'number', '250']].map(([label, key, type, placeholder]) => (
           <div key={key}><label style={labelStyle}>{label}</label>
             <input type={type} placeholder={placeholder} value={form[key] ?? ''} onChange={e => setForm({ ...form, [key]: e.target.value })} style={inputStyle} /></div>
@@ -159,7 +159,7 @@ function ChantierForm({ form, setForm, erreurs, setErreurs, modeCompleter, onSau
             </div>
 
             {devisLie ? (
-              <div style={{ background: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.2)', borderRadius: 12, padding: '14px 18px', marginBottom: 16, display: 'grid', gridTemplateColumns: caRegie > 0 ? '1fr 1fr 1fr' : '1fr 1fr', gap: 12 }}>
+              <div style={{ background: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.2)', borderRadius: 12, padding: '14px 18px', marginBottom: 16, display: 'grid', gridTemplateColumns: caRegie > 0 ? 'var(--g3)' : 'var(--g-form2)', gap: 12 }}>
                 <div>
                   <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px', color: 'var(--text-muted)', marginBottom: 3 }}>CA devis</div>
                   <div style={{ fontSize: 17, fontWeight: 800, color: '#10b981' }}>CHF {fmtN(caBase)}</div>
@@ -187,7 +187,7 @@ function ChantierForm({ form, setForm, erreurs, setErreurs, modeCompleter, onSau
           </>
         );
       })()}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '15px', marginBottom: '20px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'var(--g-form3)', gap: '15px', marginBottom: '20px' }}>
         {[['Matériel prévu (CHF)', 'coutMaterielPrevu'], ['Sous-traitance prévue (CHF)', 'coutSousTraitancePrevu'], ['Autres coûts prévus (CHF)', 'autresCoutsPrevu']].map(([label, key]) => (
           <div key={key}><label style={labelStyle}>{label}</label>
             <input type="text" inputMode="numeric" placeholder="0"
@@ -238,7 +238,7 @@ function ChantierForm({ form, setForm, erreurs, setErreurs, modeCompleter, onSau
           })()}
 
           <div style={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', color: 'var(--text-muted)', marginBottom: '12px' }}>Coûts réels</div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '15px', marginBottom: '20px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'var(--g-form3)', gap: '15px', marginBottom: '20px' }}>
             {[['Matériel réel (CHF)', 'materielReel'], ['Sous-traitance réelle (CHF)', 'sousTraitanceReelle'], ['Autres coûts réels (CHF)', 'autresCoutsReels']].map(([label, key]) => (
               <div key={key}><label style={labelStyle}>{label}</label>
                 <input type="text" inputMode="numeric" placeholder="0"
@@ -263,7 +263,7 @@ function ChantierForm({ form, setForm, erreurs, setErreurs, modeCompleter, onSau
               </tbody>
             </table>
           )}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: '10px', alignItems: 'end', marginBottom: '20px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'var(--g-2a)', gap: '10px', alignItems: 'end', marginBottom: '20px' }}>
             <div><label style={labelStyle}>Description</label>
               <input placeholder="Ex: Vitrage supplémentaire" value={imprévu.description} onChange={e => setImprévu({ ...imprévu, description: e.target.value })} style={inputStyle} /></div>
             <div><label style={labelStyle}>Montant (CHF)</label>

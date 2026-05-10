@@ -51,7 +51,7 @@ function Employes({ parametres, setParametres, chantiers, naviguer }) {
           { label: 'TARIF MOYEN',   val: `CHF ${fmtN(tarifMoyen)}/j`, Icon: TrendingUp, ...DS.kpi.purple },
         ];
         return (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 20 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'var(--g4)', gap: 16, marginBottom: 20 }}>
             {kpiItems.map(k => (
               <div key={k.label} style={{ background: k.gradient, borderRadius: 16, padding: '22px 20px', minHeight: 120, boxShadow: `0 4px 20px ${k.glow}, 0 1px 4px rgba(0,0,0,0.12)`, border: '1px solid rgba(255,255,255,0.15)', position: 'relative', overflow: 'hidden' }}>
                 <div style={{ position: 'absolute', right: -18, top: -18, width: 80, height: 80, borderRadius: '50%', background: 'rgba(255,255,255,0.1)' }} />
@@ -71,7 +71,7 @@ function Employes({ parametres, setParametres, chantiers, naviguer }) {
       {ajout && (
         <div style={carteStyle}>
           <div className="ds-card-title">{form.id ? 'Modifier' : 'Nouvel'} employé</div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '15px', marginBottom: '15px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'var(--g-form3)', gap: '15px', marginBottom: '15px' }}>
             <div><label style={labelStyle}>Nom complet *</label><input placeholder="Jean Martin" value={form.nom} onChange={e => setForm({ ...form, nom: e.target.value })} style={inputStyle} /></div>
             <div><label style={labelStyle}>Rôle *</label>
               <select value={form.poste} onChange={e => setForm({ ...form, poste: e.target.value })} style={inputStyle}>
@@ -97,7 +97,7 @@ function Employes({ parametres, setParametres, chantiers, naviguer }) {
           </div>
         </div>
       )}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '15px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'var(--g3)', gap: '15px' }}>
         {parametres.employes.map(e => {
           const chantiersEmp = chantiers.filter(c => c.equipe?.some(m => parseInt(m.employeId) === e.id));
           const joursTotal = chantiers.reduce((t, c) => { const m = c.equipe?.find(m => parseInt(m.employeId) === e.id); return t + (m ? parseInt(m.joursPlannifies || 0) : 0); }, 0);
@@ -120,7 +120,7 @@ function Employes({ parametres, setParametres, chantiers, naviguer }) {
                 {e.telephone && <div style={{ color: 'var(--text-secondary)', fontSize: '12px', marginTop: '3px' }}>{e.telephone}</div>}
                 {e.email && <div style={{ color: 'var(--text-muted)', fontSize: '12px' }}>{e.email}</div>}
               </div>
-              <div style={{ marginTop: '14px', display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' }}>
+              <div style={{ marginTop: '14px', display: 'grid', gridTemplateColumns: 'var(--g3)', gap: '8px' }}>
                 {[
                   { label: 'CHF/jour', val: `${e.tarifJour}`, couleur: C.primaire },
                   { label: 'Chantiers', val: chantiersEmp.length, couleur: C.secondaire },

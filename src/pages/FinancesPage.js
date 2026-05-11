@@ -434,16 +434,16 @@ export default function Finances({
     const today = new Date().toISOString().slice(0, 10);
     const actives = facturesPeriode.filter(f => f.statut !== 'annulee');
     const totalFacture  = actives.reduce((s, f) => s + (parseFloat(f.montantTTC)  || 0), 0);
-    // Plafonner montantPaye à montantTTC pour éviter encaissé > facturé dans les KPIs
     const totalPaye     = actives.reduce((s, f) => s + Math.min(parseFloat(f.montantPaye)||0, parseFloat(f.montantTTC)||0), 0);
-    const enRetard      = actives
-      .filter(f => f.statut !== 'payee' && f.dateEcheance && f.dateEcheance < today)
-      .reduce((s, f) => s + Math.max(0, (parseFloat(f.montantTTC) || 0) - (parseFloat(f.montantPaye) || 0)), 0);
     const enAttente     = actives
       .filter(f => f.statut !== 'payee' && !(f.dateEcheance && f.dateEcheance < today))
       .reduce((s, f) => s + Math.max(0, (parseFloat(f.montantTTC) || 0) - (parseFloat(f.montantPaye) || 0)), 0);
+    // "En retard" = toutes factures non payées avec échéance dépassée (toutes périodes confondues)
+    const enRetard = facturesValides
+      .filter(f => f.statut !== 'annulee' && f.statut !== 'payee' && f.dateEcheance && f.dateEcheance < today)
+      .reduce((s, f) => s + Math.max(0, (parseFloat(f.montantTTC) || 0) - (parseFloat(f.montantPaye) || 0)), 0);
     return { totalFacture, totalPaye, enAttente, enRetard };
-  }, [facturesPeriode]);
+  }, [facturesPeriode, facturesValides]);
 
   const tabs = [
     { id: 'tresorerie', label: 'Trésorerie',          count: null },

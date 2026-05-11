@@ -129,21 +129,36 @@ export default function useSupabaseData(userId) {
 
     charger();
 
+    // Re-sync quand l'app revient au premier plan (retour sur l'onglet / déverrouillage téléphone)
+    async function resyncSiVisible() {
+      if (document.visibilityState !== 'visible') return;
+      try {
+        const row = await lireRowUser(userId);
+        if (row && row.data && Object.keys(row.data).length > 0) {
+          rowIdRef.current = row.id;
+          appliquerData(row.data);
+        }
+      } catch {}
+    }
+    document.addEventListener('visibilitychange', resyncSiVisible);
+
     // Real-time : écoute changements depuis d'autres appareils
     const channel = supabase
       .channel(`cyna_${userId}`)
       .on('postgres_changes', {
-        event: 'UPDATE', schema: 'public', table: STORAGE_TABLE,
+        event: '*', schema: 'public', table: STORAGE_TABLE,
         filter: `user_id=eq.${userId}`,
       }, (payload) => {
-        if (payload.new?.numero === STORAGE_MARKER && payload.new?.data) {
-          appliquerData(payload.new.data);
+        const row = payload.new || payload.record;
+        if (row?.numero === STORAGE_MARKER && row?.data) {
+          appliquerData(row.data);
         }
       })
       .subscribe();
 
     return () => {
       cancelled = true;
+      document.removeEventListener('visibilitychange', resyncSiVisible);
       supabase.removeChannel(channel);
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps

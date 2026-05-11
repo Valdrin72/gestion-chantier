@@ -7,6 +7,8 @@ echo.
 cd /d "%~dp0"
 
 echo [1/3] Récupération du code...
+git fetch origin
+git checkout claude/debug-terminal-issue-uvSBY
 git pull origin claude/debug-terminal-issue-uvSBY
 if errorlevel 1 (
   echo ERREUR: git pull échoué

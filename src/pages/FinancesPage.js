@@ -136,6 +136,7 @@ function Tresorerie({ factures = [], chantiers = [], clients = [], devis = [] })
       caTotalFacture, encaisseTotal, nbFactures, ticketMoyen, tauxEncaissement, delaiMoyen,
       topClients, topChantiers,
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [factures, chantiers, clients, devis]);
 
   const urgenceConfig = {
@@ -191,7 +192,6 @@ function Tresorerie({ factures = [], chantiers = [], clients = [], devis = [] })
         <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', height: 100 }}>
           {data.semaines.map((s, i) => {
             const pct = data.maxSemaine > 0 ? (s.montant / data.maxSemaine) * 100 : 0;
-            const couleur = i === 0 ? '#3b82f6' : '#3b82f6';
             const hasData = s.montant > 0;
             return (
               <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>

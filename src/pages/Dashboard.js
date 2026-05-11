@@ -428,6 +428,7 @@ function Dashboard() {
   })();
 
   // ── À ne pas oublier ─────────────────────────────────────────
+  // eslint-disable-next-line no-unused-vars
   const aNesPasOublier = (() => {
     const list = [];
     const now = Date.now();
@@ -510,6 +511,7 @@ function Dashboard() {
   })();
 
   // ── À anticiper ──────────────────────────────────────────────
+  // eslint-disable-next-line no-unused-vars
   const aAnticiper = (() => {
     const list = [];
     const now = new Date();
@@ -568,6 +570,7 @@ function Dashboard() {
   })();
 
   // ── Risque futur (pré-calculé pour réutilisation dans JSX) ───
+  // eslint-disable-next-line no-unused-vars
   const risqueFuturData = (() => {
     const evaluerRisque = (c) => {
       if (top3Ids.has(c.id)) return null;
@@ -651,6 +654,7 @@ function Dashboard() {
   };
 
   // ── Helpers JSX (conservés pour compatibilité) ──────────────
+  // eslint-disable-next-line no-unused-vars
   const SectionLabel = ({ children }) => (
     <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.8px', color: 'var(--text-muted)', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8, paddingBottom: 12, borderBottom: '1px solid var(--border)' }}>
       <span style={{ width: 3, height: 12, borderRadius: 2, background: '#2563eb', flexShrink: 0, display: 'inline-block' }} />
@@ -658,6 +662,7 @@ function Dashboard() {
     </div>
   );
 
+  // eslint-disable-next-line no-unused-vars
   const ActionRow = ({ nom, texte, btnLabel, btnCouleur, onAction, Icon: RowIcon }) => (
     <div
       onClick={onAction}
@@ -1189,7 +1194,7 @@ function Dashboard() {
             ))}
           </div>
           {(() => {
-            const { total, top3, alerteFaible, interpretation, dateLimite, couverture } = previsionTreso30j;
+            const { total, top3, interpretation, dateLimite, couverture } = previsionTreso30j; // alerteFaible unused
             const couleurTotal = interpretation?.couleur || '#3b82f6';
             return (
               <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px solid var(--border)' }}>

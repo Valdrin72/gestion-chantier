@@ -101,7 +101,9 @@ function Dashboard() {
     const chantiersActifsAvecFactures = actifs.map(c => {
       const devisTotal = calculerCA(c, devis);
       if (devisTotal === null) return { id: c.id, nom: c.nom || c.numero, encaissementPrevu: 0 };
-      const avancement = Math.max(0, Math.min(100, Math.round(parseFloat(c.avancement) || 0)));
+      // Règle BTP : avancement vient du journal des heures (source unique), avec fallback sur la valeur manuelle
+      const etat = calculerEtatChantier(c, parametres?.employes || [], devis);
+      const avancement = etat?.avancementPct ?? Math.max(0, Math.min(100, Math.round(parseFloat(c.avancement) || 0)));
       const montantFacture = (factures || [])
         .filter(f => parseInt(f.chantierId) === c.id)
         .reduce((s, f) => s + (parseFloat(f.montantTTC) || 0), 0);
@@ -704,7 +706,7 @@ function Dashboard() {
               <button onClick={naviguerAgents} title="Alertes" style={{ background: 'var(--bg-glass-2)', border: '1px solid var(--border)', borderRadius: 8, width: 34, height: 34, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: nbAgentAlertes > 0 ? '#f59e0b' : 'var(--text-secondary)' }}>
                 <Bell size={15} strokeWidth={2} />
               </button>
-              {nbAgentAlertes > 0 && <span style={{ position: 'absolute', top: -4, right: -4, background: '#ef4444', color: 'white', borderRadius: '50%', width: 16, height: 16, fontSize: 9, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{nbAgentAlertes}</span>}
+              {nbAgentAlertes > 0 && <span style={{ position: 'absolute', top: -4, right: -4, background: '#ef4444', color: 'white', borderRadius: '50%', width: 16, height: 16, fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{nbAgentAlertes}</span>}
             </div>
           </div>
         </div>
@@ -724,9 +726,9 @@ function Dashboard() {
               <div style={{ background: 'rgba(255,255,255,0.18)', borderRadius: 8, width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 10 }}>
                 <Icon size={14} strokeWidth={2} style={{ color: '#fff' }} />
               </div>
-              <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.72)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: 4 }}>{label}</div>
+              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.72)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: 4 }}>{label}</div>
               <div className="kpi-val" style={{ fontSize: 20, fontWeight: 900, color: '#fff', letterSpacing: '-0.5px', lineHeight: 1, marginBottom: 4 }}>{valeur}</div>
-              <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.62)' }}>{sous}</div>
+              <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.62)' }}>{sous}</div>
             </div>
           ))}
         </div>
@@ -775,22 +777,22 @@ function Dashboard() {
                     >
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
                         <span style={{ fontWeight: 700, fontSize: 13, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{c.nom || c.numero}</span>
-                        <span style={{ background: statBadge.bg, color: statBadge.color, borderRadius: 20, padding: '2px 8px', fontSize: 10, fontWeight: 700, flexShrink: 0, whiteSpace: 'nowrap' }}>{statBadge.label}</span>
+                        <span style={{ background: statBadge.bg, color: statBadge.color, borderRadius: 20, padding: '2px 8px', fontSize: 12, fontWeight: 700, flexShrink: 0, whiteSpace: 'nowrap' }}>{statBadge.label}</span>
                       </div>
                       <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
                         <div>
-                          <div style={{ fontSize: 9, color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>CA</div>
+                          <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>CA</div>
                           <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)' }}>{montantCA ? `CHF ${fmtN(montantCA)}` : '—'}</div>
                         </div>
                         {mPct !== null && (
                           <div>
-                            <div style={{ fontSize: 9, color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Marge</div>
+                            <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Marge</div>
                             <div style={{ fontSize: 12, fontWeight: 700, color: mPct >= 15 ? '#10b981' : mPct >= 0 ? '#f59e0b' : '#ef4444' }}>{mPct}%</div>
                           </div>
                         )}
                         {joursTotal > 0 && (
                           <div style={{ marginLeft: 'auto', textAlign: 'right' }}>
-                            <div style={{ fontSize: 9, color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Jours</div>
+                            <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Jours</div>
                             <div style={{ fontSize: 12, fontWeight: 700, color: joursRealises > joursTotal ? '#ef4444' : joursTotal - joursRealises <= 3 ? '#f59e0b' : 'var(--text-primary)' }}>{joursRealises}/{joursTotal}</div>
                           </div>
                         )}
@@ -810,17 +812,17 @@ function Dashboard() {
 
           {/* Trésorerie 30j */}
           <div style={{ ...CARD, cursor: 'pointer' }} onClick={() => naviguer('finances')}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 8 }}>Tréso. 30j</div>
+            <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 8 }}>Tréso. 30j</div>
             <div style={{ fontSize: 20, fontWeight: 900, color: previsionTreso30j.interpretation?.couleur || '#3b82f6', letterSpacing: '-0.5px', marginBottom: 6, lineHeight: 1 }}>
               CHF {fmtN(previsionTreso30j.total)}
             </div>
             {previsionTreso30j.interpretation && (
-              <div style={{ fontSize: 10, color: previsionTreso30j.interpretation.couleur, background: previsionTreso30j.interpretation.couleur + '15', border: `1px solid ${previsionTreso30j.interpretation.couleur}30`, borderRadius: 6, padding: '2px 6px', display: 'inline-block', marginBottom: 4 }}>
+              <div style={{ fontSize: 12, color: previsionTreso30j.interpretation.couleur, background: previsionTreso30j.interpretation.couleur + '15', border: `1px solid ${previsionTreso30j.interpretation.couleur}30`, borderRadius: 6, padding: '2px 6px', display: 'inline-block', marginBottom: 4 }}>
                 {previsionTreso30j.interpretation.label.split('—')[0].trim()}
               </div>
             )}
             {kpi.cashEnAttente > 0 && (
-              <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 4 }}>
+              <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
                 <span style={{ fontWeight: 700, color: '#f59e0b' }}>CHF {fmtN(kpi.cashEnAttente)}</span> att.
               </div>
             )}
@@ -828,7 +830,7 @@ function Dashboard() {
 
           {/* Alertes IA */}
           <div style={{ ...CARD, cursor: 'pointer' }} onClick={() => naviguer('agents')}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 4 }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 4 }}>
               <Bot size={10} color="#8b5cf6" /> Alertes IA
             </div>
             {agentAlertes.length === 0 ? (
@@ -837,12 +839,12 @@ function Dashboard() {
                   <ShieldCheck size={18} strokeWidth={1.5} style={{ color: '#10b981' }} />
                   <div style={{ fontWeight: 700, fontSize: 14, color: '#10b981' }}>Tout OK</div>
                 </div>
-                <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>Aucune alerte</div>
+                <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Aucune alerte</div>
               </>
             ) : (
               <>
                 <div style={{ fontSize: 28, fontWeight: 900, color: agentAlertes.some(a => a.niveau === 'CRITIQUE') ? '#ef4444' : '#f59e0b', marginBottom: 4, lineHeight: 1 }}>{agentAlertes.length}</div>
-                <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>
+                <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
                   {agentAlertes.filter(a => a.niveau === 'CRITIQUE').length > 0 && <span style={{ color: '#ef4444', fontWeight: 700 }}>{agentAlertes.filter(a => a.niveau === 'CRITIQUE').length} crit. · </span>}
                   {agentAlertes.filter(a => a.niveau === 'ATTENTION').length > 0 && <span style={{ color: '#f59e0b' }}>{agentAlertes.filter(a => a.niveau === 'ATTENTION').length} att.</span>}
                 </div>
@@ -852,10 +854,10 @@ function Dashboard() {
 
           {/* Avancement global */}
           <div style={{ ...CARD, cursor: 'pointer' }} onClick={() => naviguer('chantiers')}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 8 }}>Avancement</div>
+            <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 8 }}>Avancement</div>
             <div style={{ display: 'flex', alignItems: 'flex-end', gap: 4, marginBottom: 8 }}>
               <div style={{ fontSize: 28, fontWeight: 900, color: '#3b82f6', letterSpacing: '-1px', lineHeight: 1 }}>{Math.round(avancementMoyen)}%</div>
-              <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 2 }}>moy.</div>
+              <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 2 }}>moy.</div>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
               {[
@@ -865,7 +867,7 @@ function Dashboard() {
                 <div key={l.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
                     <span style={{ width: 6, height: 6, borderRadius: '50%', background: l.dot, display: 'inline-block' }} />
-                    <span style={{ fontSize: 10, color: 'var(--text-secondary)' }}>{l.label}</span>
+                    <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{l.label}</span>
                   </div>
                   <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>{l.count}</span>
                 </div>
@@ -875,7 +877,7 @@ function Dashboard() {
 
           {/* Répartition coûts */}
           <div style={{ ...CARD, cursor: 'pointer' }} onClick={() => naviguer('analyse')}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 8 }}>Coûts réels</div>
+            <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 8 }}>Coûts réels</div>
             {repartitionCouts.total > 0 ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                 <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--text-primary)', marginBottom: 4 }}>CHF {fmtN(Math.round(repartitionCouts.total))}</div>
@@ -883,7 +885,7 @@ function Dashboard() {
                   <div key={s.name} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
                       <span style={{ width: 6, height: 6, borderRadius: '50%', background: s.couleur, display: 'inline-block' }} />
-                      <span style={{ fontSize: 10, color: 'var(--text-secondary)' }}>{s.name.split(' ')[0]}</span>
+                      <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{s.name.split(' ')[0]}</span>
                     </div>
                     <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-primary)' }}>{s.value.toFixed(0)}%</span>
                   </div>
@@ -966,7 +968,7 @@ function Dashboard() {
               <Bell size={16} strokeWidth={2} />
             </button>
             {nbAgentAlertes > 0 && (
-              <span style={{ position: 'absolute', top: -5, right: -5, background: '#ef4444', color: 'white', borderRadius: '50%', width: 18, height: 18, fontSize: 10, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>{nbAgentAlertes}</span>
+              <span style={{ position: 'absolute', top: -5, right: -5, background: '#ef4444', color: 'white', borderRadius: '50%', width: 18, height: 18, fontSize: 12, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>{nbAgentAlertes}</span>
             )}
           </div>
         </div>
@@ -1003,11 +1005,11 @@ function Dashboard() {
             <div style={{ background: 'rgba(255,255,255,0.18)', borderRadius: 10, width: 38, height: 38, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16, position: 'relative' }}>
               <Icon size={18} strokeWidth={2} style={{ color: '#ffffff' }} />
             </div>
-            <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.72)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 6 }}>{label}</div>
+            <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.72)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 6 }}>{label}</div>
             <div className="kpi-val" style={{ fontSize: 30, fontWeight: 900, color: '#ffffff', letterSpacing: '-1px', lineHeight: 1, marginBottom: 8 }}>{valeur}</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
               <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.62)', fontWeight: 500 }}>{sous}</span>
-              {badge && <span style={{ background: 'rgba(239,68,68,0.85)', color: 'white', borderRadius: 20, padding: '1px 7px', fontSize: 10, fontWeight: 700 }}>{badge}</span>}
+              {badge && <span style={{ background: 'rgba(239,68,68,0.85)', color: 'white', borderRadius: 20, padding: '1px 7px', fontSize: 12, fontWeight: 700 }}>{badge}</span>}
             </div>
           </div>
         ))}
@@ -1108,15 +1110,15 @@ function Dashboard() {
                         <div style={{ flex: '0 1 180px', minWidth: 0 }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, flexWrap: 'wrap' }}>
                             <span style={{ fontWeight: 700, fontSize: 13, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.nom || c.numero}</span>
-                            <span style={{ background: statBadge.bg, color: statBadge.color, borderRadius: 20, padding: '2px 8px', fontSize: 10, fontWeight: 700, flexShrink: 0, whiteSpace: 'nowrap' }}>{statBadge.label}</span>
+                            <span style={{ background: statBadge.bg, color: statBadge.color, borderRadius: 20, padding: '2px 8px', fontSize: 12, fontWeight: 700, flexShrink: 0, whiteSpace: 'nowrap' }}>{statBadge.label}</span>
                           </div>
                           <div style={{ display: 'flex', gap: 16 }}>
                             <div>
-                              <div style={{ fontSize: 9, color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>CA</div>
+                              <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>CA</div>
                               <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)' }}>{montantCA ? `CHF ${fmtN(montantCA)}` : '—'}</div>
                             </div>
                             <div>
-                              <div style={{ fontSize: 9, color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Coût</div>
+                              <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Coût</div>
                               <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)' }}>{couts.totalCoutsReel > 0 ? `CHF ${fmtN(Math.round(couts.totalCoutsReel))}` : '—'}</div>
                             </div>
                           </div>
@@ -1127,7 +1129,7 @@ function Dashboard() {
 
                         {/* Marge */}
                         <div style={{ flex: '0 0 90px', textAlign: 'left' }}>
-                          <div style={{ fontSize: 9, color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>Marge</div>
+                          <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>Marge</div>
                           {mPct !== null && couts.margeReel !== undefined
                             ? <>
                                 <div style={{ fontSize: 13, fontWeight: 800, color: mPct >= 15 ? '#10b981' : mPct >= 0 ? '#f59e0b' : '#ef4444' }}>CHF {fmtN(Math.round(couts.margeReel ?? 0))}</div>
@@ -1168,8 +1170,8 @@ function Dashboard() {
             <ResponsiveContainer width="100%" height={isMobile ? 140 : 210}>
               <LineChart data={donneesMensuelles} margin={{ top: 5, right: 5, left: -22, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                <XAxis dataKey="semaine" tick={{ fill: 'var(--text-muted)', fontSize: 10 }} />
-                <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 10 }} tickFormatter={v => v >= 1000 ? `${(v/1000).toFixed(0)}k` : v} />
+                <XAxis dataKey="semaine" tick={{ fill: 'var(--text-muted)', fontSize: 12 }} />
+                <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 12 }} tickFormatter={v => v >= 1000 ? `${(v/1000).toFixed(0)}k` : v} />
                 <Tooltip contentStyle={{ background: 'var(--dash-card)', border: '1px solid var(--dash-border)', borderRadius: 10, fontSize: 12 }} labelStyle={{ color: 'var(--text-primary)', fontWeight: 700 }} formatter={(val, name) => [`CHF ${fmtN(val)}`, name]} />
                 <Line type="monotone" dataKey="CA" stroke="#3b82f6" strokeWidth={2.5} dot={{ r: 3, fill: '#3b82f6' }} name="Chiffre d'affaires" />
                 <Line type="monotone" dataKey="Couts" stroke="#94a3b8" strokeWidth={2} dot={{ r: 3, fill: '#94a3b8' }} strokeDasharray="5 3" name="Coûts estimés" />
@@ -1194,7 +1196,7 @@ function Dashboard() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
                   <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-muted)' }}>Prévision encaissements 30 j</span>
                   {interpretation && (
-                    <span style={{ fontSize: 10, fontWeight: 700, color: interpretation.couleur, background: interpretation.couleur + '15', border: `1px solid ${interpretation.couleur}30`, borderRadius: 20, padding: '2px 8px' }}>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: interpretation.couleur, background: interpretation.couleur + '15', border: `1px solid ${interpretation.couleur}30`, borderRadius: 20, padding: '2px 8px' }}>
                       {interpretation.label}
                     </span>
                   )}
@@ -1321,7 +1323,7 @@ function Dashboard() {
                 </svg>
                 <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', textAlign: 'center' }}>
                   <div style={{ fontSize: 28, fontWeight: 900, color: 'var(--text-primary)', lineHeight: 1 }}>{Math.round(avancementMoyen)}%</div>
-                  <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 600, marginTop: 2, textTransform: 'uppercase' }}>moy.</div>
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600, marginTop: 2, textTransform: 'uppercase' }}>moy.</div>
                 </div>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8, width: '100%' }}>

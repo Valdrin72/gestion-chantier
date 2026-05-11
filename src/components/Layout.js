@@ -1,5 +1,5 @@
 import React from 'react';
-import { Plus, Sun, Moon, Menu, X, ChevronRight } from 'lucide-react';
+import { Plus, Sun, Moon, Menu, X, ChevronRight, LogOut } from 'lucide-react';
 
 export function Sidebar({ sidebarOuvert, setSidebarOuvert, navAutorisees, page, naviguer, darkMode, toggleDarkMode, profil, deconnecter }) {
   return (
@@ -72,7 +72,7 @@ export function Sidebar({ sidebarOuvert, setSidebarOuvert, navAutorisees, page, 
               onMouseEnter={e => e.currentTarget.style.opacity = '1'}
               onMouseLeave={e => e.currentTarget.style.opacity = '0.6'}
             >
-              ⏻
+              <LogOut size={16} />
             </button>
           )}
         </div>
@@ -109,7 +109,27 @@ export function Topbar({ setSidebarOuvert, canGoBack, page, revenirArriere, navA
         )}
         <span className="topbar-title">{navAutorisees.find(n => n.id === page)?.label || 'Dashboard'}</span>
       </div>
-      <div className="topbar-right" />
+      <div className="topbar-right" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <button
+          onClick={toggleDarkMode}
+          aria-label="Basculer le thème"
+          title={darkMode ? 'Mode clair' : 'Mode sombre'}
+          style={{
+            background: 'var(--bg-glass-2)',
+            border: '1px solid var(--border)',
+            borderRadius: 8,
+            width: 34,
+            height: 34,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: 'var(--text-secondary)',
+          }}
+        >
+          {darkMode ? <Sun size={16} strokeWidth={2} /> : <Moon size={16} strokeWidth={2} />}
+        </button>
+      </div>
     </header>
   );
 }
@@ -120,7 +140,7 @@ export function MobileNav({ navMobileItems, page, naviguer, mobileMenuOuvert, se
       <nav className="bottom-nav">
         {navMobileItems.map(item => (
           <button key={item.id} className={`bottom-nav-item${page === item.id ? ' active' : ''}`} onClick={() => naviguer(item.id)}>
-            <span className="bottom-nav-icon"><item.Icon size={22} strokeWidth={1.8} /></span>
+            <span className="bottom-nav-icon"><item.Icon size={22} strokeWidth={page === item.id ? 2.2 : 1.8} /></span>
             <span className="bottom-nav-label">{item.labelCourt}</span>
           </button>
         ))}

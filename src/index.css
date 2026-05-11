@@ -1060,6 +1060,7 @@ label { font-weight: 500; font-size: 12px; color: var(--text-secondary); }
   color: var(--text-secondary);
   transition: color 0.15s !important;
   min-width: 0;
+  min-height: 48px;
   border-radius: 0 !important;
   filter: none !important;
   transform: none !important;

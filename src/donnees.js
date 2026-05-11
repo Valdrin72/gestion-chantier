@@ -1278,7 +1278,8 @@ export const assertEtatCoherent = (etat) => {
     critique.push(`avancementPct invalide: ${etat.avancementPct}`);
   if (etat.coutTotalReel < 0)
     critique.push(`coutTotalReel négatif: ${etat.coutTotalReel}`);
-  if (etat.deriveJours !== 0 && etat.totalJoursReels === 0)
+  // Ne pas signaler si aucune heure saisie — normal pour un chantier planifié non démarré
+  if (etat.deriveJours !== 0 && etat.totalJoursReels === 0 && etat.totalJoursPrevus === 0)
     critique.push(`deriveJours=${etat.deriveJours} avec totalJoursReels=0`);
   if (etat.totalJoursPrevus === 0 && etat.totalJoursReels > 0)
     critique.push(`totalJoursPrevus=0 avec activité (totalJoursReels=${etat.totalJoursReels})`);

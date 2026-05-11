@@ -71,7 +71,11 @@ export default function Planning({ chantiers, setChantiers, clients, parametres,
   );
 
   const chantiersDuMois = useMemo(() => chantiers.filter(c => {
-    if (!c.dateDebut || !c.nombreJours) return false;
+    if (!c.dateDebut) return false;
+    const statut = (c.statut || '').trim().toLowerCase();
+    // Un chantier "en cours" est toujours visible dans le planning, même si sa date de fin prévue est dépassée
+    if (statut === 'en cours') return true;
+    if (!c.nombreJours) return false;
     const debut = new Date(c.dateDebut);
     const fin = new Date(calculerDateFinOuvrables(c.dateDebut, (c.nombreJours || 0), c.inclusSamedi));
     const debutMois = new Date(anneeActuelle, moisActuel, 1);

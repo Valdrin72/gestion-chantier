@@ -203,7 +203,7 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
       if (filtreType   && f.type   !== filtreType)   return false;
       if (recherche) {
         const q = recherche.toLowerCase();
-        const client = clients.find(c => c.id === f.clientId);
+        const client = clients.find(c => String(c.id) === String(f.clientId));
         const match =
           (f.numero || '').toLowerCase().includes(q) ||
           (client?.nom || '').toLowerCase().includes(q) ||
@@ -455,7 +455,7 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
             </thead>
             <tbody>
               {facturesFiltrees.map((f, idx) => {
-                const client = clients.find(c => c.id === f.clientId);
+                const client = clients.find(c => String(c.id) === String(f.clientId));
                 const restant = (f.montantTTC ?? 0) - (f.montantPaye ?? 0);
                 const pctPaye = (f.montantTTC ?? 0) > 0
                   ? Math.min((f.montantPaye ?? 0) / (f.montantTTC ?? 1) * 100, 100)
@@ -567,9 +567,9 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
   // ============================
   if (vue === 'detail' && selected) {
     const f = factures.find(x => x.id === selected.id) || selected;
-    const client = clients.find(c => c.id === f.clientId);
-    const chantier = chantiers.find(c => c.id === f.chantierId);
-    const devisLie = devis.find(d => d.id === f.devisId);
+    const client = clients.find(c => String(c.id) === String(f.clientId));
+    const chantier = chantiers.find(c => String(c.id) === String(f.chantierId));
+    const devisLie = devis.find(d => String(d.id) === String(f.devisId));
     const restant = (f.montantTTC ?? 0) - (f.montantPaye ?? 0);
 
     return (<React.Fragment key="detail">
@@ -991,7 +991,7 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
               value={form.clientId}
               onChange={e => setForm(f => ({ ...f, clientId: e.target.value }))}>
               <option value="">— Sélectionner —</option>
-              {clients.map(c => <option key={c.id} value={c.id}>{c.nom}</option>)}
+              {clients.map(c => <option key={c.id} value={c.id}>{[c.prenom, c.nom].filter(Boolean).join(' ')}{c.entreprise ? ` (${c.entreprise})` : ''}</option>)}
             </select>
           </div>
           <div>

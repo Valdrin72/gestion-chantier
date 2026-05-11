@@ -145,24 +145,32 @@ export default function useSupabaseData(userId) {
     document.addEventListener('visibilitychange', resyncSiVisible);
 
     // Real-time : écoute changements depuis d'autres appareils
-    const channel = supabase
-      .channel(`cyna_${userId}`)
-      .on('postgres_changes', {
-        event: '*', schema: 'public', table: STORAGE_TABLE,
-        filter: `user_id=eq.${userId}`,
-      }, (payload) => {
-        const row = payload.new || payload.record;
-        if (row?.numero === STORAGE_MARKER && row?.data) {
-          appliquerData(row.data);
-        }
-      })
-      .subscribe();
+    let channel = null;
+    try {
+      channel = supabase
+        .channel(`cyna_${userId}`)
+        .on('postgres_changes', {
+          event: '*', schema: 'public', table: STORAGE_TABLE,
+          filter: `user_id=eq.${userId}`,
+        }, (payload) => {
+          const row = payload.new || payload.record;
+          if (row?.numero === STORAGE_MARKER && row?.data) {
+            appliquerData(row.data);
+          }
+        })
+        .subscribe((status) => {
+          if (status === 'CHANNEL_ERROR') {
+            supabase.removeChannel(channel);
+            channel = null;
+          }
+        });
+    } catch {}
 
     return () => {
       cancelled = true;
       clearTimeout(syncTimer.current);
       document.removeEventListener('visibilitychange', resyncSiVisible);
-      supabase.removeChannel(channel);
+      if (channel) supabase.removeChannel(channel);
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);

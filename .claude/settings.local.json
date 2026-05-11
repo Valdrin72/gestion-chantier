@@ -9,7 +9,12 @@
       "Read(//c/Users/Salihu/AppData/Local/Temp/claude/C--Users-Salihu-gestion-chantier/8ad5cda0-68d8-40cc-93f9-08b1f76bda94/**)",
       "Bash(done)",
       "Bash(npx react-scripts:*)",
-      "mcp__playwright__browser_navigate"
+      "mcp__playwright__browser_navigate",
+      "mcp__playwright__browser_click",
+      "mcp__playwright__browser_evaluate",
+      "mcp__playwright__browser_console_messages",
+      "mcp__playwright__browser_snapshot",
+      "mcp__playwright__browser_close"
     ]
   }
 }

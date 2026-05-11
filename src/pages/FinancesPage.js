@@ -90,7 +90,8 @@ function Tresorerie({ factures = [], chantiers = [], clients = [], devis = [] })
     // ── 5. Stats cumulées (performance globale) ──────────────────
     const factActives = factures.filter(f => f.statut !== 'annulee');
     const caTotalFacture = factActives.reduce((s, f) => s + (parseFloat(f.montantTTC) || 0), 0);
-    const encaisseTotal  = factActives.reduce((s, f) => s + (parseFloat(f.montantPaye) || 0), 0);
+    // Plafonner montantPaye à montantTTC pour éviter encaissé > facturé
+    const encaisseTotal  = factActives.reduce((s, f) => s + Math.min(parseFloat(f.montantPaye)||0, parseFloat(f.montantTTC)||0), 0);
     const nbFactures     = factActives.length;
     const ticketMoyen    = nbFactures > 0 ? caTotalFacture / nbFactures : 0;
     const tauxEncaissement = caTotalFacture > 0 ? Math.round((encaisseTotal / caTotalFacture) * 100) : 0;
@@ -427,7 +428,8 @@ export default function Finances({
     const today = new Date().toISOString().slice(0, 10);
     const actives = facturesPeriode.filter(f => f.statut !== 'annulee');
     const totalFacture  = actives.reduce((s, f) => s + (parseFloat(f.montantTTC)  || 0), 0);
-    const totalPaye     = actives.reduce((s, f) => s + (parseFloat(f.montantPaye) || 0), 0);
+    // Plafonner montantPaye à montantTTC pour éviter encaissé > facturé dans les KPIs
+    const totalPaye     = actives.reduce((s, f) => s + Math.min(parseFloat(f.montantPaye)||0, parseFloat(f.montantTTC)||0), 0);
     const enRetard      = actives
       .filter(f => f.statut !== 'payee' && f.dateEcheance && f.dateEcheance < today)
       .reduce((s, f) => s + Math.max(0, (parseFloat(f.montantTTC) || 0) - (parseFloat(f.montantPaye) || 0)), 0);
@@ -499,12 +501,18 @@ export default function Finances({
       </div>
 
       {/* ── Alertes retard ── */}
-      {kpis.enRetard > 0 && (
-        <div className="alert-banner alert-banner-danger" style={{ marginBottom: 20 }}>
-          <strong>Les factures en retard : {facturesPeriode.filter(f => f.statut === 'retard').length} facture(s) en retard</strong>
-          {' — '}CHF {fmt(kpis.enRetard)} impayé(s). Consultez l'onglet Factures pour les détails.
-        </div>
-      )}
+      {kpis.enRetard > 0 && (() => {
+        const today = new Date().toISOString().slice(0, 10);
+        const nbRetard = facturesPeriode.filter(f =>
+          f.statut !== 'payee' && f.statut !== 'annulee' && f.dateEcheance && f.dateEcheance < today
+        ).length;
+        return (
+          <div className="alert-banner alert-banner-danger" style={{ marginBottom: 20 }}>
+            <strong>{nbRetard} facture{nbRetard > 1 ? 's' : ''} en retard</strong>
+            {' — '}CHF {fmt(kpis.enRetard)} impayé{nbRetard > 1 ? 's' : ''}. Consultez l'onglet Factures pour les détails.
+          </div>
+        );
+      })()}
 
       {/* ── Navigation onglets ── */}
       <div style={{ display: 'flex', gap: 0, marginBottom: 24, borderBottom: '1px solid var(--border-glass)' }}>
@@ -530,7 +538,7 @@ export default function Finances({
 
       {/* ── Contenu ── */}
       {onglet === 'tresorerie' && (
-        <Tresorerie factures={facturesValides} chantiers={chantiers} clients={clients} devis={devis} />
+        <Tresorerie factures={facturesPeriode} chantiers={chantiers} clients={clients} devis={devis} />
       )}
       <div style={{ display: onglet === 'factures' ? 'block' : 'none' }}>
         <Factures

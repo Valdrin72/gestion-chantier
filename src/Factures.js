@@ -176,22 +176,23 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
     if (selected?.id === f.id) setSelected(factureMAJ);
   };
 
-  // ── KPIs ─────────────────────────────────────────────────
+  // ── KPIs (filtrés par période, cohérents avec la liste) ──
   const kpis = useMemo(() => {
-    const actives = factures.filter(f => f.statut !== 'annulee');
-    const totalFacture  = actives.reduce((s, f) => s + (f.montantTTC ?? 0), 0);
-    const totalEncaisse = actives.reduce((s, f) => s + (f.montantPaye ?? 0), 0);
-    const totalRetard   = actives
-      .filter(f => {
-        if (f.statut === 'retard') return true;
-        if (f.statut !== 'envoyee' || !f.dateEcheance) return false;
-        const echDate = new Date(f.dateEcheance);
-        return !isNaN(echDate.getTime()) && echDate < new Date();
-      })
-      .reduce((s, f) => s + ((f.montantTTC ?? 0) - (f.montantPaye ?? 0)), 0);
+    const { debut, fin } = getIntervallesPeriode(periodeGlobale);
+    const today = new Date().toISOString().slice(0, 10);
+    // Base : factures de la période avec statut recalculé, hors annulées
+    const base = factures
+      .map(f => ({ ...f, statut: calculerStatutFacture(f) }))
+      .filter(f => f.statut !== 'annulee' && facturesInPeriode(f, debut, fin));
+    const totalFacture  = base.reduce((s, f) => s + (parseFloat(f.montantTTC)  || 0), 0);
+    // Plafonner montantPaye à montantTTC pour éviter encaissé > facturé
+    const totalEncaisse = base.reduce((s, f) => s + Math.min(parseFloat(f.montantPaye)||0, parseFloat(f.montantTTC)||0), 0);
+    const totalRetard   = base
+      .filter(f => f.statut === 'retard' || (f.statut !== 'payee' && f.dateEcheance && f.dateEcheance < today))
+      .reduce((s, f) => s + Math.max(0, (parseFloat(f.montantTTC)||0) - Math.min(parseFloat(f.montantPaye)||0, parseFloat(f.montantTTC)||0)), 0);
     const nbBrouillon   = factures.filter(f => f.statut === 'brouillon').length;
     return { totalFacture, totalEncaisse, totalRetard, nbBrouillon };
-  }, [factures]);
+  }, [factures, periodeGlobale]);
 
   // ── Filtrage (statut, type, recherche, période) ──────────
   const facturesFiltrees = useMemo(() => {
@@ -342,9 +343,9 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
   };
 
   const changerStatut = (id, statut) => {
+    const f = factures.find(x => x.id === id);
+    if (!f) return;
     if (statut === 'envoyee') {
-      const f = factures.find(x => x.id === id);
-      if (!f) return;
       if (!f.dateEmission || !f.dateEcheance) {
         alert('Date d\'émission et date d\'échéance requises avant émission.');
         return;
@@ -365,7 +366,19 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
         return;
       }
     }
-    onSave(factures.map(f => f.id === id ? { ...f, statut } : f));
+    let updates = { statut };
+    // Quand on marque "Payée" manuellement, compléter montantPaye si nécessaire
+    if (statut === 'payee') {
+      const montantTTC = parseFloat(f.montantTTC) || 0;
+      const montantPaye = parseFloat(f.montantPaye) || 0;
+      if (montantTTC > montantPaye + 0.01) {
+        const restant = montantTTC - montantPaye;
+        const entree = { id: Date.now(), montant: restant, date: new Date().toISOString().slice(0, 10), mode: 'Divers', note: 'Soldé manuellement' };
+        updates.montantPaye = montantTTC;
+        updates.paiementsHistorique = [...(f.paiementsHistorique || []), entree];
+      }
+    }
+    onSave(factures.map(x => x.id === id ? { ...x, ...updates } : x));
   };
 
   // ── Vue détail ───────────────────────────────────────────

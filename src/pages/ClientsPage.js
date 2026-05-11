@@ -19,7 +19,7 @@ const btnPrimaire = DS.btnPrimary;
 const btnSucces = DS.btnSuccess;
 const btnDanger = DS.btnDanger;
 
-function Clients({ clients, setClients, chantiers, devis = [], naviguer }) {
+function Clients({ clients, setClients, chantiers, setChantiers, devis = [], setDevis, factures = [], setFactures, naviguer }) {
   const [ajout, setAjout] = useState(false);
   const [form, setForm] = useState({ nom: '', prenom: '', entreprise: '', telephone: '', email: '', adresse: '', ville: '', canton: '', type: 'Entreprise', notes: '' });
   const sauvegarder = () => {
@@ -145,7 +145,17 @@ function Clients({ clients, setClients, chantiers, devis = [], naviguer }) {
                 <button onClick={() => { setForm(c); setAjout(true); window.scrollTo({ top: 0, behavior: 'smooth' }); }} style={{ ...DS.btnGhost, fontSize: '12px', padding: '6px 11px' }}>
                   <Pencil size={13} /> Modifier
                 </button>
-                <button onClick={() => { if (window.confirm(`Supprimer ${c.prenom} ${c.nom} ?`)) setClients(clients.filter(cl => cl.id !== c.id)); }} style={{ ...btnDanger, padding: '6px 10px' }}><Trash2 size={13} /></button>
+                <button onClick={() => {
+                  if (!window.confirm(`Supprimer ${c.prenom} ${c.nom} ?\nLes chantiers, devis et factures liés seront aussi supprimés.`)) return;
+                  const chantiersDuClient = chantiers.filter(ch => String(ch.clientId) === String(c.id));
+                  const idsCh = new Set(chantiersDuClient.map(ch => ch.id));
+                  const devisDuClient = devis.filter(dv => String(dv.clientId) === String(c.id));
+                  const idsFactures = new Set(factures.filter(f => idsCh.has(f.chantierId) || devisDuClient.some(dv => String(dv.id) === String(f.devisId))).map(f => f.id));
+                  if (idsCh.size > 0) setChantiers(chantiers.filter(ch => !idsCh.has(ch.id)));
+                  if (devisDuClient.length > 0) setDevis(devis.filter(dv => String(dv.clientId) !== String(c.id)));
+                  if (idsFactures.size > 0) setFactures(factures.filter(f => !idsFactures.has(f.id)));
+                  setClients(clients.filter(cl => cl.id !== c.id));
+                }} style={{ ...btnDanger, padding: '6px 10px' }}><Trash2 size={13} /></button>
               </div>
             </div>
           );

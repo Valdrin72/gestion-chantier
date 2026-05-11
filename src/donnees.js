@@ -30,10 +30,11 @@ export const fmtN = (n, dec = 0) => {
 
 // ===== JOURS OUVRABLES =====
 export const calculerDateFinOuvrables = (dateDebut, nombreJours, inclusSamedi = false) => {
-  if (!dateDebut || !nombreJours) return '-';
+  if (!dateDebut || !nombreJours) return null;
   const nb = parseInt(nombreJours);
-  if (isNaN(nb) || nb <= 0) return '-';
+  if (isNaN(nb) || nb <= 0) return null;
   const date = new Date(dateDebut);
+  if (isNaN(date.getTime())) return null; // Protection date invalide
   let joursComptés = 0;
   let iterations = 0;
   const maxIterations = nb * 3 + 30;
@@ -52,7 +53,9 @@ export const calculerDateFinOuvrables = (dateDebut, nombreJours, inclusSamedi = 
 
 export const joursOuvrableRestants = (dateDebut, nombreJours, inclusSamedi = false) => {
   if (!dateDebut || !nombreJours) return null;
-  const dateFin = new Date(calculerDateFinOuvrables(dateDebut, nombreJours, inclusSamedi));
+  const datefinStr = calculerDateFinOuvrables(dateDebut, nombreJours, inclusSamedi);
+  if (!datefinStr) return null; // Protection : date invalide ou paramètres manquants
+  const dateFin = new Date(datefinStr);
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   

@@ -184,7 +184,7 @@ function Devis() {
           <div style={{ display: 'grid', gridTemplateColumns: 'var(--g-devis)', gap: '14px', marginBottom: 20 }}>
             <div><label style={labelStyle}>Numéro</label><input value={form.numero} onChange={e => setForm({ ...form, numero: e.target.value })} style={inputStyle} /></div>
             <div><label style={labelStyle}>Client</label>
-              <select value={form.clientId} onChange={e => setForm({ ...form, clientId: parseInt(e.target.value) })} style={inputStyle}>
+              <select value={form.clientId} onChange={e => setForm({ ...form, clientId: parseInt(e.target.value) || '' })} style={inputStyle}>
                 <option value="">Sélectionner...</option>
                 {clients.map(c => <option key={c.id} value={c.id}>{c.prenom} {c.nom} — {c.entreprise}</option>)}
               </select></div>

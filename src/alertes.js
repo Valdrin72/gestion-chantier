@@ -26,17 +26,20 @@ export function calculerAlertes({ chantiers = [], devis = [], factures = [], pai
   // ── 1. Chantiers en retard ──────────────────────────────────
   if (['direction', 'conducteur', 'administratif'].includes(profilId)) {
     chantiers.forEach(c => {
-      if (c.statut?.trim().toLowerCase() === 'en cours' && c.dateFin) {
-        const dateFin = new Date(c.dateFin);
-        const joursRetard = Math.floor((now - dateFin) / 86400000);
-        if (joursRetard > 0) {
-          push({
-            type: 'chantier_retard',
-            niveau: joursRetard > 14 ? 'critique' : 'warning',
-            message: `Chantier "${c.nom || c.numero}" est en retard de ${joursRetard} jour${joursRetard > 1 ? 's' : ''}`,
-            page: 'chantiers',
-            entityId: c.id,
-          });
+      if (c.statut?.trim().toLowerCase() === 'en cours') {
+        const dateFinStr = calculerDateFinOuvrables(c.dateDebut, c.nombreJours, c.inclusSamedi);
+        const dateFin = dateFinStr && dateFinStr !== '-' ? new Date(dateFinStr) : null;
+        if (dateFin && dateFin < now) {
+          const joursRetard = Math.floor((now - dateFin) / 86400000);
+          if (joursRetard > 0) {
+            push({
+              type: 'chantier_retard',
+              niveau: joursRetard > 14 ? 'critique' : 'warning',
+              message: `Chantier "${c.nom || c.numero}" est en retard de ${joursRetard} jour${joursRetard > 1 ? 's' : ''}`,
+              page: 'chantiers',
+              entityId: c.id,
+            });
+          }
         }
       }
     });

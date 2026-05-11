@@ -712,7 +712,7 @@ export const genererNumeroFacture = (factures, prefix = 'F') => {
     .map(f => f.numero || '')
     .filter(n => n.startsWith(debutAnnee))
     .map(n => parseInt(n.slice(debutAnnee.length)) || 0);
-  const seq = existants.length > 0 ? Math.max(...existants) + 1 : 1;
+  const seq = existants.length > 0 ? existants.reduce((a, b) => a > b ? a : b, 0) + 1 : 1;
   return `${prefix}-${annee}-${String(seq).padStart(3, '0')}`;
 };
 

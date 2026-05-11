@@ -1,7 +1,7 @@
 // ============================================================
 // CYNA — MODULE FINANCES (Factures + Paiements unifiés)
 // ============================================================
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { DollarSign, FileText, Clock, AlertTriangle, CreditCard, TrendingUp, Calendar, Zap } from 'lucide-react';
 import Factures from '../Factures';
 import Paiements from '../Paiements';
@@ -417,6 +417,12 @@ export default function Finances({
     factures.filter(f => !facturesOrphelines.some(o => o.id === f.id))
   , [factures, facturesOrphelines]);
 
+  // Wrapper onSave : réintègre les orphelines pour ne pas les écraser silencieusement
+  const onSaveFactures = useCallback((nouvellesValides) => {
+    const orphelines = factures.filter(f => facturesOrphelines.some(o => o.id === f.id));
+    onSave([...orphelines, ...nouvellesValides]);
+  }, [factures, facturesOrphelines, onSave]);
+
   // ── Factures filtrées par période ────────────────────────────
   const facturesPeriode = useMemo(() => {
     const { debut, fin } = getIntervallesPeriode(periodeGlobale);
@@ -543,7 +549,7 @@ export default function Finances({
       <div style={{ display: onglet === 'factures' ? 'block' : 'none' }}>
         <Factures
           factures={facturesValides}
-          onSave={onSave}
+          onSave={onSaveFactures}
           clients={clients}
           chantiers={chantiers}
           devis={devis}

@@ -143,7 +143,7 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
       const cle = f.chantierId || 'misc';
       const existants = paiementsData[cle] || [];
       const nouveau = {
-        id: Date.now(),
+        id: `pay_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
         montant,
         date: paiementForm.date,
         dateEcheance: paiementForm.date,
@@ -157,7 +157,7 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
     }
 
     // 2. Mettre à jour montantPaye + statut + historique de la facture
-    const entreeHistorique = { id: Date.now(), montant, date: paiementForm.date, mode: 'Virement', note: paiementForm.note };
+    const entreeHistorique = { id: `pay_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`, montant, date: paiementForm.date, mode: 'Virement', note: paiementForm.note };
     const nouveauPaiements = [...(f.paiementsHistorique || []), entreeHistorique];
     const nouveauMontantPaye = nouveauPaiements.reduce((s, p) => s + (parseFloat(p.montant) || 0), 0);
     const restant = (f.montantTTC ?? 0) - nouveauMontantPaye;
@@ -224,7 +224,7 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
       const dateEmissionDefaut = new Date().toISOString().slice(0, 10);
       const dateEcheanceDefaut = new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10);
       setForm({
-        id: `fact_${Date.now()}`,
+        id: `fact_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
         numero: genererNumeroFacture(factures),
         clientId: '',
         chantierId: '',
@@ -373,7 +373,7 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
       const montantPaye = parseFloat(f.montantPaye) || 0;
       if (montantTTC > montantPaye + 0.01) {
         const restant = montantTTC - montantPaye;
-        const entree = { id: Date.now(), montant: restant, date: new Date().toISOString().slice(0, 10), mode: 'Divers', note: 'Soldé manuellement' };
+        const entree = { id: `pay_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`, montant: restant, date: new Date().toISOString().slice(0, 10), mode: 'Divers', note: 'Soldé manuellement' };
         updates.montantPaye = montantTTC;
         updates.paiementsHistorique = [...(f.paiementsHistorique || []), entree];
       }

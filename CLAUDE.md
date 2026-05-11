@@ -232,3 +232,80 @@ Ce script vérifie :
 1. 🔴 **Critique** (bloquer le commit) : marge erronée, CA nul affiché, NaN visible
 2. 🟠 **Important** (corriger dans la session) : type string au lieu de number, statut casse
 3. 🟡 **À noter** (backlog) : duplication de logique, champ obsolète
+
+---
+
+## ÉQUIPES D'AGENTS PARALLÈLES
+
+Pour les tâches complexes, lancer plusieurs agents simultanément avec leurs spécialités.
+
+### Équipe Frontend (UI/UX)
+
+```
+Agent "Designer Senior"
+  Spécialité : composants React, Tailwind, Shadcn UI, responsive mobile
+  Outils MCP : shadcn, context7, playwright
+  Prompt type : "Tu es un designer senior spécialisé React/Shadcn UI.
+    Crée [composant] en respectant le design system CYNA (couleurs #0d3d6e,
+    mobile-first, dark mode). Utilise shadcn MCP pour les composants."
+
+Agent "Designer Junior"
+  Spécialité : CSS, animations, icônes Lucide, accessibilité
+  Outils MCP : context7, playwright
+  Prompt type : "Tu es un développeur frontend. Affine [composant] :
+    animations subtiles, états hover/focus, cohérence visuelle."
+```
+
+### Équipe Code Quality
+
+```
+Agent "Code Reviewer"
+  Spécialité : revue de code, patterns React, performance, bugs
+  Outils MCP : memory, sequential-thinking
+  Prompt type : "Fais une revue complète de [fichier]. Vérifie :
+    division par zéro, NaN, comparaisons de statut, deps React hooks,
+    fuites mémoire, et règles CLAUDE.md section RÈGLES DE CODE."
+
+Agent "Security Auditor"
+  Spécialité : OWASP, XSS, injection, RLS Supabase, auth
+  Outils MCP : context7, memory
+  Prompt type : "Audite [fichier/feature] pour failles de sécurité.
+    Vérifie RLS Supabase, validation inputs, tokens exposés, XSS."
+```
+
+### Équipe Architecture & Planning
+
+```
+Agent "Architecte"
+  Spécialité : structure code, refactoring, scalabilité
+  Outils MCP : sequential-thinking, context7, memory
+  Prompt type : "Analyse l'architecture de [feature]. Propose un plan
+    d'implémentation étape par étape. Identifie les risques et dépendances."
+
+Agent "Planificateur"
+  Spécialité : découpage tâches, estimation, priorisation
+  Outils MCP : sequential-thinking, memory
+  Prompt type : "Décompose [fonctionnalité] en sous-tâches atomiques,
+    ordonnées par dépendances, avec estimation de complexité (S/M/L)."
+```
+
+### Utilisation des agents en parallèle
+
+```js
+// Exemple : lancer Designer + Reviewer simultanément
+Agent({ subagent_type: "general-purpose", description: "Designer UI",
+  prompt: "Crée le composant PDF preview..." })
+Agent({ subagent_type: "general-purpose", description: "Code Reviewer",
+  prompt: "Revue du composant DevisPage.js selon règles CLAUDE.md..." })
+// → Les deux tournent en même temps, résultats combinés ensuite
+```
+
+### MCP Servers disponibles
+
+| Serveur | Usage |
+|---------|-------|
+| `context7` | Docs live React, Supabase, Tailwind, Shadcn |
+| `memory` | Mémoriser décisions techniques entre sessions |
+| `shadcn` | Composants Shadcn UI prêts à l'emploi |
+| `sequential-thinking` | Planification et raisonnement structuré |
+| `playwright` | Tests UI, screenshots, vérification visuelle |

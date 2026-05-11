@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import useAuth from './hooks/useAuth';
+import { supabase } from './lib/supabase';
 
 export default function Login({ onLogin }) {
   const { connecter, erreur } = useAuth();
@@ -7,6 +8,8 @@ export default function Login({ onLogin }) {
   const [motDePasse, setMotDePasse] = useState('');
   const [chargement, setChargement] = useState(false);
   const [afficherMDP, setAfficherMDP] = useState(false);
+  const [mdpOublie, setMdpOublie] = useState(false);
+  const [msgReinit, setMsgReinit] = useState('');
 
   const soumettre = async (e) => {
     e.preventDefault();
@@ -15,6 +18,25 @@ export default function Login({ onLogin }) {
     const ok = await connecter(email.trim().toLowerCase(), motDePasse);
     setChargement(false);
     if (ok && onLogin) onLogin();
+  };
+
+  const demanderReinit = async (e) => {
+    e.preventDefault();
+    if (!email) {
+      setMsgReinit('Saisissez votre adresse email ci-dessus.');
+      return;
+    }
+    setChargement(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
+      redirectTo: window.location.origin,
+    });
+    setChargement(false);
+    if (error) {
+      setMsgReinit('Erreur lors de l\'envoi. Vérifiez votre email.');
+    } else {
+      setMsgReinit('Email de réinitialisation envoyé. Vérifiez votre boîte de réception.');
+      setMdpOublie(false);
+    }
   };
 
   return (
@@ -124,6 +146,61 @@ export default function Login({ onLogin }) {
             >
               {chargement ? 'Connexion...' : 'Se connecter'}
             </button>
+
+            {/* MOT DE PASSE OUBLIÉ */}
+            <div style={{ textAlign: 'center', marginTop: '16px' }}>
+              {!mdpOublie ? (
+                <button
+                  type="button"
+                  onClick={() => { setMdpOublie(true); setMsgReinit(''); }}
+                  style={{
+                    background: 'none', border: 'none', color: '#3382c2',
+                    fontSize: '13px', cursor: 'pointer', textDecoration: 'underline', padding: 0,
+                  }}
+                >
+                  Mot de passe oublié ?
+                </button>
+              ) : (
+                <div>
+                  <p style={{ fontSize: '13px', color: '#555', marginBottom: '8px' }}>
+                    Saisissez votre email ci-dessus puis cliquez sur le bouton.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={demanderReinit}
+                    disabled={chargement}
+                    style={{
+                      background: 'none', border: '1px solid #3382c2', color: '#3382c2',
+                      borderRadius: '8px', padding: '8px 16px', fontSize: '13px',
+                      cursor: chargement ? 'wait' : 'pointer',
+                    }}
+                  >
+                    {chargement ? 'Envoi...' : 'Envoyer le lien de réinitialisation'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setMdpOublie(false); setMsgReinit(''); }}
+                    style={{
+                      background: 'none', border: 'none', color: '#888',
+                      fontSize: '12px', cursor: 'pointer', marginLeft: '12px',
+                    }}
+                  >
+                    Annuler
+                  </button>
+                </div>
+              )}
+              {msgReinit && (
+                <div style={{
+                  marginTop: '10px', padding: '10px 14px',
+                  background: msgReinit.startsWith('Email de') ? '#f0fdf4' : '#fef2f2',
+                  border: `1px solid ${msgReinit.startsWith('Email de') ? '#bbf7d0' : '#fecaca'}`,
+                  borderRadius: '8px', color: msgReinit.startsWith('Email de') ? '#16a34a' : '#dc2626',
+                  fontSize: '13px',
+                }}>
+                  {msgReinit}
+                </div>
+              )}
+            </div>
           </form>
         </div>
 

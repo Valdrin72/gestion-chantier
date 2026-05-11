@@ -132,6 +132,8 @@ export default function useSupabaseData(userId) {
     // Re-sync quand l'app revient au premier plan (retour sur l'onglet / déverrouillage téléphone)
     async function resyncSiVisible() {
       if (document.visibilityState !== 'visible') return;
+      // Si des données locales sont en attente de sync, ne pas écraser
+      if (pendingRef.current) return;
       try {
         const row = await lireRowUser(userId);
         if (row && row.data && Object.keys(row.data).length > 0) {
@@ -158,6 +160,7 @@ export default function useSupabaseData(userId) {
 
     return () => {
       cancelled = true;
+      clearTimeout(syncTimer.current);
       document.removeEventListener('visibilitychange', resyncSiVisible);
       supabase.removeChannel(channel);
     };

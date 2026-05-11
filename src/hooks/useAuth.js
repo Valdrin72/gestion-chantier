@@ -33,14 +33,20 @@ export default function useAuth() {
 
   const resolverProfil = useCallback((user) => {
     if (!user) return null;
-    const role = user.user_metadata?.role || 'direction';
-    return ROLE_PAGES[role] || ROLE_PAGES.direction;
+    const ROLES_AUTORISES = ['direction', 'conducteur', 'administratif'];
+    const roleRaw = user.user_metadata?.role;
+    // Protection contre l'élévation de rôle : si le rôle n'est pas dans la liste
+    // des rôles connus, on replie sur 'conducteur' (le moins privilégié).
+    const role = ROLES_AUTORISES.includes(roleRaw) ? roleRaw : 'conducteur';
+    return ROLE_PAGES[role];
   }, []);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session: s } }) => {
       setSession(s);
       setProfil(resolverProfil(s?.user));
+      setLoading(false);
+    }).catch(() => {
       setLoading(false);
     });
 

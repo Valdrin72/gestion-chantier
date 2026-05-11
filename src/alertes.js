@@ -4,6 +4,8 @@
 // Structure : { id, type, niveau, message, page, entityId, date }
 // ============================================================
 
+import { calculerDateFinOuvrables } from './donnees';
+
 /**
  * @param {object} data
  * @param {Array}  data.chantiers
@@ -43,7 +45,7 @@ export function calculerAlertes({ chantiers = [], devis = [], factures = [], pai
   // ── 2. Devis sans réponse depuis >14 jours ──────────────────
   if (['direction', 'administratif'].includes(profilId)) {
     devis.forEach(d => {
-      if (d.statut === 'Envoyé' && !d.chantierId) {
+      if (d.statut?.toLowerCase() === 'envoyé' && !d.chantierId) {
         const dateRef = new Date(d.dateEmission || d.date || now);
         const joursAttente = Math.floor((now - dateRef) / 86400000);
         if (joursAttente > 14) {
@@ -98,7 +100,7 @@ export function calculerAlertes({ chantiers = [], devis = [], factures = [], pai
   // ── 5. Chantiers sans devis associé ─────────────────────────
   if (['direction', 'administratif'].includes(profilId)) {
     const sansDev = chantiers.filter(c =>
-      c.statut !== 'Terminé' && c.statut !== 'Annulé' && !c.devisId
+      c.statut?.toLowerCase() !== 'terminé' && c.statut?.toLowerCase() !== 'annulé' && !c.devisId
     );
     if (sansDev.length > 0) {
       push({
@@ -114,7 +116,7 @@ export function calculerAlertes({ chantiers = [], devis = [], factures = [], pai
   // ── 6. Chantiers terminés depuis >7 jours sans facture finale ──
   if (['direction', 'administratif'].includes(profilId)) {
     chantiers.forEach(c => {
-      if (c.statut === 'Terminé') {
+      if (c.statut?.toLowerCase() === 'terminé') {
         const dateTermine = new Date(c.dateFin || c.dateDebut || 0);
         const joursDepuisTermine = Math.floor((now - dateTermine) / 86400000);
         if (joursDepuisTermine < 7) return; // grâce de 7 jours

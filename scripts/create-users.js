@@ -28,23 +28,27 @@ const supabase = createClient(url, key, {
 });
 
 // ─── Les 3 utilisateurs CYNA ────────────────────────────────────────────────
-// Modifie les mots de passe avant de lancer le script !
+// ⚠️  SÉCURITÉ : ne jamais committer de vrais mots de passe ici.
+// Définir les variables d'environnement dans .env.local avant de lancer le script :
+//   CYNA_PWD_DIRECTION=<mot-de-passe-fort>
+//   CYNA_PWD_CONDUCTEUR=<mot-de-passe-fort>
+//   CYNA_PWD_ADMINISTRATIF=<mot-de-passe-fort>
 const UTILISATEURS = [
   {
     email:    'directeur@cyna-ge.ch',
-    password: 'CynaDirecteur2024!',
+    password: process.env.CYNA_PWD_DIRECTION     || '[CHANGEZ-CE-MOT-DE-PASSE]',
     role:     'direction',
     nom:      'Directeur',
   },
   {
     email:    'chantier@cyna-ge.ch',
-    password: 'CynaChantier2024!',
+    password: process.env.CYNA_PWD_CONDUCTEUR    || '[CHANGEZ-CE-MOT-DE-PASSE]',
     role:     'conducteur',
     nom:      'Chef de chantier',
   },
   {
     email:    'bureau@cyna-ge.ch',
-    password: 'CynaBureau2024!',
+    password: process.env.CYNA_PWD_ADMINISTRATIF || '[CHANGEZ-CE-MOT-DE-PASSE]',
     role:     'administratif',
     nom:      'Bureau',
   },
@@ -86,11 +90,12 @@ async function main() {
   }
 
   console.log('\n✅  Terminé !');
-  console.log('\n📋  Identifiants créés :');
+  console.log('\n📋  Comptes créés :');
   UTILISATEURS.forEach(u => {
-    console.log(`   ${u.nom.padEnd(20)} ${u.email.padEnd(30)} ${u.password}`);
+    console.log(`   ${u.nom.padEnd(20)} ${u.email}`);
   });
-  console.log('\n⚠️  Note : Modifie les mots de passe depuis l\'application après la première connexion.\n');
+  console.log('\n⚠️  Note : Les mots de passe sont lus depuis les variables d\'environnement CYNA_PWD_*.');
+  console.log('   Modifiez-les depuis l\'application Supabase après la première connexion.\n');
 }
 
 main().catch(e => { console.error(e); process.exit(1); });

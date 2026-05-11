@@ -149,6 +149,41 @@ export default function useAgents({ chantiers, devis, factures, clients, paramet
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Re-run immédiat + purge alertes obsolètes quand des entités sont supprimées
+  const prevChantiersLenRef = useRef(chantiers?.length ?? 0);
+  const prevDevisLenRef     = useRef(devis?.length ?? 0);
+  const prevFacturesLenRef  = useRef(factures?.length ?? 0);
+  const rerunTimerRef       = useRef(null);
+
+  useEffect(() => {
+    const currC = chantiers?.length ?? 0;
+    const currD = devis?.length ?? 0;
+    const currF = factures?.length ?? 0;
+    const deleted =
+      currC < prevChantiersLenRef.current ||
+      currD < prevDevisLenRef.current ||
+      currF < prevFacturesLenRef.current;
+
+    prevChantiersLenRef.current = currC;
+    prevDevisLenRef.current     = currD;
+    prevFacturesLenRef.current  = currF;
+
+    if (!deleted) return;
+
+    // Purge immédiate des alertes qui référencent des IDs supprimés
+    const validCIds = new Set((chantiers || []).map(c => String(c.id)));
+    const validDIds = new Set((devis || []).map(d => String(d.id)));
+    setAlertes(prev => prev.filter(a =>
+      (!a.chantier_id || validCIds.has(String(a.chantier_id))) &&
+      (!a.devis_id    || validDIds.has(String(a.devis_id)))
+    ));
+
+    // Re-run des agents (avec debounce de 600 ms si plusieurs suppressions en rafale)
+    if (rerunTimerRef.current) clearTimeout(rerunTimerRef.current);
+    rerunTimerRef.current = setTimeout(() => executer(true), 600);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chantiers, devis, factures]);
+
   // Persistence de l'état courant
   useEffect(() => {
     saveState({ agentsActifs, alertes, predictions, patterns, rapports, agentsStatuts, agentsLogs, agentData, dernierRun });

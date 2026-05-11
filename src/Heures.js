@@ -58,13 +58,15 @@ export default function Heures({ chantiers = [], parametres = {}, setChantiers }
     if (!employeId || !chantierId || !date || !heures) return;
     const h = parseFloat(heures);
     if (!h || h <= 0) return;
-    // Allow Saturday of current or past weeks; only block truly future dates (> samedi courant)
+    // Règle CYNA stricte : pas de saisie dans le futur.
+    // Exception : samedi de la semaine courante uniquement si chantier.inclusSamedi=true.
     const todayStr = new Date().toISOString().split('T')[0];
     const samSemaineCourante = isoDate(addDays(getWeekStart(new Date()), 5));
-    if (date > todayStr && date > samSemaineCourante) return;
-    // Saturday confirmation required if chantier doesn't have inclusSamedi enabled
     const isSam = new Date(date + 'T00:00:00').getDay() === 6;
     const chantierCible = chantiers.find(c => String(c.id) === String(chantierId));
+    const samediFuturAutorise = isSam && date === samSemaineCourante && chantierCible?.inclusSamedi;
+    if (date > todayStr && !samediFuturAutorise) return;
+    // Saturday confirmation required if chantier doesn't have inclusSamedi enabled
     if (isSam && chantierCible && !chantierCible.inclusSamedi && !samediConfirme) return;
 
     setChantiers(prev => prev.map(c => {

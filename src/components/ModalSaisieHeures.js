@@ -34,12 +34,25 @@ function ModalSaisieHeures({ chantierSaisie, initialDate, onFermer, onSave, para
   const totalH = Object.values(heures).reduce((s, h) => s + (parseFloat(h) || 0), 0);
   const nbSaisis = Object.values(heures).filter(h => (parseFloat(h) || 0) > 0).length;
 
-  // Validation date : bloquer si avant le début du chantier ou dans le futur
+  // Validation date : bloquer si avant le début du chantier ou dans le futur.
+  // Exception CYNA : samedi de la semaine courante autorisé si chantier.inclusSamedi=true.
   const dateDebut = chantierSaisie.dateDebut || null;
   const today = new Date().toISOString().split('T')[0];
+  const samSemaineCourante = useMemo(() => {
+    const t = new Date();
+    const day = t.getDay(); // 0=dim, 1=lun, ..., 6=sam
+    const diffToMonday = (day + 6) % 7;
+    const monday = new Date(t);
+    monday.setDate(t.getDate() - diffToMonday);
+    monday.setDate(monday.getDate() + 5);
+    return monday.toISOString().split('T')[0];
+  }, []);
+  const isSamedi = date ? new Date(date + 'T00:00:00').getDay() === 6 : false;
+  const samediFuturAutorise = isSamedi && date === samSemaineCourante && chantierSaisie.inclusSamedi;
   const avantDebut = dateDebut && date < dateDebut;
-  const dansLeFutur = date > today;
+  const dansLeFutur = date > today && !samediFuturAutorise;
   const dateInvalide = avantDebut || dansLeFutur;
+  const maxDate = chantierSaisie.inclusSamedi && samSemaineCourante > today ? samSemaineCourante : today;
 
   const valider = useCallback(() => {
     if (dateInvalide) return;
@@ -92,7 +105,7 @@ function ModalSaisieHeures({ chantierSaisie, initialDate, onFermer, onSave, para
             type="date"
             value={date}
             min={dateDebut || undefined}
-            max={today}
+            max={maxDate}
             onChange={e => {
               const d = e.target.value;
               setDate(d);

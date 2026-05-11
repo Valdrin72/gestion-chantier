@@ -1,7 +1,7 @@
 import React from 'react';
 import { Plus, Sun, Moon, Menu, X, ChevronRight } from 'lucide-react';
 
-export function Sidebar({ sidebarOuvert, setSidebarOuvert, navAutorisees, page, naviguer, darkMode, toggleDarkMode, profil, setProfil }) {
+export function Sidebar({ sidebarOuvert, setSidebarOuvert, navAutorisees, page, naviguer, darkMode, toggleDarkMode, profil, deconnecter }) {
   return (
     <>
       {sidebarOuvert && <div className="sidebar-overlay" onClick={() => setSidebarOuvert(false)} />}
@@ -47,16 +47,34 @@ export function Sidebar({ sidebarOuvert, setSidebarOuvert, navAutorisees, page, 
           {darkMode ? <Sun size={14} strokeWidth={2} /> : <Moon size={14} strokeWidth={2} />}
           <span>{darkMode ? 'Mode clair' : 'Mode sombre'}</span>
         </button>
-        <div className="sidebar-profile">
-          <img
-            src={`${process.env.PUBLIC_URL}/logo-cyna.png`}
-            alt="CYNA"
-            style={{ height: 32, width: 'auto', objectFit: 'contain', flexShrink: 0 }}
-          />
-          <div className="sidebar-profile-info">
-            <div className="sidebar-profile-name">{profil.nom}</div>
-            <div className="sidebar-profile-role">{profil.id}</div>
+        <div className="sidebar-profile" style={{ cursor: 'default' }}>
+          <div style={{
+            width: 36, height: 36, borderRadius: '50%', flexShrink: 0,
+            background: profil?.couleur || '#3382c2',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 16, color: 'white',
+          }}>
+            {profil?.icone || '◈'}
           </div>
+          <div className="sidebar-profile-info">
+            <div className="sidebar-profile-name">{profil?.nom || 'Utilisateur'}</div>
+            <div className="sidebar-profile-role">{profil?.id || ''}</div>
+          </div>
+          {deconnecter && (
+            <button
+              onClick={deconnecter}
+              title="Se déconnecter"
+              style={{
+                background: 'none', border: 'none', cursor: 'pointer',
+                color: 'var(--text-secondary)', fontSize: 18, padding: '4px',
+                marginLeft: 'auto', opacity: 0.6, transition: 'opacity 0.2s',
+              }}
+              onMouseEnter={e => e.currentTarget.style.opacity = '1'}
+              onMouseLeave={e => e.currentTarget.style.opacity = '0.6'}
+            >
+              ⏻
+            </button>
+          )}
         </div>
       </aside>
     </>

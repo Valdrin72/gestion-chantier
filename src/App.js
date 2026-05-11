@@ -6,7 +6,8 @@ import {
 import { Sidebar, Topbar, MobileNav } from './components/Layout';
 import { donneesInitiales, migrerJournal, migrerDevisId } from './donnees';
 import Finances from './pages/FinancesPage';
-import { PROFILS } from './Login';
+import Login from './Login';
+import useAuth from './hooks/useAuth';
 import useAgents from './useAgents';
 import Heures from './Heures';
 import ModalSaisieHeures from './components/ModalSaisieHeures';
@@ -37,6 +38,24 @@ const NAV_FALLBACK = {
 };
 
 function App() {
+  const { session, profil: profilAuth, loading: authLoading, deconnecter } = useAuth();
+
+  if (authLoading) {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0d3d6e' }}>
+        <div style={{ color: 'white', fontSize: '18px' }}>Chargement...</div>
+      </div>
+    );
+  }
+
+  if (!session) {
+    return <Login />;
+  }
+
+  return <AppInner profil={profilAuth} deconnecter={deconnecter} />;
+}
+
+function AppInner({ profil, deconnecter }) {
   const [page, setPage] = useState('dashboard');
   const [contexte, setContexte] = useState({});
   const [darkMode, setDarkMode] = useState(() => {
@@ -137,7 +156,6 @@ function App() {
   const [paiementsData, setPaiementsDataState] = useState(() => charger('cyna_paiements', {}));
   // photosData conservé en localStorage pour migration future, non exposé à l'UI
   const [actionsLog, setActionsLogState] = useState(() => charger('cyna_actions', []));
-  const [profil, setProfil] = useState(() => PROFILS[0]);
 
   // ── Modal Saisie Heures — rendu au niveau App pour ne pas re-rendre Chantiers ──
   // On stocke l'id, pas le snapshot — le chantier est dérivé en live depuis chantiers[]
@@ -213,7 +231,7 @@ function App() {
     { id: 'parametres', label: 'Paramètres',  Icon: Settings,        labelCourt: 'Config' },
   ];
 
-  const pagesAutorisees = profil.pages || [];
+  const pagesAutorisees = profil?.pages || ['dashboard'];
   const navAutorisees = navItems.filter(item => pagesAutorisees.includes(item.id));
   const navMobileItems = navAutorisees.slice(0, 4);
 
@@ -223,6 +241,7 @@ function App() {
     paiementsData, setPaiementsData, actionsLog, profil,
     logAction, naviguer, contexte, periodeGlobale, setPeriodeGlobale,
     agentState, ouvrirSaisieHeures: ouvrirSaisieHeuresApp,
+    deconnecter,
   };
 
   return (
@@ -232,13 +251,14 @@ function App() {
         sidebarOuvert={sidebarOuvert} setSidebarOuvert={setSidebarOuvert}
         navAutorisees={navAutorisees} page={page} naviguer={naviguer}
         darkMode={darkMode} toggleDarkMode={toggleDarkMode}
-        profil={profil} setProfil={setProfil}
+        profil={profil} deconnecter={deconnecter}
       />
       <div className="main-area">
         <Topbar
           setSidebarOuvert={setSidebarOuvert} canGoBack={canGoBack} page={page}
           revenirArriere={revenirArriere} navAutorisees={navAutorisees}
           darkMode={darkMode} toggleDarkMode={toggleDarkMode} profil={profil}
+          deconnecter={deconnecter}
         />
         <main className="app-main">
           {page === 'dashboard'    && <Dashboard />}

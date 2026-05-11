@@ -1,100 +1,138 @@
 import React, { useState } from 'react';
-import { C } from './donnees';
-
-const PROFILS = [
-  {
-    id: 'direction',
-    nom: 'Direction',
-    icone: '◈',
-    couleur: C.primaire,
-    description: 'Accès complet à toutes les fonctionnalités',
-    pages: ['dashboard', 'chantiers', 'devis', 'heures', 'finances', 'planning', 'rapport', 'agents', 'parametres'],
-  },
-];
+import useAuth from './hooks/useAuth';
 
 export default function Login({ onLogin }) {
-  const [selected, setSelected] = useState(null);
+  const { connecter, erreur } = useAuth();
+  const [email, setEmail] = useState('');
+  const [motDePasse, setMotDePasse] = useState('');
+  const [chargement, setChargement] = useState(false);
+  const [afficherMDP, setAfficherMDP] = useState(false);
+
+  const soumettre = async (e) => {
+    e.preventDefault();
+    if (!email || !motDePasse) return;
+    setChargement(true);
+    const ok = await connecter(email.trim().toLowerCase(), motDePasse);
+    setChargement(false);
+    if (ok && onLogin) onLogin();
+  };
 
   return (
     <div style={{
-      minHeight: '100vh', background: `linear-gradient(135deg, #3382c2 0%, #1a5a9a 50%, #0d3d6e 100%)`,
+      minHeight: '100vh',
+      background: 'linear-gradient(135deg, #3382c2 0%, #1a5a9a 50%, #0d3d6e 100%)',
       display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px'
     }}>
-      <div style={{ width: '100%', maxWidth: '600px' }}>
+      <div style={{ width: '100%', maxWidth: '420px' }}>
 
         {/* LOGO */}
         <div style={{ textAlign: 'center', marginBottom: '40px' }}>
-          
-          <div style={{ color: 'white', fontSize: '36px', fontWeight: 'bold', letterSpacing: '4px' }}>CYNA</div>
-          <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: '14px', marginTop: '5px' }}>Entreprise du bâtiment · Genève</div>
+          <div style={{ color: 'white', fontSize: '40px', fontWeight: 'bold', letterSpacing: '6px' }}>CYNA</div>
+          <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: '13px', marginTop: '6px' }}>
+            Entreprise du bâtiment · Genève
+          </div>
         </div>
 
-        {/* TITRE */}
-        <div style={{ textAlign: 'center', marginBottom: '30px' }}>
-          <div style={{ color: 'white', fontSize: '20px', fontWeight: 'bold' }}>Qui êtes-vous ?</div>
-          <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: '14px', marginTop: '5px' }}>Sélectionnez votre profil pour continuer</div>
-        </div>
+        {/* CARTE */}
+        <div style={{
+          background: 'white', borderRadius: '16px', padding: '32px',
+          boxShadow: '0 20px 60px rgba(0,0,0,0.3)'
+        }}>
+          <div style={{ marginBottom: '24px' }}>
+            <div style={{ fontSize: '22px', fontWeight: 'bold', color: '#1a1a2e' }}>Connexion</div>
+            <div style={{ fontSize: '14px', color: '#888', marginTop: '4px' }}>Accès réservé à l'équipe CYNA</div>
+          </div>
 
-        {/* PROFILS */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          {PROFILS.map(profil => (
-            <div key={profil.id}
-              onClick={() => setSelected(profil.id)}
-              style={{
-                background: selected === profil.id ? 'white' : 'rgba(255,255,255,0.1)',
-                borderRadius: '12px', padding: '18px 20px', cursor: 'pointer',
-                border: `2px solid ${selected === profil.id ? profil.couleur : 'transparent'}`,
-                transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: '15px'
-              }}>
-              <div style={{
-                width: '50px', height: '50px', borderRadius: '12px',
-                background: selected === profil.id ? profil.couleur : 'rgba(255,255,255,0.15)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', flexShrink: 0
-              }}>
-                {profil.icone}
-              </div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 'bold', fontSize: '16px', color: selected === profil.id ? profil.couleur : 'white' }}>
-                  {profil.nom}
-                </div>
-                <div style={{ fontSize: '13px', color: selected === profil.id ? '#666' : 'rgba(255,255,255,0.6)', marginTop: '2px' }}>
-                  {profil.description}
-                </div>
-              </div>
-              {selected === profil.id && (
-                <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: profil.couleur, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <span style={{ color: 'white', fontSize: '14px' }}>✓</span>
-                </div>
-              )}
+          <form onSubmit={soumettre}>
+            {/* EMAIL */}
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#444', marginBottom: '6px' }}>
+                Adresse email
+              </label>
+              <input
+                type="email"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                placeholder="votre@email.com"
+                autoComplete="email"
+                required
+                style={{
+                  width: '100%', padding: '12px 14px', border: '2px solid #e5e7eb',
+                  borderRadius: '10px', fontSize: '15px', outline: 'none', boxSizing: 'border-box',
+                  transition: 'border-color 0.2s',
+                }}
+                onFocus={e => e.target.style.borderColor = '#3382c2'}
+                onBlur={e => e.target.style.borderColor = '#e5e7eb'}
+              />
             </div>
-          ))}
+
+            {/* MOT DE PASSE */}
+            <div style={{ marginBottom: '24px' }}>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#444', marginBottom: '6px' }}>
+                Mot de passe
+              </label>
+              <div style={{ position: 'relative' }}>
+                <input
+                  type={afficherMDP ? 'text' : 'password'}
+                  value={motDePasse}
+                  onChange={e => setMotDePasse(e.target.value)}
+                  placeholder="••••••••"
+                  autoComplete="current-password"
+                  required
+                  style={{
+                    width: '100%', padding: '12px 44px 12px 14px', border: '2px solid #e5e7eb',
+                    borderRadius: '10px', fontSize: '15px', outline: 'none', boxSizing: 'border-box',
+                    transition: 'border-color 0.2s',
+                  }}
+                  onFocus={e => e.target.style.borderColor = '#3382c2'}
+                  onBlur={e => e.target.style.borderColor = '#e5e7eb'}
+                />
+                <button
+                  type="button"
+                  onClick={() => setAfficherMDP(v => !v)}
+                  style={{
+                    position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)',
+                    background: 'none', border: 'none', cursor: 'pointer', color: '#888', fontSize: '16px', padding: '4px'
+                  }}
+                >
+                  {afficherMDP ? '🙈' : '👁'}
+                </button>
+              </div>
+            </div>
+
+            {/* ERREUR */}
+            {erreur && (
+              <div style={{
+                background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px',
+                padding: '10px 14px', marginBottom: '16px', color: '#dc2626', fontSize: '14px'
+              }}>
+                {erreur}
+              </div>
+            )}
+
+            {/* BOUTON */}
+            <button
+              type="submit"
+              disabled={chargement || !email || !motDePasse}
+              style={{
+                width: '100%', padding: '14px',
+                background: chargement || !email || !motDePasse ? '#93c5fd' : '#3382c2',
+                color: 'white', border: 'none', borderRadius: '10px',
+                fontSize: '16px', fontWeight: 'bold', cursor: chargement ? 'wait' : 'pointer',
+                transition: 'background 0.2s',
+              }}
+            >
+              {chargement ? 'Connexion...' : 'Se connecter'}
+            </button>
+          </form>
         </div>
 
-        {/* BOUTON CONNEXION */}
-        <button
-          onClick={() => {
-            if (selected) {
-              const profil = PROFILS.find(p => p.id === selected);
-              onLogin(profil);
-            }
-          }}
-          disabled={!selected}
-          style={{
-            width: '100%', marginTop: '25px', padding: '15px',
-            background: selected ? C.secondaire : 'rgba(255,255,255,0.2)',
-            color: 'white', border: 'none', borderRadius: '12px',
-            fontSize: '16px', fontWeight: 'bold', cursor: selected ? 'pointer' : 'not-allowed',
-            transition: 'all 0.2s'
-          }}>
-          {selected ? `Continuer en tant que ${PROFILS.find(p => p.id === selected)?.nom}` : 'Sélectionnez un profil'}
-        </button>
-
-        <div style={{ textAlign: 'center', marginTop: '20px', color: 'rgba(255,255,255,0.4)', fontSize: '12px' }}>
-          Application CYNA v1.0 · Gestion de chantiers
+        <div style={{ textAlign: 'center', marginTop: '24px', color: 'rgba(255,255,255,0.4)', fontSize: '12px' }}>
+          CYNA v2.0 · Application sécurisée
         </div>
       </div>
     </div>
   );
 }
 
-export { PROFILS };
+export { };

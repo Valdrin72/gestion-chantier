@@ -103,6 +103,7 @@ function Devis() {
     naviguer('chantiers', { chantierActif: newId, modeCompleter: true });
   };
 
+  // eslint-disable-next-line no-unused-vars
   const STATUTS_COULEUR = {
     'brouillon': '#64748b', 'envoyé': C.info, 'accepté': C.secondaire, 'refusé': C.danger,
     'En cours': C.info, 'Validé': C.secondaire, 'Envoyé': C.info, 'Refusé': C.danger, 'Annulé': '#64748b', 'Signé': C.secondaire,

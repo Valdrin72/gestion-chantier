@@ -194,6 +194,7 @@ export default function useAgents({ chantiers, devis, factures, clients, paramet
   const toggleAgent = useCallback((name) => setAgentsActifs(prev => ({ ...prev, [name]: !prev[name] })), []);
   const forcerExecution = useCallback(() => executer(true), [executer]);
 
+  // eslint-disable-next-line no-unused-vars
   const effacerMemoire = useCallback((agentName = null) => {
     if (agentName) {
       memoireRef.current = { ...memoireRef.current, [agentName]: {} };

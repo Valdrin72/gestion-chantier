@@ -7,7 +7,7 @@ import SimulateurCroissance from '../SimulateurCroissance';
 import BenchmarkMarche from '../BenchmarkMarche';
 import { useApp } from '../context/AppContext';
 import { DS } from '../ds';
-import { Bot, TrendingUp, Award, BarChart2 } from 'lucide-react';
+import { Bot, TrendingUp, Award } from 'lucide-react';
 
 function RapportIA({ agentData }) {
   const rapport = agentData?.RapportNaturel;

@@ -4,10 +4,11 @@ import {
   ClipboardList, Settings, DollarSign, Clock, Bot,
 } from 'lucide-react';
 import { Sidebar, Topbar, MobileNav } from './components/Layout';
-import { donneesInitiales, migrerJournal, migrerDevisId } from './donnees';
+import { migrerDevisId } from './donnees';
 import Finances from './pages/FinancesPage';
 import Login from './Login';
 import useAuth from './hooks/useAuth';
+import useSupabaseData from './hooks/useSupabaseData';
 import useAgents from './useAgents';
 import Heures from './Heures';
 import ModalSaisieHeures from './components/ModalSaisieHeures';
@@ -52,10 +53,19 @@ function App() {
     return <Login />;
   }
 
-  return <AppInner profil={profilAuth} deconnecter={deconnecter} />;
+  return <AppInner profil={profilAuth} deconnecter={deconnecter} userId={session.user.id} />;
 }
 
-function AppInner({ profil, deconnecter }) {
+function AppInner({ profil, deconnecter, userId }) {
+  const {
+    chantiers, setChantiers,
+    devis, setDevis,
+    factures, setFactures,
+    clients, setClients,
+    parametres, setParametres,
+    loading: dataLoading, syncing,
+  } = useSupabaseData(userId);
+
   const [page, setPage] = useState('dashboard');
   const [contexte, setContexte] = useState({});
   const [darkMode, setDarkMode] = useState(() => {
@@ -64,9 +74,6 @@ function AppInner({ profil, deconnecter }) {
   const [mobileMenuOuvert, setMobileMenuOuvert] = useState(false);
   const [sidebarOuvert, setSidebarOuvert] = useState(false);
 
-  // ── Historique de navigation ─────────────────────────────────
-  // historyRef : source de vérité pour la logique (lecture synchrone, zéro timing bug)
-  // canGoBack  : state booléen uniquement pour déclencher le re-render du bouton
   const historyRef  = React.useRef([]);
   const pageRef     = React.useRef('dashboard');
   const contexteRef = React.useRef({});
@@ -81,9 +88,7 @@ function AppInner({ profil, deconnecter }) {
   }, []);
 
   const naviguer = useCallback((nouvellePage, nouveauContexte = {}) => {
-    // 1. Capturer l'état courant AVANT toute mutation (pas de race avec le batch React)
     const entree = { page: pageRef.current, contexte: contexteRef.current };
-    // 2. Mettre à jour les refs (synchrone, immédiat)
     historyRef.current  = [...historyRef.current, entree];
     pageRef.current     = nouvellePage;
     contexteRef.current = nouveauContexte;
@@ -115,79 +120,23 @@ function AppInner({ profil, deconnecter }) {
     setContexte(precedent.contexte);
   }, []);
 
-  const charger = (cle, defaut, validateur = null) => {
-    try {
-      const raw = localStorage.getItem(cle);
-      if (!raw) return defaut;
-      const parsed = JSON.parse(raw);
-      if (validateur && !validateur(parsed)) {
-        console.error(`[STORAGE] Données invalides pour ${cle} — reset au défaut`);
-        return defaut;
-      }
-      return parsed;
-    } catch {
-      console.error(`[STORAGE] Données corrompues pour ${cle} — reset au défaut`);
-      return defaut;
-    }
+  const [periodeGlobale, setPeriodeGlobale] = useState('mois');
+  const [paiementsData, setPaiementsDataState] = useState(() => {
+    try { const r = localStorage.getItem('cyna_paiements'); return r ? JSON.parse(r) : {}; } catch { return {}; }
+  });
+  const [actionsLog, setActionsLogState] = useState(() => {
+    try { const r = localStorage.getItem('cyna_actions'); return r ? JSON.parse(r) : []; } catch { return []; }
+  });
+
+  const setPaiementsData = (data) => {
+    setPaiementsDataState(data);
+    try { localStorage.setItem('cyna_paiements', JSON.stringify(data)); } catch {}
   };
 
-  const [periodeGlobale, setPeriodeGlobale] = useState('mois');
-
-  const [parametres, setParametresState] = useState(() => {
-    const loaded = charger('cyna_parametres', donneesInitiales, v => v && typeof v === 'object' && !Array.isArray(v));
-    // P3 — Migration : si coefficientMainOeuvre absent (anciens users), appliquer 1.35 et persister
-    if (loaded.parametres && loaded.parametres.coefficientMainOeuvre === undefined) {
-      loaded.parametres = { ...loaded.parametres, coefficientMainOeuvre: 1.35 };
-      try { localStorage.setItem('cyna_parametres', JSON.stringify(loaded)); } catch {}
-    }
-    return loaded;
-  });
-  const [chantiers, setChantiersState] = useState(() => {
-    const raw = charger('cyna_chantiers', donneesInitiales.chantiers, v => Array.isArray(v) && v.every(c => c && c.id != null && c.nom != null));
-    // Migration unique : convertit les entrées journal employesPresents → heuresTravaillees
-    return raw.map(c => ({ ...c, journal: migrerJournal(c.journal || []) }));
-  });
-  const [clients, setClientsState] = useState(() => charger('cyna_clients', donneesInitiales.clients, Array.isArray));
-  const [devis, setDevisState] = useState(() => {
-    const LEGACY = { 'Validé': 'accepté', 'Signé': 'accepté', 'Envoyé': 'envoyé', 'Refusé': 'refusé', 'Brouillon': 'brouillon', 'Annulé': 'refusé' };
-    return charger('cyna_devis', donneesInitiales.devis, Array.isArray).map(d => ({ ...d, statut: LEGACY[d.statut] || d.statut }));
-  });
-  const [factures, setFacturesState] = useState(() => charger('cyna_factures', [], Array.isArray));
-  const [paiementsData, setPaiementsDataState] = useState(() => charger('cyna_paiements', {}));
-  // photosData conservé en localStorage pour migration future, non exposé à l'UI
-  const [actionsLog, setActionsLogState] = useState(() => charger('cyna_actions', []));
-
-  // ── Modal Saisie Heures — rendu au niveau App pour ne pas re-rendre Chantiers ──
-  // On stocke l'id, pas le snapshot — le chantier est dérivé en live depuis chantiers[]
-  const [saisieHeuresCtx, setSaisieHeuresCtx] = useState(null); // { chantierId, date } | null
+  const [saisieHeuresCtx, setSaisieHeuresCtx] = useState(null);
   const ouvrirSaisieHeuresApp = useCallback((chantier, date) => {
     setSaisieHeuresCtx({ chantierId: chantier.id, date: date || new Date().toISOString().split('T')[0] });
   }, []);
-
-  const sauvegarderLocal = (cle, data) => {
-    try {
-      localStorage.setItem(cle, JSON.stringify(data));
-    } catch (e) {
-      if (e.name === 'QuotaExceededError' || e.name === 'NS_ERROR_DOM_QUOTA_REACHED') {
-        alert('Espace de stockage plein. Supprimez des données pour libérer de l\'espace.');
-      }
-    }
-  };
-
-  // Setters directs (passage par valeur)
-  const setParametres    = (data) => { setParametresState(data);    sauvegarderLocal('cyna_parametres', data); };
-  const setFactures      = (data) => { setFacturesState(data);      sauvegarderLocal('cyna_factures',   data); };
-  const setClients       = (data) => { setClientsState(data);       sauvegarderLocal('cyna_clients',    data); };
-  const setDevis         = (data) => { setDevisState(data);         sauvegarderLocal('cyna_devis',      data); };
-  const setPaiementsData = (data) => { setPaiementsDataState(data); sauvegarderLocal('cyna_paiements',  data); };
-
-  // setChantiers accepte valeur directe ou updater fonctionnel (Planning, Heures utilisent prev =>)
-  const setChantiers = useCallback((updater) => {
-    setChantiersState(updater);
-  }, []);
-
-  // Sync chantiers → localStorage à chaque changement (couvre les updaters fonctionnels)
-  useEffect(() => { sauvegarderLocal('cyna_chantiers', chantiers); }, [chantiers]);
 
   const logAction = useCallback(({ type, chantierId = null, label = '', factureIds = [] }) => {
     setActionsLogState(prev => {

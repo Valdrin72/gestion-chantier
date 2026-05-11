@@ -144,12 +144,14 @@ function buildChecks({ chantiers, devis, factures, clients, parametres }) {
       fn: () => {
         const pb = [];
         chantiers.forEach(c => {
+          // Source unique : CA vient de calculerCA (devis.montantHT), jamais de c.montantDevis
+          const caCalcule = calculerCA(c, devis);
           const d = devisMap[String(c.devisId)];
           if (!d || !c.montantDevis) return;
-          const montantDevis = parseFloat(d.montantHT) || 0;
+          const montantDevis = caCalcule !== null ? caCalcule : (parseFloat(d.montantHT) || 0);
           const montantChantier = parseFloat(c.montantDevis) || 0;
           if (montantDevis > 0 && Math.abs(montantDevis - montantChantier) > 1) {
-            pb.push(`${c.nom || c.numero} : chantier CHF ${fmtN(montantChantier)} ≠ devis CHF ${fmtN(montantDevis)}`);
+            pb.push(`${c.nom || c.numero} : chantier CHF ${fmtN(montantChantier)} ≠ CA calculé CHF ${fmtN(montantDevis)}`);
           }
         });
         if (pb.length === 0) return { niveau: NIV.ok, detail: 'Source unique respectée sur tous les chantiers' };

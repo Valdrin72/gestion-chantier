@@ -1054,12 +1054,15 @@ export const heuresJour = (journal, date) => {
   return result;
 };
 
-export const calculerEtatChantier = (chantier, employes = [], devisList = []) => {
+export const calculerEtatChantier = (chantier, employes = [], devisList = [], parametres = null) => {
   const equipe     = chantier.equipe     || [];
   const journal    = chantier.journal    || [];
   const imprevus   = chantier.imprevus   || [];
   // CA = devis accepté lié (montantHT) + avenants. Si aucun devis : CA = 0.
   const devisTotal = calculerCA(chantier, devisList);
+
+  // Coefficient charges sociales employeur (règle BTP Suisse : défaut 1.35 = +35%)
+  const coefficientMO = parseFloat(parametres?.coefficientMainOeuvre) || 1.35;
 
   // ── A. Jours réels par employé (source : journal uniquement) ──────────
   // Tous les employés ayant des heures dans le journal — sans nécessiter c.equipe
@@ -1072,7 +1075,9 @@ export const calculerEtatChantier = (chantier, employes = [], devisList = []) =>
 
   const membreDetail = tousEmpIds.map(empId => {
     const emp     = employes.find(e => e.id === empId);
-    const tarifJour  = parseFloat(emp?.tarifJour) || 0;
+    // Règle BTP : appliquer le coefficient MO si le tarif n'est pas déjà chargé
+    const coeff = emp?.tarifDejaCharge ? 1 : coefficientMO;
+    const tarifJour  = (parseFloat(emp?.tarifJour) || 0) * coeff;
     const tarifHeure = tarifJour / 8;  // dérivé — 8h/jour convention BTP
 
     // Heures réelles depuis le journal (format unique — aucun fallback)

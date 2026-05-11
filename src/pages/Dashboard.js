@@ -13,8 +13,10 @@ import {
 import { DS } from '../ds';
 import { STATUTS_CLOS } from '../constants/statuts';
 import { useApp } from '../context/AppContext';
+import useIsMobile from '../hooks/useIsMobile';
 
 function Dashboard() {
+  const isMobile = useIsMobile();
   const { chantiers, clients, factures, devis = [], parametres, naviguer, actionsLog = [], logAction = () => {}, periodeGlobale = 'mois', setPeriodeGlobale = () => {}, profil = null, agentState } = useApp();
   const agentAlertes = agentState?.alertes || [];
   const nbAgentAlertes = agentState?.nbNonLues || 0;
@@ -673,15 +675,15 @@ function Dashboard() {
     </div>
   );
 
-  const CARD = { background: 'var(--dash-card)', border: '1px solid var(--dash-border)', borderRadius: 16, padding: '20px', boxShadow: 'var(--ds-card-shadow)' };
+  const CARD = { background: 'var(--dash-card)', border: '1px solid var(--dash-border)', borderRadius: 16, padding: isMobile ? '12px' : '20px', boxShadow: 'var(--ds-card-shadow)' };
 
   return (
     <div>
 
       {/* ── HEADER ──────────────────────────────────────────────── */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 28, flexWrap: 'wrap', gap: 14 }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: isMobile ? 14 : 28, flexWrap: 'wrap', gap: 10 }}>
         <div>
-          <div style={{ fontSize: 26, fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.5px', lineHeight: 1.2, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <div style={{ fontSize: isMobile ? 20 : 26, fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.5px', lineHeight: 1.2, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
             Bonjour,
             <img
               src={`${process.env.PUBLIC_URL}/logo-cyna-tech.png`}
@@ -795,7 +797,7 @@ function Dashboard() {
       })()}
 
       {/* ── LIGNE 2 : CHANTIERS · FINANCIER · ALERTES ────────────── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'var(--g-dash)', gap: 16, marginBottom: 20 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'var(--g-dash)', gap: isMobile ? 10 : 16, marginBottom: isMobile ? 10 : 20 }}>
 
         {/* ── COLONNE GAUCHE : Mes chantiers ── */}
         <div style={CARD}>
@@ -806,7 +808,7 @@ function Dashboard() {
           {actifs.length === 0
             ? <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: 0, textAlign: 'center', padding: '24px 0' }}>Aucun chantier actif</p>
             : <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                {[...actifs].sort((a, b) => calculerPriorite(b).score - calculerPriorite(a).score).slice(0, 3).map(c => {
+                {[...actifs].sort((a, b) => calculerPriorite(b).score - calculerPriorite(a).score).slice(0, isMobile ? 2 : 3).map(c => {
                   const priorite = calculerPriorite(c);
                   const montantCA = calculerCA(c, devis);
                   const couts = coutsMap.get(c.id) || {};
@@ -906,7 +908,7 @@ function Dashboard() {
             <span style={{ fontSize: 11, color: 'var(--text-muted)', background: 'var(--bg-glass-2)', border: '1px solid var(--border)', borderRadius: 6, padding: '3px 10px' }}>4 dernières semaines</span>
           </div>
           {donneesMensuelles.some(d => d.CA > 0 || d.Couts > 0) ? (
-            <ResponsiveContainer width="100%" height={210}>
+            <ResponsiveContainer width="100%" height={isMobile ? 140 : 210}>
               <LineChart data={donneesMensuelles} margin={{ top: 5, right: 5, left: -22, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
                 <XAxis dataKey="semaine" tick={{ fill: 'var(--text-muted)', fontSize: 10 }} />
@@ -918,7 +920,7 @@ function Dashboard() {
               </LineChart>
             </ResponsiveContainer>
           ) : (
-            <div style={{ height: 210, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: 13 }}>Aucune donnée disponible</div>
+            <div style={{ height: isMobile ? 140 : 210, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: 13 }}>Aucune donnée disponible</div>
           )}
           <div style={{ display: 'flex', gap: 20, marginTop: 12, justifyContent: 'center' }}>
             {[['#3b82f6', "Chiffre d'affaires"], ['#94a3b8', 'Coûts estimés'], ['#10b981', 'Encaissements']].map(([col, lbl]) => (
@@ -1013,7 +1015,7 @@ function Dashboard() {
       </div>
 
       {/* ── LIGNE 3 : RÉPARTITION COÛTS · AVANCEMENT · ACTIVITÉ ─── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'var(--g3)', gap: 16, marginBottom: 20 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'var(--g3)', gap: isMobile ? 10 : 16, marginBottom: isMobile ? 10 : 20 }}>
 
         {/* Répartition des coûts (donut) */}
         <div style={CARD}>
@@ -1021,8 +1023,8 @@ function Dashboard() {
           {repartitionCouts.total > 0 ? (
             <>
               <div style={{ display: 'flex', justifyContent: 'center' }}>
-                <PieChart width={156} height={156}>
-                  <Pie data={repartitionCouts.segments} cx={78} cy={78} innerRadius={48} outerRadius={70} dataKey="value" paddingAngle={3}>
+                <PieChart width={isMobile ? 110 : 156} height={isMobile ? 110 : 156}>
+                  <Pie data={repartitionCouts.segments} cx={isMobile ? 55 : 78} cy={isMobile ? 55 : 78} innerRadius={isMobile ? 32 : 48} outerRadius={isMobile ? 48 : 70} dataKey="value" paddingAngle={3}>
                     {repartitionCouts.segments.map((entry, i) => <Cell key={i} fill={entry.couleur} />)}
                   </Pie>
                   <Tooltip contentStyle={{ background: 'var(--dash-card)', border: '1px solid var(--dash-border)', borderRadius: 8, fontSize: 11 }} formatter={v => [`${v.toFixed(0)}%`, '']} />
@@ -1050,8 +1052,8 @@ function Dashboard() {
           <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--text-primary)', marginBottom: 20, width: '100%' }}>Avancement global</div>
           {actifs.length > 0 ? (
             <>
-              <div style={{ position: 'relative', width: 140, height: 140, marginBottom: 20 }}>
-                <svg width="140" height="140" viewBox="0 0 140 140">
+              <div style={{ position: 'relative', width: isMobile ? 100 : 140, height: isMobile ? 100 : 140, marginBottom: 12 }}>
+                <svg width={isMobile ? 100 : 140} height={isMobile ? 100 : 140} viewBox="0 0 140 140">
                   <circle cx="70" cy="70" r="58" fill="none" stroke="var(--border)" strokeWidth="10" />
                   <circle cx="70" cy="70" r="58" fill="none" stroke="#3b82f6" strokeWidth="10"
                     strokeDasharray={`${2 * Math.PI * 58}`}

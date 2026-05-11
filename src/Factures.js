@@ -9,6 +9,7 @@
 import React, { useState, useMemo } from 'react';
 import { DS } from './ds';
 import { fmtN, getIntervallesPeriode, facturesInPeriode } from './donnees';
+import { prochainRappel, niveauInfo, genererTexteRappel, marquerRappelEnvoye } from './relances';
 
 // ── TVA suisse ───────────────────────────────────────────────
 const TVA_OPTIONS = [
@@ -135,6 +136,7 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
   const [form, setForm] = useState(null);
   const [paiementModal, setPaiementModal] = useState(null); // facture sur laquelle on enregistre
   const [paiementForm, setPaiementForm] = useState({ montant: '', date: new Date().toISOString().slice(0, 10), note: '' });
+  const [rappelModal, setRappelModal] = useState(null); // { facture, niveau, contenu }
 
   const canEdit = profil?.id === 'direction' || profil?.id === 'administratif';
 
@@ -296,6 +298,21 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
     if (!window.confirm(msg)) return;
     onSave(factures.filter(x => x.id !== id));
     if (returnToListe) { setVue('liste'); setSelected(null); }
+  };
+
+  const ouvrirRappel = (facture, niveau) => {
+    const cli = clients.find(c => String(c.id) === String(facture.clientId));
+    const contenu = genererTexteRappel(niveau, facture, cli);
+    setRappelModal({ facture, niveau, contenu });
+  };
+
+  const confirmerRappelEnvoye = () => {
+    if (!rappelModal) return;
+    const { facture, niveau } = rappelModal;
+    const factureMAJ = marquerRappelEnvoye(facture, niveau);
+    onSave(factures.map(x => x.id === facture.id ? factureMAJ : x));
+    if (selected?.id === facture.id) setSelected(factureMAJ);
+    setRappelModal(null);
   };
 
   const changerStatut = (id, statut) => {
@@ -679,6 +696,80 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
           </div>
         )}
 
+        {/* ── Relances (factures non payées uniquement) ── */}
+        {f.statut !== 'payee' && f.statut !== 'annulee' && f.statut !== 'brouillon' && (() => {
+          const prochaine = prochainRappel(f);
+          const rappels = f.rappels || [];
+          return (
+            <div style={{ ...S.card, marginTop: 16 }}>
+              <div className="ds-card-title" style={{ marginBottom: 14 }}>Relances</div>
+
+              {/* Historique des relances déjà envoyées */}
+              {rappels.length > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 14 }}>
+                  {rappels.sort((a, b) => a.niveau - b.niveau).map(r => {
+                    const info = niveauInfo(r.niveau);
+                    return (
+                      <div key={r.niveau} style={{
+                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                        background: `${info.couleur}15`, border: `1px solid ${info.couleur}40`,
+                        borderRadius: 10, padding: '10px 14px',
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <span style={{ fontSize: 18 }}>✓</span>
+                          <div>
+                            <div style={{ fontSize: 13, fontWeight: 700, color: info.couleur }}>{info.label}</div>
+                            <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Envoyé le {r.date}</div>
+                          </div>
+                        </div>
+                        <button style={{ ...S.btnGhost, fontSize: 12 }}
+                          onClick={() => ouvrirRappel(f, r.niveau)}>Revoir</button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Prochain rappel à envoyer */}
+              {prochaine && canEdit && (() => {
+                const info = niveauInfo(prochaine.niveau);
+                return (
+                  <div style={{
+                    background: `${info.couleur}10`, border: `2px solid ${info.couleur}`,
+                    borderRadius: 12, padding: 16, display: 'flex',
+                    justifyContent: 'space-between', alignItems: 'center', gap: 12,
+                  }}>
+                    <div>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: info.couleur, marginBottom: 4 }}>
+                        ⚠ {info.label} à envoyer
+                      </div>
+                      <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                        Facture en retard de {prochaine.joursRetard} jours · Solde restant : {fmt(Math.max(restant, 0))} CHF
+                      </div>
+                    </div>
+                    <button onClick={() => ouvrirRappel(f, prochaine.niveau)}
+                      style={{ ...S.btnPrimary, background: info.couleur, borderColor: info.couleur, fontWeight: 700 }}>
+                      Générer le rappel →
+                    </button>
+                  </div>
+                );
+              })()}
+
+              {/* Aucune action nécessaire */}
+              {!prochaine && rappels.length === 0 && (
+                <div style={{ padding: '12px 0', fontSize: 13, color: 'var(--text-muted)', textAlign: 'center' }}>
+                  Aucune relance nécessaire pour le moment.
+                </div>
+              )}
+              {!prochaine && rappels.length >= 3 && (
+                <div style={{ padding: '12px 0', fontSize: 13, color: '#ef4444', textAlign: 'center', fontWeight: 600 }}>
+                  Tous les rappels ont été envoyés. Procédure de poursuite envisageable.
+                </div>
+              )}
+            </div>
+          );
+        })()}
+
         {f.notes && (
           <div style={{ ...S.card, marginTop: 16 }}>
             <div className="ds-section-label">Notes</div>
@@ -725,6 +816,74 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
             </div>
           </div>
         )}
+
+        {/* ── Modal rappel : affiche le texte, permet de copier/imprimer/marquer envoyé ── */}
+        {rappelModal && (() => {
+          const info = niveauInfo(rappelModal.niveau);
+          const { contenu, facture } = rappelModal;
+          const dejaEnvoye = (facture.rappels || []).some(r => r.niveau === rappelModal.niveau);
+          const copierTexte = async () => {
+            try { await navigator.clipboard.writeText(contenu.texte); alert('Texte copié dans le presse-papier.'); }
+            catch { alert('Copie impossible. Sélectionnez le texte manuellement.'); }
+          };
+          const imprimer = () => {
+            const w = window.open('', '_blank', 'width=800,height=900');
+            if (!w) return;
+            w.document.write(`<!DOCTYPE html><html><head><title>${contenu.objet}</title>
+              <style>body{font-family:Georgia,serif;padding:40px;line-height:1.6;white-space:pre-wrap;font-size:13px;color:#222;}</style>
+              </head><body>${contenu.texte.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</body></html>`);
+            w.document.close();
+            setTimeout(() => w.print(), 300);
+          };
+          return (
+            <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100, padding: 20 }}
+              onClick={e => { if (e.target === e.currentTarget) setRappelModal(null); }}>
+              <div style={{
+                background: 'linear-gradient(145deg, rgba(255,255,255,0.07) 0%, rgba(255,255,255,0.03) 100%)',
+                backdropFilter: 'blur(20px) saturate(1.8)', WebkitBackdropFilter: 'blur(20px) saturate(1.8)',
+                borderRadius: 18, padding: 24, width: '100%', maxWidth: 720, maxHeight: '90vh', overflowY: 'auto',
+                boxShadow: '0 24px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.1)',
+                border: `2px solid ${info.couleur}`,
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+                  <div style={{ width: 8, height: 32, background: info.couleur, borderRadius: 4 }} />
+                  <div>
+                    <div style={{ fontSize: 18, fontWeight: 800, color: info.couleur }}>{info.label}</div>
+                    <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Facture {facture.numero}</div>
+                  </div>
+                </div>
+
+                <div style={{ marginBottom: 12, fontSize: 12, color: 'var(--text-secondary)' }}>
+                  Objet : <strong>{contenu.objet}</strong>
+                </div>
+
+                <textarea readOnly value={contenu.texte} style={{
+                  width: '100%', minHeight: 360, padding: 16, borderRadius: 10,
+                  border: '1px solid var(--border)', background: 'rgba(255,255,255,0.04)',
+                  color: 'var(--text-primary)', fontSize: 12, lineHeight: 1.6,
+                  fontFamily: 'Georgia, serif', resize: 'vertical',
+                }} />
+
+                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 8, marginBottom: 16 }}>
+                  Copiez ce texte dans votre logiciel email, votre messagerie ou imprimez-le pour envoi postal.
+                </div>
+
+                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                  <button style={S.btnGhost} onClick={copierTexte}>📋 Copier le texte</button>
+                  <button style={S.btnGhost} onClick={imprimer}>🖨 Imprimer</button>
+                  <div style={{ flex: 1 }} />
+                  <button style={S.btnGhost} onClick={() => setRappelModal(null)}>Fermer</button>
+                  {!dejaEnvoye && (
+                    <button onClick={confirmerRappelEnvoye}
+                      style={{ ...S.btnSuccess, background: info.couleur, borderColor: info.couleur }}>
+                      ✓ Marquer comme envoyé
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        })()}
       </div>
     </React.Fragment>);
   }

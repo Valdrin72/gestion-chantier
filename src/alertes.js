@@ -5,6 +5,7 @@
 // ============================================================
 
 import { calculerDateFinOuvrables } from './donnees';
+import { prochainRappel, niveauInfo } from './relances';
 
 /**
  * @param {object} data
@@ -64,24 +65,42 @@ export function calculerAlertes({ chantiers = [], devis = [], factures = [], pai
     });
   }
 
-  // ── 3. Factures en retard de paiement ───────────────────────
+  // ── 3. Factures en retard de paiement + relances à envoyer ───
   if (['direction', 'administratif'].includes(profilId)) {
     factures.forEach(f => {
-      if (f.statut === 'envoyee' || f.statut === 'partielle') {
-        if (f.dateEcheance) {
-          const echeance = new Date(f.dateEcheance);
-          const joursRetard = Math.floor((now - echeance) / 86400000);
-          if (joursRetard > 0) {
-            const montantRestant = (f.montantTTC ?? 0) - (f.montantPaye ?? 0);
-            push({
-              type: 'facture_retard',
-              niveau: joursRetard > 30 ? 'critique' : 'warning',
-              message: `Facture ${f.numero} en retard de ${joursRetard} j — ${montantRestant.toLocaleString('fr-CH')} CHF restants`,
-              page: 'factures',
-              entityId: f.id,
-            });
-          }
-        }
+      if (f.statut !== 'envoyee' && f.statut !== 'partielle' && f.statut !== 'retard') return;
+      if (!f.dateEcheance) return;
+      const echeance = new Date(f.dateEcheance);
+      if (isNaN(echeance.getTime())) return;
+      const joursRetard = Math.floor((now - echeance) / 86400000);
+      if (joursRetard <= 0) return;
+
+      const montantRestant = Math.max(0,
+        (parseFloat(f.montantTTC) || parseFloat(f.montantHT) * 1.081 || 0) -
+        (f.paiementsHistorique || []).reduce((s, p) => s + (parseFloat(p.montant) || 0), 0)
+      );
+
+      // Rappel à envoyer (priorité haute, actionable)
+      const rappel = prochainRappel(f);
+      if (rappel) {
+        const info = niveauInfo(rappel.niveau);
+        push({
+          type: 'rappel_a_envoyer',
+          niveau: rappel.niveau === 3 ? 'critique' : (rappel.niveau === 2 ? 'critique' : 'warning'),
+          message: `${info.label} à envoyer pour facture ${f.numero} — ${joursRetard} j de retard · CHF ${montantRestant.toLocaleString('fr-CH')}`,
+          page: 'finances',
+          entityId: f.id,
+          rappelNiveau: rappel.niveau,
+        });
+      } else {
+        // Retard sans rappel à envoyer (déjà tous envoyés ou délai pas atteint)
+        push({
+          type: 'facture_retard',
+          niveau: joursRetard > 30 ? 'critique' : 'warning',
+          message: `Facture ${f.numero} en retard de ${joursRetard} j — CHF ${montantRestant.toLocaleString('fr-CH')} restants`,
+          page: 'finances',
+          entityId: f.id,
+        });
       }
     });
   }
@@ -190,6 +209,7 @@ export const ALERTE_LABELS = {
   chantier_retard:       'Retard chantier',
   devis_attente:         'Devis sans réponse',
   facture_retard:        'Facture en retard',
+  rappel_a_envoyer:      'Rappel à envoyer',
   factures_brouillon:    'Brouillons non émis',
   chantier_sans_devis:   'Chantiers sans devis',
   chantier_sans_facture: 'Chantiers sans facture',

@@ -27,6 +27,13 @@ function Devis() {
   };
   const [form, setForm] = useState(vide);
 
+  // Helper unifié : CA signé d'un devis (montant HT + avenants)
+  const caDevis = (d) => {
+    const base = parseFloat(d.montantHT || d.prixPropose) || 0;
+    const av = Array.isArray(d.avenants) ? d.avenants.reduce((x, a) => x + (parseFloat(a.montant) || 0), 0) : 0;
+    return base + av;
+  };
+
   // Ouverture directe du formulaire depuis la sidebar
   React.useEffect(() => {
     if (contexte?.ouvrirNouveau) { setForm(vide); setAjout(true); }
@@ -116,10 +123,10 @@ function Devis() {
       {/* ── KPI GRID ── */}
       {(() => {
         const devisAcceptes = devis.filter(d => d.statut === 'accepté');
-        const caSigné = devisAcceptes.reduce((s, d) => s + (parseFloat(d.montantHT || d.prixPropose) || 0), 0);
+        const caSigné = devisAcceptes.reduce((s, d) => s + caDevis(d), 0);
         const tauxAcceptation = devis.length > 0 ? Math.round((devisAcceptes.length / devis.length) * 100) : 0;
         const enAttente = devis.filter(d => d.statut === 'envoyé');
-        const montantAttente = enAttente.reduce((s, d) => s + (parseFloat(d.montantHT || d.prixPropose) || 0), 0);
+        const montantAttente = enAttente.reduce((s, d) => s + caDevis(d), 0);
         const now = Date.now();
         const delaisMoyen = enAttente.length > 0
           ? Math.round(enAttente.reduce((s, d) => { const dt = d.dateEmission || d.date || 0; return s + Math.floor((now - new Date(dt)) / 86400000); }, 0) / enAttente.length)
@@ -450,7 +457,7 @@ function Devis() {
                             return (
                               <button
                                 onClick={() => {
-                                  const nouvelleFacture = creerFactureDepuisDevis(d, chantierLie || null, factures);
+                                  const nouvelleFacture = creerFactureDepuisDevis(d, chantierLie || null, factures, parseFloat(d.tva) || 8.1);
                                   setFactures([...factures, nouvelleFacture]);
                                   naviguer('finances');
                                 }}

@@ -7,6 +7,14 @@
 import { calculerDateFinOuvrables } from './donnees';
 import { prochainRappel, niveauInfo } from './relances';
 
+function calculerTotalFacture(f) {
+  if (parseFloat(f.montantTTC) > 0) return parseFloat(f.montantTTC);
+  if (Array.isArray(f.lignes) && f.lignes.length > 0) {
+    return f.lignes.reduce((s, l) => s + (parseFloat(l.quantite) || 0) * (parseFloat(l.prixUnitaire) || 0) * (1 + (parseFloat(l.tva) || 0) / 100), 0);
+  }
+  return parseFloat(f.montantHT) || 0;
+}
+
 /**
  * @param {object} data
  * @param {Array}  data.chantiers
@@ -30,7 +38,7 @@ export function calculerAlertes({ chantiers = [], devis = [], factures = [], pai
       if (c.statut?.trim().toLowerCase() === 'en cours') {
         const dateFinStr = calculerDateFinOuvrables(c.dateDebut, c.nombreJours, c.inclusSamedi);
         const dateFin = dateFinStr && dateFinStr !== '-' ? new Date(dateFinStr) : null;
-        if (dateFin && dateFin < now) {
+        if (dateFin && !isNaN(dateFin.getTime()) && dateFin < now) {
           const joursRetard = Math.floor((now - dateFin) / 86400000);
           if (joursRetard > 0) {
             push({
@@ -51,6 +59,7 @@ export function calculerAlertes({ chantiers = [], devis = [], factures = [], pai
     devis.forEach(d => {
       if (d.statut?.toLowerCase() === 'envoyé' && !d.chantierId) {
         const dateRef = new Date(d.dateEmission || d.date || now);
+        if (isNaN(dateRef.getTime())) return;
         const joursAttente = Math.floor((now - dateRef) / 86400000);
         if (joursAttente > 14) {
           push({
@@ -76,7 +85,7 @@ export function calculerAlertes({ chantiers = [], devis = [], factures = [], pai
       if (joursRetard <= 0) return;
 
       const montantRestant = Math.max(0,
-        (parseFloat(f.montantTTC) || parseFloat(f.montantHT) * 1.081 || 0) -
+        calculerTotalFacture(f) -
         (f.paiementsHistorique || []).reduce((s, p) => s + (parseFloat(p.montant) || 0), 0)
       );
 
@@ -139,7 +148,9 @@ export function calculerAlertes({ chantiers = [], devis = [], factures = [], pai
   if (['direction', 'administratif'].includes(profilId)) {
     chantiers.forEach(c => {
       if (c.statut?.toLowerCase() === 'terminé') {
-        const dateTermine = new Date(c.dateFin || c.dateDebut || 0);
+        if (!c.dateFin && !c.dateDebut) return;
+        const dateTermine = new Date(c.dateFin || c.dateDebut);
+        if (isNaN(dateTermine.getTime())) return;
         const joursDepuisTermine = Math.floor((now - dateTermine) / 86400000);
         if (joursDepuisTermine < 7) return; // grâce de 7 jours
         const hasFactureFinale = factures.some(f =>
@@ -164,7 +175,10 @@ export function calculerAlertes({ chantiers = [], devis = [], factures = [], pai
       if (!Array.isArray(liste)) return;
       liste.forEach(p => {
         if (['En attente','en attente','envoyee','partielle','retard'].includes(p.statut)) {
-          const dateRef = new Date(p.dateEcheance || p.date || 0);
+          const dateSrc = p.dateEcheance || p.date;
+          if (!dateSrc) return;
+          const dateRef = new Date(dateSrc);
+          if (isNaN(dateRef.getTime())) return;
           const joursAttente = Math.floor((now - dateRef) / 86400000);
           if (joursAttente > 30) {
             push({

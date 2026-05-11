@@ -8,7 +8,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { DS } from './ds';
-import { fmtN, getIntervallesPeriode, facturesInPeriode } from './donnees';
+import { fmtN, getIntervallesPeriode, facturesInPeriode, genererNumeroFacture, calculerStatutFacture } from './donnees';
 import { prochainRappel, niveauInfo, genererTexteRappel, marquerRappelEnvoye } from './relances';
 
 // ── TVA suisse ───────────────────────────────────────────────
@@ -51,20 +51,6 @@ const STATUT_COLORS = {
   retard:     { bg: 'rgba(239,68,68,0.12)',  text: '#ef4444' },
   annulee:    { bg: 'rgba(100,100,100,0.12)',text: '#6b7280' },
 };
-
-// ── Générateur de numéro ─────────────────────────────────────
-function genererNumero(factures) {
-  const an = new Date().getFullYear();
-  const mois = String(new Date().getMonth() + 1).padStart(2, '0');
-  const existants = factures
-    .map(f => {
-      const m = f.numero?.match(/^F-(\d{4})(\d{2})-(\d+)$/);
-      return m ? parseInt(m[3], 10) : 0;
-    })
-    .filter(Boolean);
-  const seq = existants.length > 0 ? Math.max(...existants) + 1 : 1;
-  return `F-${an}${mois}-${String(seq).padStart(3, '0')}`;
-}
 
 // ── Styles partagés — Design System CYNA ────────────────────
 const S = {
@@ -171,15 +157,16 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
     }
 
     // 2. Mettre à jour montantPaye + statut + historique de la facture
-    const nouveauMontantPaye = (f.montantPaye ?? 0) + montant;
+    const entreeHistorique = { id: Date.now(), montant, date: paiementForm.date, mode: 'Virement', note: paiementForm.note };
+    const nouveauPaiements = [...(f.paiementsHistorique || []), entreeHistorique];
+    const nouveauMontantPaye = nouveauPaiements.reduce((s, p) => s + (parseFloat(p.montant) || 0), 0);
     const restant = (f.montantTTC ?? 0) - nouveauMontantPaye;
     const nouveauStatut = restant <= 0.01 ? 'payee' : 'partielle';
-    const entreeHistorique = { id: Date.now(), montant, date: paiementForm.date, mode: 'Virement', note: paiementForm.note };
     const factureMAJ = {
       ...f,
       montantPaye: nouveauMontantPaye,
       statut: nouveauStatut,
-      paiementsHistorique: [...(f.paiementsHistorique || []), entreeHistorique],
+      paiementsHistorique: nouveauPaiements,
     };
     onSave(factures.map(x => x.id === f.id ? factureMAJ : x));
 
@@ -195,7 +182,12 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
     const totalFacture  = actives.reduce((s, f) => s + (f.montantTTC ?? 0), 0);
     const totalEncaisse = actives.reduce((s, f) => s + (f.montantPaye ?? 0), 0);
     const totalRetard   = actives
-      .filter(f => f.statut === 'retard' || (f.statut === 'envoyee' && f.dateEcheance && new Date(f.dateEcheance) < new Date()))
+      .filter(f => {
+        if (f.statut === 'retard') return true;
+        if (f.statut !== 'envoyee' || !f.dateEcheance) return false;
+        const echDate = new Date(f.dateEcheance);
+        return !isNaN(echDate.getTime()) && echDate < new Date();
+      })
       .reduce((s, f) => s + ((f.montantTTC ?? 0) - (f.montantPaye ?? 0)), 0);
     const nbBrouillon   = factures.filter(f => f.statut === 'brouillon').length;
     return { totalFacture, totalEncaisse, totalRetard, nbBrouillon };
@@ -204,7 +196,7 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
   // ── Filtrage (statut, type, recherche, période) ──────────
   const facturesFiltrees = useMemo(() => {
     const { debut, fin } = getIntervallesPeriode(periodeGlobale);
-    return factures.filter(f => {
+    return factures.map(f => ({ ...f, statut: calculerStatutFacture(f) })).filter(f => {
       if (!facturesInPeriode(f, debut, fin)) return false;
       if (filtreStatut && f.statut !== filtreStatut) return false;
       if (filtreType   && f.type   !== filtreType)   return false;
@@ -228,17 +220,19 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
     if (facture) {
       setForm({ ...facture });
     } else {
+      const dateEmissionDefaut = new Date().toISOString().slice(0, 10);
+      const dateEcheanceDefaut = new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10);
       setForm({
         id: `fact_${Date.now()}`,
-        numero: genererNumero(factures),
+        numero: genererNumeroFacture(factures),
         clientId: '',
         chantierId: '',
         devisId: '',
         type: 'standard',
         source: 'manuel',
         statut: 'brouillon',
-        dateEmission: new Date().toISOString().slice(0, 10),
-        dateEcheance: '',
+        dateEmission: dateEmissionDefaut,
+        dateEcheance: dateEcheanceDefaut,
         objet: '',
         lignes: [{ description: '', quantite: 1, prixUnitaire: 0, tva: 8.1 }],
         montantHT: 0,
@@ -282,6 +276,28 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
   const sauvegarder = (statut = null) => {
     const data = statut ? { ...form, statut } : { ...form };
     if (!data.clientId) { alert('Le client est obligatoire.'); return; }
+    // Validation stricte à l'émission
+    if (statut === 'envoyee') {
+      if (!data.dateEmission || !data.dateEcheance) {
+        alert('Date d\'émission et date d\'échéance requises avant émission.');
+        return;
+      }
+      const de = new Date(data.dateEmission);
+      const dc = new Date(data.dateEcheance);
+      if (isNaN(de.getTime()) || isNaN(dc.getTime())) {
+        alert('Dates d\'émission/échéance invalides.');
+        return;
+      }
+      if (dc < de) {
+        alert('L\'échéance ne peut pas être avant l\'émission.');
+        return;
+      }
+      if (!Array.isArray(data.lignes) || data.lignes.length === 0 ||
+          data.lignes.every(l => !((parseFloat(l.quantite) || 0) > 0 && (parseFloat(l.prixUnitaire) || 0) > 0))) {
+        alert('Au moins une ligne avec quantité et prix > 0 est requise.');
+        return;
+      }
+    }
     const totaux = calculerTotaux(data.lignes || []);
     Object.assign(data, totaux);
     const liste = factures.some(f => f.id === data.id)
@@ -296,6 +312,16 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
     const f = factures.find(x => x.id === id);
     const msg = `Supprimer la facture ${f?.numero || ''} ?\nCette action est irréversible.`;
     if (!window.confirm(msg)) return;
+    // Nettoyer paiements orphelins
+    if (setPaiementsData && paiementsData) {
+      const nouveau = { ...paiementsData };
+      for (const chantierId in nouveau) {
+        if (Array.isArray(nouveau[chantierId])) {
+          nouveau[chantierId] = nouveau[chantierId].filter(p => String(p.factureId) !== String(id));
+        }
+      }
+      setPaiementsData(nouveau);
+    }
     onSave(factures.filter(x => x.id !== id));
     if (returnToListe) { setVue('liste'); setSelected(null); }
   };
@@ -316,6 +342,29 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
   };
 
   const changerStatut = (id, statut) => {
+    if (statut === 'envoyee') {
+      const f = factures.find(x => x.id === id);
+      if (!f) return;
+      if (!f.dateEmission || !f.dateEcheance) {
+        alert('Date d\'émission et date d\'échéance requises avant émission.');
+        return;
+      }
+      const de = new Date(f.dateEmission);
+      const dc = new Date(f.dateEcheance);
+      if (isNaN(de.getTime()) || isNaN(dc.getTime())) {
+        alert('Dates d\'émission/échéance invalides.');
+        return;
+      }
+      if (dc < de) {
+        alert('L\'échéance ne peut pas être avant l\'émission.');
+        return;
+      }
+      if (!Array.isArray(f.lignes) || f.lignes.length === 0 ||
+          f.lignes.every(l => !((parseFloat(l.quantite) || 0) > 0 && (parseFloat(l.prixUnitaire) || 0) > 0))) {
+        alert('Au moins une ligne avec quantité et prix > 0 est requise.');
+        return;
+      }
+    }
     onSave(factures.map(f => f.id === id ? { ...f, statut } : f));
   };
 

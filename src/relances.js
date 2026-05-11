@@ -28,8 +28,16 @@ function joursDepuis(dateStr) {
   return Math.floor((Date.now() - d.getTime()) / 86_400_000);
 }
 
+function calculerTotalFacture(f) {
+  if (parseFloat(f.montantTTC) > 0) return parseFloat(f.montantTTC);
+  if (Array.isArray(f.lignes) && f.lignes.length > 0) {
+    return f.lignes.reduce((s, l) => s + (parseFloat(l.quantite) || 0) * (parseFloat(l.prixUnitaire) || 0) * (1 + (parseFloat(l.tva) || 0) / 100), 0);
+  }
+  return parseFloat(f.montantHT) || 0;
+}
+
 function montantRestant(facture) {
-  const total = parseFloat(facture.montantTTC) || parseFloat(facture.montantHT) * 1.081 || 0;
+  const total = calculerTotalFacture(facture);
   const paye  = (facture.paiementsHistorique || []).reduce((s, p) => s + (parseFloat(p.montant) || 0), 0);
   return Math.max(0, total - paye);
 }

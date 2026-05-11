@@ -215,7 +215,7 @@ export const migrerDevisId = (chantiers, devisList) => {
 };
 
 export const calculerCoutsChantier = (chantier, employes, localites, cfg = {}, devisList = []) => {
-  const coefficient = parseFloat(cfg.coefficientMainOeuvre) || 1.0;
+  const coefficient = parseFloat(cfg.coefficientMainOeuvre) || 1.35;
   const tauxFG = parseFloat(cfg.tauxFraisGeneraux) || 0;
 
   // Helper : tarif journalier chargé (applique le coefficient si tarif non déjà chargé)
@@ -589,7 +589,7 @@ export const calculerEcartChantier = (chantier) => {
 export const calculerRentabiliteReelle = (chantier, parametres, devisList = []) => {
   // ── Source unique : calculerEtatChantier ─────────────────────────────────
   const employes = parametres?.employes || [];
-  const etat = calculerEtatChantier(chantier, employes, devisList);
+  const etat = calculerEtatChantier(chantier, employes, devisList, parametres?.parametres || parametres);
 
   const joursPrevu    = parseInt(chantier.nombreJours) || 0;
   const joursRealises = etat.totalJoursReels;
@@ -608,10 +608,11 @@ export const calculerRentabiliteReelle = (chantier, parametres, devisList = []) 
   const rentabilite    = caDisponible ? caTotal - totalCoutsReel : null;
   const rentabilitePct = (caDisponible && caTotal > 0) ? (rentabilite / caTotal) * 100 : null;
 
-  // Coût MO prévisionnel (somme tarifJour × joursPrévus par membre)
+  // Coût MO prévisionnel (somme tarifJour × joursPrévus par membre, chargé du coefficient)
   const coutMOPrevu = (chantier.equipe || []).reduce((total, membre) => {
     const emp = employes.find(e => e.id === parseInt(membre.employeId));
-    return total + (parseFloat(emp?.tarifJour) || 0) * (parseFloat(membre.joursPlannifies) || 0);
+    const coeff = emp?.tarifDejaCharge ? 1 : (parseFloat(parametres?.parametres?.coefficientMainOeuvre) || parseFloat(parametres?.coefficientMainOeuvre) || 1.35);
+    return total + (parseFloat(emp?.tarifJour) || 0) * coeff * (parseFloat(membre.joursPlannifies) || 0);
   }, 0);
 
   const rentabiliteProjetee = (caDisponible && joursRealises > 0)

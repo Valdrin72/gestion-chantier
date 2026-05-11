@@ -102,8 +102,8 @@ function Dashboard() {
       const devisTotal = calculerCA(c, devis);
       if (devisTotal === null) return { id: c.id, nom: c.nom || c.numero, encaissementPrevu: 0 };
       // Règle BTP : avancement vient du journal des heures (source unique), avec fallback sur la valeur manuelle
-      const etat = calculerEtatChantier(c, parametres?.employes || [], devis);
-      const avancement = etat?.avancementPct ?? Math.max(0, Math.min(100, Math.round(parseFloat(c.avancement) || 0)));
+      const etat = calculerEtatChantier(c, parametres?.employes || [], devis, parametres?.parametres || parametres);
+      const avancement = etat?.avancementPct ?? 0;
       const montantFacture = (factures || [])
         .filter(f => parseInt(f.chantierId) === c.id)
         .reduce((s, f) => s + (parseFloat(f.montantTTC) || 0), 0);
@@ -179,7 +179,7 @@ function Dashboard() {
   const kpiEquipe = useMemo(() => {
     const resultsAvecEquipe = actifs
       .map(c => {
-        const etatC = calculerEtatChantier(c, parametres.employes, devis);
+        const etatC = calculerEtatChantier(c, parametres.employes, devis, parametres?.parametres || parametres);
         const reel = rentaReelleParChantier[c.id];
         return { c, coutMOReel: etatC.coutMOReel, reel };
       })
@@ -636,7 +636,7 @@ function Dashboard() {
   const avancementMoyen = useMemo(() => {
     if (actifs.length === 0) return 0;
     const sum = actifs.reduce((s, c) => {
-      const etat = calculerEtatChantier(c, parametres.employes, devis);
+      const etat = calculerEtatChantier(c, parametres.employes, devis, parametres?.parametres || parametres);
       const pct = etat.totalJoursReels > 0 ? etat.avancementPct : (parseFloat(c.avancement) || 0);
       return s + pct;
     }, 0);

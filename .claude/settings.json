@@ -8,6 +8,12 @@
             "command": "cd /home/user/gestion-chantier && node scripts/audit-btp.js --quick 2>&1 | grep -E '(CRITIQUE|WARNING|✅|0 critique)' | head -5 | jq -Rsc '{\"systemMessage\": \"🔍 Audit BTP final — \" + .}' 2>/dev/null || true",
             "timeout": 30,
             "statusMessage": "Audit BTP final en cours..."
+          },
+          {
+            "type": "command",
+            "command": "echo '{\"systemMessage\": \"🧠 memory-keeper: mémoriser les apprentissages de cette session via mcp__memory__add_observations sur Anticipations futures et Patterns de bugs récurrents\"}' 2>/dev/null || true",
+            "timeout": 5,
+            "statusMessage": "Rappel mémoire..."
           }
         ]
       }

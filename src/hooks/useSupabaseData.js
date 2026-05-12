@@ -75,15 +75,27 @@ export default function useSupabaseData(userId) {
   const pendingRef  = useRef(null);
   const dataRef     = useRef({});
 
+  // Numéros de factures de test créées par les agents — supprimées une fois lors du chargement
+  const FACTURES_TEST = new Set([
+    'F-202605-001','F-202605-002','F-202605-003','F-202605-004','F-202605-005',
+    'F-2026-005','F-2026-006','F-2026-007','F-2026-008',
+    'F-2026-009','F-2026-010','F-2026-011','F-2026-012',
+    'F-2026-017','F-2026-018',
+  ]);
+
   function appliquerData(d) {
     const c = (d.chantiers || []).map(c => ({ ...c, journal: migrerJournal(c.journal || []) }));
     const dv = (d.devis || []).map(x => ({ ...x, statut: LEGACY_STATUTS[x.statut] || x.statut }));
+    const facturesPropres = (d.factures || []).filter(f => !FACTURES_TEST.has(f.numero));
+    const nettoyage = facturesPropres.length < (d.factures || []).length;
     setChantiersState(c);
     setDevisState(dv);
-    setFacturesState(d.factures || []);
+    setFacturesState(facturesPropres);
     setClientsState(d.clients || []);
     setParametresState(d.parametres || donneesInitiales);
-    dataRef.current = { chantiers: c, devis: dv, factures: d.factures || [], clients: d.clients || [], parametres: d.parametres || donneesInitiales };
+    dataRef.current = { chantiers: c, devis: dv, factures: facturesPropres, clients: d.clients || [], parametres: d.parametres || donneesInitiales };
+    // Si des factures test ont été supprimées, resync immédiatement vers Supabase
+    if (nettoyage) scheduleSync({ factures: facturesPropres });
   }
 
   // ── Chargement initial ───────────────────────────────────────────────────

@@ -49,7 +49,7 @@ function Tresorerie({ factures = [], chantiers = [], clients = [], devis = [] })
         if (!ca || ca <= 0) return null;
         const avancement = parseFloat(c.avancement) || 0;
         const facturesChantier = factures.filter(f => String(f.chantierId) === String(c.id) && f.statut !== 'annulee');
-        const dejaFacture = facturesChantier.reduce((s, f) => s + (parseFloat(f.montantHT) || parseFloat(f.montantTTC) / 1.081 || 0), 0);
+        const dejaFacture = facturesChantier.reduce((s, f) => s + (parseFloat(f.montantHT) || 0), 0);
         const potentiel = Math.max(0, (ca * avancement / 100) - dejaFacture);
         if (potentiel < 500) return null;
         const client = clients.find(cl => String(cl.id) === String(c.clientId));
@@ -98,11 +98,11 @@ function Tresorerie({ factures = [], chantiers = [], clients = [], devis = [] })
 
     // Délai moyen paiement (sur factures payées, depuis dateEmission jusqu'au dernier paiement)
     const delais = factActives
-      .filter(f => f.statut === 'payee' && (f.dateEmission || f.dateFacture || f.creeLe) && (f.paiementsHistorique || []).length > 0)
+      .filter(f => f.statut === 'payee' && (f.dateEmission || f.creeLe) && (f.paiementsHistorique || []).length > 0)
       .map(f => {
         const last = [...f.paiementsHistorique].sort((a, b) => (a.date || '').localeCompare(b.date || '')).pop();
         if (!last?.date) return null;
-        const dateRef = f.dateEmission || f.dateFacture || f.creeLe;
+        const dateRef = f.dateEmission || f.creeLe;
         const d = Math.round((new Date(last.date) - new Date(dateRef)) / 86400000);
         return d >= 0 ? d : null;
       })

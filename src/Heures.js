@@ -322,7 +322,7 @@ export default function Heures({ chantiers = [], parametres = {}, setChantiers }
               <label style={DS.label}>Chantier</label>
               <select value={modal.form.chantierId} onChange={e => setModal({ ...modal, form: { ...modal.form, chantierId: e.target.value } })} style={DS.input}>
                 <option value="">— Sélectionner —</option>
-                {chantiers.filter(c => !['Terminé','Clôturé','Facturé'].includes(c.statut)).map(c => (
+                {chantiers.filter(c => !['terminé','clôturé','facturé'].includes((c.statut || '').trim().toLowerCase())).map(c => (
                   <option key={c.id} value={c.id}>{c.nom || c.numero}</option>
                 ))}
               </select>

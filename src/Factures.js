@@ -279,6 +279,10 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
     if (!data.clientId) { alert('Le client est obligatoire.'); return; }
     // Validation stricte à l'émission
     if (statut === 'envoyee') {
+      // Avertissement si ni chantier ni devis lié (facture non ancrée)
+      if (!data.chantierId && !data.devisId) {
+        if (!window.confirm('Cette facture n\'est liée ni à un chantier ni à un devis. Elle sera traitée comme orpheline et exclue des calculs de marges. Continuer ?')) return;
+      }
       if (!data.dateEmission || !data.dateEcheance) {
         alert('Date d\'émission et date d\'échéance requises avant émission.');
         return;

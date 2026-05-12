@@ -233,7 +233,7 @@ function Dashboard() {
         couleur = C.warning;
       } else if (reel.rentabilitePct !== null && reel.rentabilitePct < 10) {
         statut = 'faible';
-        probleme = `Marge ${reel.rentabilitePct.toFixed(1)}% — sous le seuil cible de 10%`;
+        probleme = `Marge ${Math.round(reel.rentabilitePct * 10) / 10}% — sous le seuil cible de 10%`;
         marge = reel.rentabilitePct;
         couleur = C.warning;
       } else {
@@ -278,7 +278,7 @@ function Dashboard() {
           const s = statutRentabilite(pct);
           const detail = margeReel < 0
             ? `déficit CHF ${fmtN(Math.abs(Math.round(margeReel)))}`
-            : `marge ${pct.toFixed(1)}%`;
+            : `marge ${Math.round(pct * 10) / 10}%`;
           list.push({
             id: `nonrentable-${c.id}`,
             message: `${c.nom || c.numero} — ${s.label} · ${detail}`,

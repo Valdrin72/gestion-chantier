@@ -46,7 +46,7 @@ function Clients({ clients, setClients, chantiers, setChantiers, devis = [], set
       {(() => {
         const caTotal = clients.reduce((s, c) => { const ch = chantiers.filter(ch => ch.clientId === c.id); return s + ch.reduce((t, ch) => t + (calculerCA(ch, devis) || 0), 0); }, 0);
         const nbAvecChantier = clients.filter(c => chantiers.some(ch => ch.clientId === c.id)).length;
-        const nbActifs = clients.filter(c => chantiers.some(ch => ch.clientId === c.id && ch.statut === 'En cours')).length;
+        const nbActifs = clients.filter(c => chantiers.some(ch => ch.clientId === c.id && (ch.statut || '').trim().toLowerCase() === 'en cours')).length;
         const entreprises = clients.filter(c => c.type === 'Entreprise').length;
         const kpiItems = [
           { label: 'TOTAL CLIENTS',    val: clients.length,      Icon: Users,      ...DS.kpi.blue,   badge: `${nbActifs} actifs` },

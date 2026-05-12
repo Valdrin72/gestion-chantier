@@ -341,7 +341,7 @@ function Tresorerie({ factures = [], chantiers = [], clients = [], devis = [] })
                           </div>
                           <div style={{ textAlign: 'right', flexShrink: 0 }}>
                             <div style={{ fontSize: 13, fontWeight: 800, color: '#3b82f6' }}>CHF {fmt(cl.ca)}</div>
-                            <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>{pct.toFixed(0)}% du CA</div>
+                            <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>{Math.round(pct)}% du CA</div>
                           </div>
                         </div>
                         <div style={{ height: 4, background: 'var(--border-glass)', borderRadius: 4 }}>
@@ -375,7 +375,7 @@ function Tresorerie({ factures = [], chantiers = [], clients = [], devis = [] })
                           </div>
                           <div style={{ textAlign: 'right', flexShrink: 0 }}>
                             <div style={{ fontSize: 13, fontWeight: 800, color: '#10b981' }}>CHF {fmt(ch.ca)}</div>
-                            <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>{pct.toFixed(0)}% du CA</div>
+                            <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>{Math.round(pct)}% du CA</div>
                           </div>
                         </div>
                         <div style={{ height: 4, background: 'var(--border-glass)', borderRadius: 4 }}>

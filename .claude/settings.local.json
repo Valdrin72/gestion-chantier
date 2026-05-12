@@ -21,7 +21,8 @@
       "mcp__playwright__browser_fill_form",
       "mcp__playwright__browser_type",
       "mcp__memory__create_entities",
-      "mcp__memory__create_relations"
+      "mcp__memory__create_relations",
+      "mcp__memory__add_observations"
     ]
   }
 }

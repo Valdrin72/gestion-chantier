@@ -134,12 +134,6 @@
   --brand-tint    : #EFF6FF;
   --brand-gradient: linear-gradient(135deg, #3B82F6 0%, #4F46E5 100%);
 
-  /* Brand CYNA deep — palette officielle #0d3d6e */
-  --brand-deep     : #0d3d6e;
-  --brand-mid      : #1e5fa8;
-  --brand-light    : #3b82f6;
-  --brand-gradient : linear-gradient(135deg, #0d3d6e 0%, #1e5fa8 50%, #3b82f6 100%);
-
   /* Semantic surface aliases (dark default) */
   --surface       : var(--bg-card);
   --surface-2     : var(--bg-hover);
@@ -171,75 +165,6 @@
   --ds-section-label-color: rgba(255,255,255,0.35);
   --ds-section-label-border: rgba(255,255,255,0.04);
 }
-
-/* ── Keyframes animations CYNA ── */
-@keyframes fadeInUp {
-  from { opacity: 0; transform: translateY(16px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to   { opacity: 1; }
-}
-@keyframes shimmer {
-  0%   { background-position: -200% center; }
-  100% { background-position:  200% center; }
-}
-@keyframes pulseGlow {
-  0%, 100% { box-shadow: 0 0 8px rgba(59,130,246,0.3); }
-  50%       { box-shadow: 0 0 24px rgba(59,130,246,0.6); }
-}
-@keyframes slideInLeft {
-  from { opacity: 0; transform: translateX(-12px); }
-  to   { opacity: 1; transform: translateX(0); }
-}
-@keyframes scaleIn {
-  from { opacity: 0; transform: scale(0.96); }
-  to   { opacity: 1; transform: scale(1); }
-}
-
-/* ── Classes utilitaires animations ── */
-.anim-fade-in      { animation: fadeIn 0.3s ease both; }
-.anim-fade-in-up   { animation: fadeInUp 0.35s ease both; }
-.anim-scale-in     { animation: scaleIn 0.25s ease both; }
-.anim-slide-left   { animation: slideInLeft 0.3s ease both; }
-.anim-delay-1      { animation-delay: 0.05s; }
-.anim-delay-2      { animation-delay: 0.10s; }
-.anim-delay-3      { animation-delay: 0.15s; }
-.anim-delay-4      { animation-delay: 0.20s; }
-
-/* ── Skeleton shimmer (chargement) ── */
-.skeleton {
-  background: linear-gradient(90deg,
-    rgba(255,255,255,0.04) 25%,
-    rgba(255,255,255,0.10) 50%,
-    rgba(255,255,255,0.04) 75%
-  );
-  background-size: 200% 100%;
-  animation: shimmer 1.5s ease infinite;
-  border-radius: 8px;
-}
-[data-theme="light"] .skeleton {
-  background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
-  background-size: 200% 100%;
-}
-
-/* ── Focus ring amélioré ── */
-:focus-visible {
-  outline: 2px solid #3b82f6;
-  outline-offset: 2px;
-}
-button:focus:not(:focus-visible),
-input:focus:not(:focus-visible) {
-  outline: none;
-}
-
-/* ── Scrollbar fine et élégante ── */
-* { scrollbar-width: thin; scrollbar-color: rgba(59,130,246,0.25) transparent; }
-*::-webkit-scrollbar { width: 5px; height: 5px; }
-*::-webkit-scrollbar-track { background: transparent; }
-*::-webkit-scrollbar-thumb { background: rgba(59,130,246,0.25); border-radius: 99px; }
-*::-webkit-scrollbar-thumb:hover { background: rgba(59,130,246,0.45); }
 
 /* Dark mode = même palette (dark-first) */
 [data-theme="dark"] {
@@ -354,7 +279,7 @@ input:focus:not(:focus-visible) {
 
 /* ── Light mode : fond global + hiérarchie texte ── */
 .app-layout[data-theme="light"] {
-  background: #f8fafc;
+  background: #f0f2f5;
   color: #0f172a;
 }
 .app-layout[data-theme="light"] .app-main {
@@ -399,70 +324,54 @@ input:focus:not(:focus-visible) {
 .app-layout[data-theme="light"] .topbar {
   color: #0f172a;
 }
-/* ── CYNA sidebar — fond blanc, accents dégradés de couleur ── */
 [data-theme="light"] .sidebar {
   background: #ffffff;
   border-right: 1px solid #e2e8f0;
-  box-shadow: 2px 0 8px rgba(15,23,42,0.04);
+  box-shadow: 1px 0 8px rgba(0,0,0,0.05);
 }
 [data-theme="light"] .sidebar-logo {
-  background: linear-gradient(135deg, #eff6ff 0%, #eef2ff 100%);
-  border-bottom: 1px solid #e0e7ff;
+  background: transparent;
+  border-bottom-color: #E2E8F0;
 }
-[data-theme="light"] .sidebar-logo-name { color: #0f172a; }
-[data-theme="light"] .sidebar-logo-sub  { color: #64748b; }
+[data-theme="light"] .sidebar-logo-name { color: #0F172A; }
+[data-theme="light"] .sidebar-logo-sub  { color: #64748B; }
 [data-theme="light"] .sidebar-cta {
-  background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
+  background: #4F46E5;
   border-radius: 10px;
-  font-weight: 700;
-  box-shadow: 0 4px 16px rgba(59,130,246,0.3), inset 0 1px 0 rgba(255,255,255,0.2);
-  color: #ffffff;
+  font-weight: 600;
+  box-shadow: 0 4px 14px rgba(79,70,229,0.3), inset 0 1px 0 rgba(255,255,255,0.15);
 }
 [data-theme="light"] .sidebar-cta:hover {
-  background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);
-  box-shadow: 0 6px 20px rgba(59,130,246,0.4);
+  background: #4338CA;
 }
-[data-theme="light"] .sidebar-item { color: #64748b; }
-[data-theme="light"] .sidebar-item svg { color: #94a3b8; }
+[data-theme="light"] .sidebar-item { color: #64748B; }
+[data-theme="light"] .sidebar-item svg { color: #94A3B8; }
 [data-theme="light"] .sidebar-item:hover {
-  background: linear-gradient(90deg, #eff6ff 0%, #f8faff 100%) !important;
-  color: #1e40af !important;
+  background: #F8FAFC !important;
+  color: #0F172A !important;
   box-shadow: none !important;
   border-radius: 10px !important;
 }
-[data-theme="light"] .sidebar-item:hover svg { color: #3b82f6 !important; }
 [data-theme="light"] .sidebar-item.active {
-  background: linear-gradient(90deg, #eff6ff 0%, #f5f8ff 100%) !important;
-  color: #1d4ed8 !important;
-  border-left-color: #3b82f6 !important;
+  background: #EEF2FF !important;
+  color: #4F46E5 !important;
+  border-left-color: #4F46E5 !important;
   box-shadow: none !important;
   border-radius: 10px !important;
 }
-[data-theme="light"] .sidebar-item.active svg { color: #2563eb !important; }
+[data-theme="light"] .sidebar-item.active svg { color: #4F46E5 !important; }
 [data-theme="light"] .sidebar-profile {
-  background: linear-gradient(135deg, #f8faff 0%, #f0f4ff 100%);
-  border-top: 1px solid #e0e7ff;
-}
-[data-theme="light"] .sidebar-profile-name { color: #0f172a !important; }
-[data-theme="light"] .sidebar-profile-role { color: #64748b !important; }
-[data-theme="light"] .sidebar-theme-toggle {
-  color: #64748b;
+  background: transparent;
   border-top-color: #e2e8f0;
 }
-[data-theme="light"] .sidebar-theme-toggle:hover {
-  color: #1e40af;
-  background: #f0f4ff;
-}
-[data-theme="light"] .sidebar-toggle-track { background: #cbd5e1; }
-[data-theme="light"] .sidebar-toggle-track.on { background: #3b82f6; }
 
-/* ── Light mode : topbar blanche propre ── */
+/* ── Light mode : topbar blanche ── */
 [data-theme="light"] .topbar {
   background: #ffffff;
   border-bottom: 1px solid #e2e8f0;
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
-  box-shadow: 0 1px 4px rgba(15,23,42,0.05);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
 }
 [data-theme="light"] .topbar-icon-btn { color: #475569; }
 [data-theme="light"] .topbar-icon-btn:hover { background: #f1f5f9; color: #0f172a; }
@@ -505,8 +414,6 @@ body {
   transition: background 0.3s, color 0.3s;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  font-feature-settings: 'ss01' 1, 'cv01' 1;
-  text-rendering: optimizeLegibility;
   font-size: 13px;
   line-height: 1.5;
 }
@@ -952,7 +859,7 @@ label { font-weight: 500; font-size: 12px; color: var(--text-secondary); }
   width: 100%;
   box-sizing: border-box;
   position: relative;
-  animation: pageEnter 0.25s ease forwards, fadeIn 0.25s ease;
+  animation: pageEnter 0.25s ease forwards;
 }
 /* Couche lumière : spot bleu au-dessus des KPI */
 .app-main::before {
@@ -2308,7 +2215,7 @@ table tbody tr:hover { background: var(--bg-hover) !important; }
   box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.04) !important;
 }
 
-/* ── Sidebar light — fond blanc, textes sombres ── */
+/* ── Sidebar améliorée ── */
 [data-theme="light"] .sidebar-logo-name {
   color: #0f172a !important;
   font-weight: 700;
@@ -2381,84 +2288,3 @@ table tbody tr:hover { background: var(--bg-hover) !important; }
 /* Logo CYNA Tech inline (Dashboard) — noir par défaut, blanc en dark mode */
 .logo-cyna-tech-inline { filter: invert(1); }
 [data-theme="light"] .logo-cyna-tech-inline { filter: none; }
-
-/* ══════════════════════════════════════════════════════════════
-   CYNA DESIGN v3 — Light mode refinements (navy identity)
-   ══════════════════════════════════════════════════════════════ */
-
-/* Table headers — accent CYNA bleu */
-[data-theme="light"] table th {
-  background: linear-gradient(90deg, #f8fafc 0%, #f0f4ff 100%) !important;
-  color: #1e40af !important;
-  font-weight: 700 !important;
-  border-bottom: 2px solid rgba(30,64,175,0.10) !important;
-}
-[data-theme="light"] table tbody tr:hover {
-  background: linear-gradient(90deg, rgba(59,130,246,0.04) 0%, rgba(59,130,246,0.01) 100%) !important;
-}
-
-/* Inputs focus ring brand CYNA */
-[data-theme="light"] input:focus,
-[data-theme="light"] select:focus,
-[data-theme="light"] textarea:focus {
-  border-color: #3b82f6 !important;
-  box-shadow: 0 0 0 3px rgba(59,130,246,0.12), 0 1px 3px rgba(13,61,110,0.08) !important;
-  outline: none !important;
-}
-
-/* Cards light — ombres avec tint brand */
-[data-theme="light"] .topbar-title {
-  font-weight: 700 !important;
-  letter-spacing: -0.3px !important;
-  color: #0f172a !important;
-}
-
-/* Scrollbar brand CYNA light */
-[data-theme="light"] * {
-  scrollbar-color: rgba(30,64,175,0.18) transparent;
-}
-[data-theme="light"] *::-webkit-scrollbar-thumb {
-  background: rgba(30,64,175,0.18);
-}
-[data-theme="light"] *::-webkit-scrollbar-thumb:hover {
-  background: rgba(30,64,175,0.32);
-}
-
-/* Bottom nav light — accent brand */
-[data-theme="light"] .bottom-nav-item.active { color: #1d4ed8 !important; }
-[data-theme="light"] .bottom-nav-item.active .bottom-nav-icon svg { color: #1d4ed8 !important; }
-[data-theme="light"] .bottom-nav-item.active .bottom-nav-label { color: #1d4ed8 !important; }
-
-/* Page background — accent lumineux sur le contenu */
-[data-theme="light"] .app-main {
-  background: transparent;
-}
-
-/* KPI card value — plus grand en light */
-[data-theme="light"] .kpi-val {
-  font-size: 30px !important;
-}
-
-/* Section labels — brand CYNA */
-[data-theme="light"] .section-label,
-[data-theme="light"] [style*="textTransform: 'uppercase'"] {
-  color: #1e40af;
-}
-
-/* Burger button light mode — adapté à côté de sidebar dark */
-[data-theme="light"] .burger-btn {
-  color: var(--text-secondary);
-}
-
-/* Alert banner light — plus élégante */
-[data-theme="light"] .ia-banner {
-  background: linear-gradient(90deg, #eff6ff 0%, #eef2ff 100%) !important;
-  border: 1px solid rgba(59,130,246,0.2) !important;
-  box-shadow: 0 2px 8px rgba(59,130,246,0.08) !important;
-}
-
-/* Cards avec profondeur brand */
-[data-theme="light"] .card,
-[data-theme="light"] [style*="borderRadius"][style*="background: rgb(255"] {
-  box-shadow: 0 2px 8px rgba(13,61,110,0.06), 0 1px 2px rgba(13,61,110,0.04);
-}

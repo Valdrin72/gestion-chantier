@@ -113,9 +113,8 @@ function Devis() {
   return (
     <div>
       <div className="page-header-row">
-        <div className="page-title-block" style={{ position: 'relative', paddingLeft: 16 }}>
-          <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, borderRadius: 4, background: 'linear-gradient(180deg, #1e40af, #3b82f6)' }} />
-          <div className="page-title-main" style={{ fontWeight: 800, fontSize: 'clamp(20px, 4vw, 26px)' }}>Devis</div>
+        <div className="page-title-block">
+          <div className="page-title-main">Devis</div>
           <div className="page-title-sub">{devis.length} devis · {devis.filter(d => d.statut === 'accepté').length} acceptés ce mois</div>
         </div>
         <div className="page-actions-group">

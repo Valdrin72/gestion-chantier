@@ -949,7 +949,7 @@ function Dashboard() {
       {/* ── HEADER ──────────────────────────────────────────────── */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: isMobile ? 14 : 28, flexWrap: 'wrap', gap: 10 }}>
         <div>
-          <div style={{ fontSize: isMobile ? 22 : 30, fontWeight: 900, letterSpacing: '-0.8px', lineHeight: 1.2, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', background: 'linear-gradient(135deg, #0d3d6e 0%, #1e40af 50%, #3b82f6 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
+          <div style={{ fontSize: isMobile ? 20 : 26, fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.5px', lineHeight: 1.2, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
             Bonjour,
             <img
               src={`${process.env.PUBLIC_URL}/logo-cyna-tech.png`}
@@ -958,7 +958,7 @@ function Dashboard() {
               style={{ height: 20, width: 'auto', objectFit: 'contain', verticalAlign: 'middle' }}
             />
           </div>
-          <p style={{ fontSize: 13, color: 'var(--text-muted)', fontWeight: 500, letterSpacing: '0.1px', margin: '4px 0 0' }}>
+          <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: '4px 0 0' }}>
             {new Date().toLocaleDateString('fr-CH', { weekday: 'long', day: 'numeric', month: 'long' })} · {actifs.length} chantier{actifs.length !== 1 ? 's' : ''} actif{actifs.length !== 1 ? 's' : ''}
           </p>
         </div>
@@ -982,7 +982,7 @@ function Dashboard() {
       </div>
 
       {/* ── KPI CARDS ────────────────────────────────────────── */}
-      <div className="kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'var(--g4)', gap: 16, marginBottom: 24, marginTop: 24 }}>
+      <div className="kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'var(--g4)', gap: 16, marginBottom: 24 }}>
         {[
           { label: "CA actif", Icon: DollarSign, page: 'devis',
             valeur: `CHF ${fmtN(kpi.caEnCours)}`,

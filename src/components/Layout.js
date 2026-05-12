@@ -15,13 +15,10 @@ export function Sidebar({ sidebarOuvert, setSidebarOuvert, navAutorisees, page, 
               width: 'auto',
               maxWidth: '100%',
               objectFit: 'contain',
-              filter: 'brightness(0) invert(1)',
-              opacity: 0.92,
+              filter: darkMode ? 'invert(1)' : 'none',
             }}
           />
         </div>
-        {/* CYNA brand accent bar */}
-        <div style={{ height: 1, margin: '0 16px', background: 'linear-gradient(90deg, rgba(59,130,246,0.6) 0%, rgba(139,92,246,0.3) 60%, transparent 100%)', flexShrink: 0 }} />
         <nav className="sidebar-nav">
           {navAutorisees.map(item => (
             <button
@@ -33,17 +30,17 @@ export function Sidebar({ sidebarOuvert, setSidebarOuvert, navAutorisees, page, 
               <item.Icon size={17} strokeWidth={page === item.id ? 2.2 : 1.8} />
               <span>{item.label}</span>
               {item.badge && (
-                <span style={{ marginLeft: 'auto', background: 'linear-gradient(135deg, #dc2626 0%, #ef4444 100%)', color: '#fff', borderRadius: 20, padding: '1px 7px', fontSize: 10, fontWeight: 700, lineHeight: 1.6, flexShrink: 0, boxShadow: '0 2px 6px rgba(239,68,68,0.45)', animation: 'pulseGlow 2s ease infinite' }}>
+                <span style={{ marginLeft: 'auto', background: '#ef4444', color: '#fff', borderRadius: 20, padding: '1px 7px', fontSize: 10, fontWeight: 700, lineHeight: 1.6, flexShrink: 0 }}>
                   {item.badge}
                 </span>
               )}
             </button>
           ))}
         </nav>
-        <button className="sidebar-cta" onClick={() => { naviguer('devis', { ouvrirNouveau: true }); setSidebarOuvert(false); }} style={{ background: 'linear-gradient(135deg, #1e40af 0%, #3b82f6 100%)', boxShadow: '0 4px 14px rgba(59,130,246,0.35), inset 0 1px 0 rgba(255,255,255,0.15)' }}>
+        <button className="sidebar-cta" onClick={() => { naviguer('devis', { ouvrirNouveau: true }); setSidebarOuvert(false); }}>
           <Plus size={16} strokeWidth={2.6} /> Nouveau devis
         </button>
-        <button className="sidebar-theme-toggle" onClick={toggleDarkMode} title={darkMode ? 'Mode clair' : 'Mode sombre'} style={{ opacity: 0.75 }}>
+        <button className="sidebar-theme-toggle" onClick={toggleDarkMode} title={darkMode ? 'Mode clair' : 'Mode sombre'}>
           <div className={`sidebar-toggle-track${darkMode ? ' on' : ''}`}>
             <div className="sidebar-toggle-thumb" />
           </div>
@@ -56,7 +53,6 @@ export function Sidebar({ sidebarOuvert, setSidebarOuvert, navAutorisees, page, 
             background: profil?.couleur || '#3382c2',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             fontSize: 16, color: 'white',
-            boxShadow: `0 0 0 2px rgba(59,130,246,0.25), 0 4px 12px rgba(0,0,0,0.4)`,
           }}>
             {profil?.icone || '◈'}
           </div>
@@ -89,7 +85,7 @@ export function Topbar({ setSidebarOuvert, canGoBack, page, revenirArriere, navA
   return (
     <header className="topbar">
       <div className="topbar-left">
-        <button className="burger-btn" onClick={() => setSidebarOuvert(v => !v)} style={{ borderRadius: 8, transition: 'background 0.15s' }}>
+        <button className="burger-btn" onClick={() => setSidebarOuvert(v => !v)}>
           <Menu size={20} strokeWidth={1.8} />
         </button>
         {canGoBack && page !== 'dashboard' && (
@@ -99,10 +95,9 @@ export function Topbar({ setSidebarOuvert, canGoBack, page, revenirArriere, navA
               display: 'flex', alignItems: 'center', gap: 5,
               background: 'var(--bg-glass-2)',
               border: '1px solid var(--border-hover)',
-              borderRadius: 8, padding: '6px 14px',
+              borderRadius: 8, padding: '5px 12px',
               color: 'var(--text-secondary)', cursor: 'pointer',
               fontSize: 13, fontWeight: 600, fontFamily: 'inherit',
-              letterSpacing: '-0.1px',
               transition: 'all 0.15s',
             }}
             onMouseEnter={e => { e.currentTarget.style.background = 'rgba(59,130,246,0.12)'; e.currentTarget.style.color = '#60a5fa'; e.currentTarget.style.borderColor = 'rgba(59,130,246,0.3)'; }}
@@ -112,7 +107,7 @@ export function Topbar({ setSidebarOuvert, canGoBack, page, revenirArriere, navA
             Retour
           </button>
         )}
-        <span className="topbar-title" style={{ fontWeight: 700, letterSpacing: '-0.3px' }}>{navAutorisees.find(n => n.id === page)?.label || 'Dashboard'}</span>
+        <span className="topbar-title">{navAutorisees.find(n => n.id === page)?.label || 'Dashboard'}</span>
       </div>
       <div className="topbar-right" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         <button

@@ -200,7 +200,7 @@ export default function Agents({
     return `il y a ${Math.floor(diff / 1440)}j`;
   };
 
-  const nbActifs = Object.values(agentsActifs || {}).filter(Boolean).length;
+  const nbActifs = AGENTS_META.filter(m => (agentsActifs || {})[m.id]).length;
   const alertesNonLues = alertes.filter(a => !a.lu);
 
   return (

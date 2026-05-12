@@ -77,9 +77,11 @@ function Dashboard() {
       : null;
     const nbChantiersRenta = chantiersRenta.length;
 
-    // 4. HEURES ENGAGÉES — depuis journal (format groupé)
+    // 4. HEURES ENGAGÉES — depuis journal, filtrées sur le mois en cours
+    const maintenant = new Date();
+    const moisCourant = `${maintenant.getFullYear()}-${String(maintenant.getMonth() + 1).padStart(2, '0')}`;
     const heuresEngagees = actifs.reduce((t, c) =>
-      t + (c.journal || []).reduce((s, entry) =>
+      t + (c.journal || []).filter(entry => (entry.date || '').startsWith(moisCourant)).reduce((s, entry) =>
         s + (entry.employes || []).reduce((es, e) => es + (parseFloat(e.heuresTravaillees) || 0), 0)
       , 0)
     , 0);

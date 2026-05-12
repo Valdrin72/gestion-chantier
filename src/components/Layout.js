@@ -15,11 +15,13 @@ export function Sidebar({ sidebarOuvert, setSidebarOuvert, navAutorisees, page, 
               width: 'auto',
               maxWidth: '100%',
               objectFit: 'contain',
-              filter: darkMode ? 'brightness(0) invert(1)' : 'brightness(0) invert(0)',
-              opacity: darkMode ? 0.92 : 0.85,
+              filter: 'brightness(0) invert(1)',
+              opacity: 0.92,
             }}
           />
         </div>
+        {/* CYNA brand accent bar */}
+        <div style={{ height: 1, margin: '0 16px', background: 'linear-gradient(90deg, rgba(59,130,246,0.6) 0%, rgba(139,92,246,0.3) 60%, transparent 100%)', flexShrink: 0 }} />
         <nav className="sidebar-nav">
           {navAutorisees.map(item => (
             <button
@@ -41,7 +43,7 @@ export function Sidebar({ sidebarOuvert, setSidebarOuvert, navAutorisees, page, 
         <button className="sidebar-cta" onClick={() => { naviguer('devis', { ouvrirNouveau: true }); setSidebarOuvert(false); }} style={{ background: 'linear-gradient(135deg, #1e40af 0%, #3b82f6 100%)', boxShadow: '0 4px 14px rgba(59,130,246,0.35), inset 0 1px 0 rgba(255,255,255,0.15)' }}>
           <Plus size={16} strokeWidth={2.6} /> Nouveau devis
         </button>
-        <button className="sidebar-theme-toggle" onClick={toggleDarkMode} title={darkMode ? 'Mode clair' : 'Mode sombre'}>
+        <button className="sidebar-theme-toggle" onClick={toggleDarkMode} title={darkMode ? 'Mode clair' : 'Mode sombre'} style={{ opacity: 0.75 }}>
           <div className={`sidebar-toggle-track${darkMode ? ' on' : ''}`}>
             <div className="sidebar-toggle-thumb" />
           </div>
@@ -87,7 +89,7 @@ export function Topbar({ setSidebarOuvert, canGoBack, page, revenirArriere, navA
   return (
     <header className="topbar">
       <div className="topbar-left">
-        <button className="burger-btn" onClick={() => setSidebarOuvert(v => !v)}>
+        <button className="burger-btn" onClick={() => setSidebarOuvert(v => !v)} style={{ borderRadius: 8, transition: 'background 0.15s' }}>
           <Menu size={20} strokeWidth={1.8} />
         </button>
         {canGoBack && page !== 'dashboard' && (
@@ -110,7 +112,7 @@ export function Topbar({ setSidebarOuvert, canGoBack, page, revenirArriere, navA
             Retour
           </button>
         )}
-        <span className="topbar-title">{navAutorisees.find(n => n.id === page)?.label || 'Dashboard'}</span>
+        <span className="topbar-title" style={{ fontWeight: 700, letterSpacing: '-0.3px' }}>{navAutorisees.find(n => n.id === page)?.label || 'Dashboard'}</span>
       </div>
       <div className="topbar-right" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         <button

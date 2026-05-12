@@ -354,7 +354,7 @@ input:focus:not(:focus-visible) {
 
 /* ── Light mode : fond global + hiérarchie texte ── */
 .app-layout[data-theme="light"] {
-  background: linear-gradient(135deg, #eef2ff 0%, #f0f4ff 30%, #f8fafc 60%, #f1f5f9 100%);
+  background: #f8fafc;
   color: #0f172a;
 }
 .app-layout[data-theme="light"] .app-main {
@@ -399,70 +399,91 @@ input:focus:not(:focus-visible) {
 .app-layout[data-theme="light"] .topbar {
   color: #0f172a;
 }
-/* ── CYNA navy sidebar — identique dark ET light ── */
+/* ── CYNA sidebar — fond blanc, accents dégradés de couleur ── */
 [data-theme="light"] .sidebar {
-  background: linear-gradient(180deg, #0c1929 0%, #0d2340 40%, #0a1628 100%);
-  border-right: 1px solid rgba(255,255,255,0.06);
-  box-shadow: 2px 0 32px rgba(0,0,0,0.25), inset -1px 0 0 rgba(255,255,255,0.04);
+  background: #ffffff;
+  border-right: none;
+  box-shadow: 2px 0 0 0 #e8eeff, 4px 0 16px rgba(30,64,175,0.05);
+  /* Ligne dégradée bleu CYNA sur le bord droit */
+  border-right: 2px solid transparent;
+  background-clip: padding-box;
+  position: relative;
+}
+[data-theme="light"] .sidebar::after {
+  content: '';
+  position: absolute;
+  top: 0; right: -2px;
+  width: 2px; height: 100%;
+  background: linear-gradient(180deg, #3b82f6 0%, #6366f1 40%, #8b5cf6 70%, transparent 100%);
+  pointer-events: none;
 }
 [data-theme="light"] .sidebar-logo {
-  background: linear-gradient(135deg, rgba(59,130,246,0.12) 0%, rgba(13,61,110,0.08) 100%);
-  border-bottom: 1px solid rgba(255,255,255,0.07);
+  background: linear-gradient(135deg, #eff6ff 0%, #eef2ff 100%);
+  border-bottom: 1px solid #e0e7ff;
 }
-[data-theme="light"] .sidebar-logo-name { color: rgba(255,255,255,0.95); }
-[data-theme="light"] .sidebar-logo-sub  { color: rgba(255,255,255,0.45); }
+[data-theme="light"] .sidebar-logo-name { color: #0f172a; }
+[data-theme="light"] .sidebar-logo-sub  { color: #64748b; }
 [data-theme="light"] .sidebar-cta {
   background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
   border-radius: 10px;
   font-weight: 700;
-  box-shadow: 0 4px 16px rgba(59,130,246,0.4), inset 0 1px 0 rgba(255,255,255,0.2);
+  box-shadow: 0 4px 16px rgba(59,130,246,0.3), inset 0 1px 0 rgba(255,255,255,0.2);
   color: #ffffff;
 }
 [data-theme="light"] .sidebar-cta:hover {
   background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);
-  box-shadow: 0 6px 20px rgba(59,130,246,0.5);
+  box-shadow: 0 6px 20px rgba(59,130,246,0.4);
 }
-[data-theme="light"] .sidebar-item { color: rgba(255,255,255,0.6); }
-[data-theme="light"] .sidebar-item svg { color: rgba(255,255,255,0.45); }
+[data-theme="light"] .sidebar-item { color: #64748b; }
+[data-theme="light"] .sidebar-item svg { color: #94a3b8; }
 [data-theme="light"] .sidebar-item:hover {
-  background: rgba(255,255,255,0.08) !important;
-  color: rgba(255,255,255,0.95) !important;
+  background: linear-gradient(90deg, #eff6ff 0%, #f8faff 100%) !important;
+  color: #1e40af !important;
   box-shadow: none !important;
   border-radius: 10px !important;
 }
-[data-theme="light"] .sidebar-item:hover svg { color: rgba(255,255,255,0.8) !important; }
+[data-theme="light"] .sidebar-item:hover svg { color: #3b82f6 !important; }
 [data-theme="light"] .sidebar-item.active {
-  background: linear-gradient(90deg, rgba(59,130,246,0.22) 0%, rgba(59,130,246,0.08) 100%) !important;
-  color: #60a5fa !important;
+  background: linear-gradient(90deg, #eff6ff 0%, #f5f8ff 100%) !important;
+  color: #1d4ed8 !important;
   border-left-color: #3b82f6 !important;
-  box-shadow: inset 0 0 0 1px rgba(59,130,246,0.2) !important;
+  box-shadow: none !important;
   border-radius: 10px !important;
 }
-[data-theme="light"] .sidebar-item.active svg { color: #60a5fa !important; }
+[data-theme="light"] .sidebar-item.active svg { color: #2563eb !important; }
 [data-theme="light"] .sidebar-profile {
-  background: rgba(0,0,0,0.2);
-  border-top: 1px solid rgba(255,255,255,0.07);
+  background: linear-gradient(135deg, #f8faff 0%, #f0f4ff 100%);
+  border-top: 1px solid #e0e7ff;
 }
-[data-theme="light"] .sidebar-profile-name { color: rgba(255,255,255,0.9) !important; }
-[data-theme="light"] .sidebar-profile-role { color: rgba(255,255,255,0.45) !important; }
+[data-theme="light"] .sidebar-profile-name { color: #0f172a !important; }
+[data-theme="light"] .sidebar-profile-role { color: #64748b !important; }
 [data-theme="light"] .sidebar-theme-toggle {
-  color: rgba(255,255,255,0.55);
-  border-top-color: rgba(255,255,255,0.07);
+  color: #64748b;
+  border-top-color: #e2e8f0;
 }
 [data-theme="light"] .sidebar-theme-toggle:hover {
-  color: rgba(255,255,255,0.9);
-  background: rgba(255,255,255,0.06);
+  color: #1e40af;
+  background: #f0f4ff;
 }
-[data-theme="light"] .sidebar-toggle-track { background: rgba(255,255,255,0.15); }
+[data-theme="light"] .sidebar-toggle-track { background: #cbd5e1; }
 [data-theme="light"] .sidebar-toggle-track.on { background: #3b82f6; }
 
-/* ── Light mode : topbar glass premium ── */
+/* ── Light mode : topbar blanche + ligne dégradée en bas ── */
 [data-theme="light"] .topbar {
-  background: rgba(255,255,255,0.92);
-  border-bottom: 1px solid rgba(13,61,110,0.08);
-  backdrop-filter: blur(16px) saturate(1.8);
-  -webkit-backdrop-filter: blur(16px) saturate(1.8);
-  box-shadow: 0 1px 0 rgba(13,61,110,0.06), 0 4px 20px rgba(15,23,42,0.06);
+  background: #ffffff;
+  border-bottom: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow: 0 1px 0 #e2e8f0, 0 2px 8px rgba(15,23,42,0.04);
+  position: relative;
+}
+[data-theme="light"] .topbar::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, #3b82f6 0%, #6366f1 40%, #8b5cf6 70%, transparent 100%);
+  pointer-events: none;
 }
 [data-theme="light"] .topbar-icon-btn { color: #475569; }
 [data-theme="light"] .topbar-icon-btn:hover { background: #f1f5f9; color: #0f172a; }
@@ -2308,13 +2329,13 @@ table tbody tr:hover { background: var(--bg-hover) !important; }
   box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.04) !important;
 }
 
-/* ── Sidebar améliorée — navy dark identity ── */
+/* ── Sidebar light — fond blanc, textes sombres ── */
 [data-theme="light"] .sidebar-logo-name {
-  color: rgba(255,255,255,0.95) !important;
+  color: #0f172a !important;
   font-weight: 700;
 }
-[data-theme="light"] .sidebar-logo-sub { color: rgba(255,255,255,0.45) !important; }
-[data-theme="light"] .sidebar-section-label { color: rgba(255,255,255,0.35) !important; font-size: 10px !important; }
+[data-theme="light"] .sidebar-logo-sub { color: #64748b !important; }
+[data-theme="light"] .sidebar-section-label { color: #94a3b8 !important; font-size: 10px !important; }
 
 /* ── Topbar ── */
 [data-theme="light"] .topbar-title { color: #0f172a !important; font-weight: 600; }

@@ -49,7 +49,7 @@ function Tresorerie({ factures = [], chantiers = [], clients = [], devis = [] })
         if (!ca || ca <= 0) return null;
         const avancement = parseFloat(c.avancement) || 0;
         const facturesChantier = factures.filter(f => String(f.chantierId) === String(c.id) && f.statut !== 'annulee');
-        const dejaFacture = facturesChantier.reduce((s, f) => s + (parseFloat(f.montantTTC)||0), 0);
+        const dejaFacture = facturesChantier.reduce((s, f) => s + (parseFloat(f.montantHT) || parseFloat(f.montantTTC) / 1.081 || 0), 0);
         const potentiel = Math.max(0, (ca * avancement / 100) - dejaFacture);
         if (potentiel < 500) return null;
         const client = clients.find(cl => String(cl.id) === String(c.clientId));
@@ -565,6 +565,7 @@ export default function Finances({
         <Paiements
           chantiers={chantiers}
           clients={clients}
+          devis={devis}
           paiementsData={paiementsData}
           setPaiementsData={setPaiementsData}
           hideHeader

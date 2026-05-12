@@ -36,7 +36,16 @@ export function runAlerteChantier({ chantiers, devis, parametres }) {
       const couts = calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis);
       const joursR = new Set((c.journal || []).map(e => e.date).filter(Boolean)).size;
       const joursRestants = c.nombreJours > 0 ? c.nombreJours - joursR : null;
-      const retardJ = joursRestants !== null && joursRestants < 0 ? Math.abs(joursRestants) : 0;
+      // Retard calendaire : date de fin prévue dépassée ET chantier toujours "en cours"
+      let retardJ = joursRestants !== null && joursRestants < 0 ? Math.abs(joursRestants) : 0;
+      if (retardJ === 0 && c.dateDebut && c.nombreJours > 0) {
+        const finPrevue = new Date(c.dateDebut);
+        finPrevue.setDate(finPrevue.getDate() + Math.round(c.nombreJours * 7 / 5));
+        const today = new Date(); today.setHours(0, 0, 0, 0);
+        if (finPrevue < today) {
+          retardJ = Math.max(retardJ, Math.floor((today - finPrevue) / 86400000));
+        }
+      }
 
       if (couts.montantTotal > 0 && couts.totalCoutsReel > 0) {
         const marge = parseFloat(couts.margeReelPct);

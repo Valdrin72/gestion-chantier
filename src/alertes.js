@@ -226,15 +226,20 @@ export function calculerAlertes({ chantiers = [], devis = [], factures = [], pai
           page: 'chantiers',
           entityId: stat.id,
         });
-      } else if (typeof stat.depassementBudget === 'number' && stat.depassementBudget > 20) {
+      }
+      const depassementPct = (stat.totalCoutsPrevu > 0 && stat.totalCoutsReel > 0)
+        ? Math.round(((stat.totalCoutsReel - stat.totalCoutsPrevu) / stat.totalCoutsPrevu) * 100)
+        : null;
+      if (depassementPct !== null && depassementPct > 20) {
         push({
           type: 'depassement_budget',
           niveau: 'critique',
-          message: `Chantier "${stat.nom || stat.id}" dépasse le budget de ${Math.round(stat.depassementBudget)}%`,
+          message: `Chantier "${stat.nom || stat.id}" dépasse le budget de ${depassementPct}%`,
           page: 'chantiers',
           entityId: stat.id,
         });
-      } else if (typeof stat.margeNettePct === 'number' && stat.margeNettePct < 15) {
+      }
+      if (typeof stat.margeNettePct === 'number' && stat.margeNettePct >= 0 && stat.margeNettePct < 15) {
         push({
           type: 'marge_faible',
           niveau: 'warning',

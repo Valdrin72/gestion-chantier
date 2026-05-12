@@ -672,7 +672,7 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
                 const avantImpots = s.ca - couts - chargesSoc - fraisGen;
                 const imp = avantImpots > 0 ? avantImpots * (tauxImpots / 100) : 0;
                 const nette = avantImpots - imp;
-                const pct = s.ca > 0 ? ((nette / s.ca) * 100).toFixed(1) : 0;
+                const pct = s.ca > 0 ? Math.round((nette / s.ca) * 1000) / 10 : 0;
                 const couleurs = ['#ef4444', '#10b981', '#10b981'];
                 const bgs = ['rgba(239,68,68,0.09)', 'rgba(16,185,129,0.10)', 'rgba(16,185,129,0.10)'];
                 return (

@@ -517,7 +517,7 @@ export default function Agents({
               <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 12 }}>Projection Annuelle</div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
                 {[
-                  { label: 'CA Réalisé YTD', val: `CHF ${fmtN(agentData.ProjectionAnnuelle.caRealise || 0)}`, couleur: '#3b82f6', sub: `Marge : ${agentData.ProjectionAnnuelle.margeYTD?.toFixed(1) || '—'}%` },
+                  { label: 'CA Réalisé YTD', val: `CHF ${fmtN(agentData.ProjectionAnnuelle.caRealise || 0)}`, couleur: '#3b82f6', sub: `Marge : ${Number.isFinite(agentData.ProjectionAnnuelle.margeYTD) ? `${Math.round(agentData.ProjectionAnnuelle.margeYTD * 10) / 10}` : '—'}%` },
                   { label: 'CA Projeté Fin Année', val: `CHF ${fmtN(agentData.ProjectionAnnuelle.caProjecte || 0)}`, couleur: '#10b981', sub: `Moyenne mensuelle CHF ${fmtN(agentData.ProjectionAnnuelle.moyenneMensuelle || 0)}` },
                   { label: 'Atteinte Objectif', val: agentData.ProjectionAnnuelle.txAtteinte !== null ? `${agentData.ProjectionAnnuelle.txAtteinte}%` : 'N/A', couleur: (agentData.ProjectionAnnuelle.txAtteinte || 0) >= 100 ? '#10b981' : '#f59e0b', sub: agentData.ProjectionAnnuelle.objectifCA ? `Objectif CHF ${fmtN(agentData.ProjectionAnnuelle.objectifCA)}` : 'Définir dans Analyse' },
                 ].map(item => (
@@ -566,8 +566,8 @@ export default function Agents({
                           <span style={{ fontSize: 11, fontWeight: 700, color: couleur, background: `${couleur}18`, padding: '2px 8px', borderRadius: 20 }}>{r.statutTexte}</span>
                         </div>
                         <div style={{ display: 'flex', gap: 16, fontSize: 12, color: 'var(--text-muted)', flexWrap: 'wrap' }}>
-                          <span>Avancement <strong style={{ color: 'var(--text-primary)' }}>{r.avancement}%</strong></span>
-                          <span>Marge estimée <strong style={{ color: couleur }}>{r.margeEstimeePct >= 0 ? '+' : ''}{r.margeEstimeePct}%</strong></span>
+                          <span>Avancement <strong style={{ color: 'var(--text-primary)' }}>{r.avancement != null ? r.avancement : '—'}%</strong></span>
+                          <span>Marge estimée <strong style={{ color: couleur }}>{Number.isFinite(r.margeEstimeePct) ? `${r.margeEstimeePct >= 0 ? '+' : ''}${Math.round(r.margeEstimeePct * 10) / 10}` : '—'}%</strong></span>
                           <span>EAC <strong style={{ color: 'var(--text-primary)' }}>CHF {fmtN(r.EAC)}</strong></span>
                           {r.deriveJours !== null && r.deriveJours > 0 && (
                             <span>Dérive délai <strong style={{ color: '#f59e0b' }}>+{r.deriveJours}j</strong></span>
@@ -635,13 +635,13 @@ export default function Agents({
                         </td>
                         <td style={{ padding: '10px 14px', textAlign: 'right', color: 'var(--text-secondary)' }}>{p.count}</td>
                         <td style={{ padding: '10px 14px', textAlign: 'right', fontWeight: 700, color: p.ecartMoyen > 0 ? '#ef4444' : '#10b981' }}>
-                          {p.ecartMoyen !== null ? `${p.ecartMoyen > 0 ? '+' : ''}${p.ecartMoyen.toFixed(1)}%` : '—'}
+                          {Number.isFinite(p.ecartMoyen) ? `${p.ecartMoyen > 0 ? '+' : ''}${Math.round(p.ecartMoyen * 10) / 10}%` : '—'}
                         </td>
                         <td style={{ padding: '10px 14px', textAlign: 'right', fontWeight: 700, color: (p.margeMoyenne || 0) >= 20 ? '#10b981' : (p.margeMoyenne || 0) >= 15 ? '#f59e0b' : '#ef4444' }}>
-                          {p.margeMoyenne !== null ? `${p.margeMoyenne.toFixed(1)}%` : '—'}
+                          {Number.isFinite(p.margeMoyenne) ? `${Math.round(p.margeMoyenne * 10) / 10}%` : '—'}
                         </td>
                         <td style={{ padding: '10px 14px', textAlign: 'right', color: 'var(--text-secondary)' }}>
-                          {p.ratioTempsMoyen !== null ? `×${p.ratioTempsMoyen.toFixed(2)}` : '—'}
+                          {Number.isFinite(p.ratioTempsMoyen) ? `×${Math.round(p.ratioTempsMoyen * 100) / 100}` : '—'}
                         </td>
                       </tr>
                     ))}

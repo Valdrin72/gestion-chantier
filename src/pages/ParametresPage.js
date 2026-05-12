@@ -48,7 +48,7 @@ const btnPrimaire = DS.btnPrimary;
 const btnSucces  = DS.btnSuccess;
 const btnDanger  = DS.btnDanger;
 
-function Parametres({ parametres, setParametres, clients = [], setClients = () => {}, chantiers = [], devis = [], naviguer = () => {} }) {
+function Parametres({ parametres, setParametres, clients = [], setClients = () => {}, chantiers = [], devis = [], factures = [], naviguer = () => {} }) {
   const [onglet, setOnglet] = useState('dashboard');
   const [nouvelEmploye, setNouvelEmploye] = useState({ nom: '', poste: 'Ouvrier qualifié', tarifJour: '', telephone: '', email: '' });
   const [nouveauClient, setNouveauClient] = useState({ nom: '', prenom: '', entreprise: '', telephone: '', email: '' });
@@ -56,6 +56,49 @@ function Parametres({ parametres, setParametres, clients = [], setClients = () =
   const [nouveauTravail, setNouveauTravail] = useState({ nom: '', unite: 'm²', tarifBase: '' });
   const [saved, setSaved] = useState(false);
   const timerSaved = React.useRef(null);
+  const importRef = React.useRef(null);
+
+  const exporterDonnees = () => {
+    const date = new Date().toISOString().slice(0, 10);
+    const blob = new Blob(
+      [JSON.stringify({ meta: { date, version: 1, app: 'CYNA' }, chantiers, devis, factures, clients, parametres }, null, 2)],
+      { type: 'application/json' }
+    );
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `cyna-backup-${date}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const importerDonnees = async (e) => {
+    const fichier = e.target.files?.[0];
+    if (!fichier) return;
+    e.target.value = '';
+    try {
+      const texte = await fichier.text();
+      const data = JSON.parse(texte);
+      if (!data.parametres || !Array.isArray(data.chantiers)) {
+        alert('Fichier de sauvegarde invalide — structure incorrecte.');
+        return;
+      }
+      const ok = window.confirm(
+        `Restaurer la sauvegarde du ${data.meta?.date || 'date inconnue'} ?\n\n` +
+        `Cette action remplacera TOUTES les données actuelles :\n` +
+        `• ${(data.chantiers || []).length} chantiers\n` +
+        `• ${(data.devis || []).length} devis\n` +
+        `• ${(data.factures || []).length} factures\n` +
+        `• ${(data.clients || []).length} clients`
+      );
+      if (!ok) return;
+      if (data.parametres) setParametres(data.parametres);
+      if (data.clients) setClients(data.clients);
+      alert('Sauvegarde restaurée. Rechargez la page pour voir toutes les données.');
+    } catch {
+      alert('Erreur lors de la lecture du fichier. Assurez-vous que c\'est un fichier backup CYNA valide.');
+    }
+  };
 
   const sauv = (data) => {
     setParametres(data);
@@ -117,6 +160,13 @@ function Parametres({ parametres, setParametres, clients = [], setClients = () =
           <div className="page-title-sub">Configuration de l'application · sauvegarde automatique</div>
         </div>
         <div className="page-actions-group">
+          <input ref={importRef} type="file" accept=".json" style={{ display: 'none' }} onChange={importerDonnees} />
+          <button onClick={() => importRef.current?.click()} style={btnPrimaire} title="Restaurer depuis un fichier backup CYNA (.json)">
+            Restaurer backup
+          </button>
+          <button onClick={exporterDonnees} style={{ ...btnSucces, background: 'linear-gradient(135deg, #0d3d6e, #1a5a9e)' }} title="Télécharger une sauvegarde complète de vos données">
+            Exporter backup
+          </button>
           <button onClick={() => sauv({ ...parametres })} style={btnSucces}>
             Sauvegarder tout
           </button>

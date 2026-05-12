@@ -219,7 +219,7 @@ function AppInner({ profil, deconnecter, userId }) {
           {page === 'planning'     && pagesAutorisees.includes('planning')   && <PlanningPage chantiers={chantiers} setChantiers={setChantiers} clients={clients} devis={devis} factures={factures} parametres={parametres} naviguer={naviguer} />}
           {page === 'rapport'      && pagesAutorisees.includes('rapport')    && <RapportsPage chantiers={chantiers} clients={clients} devis={devis} factures={factures} parametres={parametres} setParametres={setParametres} paiementsData={paiementsData} periodeGlobale={periodeGlobale} naviguer={naviguer} />}
           {page === 'agents'       && pagesAutorisees.includes('agents')     && <CentreIA />}
-          {page === 'parametres'   && pagesAutorisees.includes('parametres') && <Parametres parametres={parametres} setParametres={setParametres} clients={clients} setClients={setClients} chantiers={chantiers} devis={devis} naviguer={naviguer} />}
+          {page === 'parametres'   && pagesAutorisees.includes('parametres') && <Parametres parametres={parametres} setParametres={setParametres} clients={clients} setClients={setClients} chantiers={chantiers} devis={devis} factures={factures} naviguer={naviguer} />}
           {page === 'heures'       && pagesAutorisees.includes('heures')     && <Heures chantiers={chantiers} parametres={parametres} setChantiers={setChantiers} />}
         </main>
         {saisieHeuresCtx && (() => {

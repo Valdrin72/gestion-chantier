@@ -301,6 +301,22 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
     }
     const totaux = calculerTotaux(data.lignes || []);
     Object.assign(data, totaux);
+
+    // Alerte dépassement devis : total HT facturé > montantHT du devis lié
+    if (data.devisId && statut === 'envoyee') {
+      const devisLie = devis.find(d => String(d.id) === String(data.devisId));
+      if (devisLie) {
+        const caDevis = parseFloat(devisLie.montantHT) || 0;
+        const autresFactures = factures.filter(f => String(f.devisId) === String(data.devisId) && f.id !== data.id && f.statut !== 'annulee' && f.statut !== 'brouillon');
+        const dejaFactureHT = autresFactures.reduce((s, f) => s + (parseFloat(f.montantHT) || 0), 0);
+        const totalAvecCette = dejaFactureHT + (parseFloat(data.montantHT) || 0);
+        if (caDevis > 0 && totalAvecCette > caDevis * 1.001) {
+          const depasse = Math.round(totalAvecCette - caDevis);
+          if (!window.confirm(`Attention : cette facture porterait le total facturé à CHF ${Math.round(totalAvecCette).toLocaleString('fr-CH')} soit un dépassement de CHF ${depasse.toLocaleString('fr-CH')} par rapport au CA du devis (CHF ${Math.round(caDevis).toLocaleString('fr-CH')}). Continuer ?`)) return;
+        }
+      }
+    }
+
     const liste = factures.some(f => f.id === data.id)
       ? factures.map(f => f.id === data.id ? data : f)
       : [...factures, data];

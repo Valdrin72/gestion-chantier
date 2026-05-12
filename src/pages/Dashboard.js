@@ -14,6 +14,7 @@ import { DS } from '../ds';
 import { STATUTS_CLOS } from '../constants/statuts';
 import { useApp } from '../context/AppContext';
 import useIsMobile from '../hooks/useIsMobile';
+import { calculerAlertes } from '../alertes';
 
 function Dashboard() {
   const isMobile = useIsMobile();
@@ -344,8 +345,28 @@ function Dashboard() {
       });
     });
 
+    // Alertes métier complémentaires (types non couverts par les calculs ci-dessus)
+    const TYPES_ADDITIFS = new Set(['devis_attente', 'factures_brouillon', 'chantier_sans_devis', 'chantier_sans_facture', 'rappel_a_envoyer']);
+    const existingIds = new Set(list.map(a => a.id));
+    calculerAlertes(
+      { chantiers, devis, factures, clients, paiements: {} },
+      profil?.role || 'direction'
+    )
+      .filter(a => TYPES_ADDITIFS.has(a.type))
+      .forEach(a => {
+        const id = `metier-${a.type}-${a.entityId || 'global'}`;
+        if (existingIds.has(id)) return;
+        list.push({
+          id,
+          message: a.message,
+          page: a.page || 'chantiers',
+          ctx: a.entityId ? { chantierActif: a.entityId } : {},
+          critique: a.niveau === 'critique',
+        });
+      });
+
     return list.sort((a, b) => (b.critique ? 1 : 0) - (a.critique ? 1 : 0));
-  }, [actifs, joursParChantier, facturesSafe, parametres, rentaReelleParChantier, devis, chantiers, coutsMap]);
+  }, [actifs, joursParChantier, facturesSafe, parametres, rentaReelleParChantier, devis, chantiers, coutsMap, factures, clients, profil]);
 
   // ── Couleur état chantier ────────────────────────────────────
   const couleurEtat = (c) => {

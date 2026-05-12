@@ -359,12 +359,12 @@ export const calculerCoutsChantier = (chantier, employes, localites, cfg = {}, d
 
   // Marge finale estimée brute (%)
   const margeFinaleEstimeePct = (coutFinalEstime !== null && montantTotal > 0)
-    ? parseFloat(((montantTotal - coutFinalEstime) / montantTotal * 100).toFixed(1))
+    ? Math.round((montantTotal - coutFinalEstime) / montantTotal * 1000) / 10
     : null;
 
   // Marge finale estimée nette — après déduction des frais généraux
   const margeFinaleNettePct = margeFinaleEstimeePct !== null
-    ? parseFloat((margeFinaleEstimeePct - tauxFG).toFixed(1))
+    ? Math.round((margeFinaleEstimeePct - tauxFG) * 10) / 10
     : null;
 
   // Dérive projetée (positif = perte, négatif = gain)
@@ -644,7 +644,7 @@ export const calculerRentabiliteReelle = (chantier, parametres, devisList = []) 
     montantDevis: caTotal,       // null si aucun devis
     totalCoutsReel: Math.round(totalCoutsReel),
     rentabilite: rentabilite !== null ? Math.round(rentabilite) : null,
-    rentabilitePct: rentabilitePct !== null ? parseFloat(rentabilitePct.toFixed(1)) : null,
+    rentabilitePct: rentabilitePct !== null ? Math.round(rentabilitePct * 10) / 10 : null,
     rentabiliteProjetee: rentabiliteProjetee !== null ? Math.round(rentabiliteProjetee) : null,
     rentabiliteProjetee_Pct,
   };

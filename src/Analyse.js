@@ -133,7 +133,7 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
     const marge = ca - couts;
     const margePct = ca > 0 ? ((marge / ca) * 100).toFixed(1) : 0;
     const enCours = tous.filter(isChantierActif).length;
-    const termines = tous.filter(c => c.statut === 'Terminé').length;
+    const termines = tous.filter(c => c.statut?.trim().toLowerCase() === 'terminé').length;
     return { ...cl, nbChantiers: tous.length, nbAvecDevis: avecDevis.length, ca, couts, marge, margePct, enCours, termines };
   }).filter(cl => cl.nbChantiers > 0).sort((a, b) => b.ca - a.ca), [clients, chantiersPeriode, parametres, devis]);
 

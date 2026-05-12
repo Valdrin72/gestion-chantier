@@ -25,7 +25,7 @@ function calculerTotalFacture(f) {
  * @param {string} profilId - profil connecté (pour filtrer les alertes pertinentes)
  * @returns {Array<{ id, type, niveau, message, page, entityId, date }>}
  */
-export function calculerAlertes({ chantiers = [], devis = [], factures = [], paiements = {}, clients = [] }, profilId = 'direction') {
+export function calculerAlertes({ chantiers = [], devis = [], factures = [], paiements = {}, clients = [], chantiersStats = [] }, profilId = 'direction') {
   const alertes = [];
   const now = new Date();
 
@@ -78,8 +78,9 @@ export function calculerAlertes({ chantiers = [], devis = [], factures = [], pai
   if (['direction', 'administratif'].includes(profilId)) {
     factures.forEach(f => {
       if (f.statut !== 'envoyee' && f.statut !== 'partielle' && f.statut !== 'retard') return;
-      if (!f.dateEcheance) return;
-      const echeance = new Date(f.dateEcheance);
+      const dateEch = f.dateEcheance || (f.dateEmission ? new Date(new Date(f.dateEmission).getTime() + 30 * 86400000).toISOString().slice(0, 10) : null);
+      if (!dateEch) return;
+      const echeance = new Date(dateEch);
       if (isNaN(echeance.getTime())) return;
       const joursRetard = Math.floor((now - echeance) / 86400000);
       if (joursRetard <= 0) return;
@@ -213,6 +214,38 @@ export function calculerAlertes({ chantiers = [], devis = [], factures = [], pai
     }
   }
 
+  // ── 8. Chantiers à perte ou dépassement budgétaire ──────────
+  if (['direction', 'administratif'].includes(profilId) && chantiersStats.length > 0) {
+    chantiersStats.forEach(stat => {
+      if (!stat || !stat.id) return;
+      if (typeof stat.margeNettePct === 'number' && stat.margeNettePct < 0) {
+        push({
+          type: 'chantier_a_perte',
+          niveau: 'critique',
+          message: `Chantier "${stat.nom || stat.id}" est à perte (marge ${Math.round(stat.margeNettePct * 10) / 10}%)`,
+          page: 'chantiers',
+          entityId: stat.id,
+        });
+      } else if (typeof stat.depassementBudget === 'number' && stat.depassementBudget > 20) {
+        push({
+          type: 'depassement_budget',
+          niveau: 'critique',
+          message: `Chantier "${stat.nom || stat.id}" dépasse le budget de ${Math.round(stat.depassementBudget)}%`,
+          page: 'chantiers',
+          entityId: stat.id,
+        });
+      } else if (typeof stat.margeNettePct === 'number' && stat.margeNettePct < 15) {
+        push({
+          type: 'marge_faible',
+          niveau: 'warning',
+          message: `Chantier "${stat.nom || stat.id}" : marge sous le seuil de rentabilité (${Math.round(stat.margeNettePct * 10) / 10}%)`,
+          page: 'chantiers',
+          entityId: stat.id,
+        });
+      }
+    });
+  }
+
   // ── Tri : critiques en premier, puis warnings, puis infos ───
   const ordre = { critique: 0, warning: 1, info: 2 };
   return alertes.sort((a, b) => (ordre[a.niveau] ?? 3) - (ordre[b.niveau] ?? 3));
@@ -229,6 +262,9 @@ export const ALERTE_LABELS = {
   chantier_sans_facture: 'Chantiers sans facture',
   paiement_en_attente:   'Paiement en attente',
   paiements_sans_facture:'Paiements non liés',
+  chantier_a_perte:      'Chantier à perte',
+  depassement_budget:    'Dépassement budgétaire',
+  marge_faible:          'Marge insuffisante',
 };
 
 // Couleurs par niveau

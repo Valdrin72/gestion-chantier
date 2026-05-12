@@ -5,13 +5,13 @@ import React, { useState, useMemo, useCallback } from 'react';
 import { DollarSign, FileText, Clock, AlertTriangle, CreditCard, TrendingUp, Calendar, Zap } from 'lucide-react';
 import Factures from '../Factures';
 import Paiements from '../Paiements';
-import { getIntervallesPeriode, getPeriodeLabel, facturesInPeriode, calculerCA, calculerStatutFacture } from '../donnees';
+import { getIntervallesPeriode, getPeriodeLabel, facturesInPeriode, calculerCA, calculerStatutFacture, calculerEtatChantier } from '../donnees';
 
 const fmt  = (n) => (parseFloat(n) || 0).toLocaleString('fr-CH', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 const fmtK = (n) => { const v = parseFloat(n) || 0; return v >= 1000 ? `${(v/1000).toFixed(1)}k` : String(Math.round(v)); };
 
 // ── Composant Trésorerie prévisionnelle ──────────────────────────────────────
-function Tresorerie({ factures = [], chantiers = [], clients = [], devis = [] }) {
+function Tresorerie({ factures = [], chantiers = [], clients = [], devis = [], parametres = null }) {
   const today = new Date(); today.setHours(0,0,0,0);
 
   const data = useMemo(() => {
@@ -42,12 +42,16 @@ function Tresorerie({ factures = [], chantiers = [], clients = [], devis = [] })
     const totalCetteSemaine = impayees.filter(f => f.urgence === 'urgent').reduce((s, f) => s + f.restant, 0);
 
     // ── 2. Chantiers à facturer ──────────────────────────────────
+    const employes = parametres?.employes || [];
+    const paramsConfig = parametres?.parametres || parametres || {};
     const aFacturer = chantiers
       .filter(c => ['en cours', 'terminé', 'planifié'].includes(c.statut?.trim().toLowerCase()) && c.devisId)
       .map(c => {
         const ca = calculerCA(c, devis);
         if (!ca || ca <= 0) return null;
-        const avancement = parseFloat(c.avancement) || 0;
+        // Source unique : avancement depuis journal (calculerEtatChantier), fallback sur valeur manuelle
+        const etat = calculerEtatChantier(c, employes, devis, paramsConfig);
+        const avancement = etat.totalJoursReels > 0 ? etat.avancementPct : (parseFloat(c.avancement) || 0);
         const facturesChantier = factures.filter(f => String(f.chantierId) === String(c.id) && f.statut !== 'annulee');
         const dejaFacture = facturesChantier.reduce((s, f) => s + (parseFloat(f.montantHT) || 0), 0);
         const potentiel = Math.max(0, (ca * avancement / 100) - dejaFacture);
@@ -137,7 +141,7 @@ function Tresorerie({ factures = [], chantiers = [], clients = [], devis = [] })
       topClients, topChantiers,
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [factures, chantiers, clients, devis]);
+  }, [factures, chantiers, clients, devis, parametres]);
 
   const urgenceConfig = {
     retard:  { couleur: '#ef4444', bg: '#ef444410', label: 'En retard',    dot: 'red' },
@@ -400,6 +404,7 @@ export default function Finances({
   paiementsData = {}, setPaiementsData,
   naviguer, contexte = {}, profil,
   periodeGlobale = 'mois',
+  parametres = null,
 }) {
   const [onglet, setOnglet] = useState('tresorerie');
 
@@ -548,7 +553,7 @@ export default function Finances({
 
       {/* ── Contenu ── */}
       {onglet === 'tresorerie' && (
-        <Tresorerie factures={facturesValides} chantiers={chantiers} clients={clients} devis={devis} />
+        <Tresorerie factures={facturesValides} chantiers={chantiers} clients={clients} devis={devis} parametres={parametres} />
       )}
       <div style={{ display: onglet === 'factures' ? 'block' : 'none' }}>
         <Factures

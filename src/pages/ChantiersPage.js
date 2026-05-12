@@ -71,10 +71,15 @@ function Chantiers() {
       const jours = heuresEmploye(form.journal || [], empId) / 8;
       return { ...m, joursRealises: String(jours) };
     });
+    const coefficient = parseFloat(parametres?.parametres?.coefficientMainOeuvre) || 1.35;
     const employes = equipeAvecJours.map(m => {
       const emp = empsList.find(e => e.id === parseInt(m.employeId));
       const jours = parseFloat(m.joursRealises) || 0;
-      return { ...m, cout: emp ? (parseFloat(emp.tarifJour) || 0) * jours : 0 };
+      // Règle BTP : appliquer le coefficient charges si tarifDejaCharge n'est pas coché
+      const tarifCharge = emp
+        ? (emp.tarifDejaCharge ? (parseFloat(emp.tarifJour) || 0) : (parseFloat(emp.tarifJour) || 0) * coefficient)
+        : 0;
+      return { ...m, cout: tarifCharge * jours };
     });
     const joursReelsChantier = new Set((form.journal || []).map(e => e.date).filter(Boolean)).size;
     const joursPrevusChantier = parseInt(form.nombreJours) || 0;

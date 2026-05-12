@@ -244,6 +244,10 @@ const RULES = [
     label: 'CA lu depuis chantier.montantDevis (source incorrecte)',
     niveau: 'critique',
     test(lines, file) {
+      // Exception : AuditApp.js lit c.montantDevis uniquement pour détecter les dérives (comparaison légitime)
+      if (file.includes('AuditApp.js')) return;
+      // Exception : ChantiersPage.js synchronise montantDevis depuis devis.montantHT lors de la sauvegarde
+      if (file.includes('ChantiersPage.js')) return;
       lines.forEach((line, i) => {
         const trimmed = line.trim();
         if (trimmed.startsWith('//') || trimmed.startsWith('*')) return;

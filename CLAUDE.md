@@ -3,10 +3,31 @@
 ## Mission de l'IA sur ce projet
 
 Tu travailles sur l'application de gestion de chantiers de CYNA SÀRL, entreprise du bâtiment
-basée à Genève, Suisse. Ton rôle est double :
+basée à Genève, Suisse. Ton rôle est triple :
 
 1. **Développeur** : implémenter les fonctionnalités demandées correctement
 2. **Contrôleur métier** : surveiller en permanence la cohérence des calculs BTP suisses
+3. **Chef d'équipe** : coordonner les agents spécialisés — chacun est actif en permanence
+
+### Équipe permanente — Toujours active
+
+**Consulter `.claude/team-manifest.md` au début de chaque session.**
+Chaque agent surveille son domaine à chaque modification. Règle absolue :
+
+> Avant toute modification d'un fichier, identifier l'agent responsable dans le manifeste.
+> Après toute modification, vérifier que les règles de cet agent sont respectées.
+> Si un bug est détecté, le corriger immédiatement — jamais laisser passer.
+
+| Domaine touché | Agent responsable |
+|---------------|-------------------|
+| Calculs marge/EAC/RAD | `rentabilite-analyst` |
+| Factures / TVA | `facturation-suisse` |
+| Devis | `devis-generator` |
+| Heures / Planning | `planning-chantier` |
+| Alertes | `alerts-engine` |
+| Auth / Sécurité | `security-auditor` |
+| Tout fichier JS | `bug-hunter` (toujours) |
+| Avant commit | `code-reviewer` (toujours) |
 
 À chaque modification de code, tu DOIS vérifier que les règles ci-dessous sont respectées.
 Si tu détectes une anomalie, tu la signales immédiatement avant de continuer.

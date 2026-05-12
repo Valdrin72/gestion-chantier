@@ -5,9 +5,9 @@
         "hooks": [
           {
             "type": "command",
-            "command": "cd /home/user/gestion-chantier && node scripts/audit-btp.js --quick 2>&1 | tail -6 | jq -Rsc '{\"systemMessage\": \"🔍 Audit BTP — \" + .}' 2>/dev/null || true",
+            "command": "cd /home/user/gestion-chantier && node scripts/audit-btp.js --quick 2>&1 | grep -E '(CRITIQUE|WARNING|✅|0 critique)' | head -5 | jq -Rsc '{\"systemMessage\": \"🔍 Audit BTP final — \" + .}' 2>/dev/null || true",
             "timeout": 30,
-            "statusMessage": "Audit BTP en cours..."
+            "statusMessage": "Audit BTP final en cours..."
           }
         ]
       }
@@ -18,9 +18,21 @@
         "hooks": [
           {
             "type": "command",
-            "command": "jq -r '.tool_input.file_path // empty' | { read -r f; echo \"$f\" | grep -qE 'src/.*\\.js$' && cd /home/user/gestion-chantier && node scripts/audit-btp.js --quick 2>&1 | grep -E '(CRITIQUE|\\u2705)' | head -3; } 2>/dev/null || true",
-            "timeout": 20,
+            "command": "jq -r '.tool_input.file_path // empty' 2>/dev/null | { read -r f; [ -z \"$f\" ] && exit 0; cd /home/user/gestion-chantier; AGENT=\"\"; case \"$f\" in *Factures*|*FinancesPage*|*Paiements*) AGENT=\"facturation-suisse [TVA/liens]\" ;; *DevisPage*) AGENT=\"devis-generator [montantHT source unique]\" ;; *donnees.js*) AGENT=\"rentabilite-analyst+charges-sociales [marges/coefficient]\" ;; *Dashboard*|*KpiCard*) AGENT=\"dashboard-architect [KPIs/NaN]\" ;; *alertes.js*|*AgentEngine*) AGENT=\"alerts-engine [seuils BTP]\" ;; *useAuth*|*supabase*) AGENT=\"security-auditor [auth/clés]\" ;; *Heures*|*Planning*) AGENT=\"planning-chantier [heures/jours]\" ;; *Analyse*|*Marges*|*Statistiques*) AGENT=\"rentabilite-analyst [calculs marge]\" ;; *Chantiers*) AGENT=\"rentabilite-analyst+bug-hunter [coûts/avancement]\" ;; esac; [ -n \"$AGENT\" ] && echo \"{\\\"systemMessage\\\": \\\"👁️  $AGENT est actif sur ce fichier\\\"}\" || true; node scripts/audit-btp.js --quick 2>&1 | grep 'CRITIQUE' | head -3 | while IFS= read -r line; do echo \"{\\\"systemMessage\\\": \\\"🔴 CRITIQUE: $line\\\"}\"; done; } 2>/dev/null || true",
+            "timeout": 25,
             "async": true
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "jq -r '.tool_input.command // empty' 2>/dev/null | grep -q 'git commit' && cd /home/user/gestion-chantier && CRITIQUES=$(node scripts/audit-btp.js --quick 2>&1 | grep -c 'CRITIQUE' || echo 0) && [ \"$CRITIQUES\" -gt 0 ] && echo \"{\\\"decision\\\": \\\"block\\\", \\\"reason\\\": \\\"🔴 Audit BTP: $CRITIQUES critique(s) détecté(s) — corriger avant de committer\\\"}\" || true",
+            "timeout": 30
           }
         ]
       }

@@ -1,6 +1,6 @@
 import React from 'react';
 
-export default function KpiCard({ label, value, icon: Icon, gradient, glow, badge, trend, onClick, style, className }) {
+export default function KpiCard({ label, value, icon: Icon, gradient, glow, badge, trend, onClick, style, className, loading = false }) {
   const glowColor = glow || 'rgba(0,0,0,0.2)';
   return (
     <div
@@ -17,6 +17,7 @@ export default function KpiCard({ label, value, icon: Icon, gradient, glow, badg
         transition: 'transform 0.18s, box-shadow 0.18s',
         position: 'relative',
         overflow: 'hidden',
+        animation: 'scaleIn 0.3s ease both',
         ...style,
       }}
       onMouseEnter={onClick ? (e) => {
@@ -28,37 +29,48 @@ export default function KpiCard({ label, value, icon: Icon, gradient, glow, badg
         e.currentTarget.style.boxShadow = `0 4px 20px ${glowColor}, 0 1px 4px rgba(0,0,0,0.12)`;
       } : undefined}
     >
-      {/* Decorative blobs */}
-      <div style={{ position: 'absolute', right: -18, top: -18, width: 80, height: 80, borderRadius: '50%', background: 'rgba(255,255,255,0.1)', pointerEvents: 'none' }} />
-      <div style={{ position: 'absolute', right: -32, bottom: -32, width: 100, height: 100, borderRadius: '50%', background: 'rgba(255,255,255,0.06)', pointerEvents: 'none' }} />
-      {/* Icon */}
-      {Icon && (
-        <div style={{ background: 'rgba(255,255,255,0.18)', borderRadius: 10, width: 38, height: 38, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16, position: 'relative' }}>
-          <Icon size={18} strokeWidth={2} style={{ color: '#ffffff' }} />
-        </div>
-      )}
-      {/* Label */}
-      <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.72)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 6, position: 'relative' }}>
-        {label}
-      </div>
-      {/* Value */}
-      <div className="kpi-val" style={{ fontSize: 28, fontWeight: 900, color: '#ffffff', letterSpacing: '-0.8px', lineHeight: 1, marginBottom: 8, position: 'relative' }}>
-        {value}
-      </div>
-      {/* Badge + trend */}
-      {(badge || trend) && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', position: 'relative' }}>
-          {badge && (
-            <span style={{ background: 'rgba(255,255,255,0.22)', color: '#fff', borderRadius: 20, padding: '1px 8px', fontSize: 10, fontWeight: 700 }}>
-              {badge}
-            </span>
+      {/* Decorative elements */}
+      <div style={{ position: 'absolute', right: -20, top: -20, width: 90, height: 90, borderRadius: '50%', background: 'rgba(255,255,255,0.12)', pointerEvents: 'none', filter: 'blur(1px)' }} />
+      <div style={{ position: 'absolute', right: -35, bottom: -35, width: 110, height: 110, borderRadius: '50%', background: 'rgba(255,255,255,0.07)', pointerEvents: 'none', filter: 'blur(2px)' }} />
+      <div style={{ position: 'absolute', left: -10, bottom: -10, width: 60, height: 60, borderRadius: '50%', background: 'rgba(255,255,255,0.05)', pointerEvents: 'none', filter: 'blur(3px)' }} />
+      {loading ? (
+        <>
+          <div className="skeleton" style={{ width: 38, height: 38, borderRadius: 10, marginBottom: 16, background: 'rgba(255,255,255,0.15)' }} />
+          <div className="skeleton" style={{ width: 60, height: 10, borderRadius: 4, marginBottom: 10, background: 'rgba(255,255,255,0.12)' }} />
+          <div className="skeleton" style={{ width: 120, height: 28, borderRadius: 6, background: 'rgba(255,255,255,0.18)' }} />
+        </>
+      ) : (
+        <>
+          {/* Icon */}
+          {Icon && (
+            <div style={{ background: 'rgba(255,255,255,0.18)', borderRadius: 10, width: 38, height: 38, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16, position: 'relative' }}>
+              <Icon size={18} strokeWidth={2} style={{ color: '#ffffff' }} />
+            </div>
           )}
-          {trend && (
-            <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.72)', fontWeight: 500 }}>
-              {trend}
-            </span>
+          {/* Label */}
+          <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.72)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 6, position: 'relative' }}>
+            {label}
+          </div>
+          {/* Value */}
+          <div className="kpi-val" style={{ fontSize: 28, fontWeight: 900, color: '#ffffff', letterSpacing: '-0.8px', lineHeight: 1, marginBottom: 8, position: 'relative' }}>
+            {value}
+          </div>
+          {/* Badge + trend */}
+          {(badge || trend) && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', position: 'relative' }}>
+              {badge && (
+                <span style={{ background: 'rgba(255,255,255,0.22)', color: '#fff', borderRadius: 20, padding: '1px 8px', fontSize: 10, fontWeight: 700 }}>
+                  {badge}
+                </span>
+              )}
+              {trend && (
+                <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.72)', fontWeight: 500 }}>
+                  {trend}
+                </span>
+              )}
+            </div>
           )}
-        </div>
+        </>
       )}
     </div>
   );

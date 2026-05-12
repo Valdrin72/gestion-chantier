@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Eye, EyeOff } from 'lucide-react';
 import useAuth from './hooks/useAuth';
 import { supabase } from './lib/supabase';
 
@@ -42,33 +43,88 @@ export default function Login({ onLogin }) {
   return (
     <div style={{
       minHeight: '100vh',
-      background: 'linear-gradient(135deg, #3382c2 0%, #1a5a9a 50%, #0d3d6e 100%)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px'
+      background: 'linear-gradient(135deg, #0d1a2e 0%, #0d3d6e 50%, #1a1035 100%)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px',
+      position: 'relative', overflow: 'hidden',
     }}>
-      <div style={{ width: '100%', maxWidth: '420px' }}>
+
+      {/* Grille de fond subtile */}
+      <div style={{
+        position: 'absolute', inset: 0, pointerEvents: 'none',
+        backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.03) 1px, transparent 1px)',
+        backgroundSize: '32px 32px',
+      }} />
+
+      {/* Orbe bleu gauche */}
+      <div style={{
+        position: 'absolute', top: '-10%', left: '-10%',
+        width: '500px', height: '500px', borderRadius: '50%',
+        background: 'radial-gradient(circle, rgba(59,130,246,0.15) 0%, transparent 70%)',
+        pointerEvents: 'none',
+      }} />
+
+      {/* Orbe indigo droite */}
+      <div style={{
+        position: 'absolute', bottom: '-5%', right: '-5%',
+        width: '420px', height: '420px', borderRadius: '50%',
+        background: 'radial-gradient(circle, rgba(99,102,241,0.15) 0%, transparent 70%)',
+        pointerEvents: 'none',
+      }} />
+
+      {/* Orbe vert centre-haut */}
+      <div style={{
+        position: 'absolute', top: '20%', right: '15%',
+        width: '280px', height: '280px', borderRadius: '50%',
+        background: 'radial-gradient(circle, rgba(16,185,129,0.08) 0%, transparent 70%)',
+        pointerEvents: 'none',
+      }} />
+
+      <div style={{ width: '100%', maxWidth: '420px', position: 'relative', zIndex: 1 }}>
 
         {/* LOGO */}
         <div style={{ textAlign: 'center', marginBottom: '40px' }}>
-          <div style={{ color: 'white', fontSize: '40px', fontWeight: 'bold', letterSpacing: '6px' }}>CYNA</div>
-          <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: '13px', marginTop: '6px' }}>
-            Entreprise du bâtiment · Genève
+          <img
+            src={process.env.PUBLIC_URL + '/logo-cyna-tech.png'}
+            alt="CYNA"
+            style={{
+              height: '56px', objectFit: 'contain',
+              filter: 'brightness(0) invert(1)',
+              marginBottom: '10px',
+            }}
+            onError={e => { e.target.style.display = 'none'; }}
+          />
+          <div style={{ color: 'white', fontSize: '32px', fontWeight: '800', letterSpacing: '6px', lineHeight: 1 }}>
+            CYNA
+          </div>
+          <div style={{ color: 'rgba(148,163,184,0.8)', fontSize: '13px', marginTop: '6px', letterSpacing: '1px' }}>
+            SÀRL · Genève
           </div>
         </div>
 
-        {/* CARTE */}
+        {/* CARTE GLASS */}
         <div style={{
-          background: 'white', borderRadius: '16px', padding: '32px',
-          boxShadow: '0 20px 60px rgba(0,0,0,0.3)'
+          background: 'rgba(13,25,48,0.85)',
+          backdropFilter: 'blur(20px) saturate(1.8)',
+          WebkitBackdropFilter: 'blur(20px) saturate(1.8)',
+          borderRadius: '20px',
+          padding: '36px 32px',
+          border: '1px solid rgba(255,255,255,0.1)',
+          boxShadow: '0 25px 50px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.08)',
         }}>
-          <div style={{ marginBottom: '24px' }}>
-            <div style={{ fontSize: '22px', fontWeight: 'bold', color: '#1a1a2e' }}>Connexion</div>
-            <div style={{ fontSize: '14px', color: '#888', marginTop: '4px' }}>Accès réservé à l'équipe CYNA</div>
+          <div style={{ marginBottom: '28px' }}>
+            <div style={{ fontSize: '22px', fontWeight: '700', color: '#f1f5f9' }}>Connexion</div>
+            <div style={{ fontSize: '14px', color: 'rgba(148,163,184,0.8)', marginTop: '4px' }}>
+              Accès réservé à l'équipe CYNA
+            </div>
           </div>
 
           <form onSubmit={soumettre}>
             {/* EMAIL */}
             <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#444', marginBottom: '6px' }}>
+              <label style={{
+                display: 'block', fontSize: '13px', fontWeight: '600',
+                color: 'rgba(148,163,184,0.9)', marginBottom: '7px',
+              }}>
                 Adresse email
               </label>
               <input
@@ -79,18 +135,31 @@ export default function Login({ onLogin }) {
                 autoComplete="email"
                 required
                 style={{
-                  width: '100%', padding: '12px 14px', border: '2px solid #e5e7eb',
-                  borderRadius: '10px', fontSize: '15px', outline: 'none', boxSizing: 'border-box',
-                  transition: 'border-color 0.2s',
+                  width: '100%', padding: '12px 14px',
+                  background: 'rgba(255,255,255,0.06)',
+                  border: '1px solid rgba(255,255,255,0.12)',
+                  borderRadius: '10px', fontSize: '15px', outline: 'none',
+                  boxSizing: 'border-box', transition: 'border-color 0.2s, box-shadow 0.2s',
+                  color: '#f1f5f9',
                 }}
-                onFocus={e => e.target.style.borderColor = '#3382c2'}
-                onBlur={e => e.target.style.borderColor = '#e5e7eb'}
+                onFocus={e => {
+                  e.target.style.borderColor = '#3b82f6';
+                  e.target.style.boxShadow = '0 0 0 3px rgba(59,130,246,0.2)';
+                }}
+                onBlur={e => {
+                  e.target.style.borderColor = 'rgba(255,255,255,0.12)';
+                  e.target.style.boxShadow = 'none';
+                }}
               />
+              <style>{`input::placeholder { color: rgba(148,163,184,0.6) !important; }`}</style>
             </div>
 
             {/* MOT DE PASSE */}
             <div style={{ marginBottom: '24px' }}>
-              <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#444', marginBottom: '6px' }}>
+              <label style={{
+                display: 'block', fontSize: '13px', fontWeight: '600',
+                color: 'rgba(148,163,184,0.9)', marginBottom: '7px',
+              }}>
                 Mot de passe
               </label>
               <div style={{ position: 'relative' }}>
@@ -102,22 +171,33 @@ export default function Login({ onLogin }) {
                   autoComplete="current-password"
                   required
                   style={{
-                    width: '100%', padding: '12px 44px 12px 14px', border: '2px solid #e5e7eb',
-                    borderRadius: '10px', fontSize: '15px', outline: 'none', boxSizing: 'border-box',
-                    transition: 'border-color 0.2s',
+                    width: '100%', padding: '12px 44px 12px 14px',
+                    background: 'rgba(255,255,255,0.06)',
+                    border: '1px solid rgba(255,255,255,0.12)',
+                    borderRadius: '10px', fontSize: '15px', outline: 'none',
+                    boxSizing: 'border-box', transition: 'border-color 0.2s, box-shadow 0.2s',
+                    color: '#f1f5f9',
                   }}
-                  onFocus={e => e.target.style.borderColor = '#3382c2'}
-                  onBlur={e => e.target.style.borderColor = '#e5e7eb'}
+                  onFocus={e => {
+                    e.target.style.borderColor = '#3b82f6';
+                    e.target.style.boxShadow = '0 0 0 3px rgba(59,130,246,0.2)';
+                  }}
+                  onBlur={e => {
+                    e.target.style.borderColor = 'rgba(255,255,255,0.12)';
+                    e.target.style.boxShadow = 'none';
+                  }}
                 />
                 <button
                   type="button"
                   onClick={() => setAfficherMDP(v => !v)}
                   style={{
                     position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)',
-                    background: 'none', border: 'none', cursor: 'pointer', color: '#888', fontSize: '16px', padding: '4px'
+                    background: 'none', border: 'none', cursor: 'pointer',
+                    color: 'rgba(148,163,184,0.7)', padding: '4px',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
                   }}
                 >
-                  {afficherMDP ? '🙈' : '👁'}
+                  {afficherMDP ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
               </div>
             </div>
@@ -125,23 +205,31 @@ export default function Login({ onLogin }) {
             {/* ERREUR */}
             {erreur && (
               <div style={{
-                background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px',
-                padding: '10px 14px', marginBottom: '16px', color: '#dc2626', fontSize: '14px'
+                background: 'rgba(239,68,68,0.1)',
+                border: '1px solid rgba(239,68,68,0.3)',
+                borderRadius: '8px',
+                padding: '10px 14px', marginBottom: '16px',
+                color: '#fca5a5', fontSize: '14px',
               }}>
                 {erreur}
               </div>
             )}
 
-            {/* BOUTON */}
+            {/* BOUTON SUBMIT */}
             <button
               type="submit"
               disabled={chargement || !email || !motDePasse}
               style={{
                 width: '100%', padding: '14px',
-                background: chargement || !email || !motDePasse ? '#93c5fd' : '#3382c2',
+                background: 'linear-gradient(135deg, #1e40af 0%, #3b82f6 50%, #4f46e5 100%)',
                 color: 'white', border: 'none', borderRadius: '10px',
-                fontSize: '16px', fontWeight: 'bold', cursor: chargement ? 'wait' : 'pointer',
-                transition: 'background 0.2s',
+                fontSize: '16px', fontWeight: '700',
+                cursor: chargement ? 'wait' : ((!email || !motDePasse) ? 'not-allowed' : 'pointer'),
+                transition: 'opacity 0.2s, box-shadow 0.2s',
+                opacity: (chargement || !email || !motDePasse) ? 0.5 : 1,
+                boxShadow: (chargement || !email || !motDePasse)
+                  ? 'none'
+                  : '0 4px 20px rgba(59,130,246,0.4), inset 0 1px 0 rgba(255,255,255,0.15)',
               }}
             >
               {chargement ? 'Connexion...' : 'Se connecter'}
@@ -154,7 +242,7 @@ export default function Login({ onLogin }) {
                   type="button"
                   onClick={() => { setMdpOublie(true); setMsgReinit(''); }}
                   style={{
-                    background: 'none', border: 'none', color: '#3382c2',
+                    background: 'none', border: 'none', color: '#60a5fa',
                     fontSize: '13px', cursor: 'pointer', textDecoration: 'underline', padding: 0,
                   }}
                 >
@@ -162,7 +250,7 @@ export default function Login({ onLogin }) {
                 </button>
               ) : (
                 <div>
-                  <p style={{ fontSize: '13px', color: '#555', marginBottom: '8px' }}>
+                  <p style={{ fontSize: '13px', color: 'rgba(148,163,184,0.8)', marginBottom: '8px' }}>
                     Saisissez votre email ci-dessus puis cliquez sur le bouton.
                   </p>
                   <button
@@ -170,9 +258,12 @@ export default function Login({ onLogin }) {
                     onClick={demanderReinit}
                     disabled={chargement}
                     style={{
-                      background: 'none', border: '1px solid #3382c2', color: '#3382c2',
+                      background: 'none',
+                      border: '1px solid rgba(96,165,250,0.5)',
+                      color: '#60a5fa',
                       borderRadius: '8px', padding: '8px 16px', fontSize: '13px',
                       cursor: chargement ? 'wait' : 'pointer',
+                      transition: 'border-color 0.2s',
                     }}
                   >
                     {chargement ? 'Envoi...' : 'Envoyer le lien de réinitialisation'}
@@ -181,7 +272,7 @@ export default function Login({ onLogin }) {
                     type="button"
                     onClick={() => { setMdpOublie(false); setMsgReinit(''); }}
                     style={{
-                      background: 'none', border: 'none', color: '#888',
+                      background: 'none', border: 'none', color: 'rgba(148,163,184,0.6)',
                       fontSize: '12px', cursor: 'pointer', marginLeft: '12px',
                     }}
                   >
@@ -192,9 +283,14 @@ export default function Login({ onLogin }) {
               {msgReinit && (
                 <div style={{
                   marginTop: '10px', padding: '10px 14px',
-                  background: msgReinit.startsWith('Email de') ? '#f0fdf4' : '#fef2f2',
-                  border: `1px solid ${msgReinit.startsWith('Email de') ? '#bbf7d0' : '#fecaca'}`,
-                  borderRadius: '8px', color: msgReinit.startsWith('Email de') ? '#16a34a' : '#dc2626',
+                  background: msgReinit.startsWith('Email de')
+                    ? 'rgba(16,185,129,0.1)'
+                    : 'rgba(239,68,68,0.1)',
+                  border: `1px solid ${msgReinit.startsWith('Email de')
+                    ? 'rgba(16,185,129,0.3)'
+                    : 'rgba(239,68,68,0.3)'}`,
+                  borderRadius: '8px',
+                  color: msgReinit.startsWith('Email de') ? '#6ee7b7' : '#fca5a5',
                   fontSize: '13px',
                 }}>
                   {msgReinit}
@@ -204,7 +300,10 @@ export default function Login({ onLogin }) {
           </form>
         </div>
 
-        <div style={{ textAlign: 'center', marginTop: '24px', color: 'rgba(255,255,255,0.4)', fontSize: '12px' }}>
+        <div style={{
+          textAlign: 'center', marginTop: '24px',
+          color: 'rgba(255,255,255,0.3)', fontSize: '12px',
+        }}>
           CYNA v2.0 · Application sécurisée
         </div>
       </div>

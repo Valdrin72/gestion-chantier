@@ -329,7 +329,10 @@ export const calculerCoutsChantier = (chantier, employes, localites, cfg = {}, d
   const avancementJournal = nbJours > 0 && joursReelsPourAv > 0
     ? Math.min(100, Math.round((joursReelsPourAv / nbJours) * 100))
     : 0;
-  const avancement = avancementJournal || parseFloat(chantier.avancement) || 0;
+  const statutLower = (chantier.statut || '').trim().toLowerCase();
+  const avancement = ['terminé', 'termine', 'clôturé', 'cloture', 'facturé', 'facture'].includes(statutLower)
+    ? 100
+    : (avancementJournal || parseFloat(chantier.avancement) || 0);
   const rad = (avancement > 0 && totalCoutsReel > 0)
     ? (totalCoutsReel / avancement) * (100 - avancement)
     : null;
@@ -692,7 +695,11 @@ export const getPeriodeLabel = (periode) => {
 
 // Retourne vrai si le chantier a des jours ouvrables dans la période [debut, fin]
 export const chantiersInPeriode = (chantier, debut, fin) => {
-  if (!chantier.dateDebut) return false;
+  if (!chantier.dateDebut) {
+    // Chantier sans date planifiée : inclure si statut actif (ne peut pas être daté autrement)
+    const s = (chantier.statut || '').trim().toLowerCase();
+    return ['en cours', 'planifié'].includes(s);
+  }
   const debutChantier = new Date(chantier.dateDebut);
   const finStr = calculerDateFinOuvrables(chantier.dateDebut, chantier.nombreJours, chantier.inclusSamedi);
   const finChantier = finStr && finStr !== '-' ? new Date(finStr) : new Date(debutChantier);
@@ -1130,9 +1137,13 @@ export const calculerEtatChantier = (chantier, employes = [], devisList = [], pa
   const totalHeuresReelles = membreDetail.reduce((s, m) => s + m.heuresReelles, 0);
 
   // ── C. Avancement (0–100, calculé, jamais saisi) ──────────────────────
-  const avancementPct = totalJoursPrevus === 0
-    ? 0
-    : Math.min(100, Math.round((totalJoursReels / totalJoursPrevus) * 100));
+  const _statutChantierLower = (chantier.statut || '').trim().toLowerCase();
+  const _chantiClos = ['terminé', 'termine', 'clôturé', 'cloture', 'facturé', 'facture'].includes(_statutChantierLower);
+  const avancementPct = _chantiClos
+    ? 100
+    : totalJoursPrevus === 0
+      ? 0
+      : Math.min(100, Math.round((totalJoursReels / totalJoursPrevus) * 100));
 
   // ── D. Dérive temps ───────────────────────────────────────────────────
   const deriveJours = totalJoursReels - totalJoursPrevus;

@@ -137,19 +137,21 @@ export default function useAgents({ chantiers, devis, factures, clients, paramet
     }
   }, [chantiers, devis, factures, clients, parametres, agentsActifs, dernierRapport, running]);
 
-  // Exécution initiale + timer horaire
+  // Référence à executer toujours à jour (évite le stale-closure dans setInterval)
+  const executerRef = useRef(executer);
+  useEffect(() => { executerRef.current = executer; }, [executer]);
+
+  // Exécution initiale (dès que des données arrivent) + timer horaire
   const hasRunRef = useRef(false);
   useEffect(() => {
-    if (!hasRunRef.current && chantiers?.length >= 0) {
-      hasRunRef.current = true;
-      setTimeout(() => executer(true), 1500);
-    }
-    const interval = setInterval(() => executer(false), INTERVAL_MS);
+    const interval = setInterval(() => executerRef.current(false), INTERVAL_MS);
     return () => clearInterval(interval);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Re-run immédiat + purge alertes obsolètes quand des entités sont supprimées
+  // Re-run immédiat :
+  //  - quand des entités sont supprimées (purge alertes orphelines)
+  //  - quand les données arrivent pour la première fois depuis Supabase (0 → n)
   const prevChantiersLenRef = useRef(chantiers?.length ?? 0);
   const prevDevisLenRef     = useRef(devis?.length ?? 0);
   const prevFacturesLenRef  = useRef(factures?.length ?? 0);
@@ -163,24 +165,31 @@ export default function useAgents({ chantiers, devis, factures, clients, paramet
       currC < prevChantiersLenRef.current ||
       currD < prevDevisLenRef.current ||
       currF < prevFacturesLenRef.current;
+    // Premier chargement depuis Supabase (données vides → données disponibles)
+    const justLoaded =
+      !hasRunRef.current && (currC > 0 || currD > 0 || currF > 0);
 
     prevChantiersLenRef.current = currC;
     prevDevisLenRef.current     = currD;
     prevFacturesLenRef.current  = currF;
 
-    if (!deleted) return;
+    if (!deleted && !justLoaded) return;
 
-    // Purge immédiate des alertes qui référencent des IDs supprimés
-    const validCIds = new Set((chantiers || []).map(c => String(c.id)));
-    const validDIds = new Set((devis || []).map(d => String(d.id)));
-    setAlertes(prev => prev.filter(a =>
-      (!a.chantier_id || validCIds.has(String(a.chantier_id))) &&
-      (!a.devis_id    || validDIds.has(String(a.devis_id)))
-    ));
+    if (deleted) {
+      // Purge immédiate des alertes qui référencent des IDs supprimés
+      const validCIds = new Set((chantiers || []).map(c => String(c.id)));
+      const validDIds = new Set((devis || []).map(d => String(d.id)));
+      setAlertes(prev => prev.filter(a =>
+        (!a.chantier_id || validCIds.has(String(a.chantier_id))) &&
+        (!a.devis_id    || validDIds.has(String(a.devis_id)))
+      ));
+    }
+
+    if (justLoaded) hasRunRef.current = true;
 
     // Re-run des agents (avec debounce de 600 ms si plusieurs suppressions en rafale)
     if (rerunTimerRef.current) clearTimeout(rerunTimerRef.current);
-    rerunTimerRef.current = setTimeout(() => executer(true), 600);
+    rerunTimerRef.current = setTimeout(() => executerRef.current(true), 600);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chantiers, devis, factures]);
 

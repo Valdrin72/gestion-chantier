@@ -127,14 +127,17 @@ export default function Rapport({ chantiers, clients, devis = [], parametres, pa
                 const j = c.nombreJours > 0 ? c.nombreJours - r : null;
                 const al = getAlerte(j);
                 const couts = calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis);
-                const client = clients.find(cl => cl.id === c.clientId);
+                const client = clients.find(cl => String(cl.id) === String(c.clientId));
                 return (
                   <tr key={c.id} style={{ borderBottom: '1px solid var(--ds-td-border)' }}>
                     <td style={{ padding: '12px 15px' }}><strong>{c.nom}</strong><div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>{c.numero}</div></td>
                     <td style={{ padding: '12px 15px' }}>{client?.entreprise || '-'}</td>
                     <td style={{ padding: '12px 15px' }}>
                       {(() => {
-                        const progress = Math.max(0, Math.min(100, Number(c.avancement ?? 0)));
+                        const _statutL = (c.statut || '').trim().toLowerCase();
+                        const _clos = ['terminé', 'termine', 'clôturé', 'cloture', 'facturé', 'facture'].includes(_statutL);
+                        const avancementJournal = c.nombreJours > 0 ? Math.min(100, Math.round((r / c.nombreJours) * 100)) : 0;
+                        const progress = _clos ? 100 : Math.max(0, Math.min(100, avancementJournal || Number(c.avancement ?? 0)));
                         let color = '#ef4444';
                         if (progress > 30) color = '#f59e0b';
                         if (progress > 70) color = '#22c55e';

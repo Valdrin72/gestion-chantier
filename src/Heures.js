@@ -57,7 +57,8 @@ export default function Heures({ chantiers = [], parametres = {}, setChantiers }
     const { employeId, chantierId, date, heures } = modal.form;
     if (!employeId || !chantierId || !date || !heures) return;
     const h = parseFloat(heures);
-    if (!h || h <= 0) return;
+    if (!h || h <= 0) { alert('Le nombre d\'heures doit être supérieur à 0.'); return; }
+    if (h > 16) { alert('Maximum 16h par jour.'); return; }
     // Règle CYNA stricte : pas de saisie dans le futur.
     // Exception : samedi de la semaine courante uniquement si chantier.inclusSamedi=true.
     const todayStr = new Date().toISOString().split('T')[0];

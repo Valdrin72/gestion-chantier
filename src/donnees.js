@@ -724,8 +724,10 @@ export const genererNumeroFacture = (factures, prefix = 'F') => {
 
 export const calculerStatutFacture = (facture) => {
   if (facture.statut === 'annulee' || facture.statut === 'brouillon') return facture.statut;
-  const totalPaye = (facture.paiementsHistorique || []).reduce((s, p) => s + (parseFloat(p.montant) || 0), 0);
   const total = parseFloat(facture.montantTTC) || 0;
+  // Prendre le maximum entre paiementsHistorique et montantPaye (champ direct)
+  const payeHistorique = (facture.paiementsHistorique || []).reduce((s, p) => s + (parseFloat(p.montant) || 0), 0);
+  const totalPaye = Math.max(payeHistorique, parseFloat(facture.montantPaye) || 0);
   if (totalPaye >= total - 0.01 && total > 0) return 'payee';
   if (totalPaye > 0) return 'partielle';
   if (facture.dateEcheance) {

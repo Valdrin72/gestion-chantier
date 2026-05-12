@@ -836,7 +836,9 @@ export function runDerivePredictor({ chantiers, devis, parametres, agentContext 
   chantiers.filter(isChantierActif).forEach(c => {
     const couts = calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis);
     const joursRealises = new Set((c.journal || []).map(e => e.date).filter(Boolean)).size;
-    const avancement = Math.min(100, Math.max(0, parseFloat(c.avancement) || 0));
+    const avancement = c.nombreJours > 0
+      ? Math.min(100, Math.round((joursRealises / c.nombreJours) * 100))
+      : Math.min(100, Math.max(0, parseFloat(c.avancement) || 0));
     const CA = couts.montantTotal || 0;
 
     if (avancement < 15 || joursRealises === 0 || CA === 0) return;

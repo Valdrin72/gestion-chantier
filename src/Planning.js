@@ -84,7 +84,7 @@ export default function Planning({ chantiers, setChantiers, clients, parametres,
   }), [chantiers, anneeActuelle, moisActuel]);
 
   const chantiersNonPlanifies = useMemo(
-    () => chantiers.filter(c => !c.dateDebut && c.statut !== 'Terminé' && c.statut !== 'Clôturé' && c.statut !== 'Facturé'),
+    () => chantiers.filter(c => { const s = (c.statut || '').trim().toLowerCase(); return !c.dateDebut && s !== 'terminé' && s !== 'clôturé' && s !== 'facturé'; }),
     [chantiers]
   );
 

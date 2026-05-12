@@ -21,7 +21,7 @@ const uid = (prefix) => `${prefix}_${Date.now()}_${Math.random().toString(36).sl
 // ═══════════════════════════════════════════════════════════════
 
 // ─── T1-A1 : AlerteChantier ───────────────────────────────────
-export function runAlerteChantier({ chantiers, devis, parametres }) {
+export function runAlerteChantier({ chantiers, devis, factures = [], parametres }) {
   const alertes = [];
   const actifs = chantiers.filter(isChantierActif);
   const cfg = parametres?.agentsConfig?.alerteChantier || {
@@ -79,6 +79,20 @@ export function runAlerteChantier({ chantiers, devis, parametres }) {
             message: `${c.nom || c.numero} — budget dépassé de ${dep.toFixed(0)}%`,
             detail: `Prévu CHF ${fmtN(Math.round(couts.totalCoutsPrevu))} · Réel CHF ${fmtN(Math.round(couts.totalCoutsReel))}`,
             chantier_id: c.id, timestamp: Date.now(), lu: false, action: { page: 'chantiers', ctx: { chantierActif: c.id } } });
+        }
+      }
+
+      // ── Sur-facturation : total facturé HT > CA × avancement% × 1.1 (tolérance 10%) ──
+      const ca = couts.montantTotal;
+      const avancement = parseFloat(c.avancement) || 0;
+      if (ca > 0 && avancement < 100) {
+        const facturesChantier = factures.filter(f => String(f.chantierId) === String(c.id) && f.statut !== 'annulee');
+        const totalFactureHT = facturesChantier.reduce((s, f) => s + (parseFloat(f.montantHT) || parseFloat(f.montantTTC) / 1.081 || 0), 0);
+        if (totalFactureHT > ca * (avancement / 100) * 1.1) {
+          alertes.push({ id: uid('ac-surfact'), agent: 'AlerteChantier', type: 'surfacturation', niveau: 'ATTENTION',
+            message: `${c.nom || c.numero} — sur-facturation détectée`,
+            detail: `Facturé CHF ${fmtN(Math.round(totalFactureHT))} > CA × avancement (${avancement}%) = CHF ${fmtN(Math.round(ca * avancement / 100))}`,
+            chantier_id: c.id, timestamp: Date.now(), lu: false, action: { page: 'finances', ctx: {} } });
         }
       }
     } catch (e) { console.warn('[T1-AlerteChantier]', c.id, e); }
@@ -1638,7 +1652,7 @@ export function runAllAgents({ chantiers, devis, factures, clients, parametres, 
   };
 
   // ── TIER 1 ──
-  runAgent('AlerteChantier',          (m) => runAlerteChantier({ chantiers, devis, parametres }));
+  runAgent('AlerteChantier',          (m) => runAlerteChantier({ chantiers, devis, factures, parametres }));
   runAgent('SuiviDevis',              (m) => runSuiviDevis({ devis, factures, clients }));
   const a3 = runAgent('TresoreriePredictor', (m) => runTresoreriePredictor({ chantiers, factures, devis, parametres }));
   if (a3?.data) result.predictions = a3.data;

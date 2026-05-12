@@ -231,8 +231,14 @@ export const calculerCoutsChantier = (chantier, employes, localites, cfg = {}, d
 
   const localite = localites.find(l => l.nom === chantier.ville);
   const tarifDeplacement = localite ? localite.tarifJour : 0;
+  // Coût déplacement PRÉVU : basé sur les jours planifiés (nombreJours)
   const nbJours = parseInt(chantier.nombreJours || 0);
-  const coutDeplacement = tarifDeplacement * nbJours;
+  const coutDeplacementPrevu = tarifDeplacement * nbJours;
+  // Coût déplacement RÉEL : basé sur les jours uniques du journal (source de vérité)
+  const joursReelsJournal = new Set((chantier.journal || []).map(e => e.date).filter(Boolean)).size;
+  const coutDeplacementReel = tarifDeplacement * joursReelsJournal;
+  // Alias rétrocompat — utilisé dans les exports (représente le réel si journal disponible, sinon prévu)
+  const coutDeplacement = joursReelsJournal > 0 ? coutDeplacementReel : coutDeplacementPrevu;
 
   // Source unique : journal (heuresTravaillees) — aucun fallback
   const journalCouts = chantier.journal || [];
@@ -290,8 +296,8 @@ export const calculerCoutsChantier = (chantier, employes, localites, cfg = {}, d
   const montantTotal = calculerCA(chantier, devisList);
   const caDisponible = montantTotal !== null;
 
-  const totalCoutsPrevu = coutEquipePrevu + coutMaterielPrevu + coutSousTraitancePrevu + coutDeplacement + autresCoutsPrevu;
-  const totalCoutsReel = coutEquipeReel + coutMaterielReel + coutSousTraitanceReel + coutDeplacement + coutImprevus + autresCoutsReel;
+  const totalCoutsPrevu = coutEquipePrevu + coutMaterielPrevu + coutSousTraitancePrevu + coutDeplacementPrevu + autresCoutsPrevu;
+  const totalCoutsReel = coutEquipeReel + coutMaterielReel + coutSousTraitanceReel + coutDeplacementReel + coutImprevus + autresCoutsReel;
 
   const margePrevu = caDisponible ? montantTotal - totalCoutsPrevu : null;
   const margeReel = caDisponible ? montantTotal - totalCoutsReel : null;

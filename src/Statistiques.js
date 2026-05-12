@@ -31,7 +31,7 @@ export default function Statistiques({ chantiers, clients, devis = [], parametre
   const caTotal = filtresAvecDevis.reduce((t, c) => t + calculerCA(c, devis), 0);
   const coutsTotaux = filtresAvecDevis.reduce((t, c) => t + calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis).totalCoutsReel, 0);
   const rentabilite = caTotal - coutsTotaux;
-  const margeGlobale = caTotal > 0 ? ((rentabilite / caTotal) * 100).toFixed(1) : 0;
+  const margeGlobale = caTotal > 0 ? Math.round((rentabilite / caTotal) * 1000) / 10 : 0;
 
   // ===== DONNÉES MENSUELLES (sur TOUS les chantiers filtrés par l'année du picker) =====
   // Le picker "année" contrôle le graphique mensuel indépendamment de periodeGlobale.
@@ -46,8 +46,8 @@ export default function Statistiques({ chantiers, clients, devis = [], parametre
     const ca = avecDevisMois.reduce((t, c) => t + calculerCA(c, devis), 0);
     const couts = avecDevisMois.reduce((t, c) => t + calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis).totalCoutsReel, 0);
     const marge = ca - couts;
-    const margePct = ca > 0 ? ((marge / ca) * 100).toFixed(1) : 0;
-    return { mois: m, CA: ca, Coûts: couts, Marge: marge, 'Marge %': parseFloat(margePct), chantiers: tousMois.length };
+    const margePct = ca > 0 ? Math.round((marge / ca) * 1000) / 10 : 0;
+    return { mois: m, CA: ca, Coûts: couts, Marge: marge, 'Marge %': margePct, chantiers: tousMois.length };
   });
 
   // ===== DONNÉES PAR TYPE DE TRAVAUX (uniquement chantiers avec devis) =====
@@ -57,7 +57,7 @@ export default function Statistiques({ chantiers, clients, devis = [], parametre
     const ca = avecDevis.reduce((s, c) => s + calculerCA(c, devis), 0);
     const couts = avecDevis.reduce((s, c) => s + calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis).totalCoutsReel, 0);
     const m2 = avecDevis.reduce((s, c) => s + (parseFloat(c.surface) || 0), 0);
-    return { nom: t.nom, CA: ca, Coûts: couts, Marge: ca - couts, m2, count: tous.length, nbAvecDevis: avecDevis.length, margePct: ca > 0 ? (((ca - couts) / ca) * 100).toFixed(1) : 0 };
+    return { nom: t.nom, CA: ca, Coûts: couts, Marge: ca - couts, m2, count: tous.length, nbAvecDevis: avecDevis.length, margePct: ca > 0 ? Math.round(((ca - couts) / ca) * 1000) / 10 : 0 };
   }).filter(t => t.count > 0);
 
   // ===== DONNÉES CLIENTS (uniquement chantiers avec devis pour le CA) =====
@@ -450,8 +450,8 @@ export default function Statistiques({ chantiers, clients, devis = [], parametre
                 <td style={{ padding: '10px 15px' }}>{c.chantiers}</td>
                 <td style={{ padding: '10px 15px', fontWeight: 700, color: COL_CA }}>CHF {fmtN(c.CA)}</td>
                 <td style={{ padding: '10px 15px' }}>
-                  <span style={{ background: couleurMarge(c.CA > 0 ? ((c.Marge / c.CA) * 100).toFixed(1) : 0) + '18', color: couleurMarge(c.CA > 0 ? ((c.Marge / c.CA) * 100).toFixed(1) : 0), padding: '3px 10px', borderRadius: '12px', fontSize: '12px', fontWeight: 600 }}>
-                    {c.CA > 0 ? ((c.Marge / c.CA) * 100).toFixed(1) : 0}%
+                  <span style={{ background: couleurMarge(c.CA > 0 ? Math.round((c.Marge / c.CA) * 1000) / 10 : 0) + '18', color: couleurMarge(c.CA > 0 ? Math.round((c.Marge / c.CA) * 1000) / 10 : 0), padding: '3px 10px', borderRadius: '12px', fontSize: '12px', fontWeight: 600 }}>
+                    {c.CA > 0 ? Math.round((c.Marge / c.CA) * 1000) / 10 : 0}%
                   </span>
                 </td>
                 <td style={{ padding: '10px 15px', color: c.Marge >= 0 ? C.secondaire : C.danger, fontWeight: 'bold' }}>CHF {fmtN(c.Marge)}</td>

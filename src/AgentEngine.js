@@ -88,7 +88,7 @@ export function runAlerteChantier({ chantiers, devis, factures = [], parametres 
       const avancement = c.nombreJours > 0 ? Math.min(100, Math.round((joursRSurf / c.nombreJours) * 100)) : (parseFloat(c.avancement) || 0);
       if (ca > 0 && avancement < 100) {
         const facturesChantier = factures.filter(f => String(f.chantierId) === String(c.id) && f.statut !== 'annulee');
-        const totalFactureHT = facturesChantier.reduce((s, f) => s + (parseFloat(f.montantHT) || parseFloat(f.montantTTC) / 1.081 || 0), 0);
+        const totalFactureHT = facturesChantier.reduce((s, f) => s + (parseFloat(f.montantHT) || (parseFloat(f.montantTTC) || 0) / (1 + (parseFloat(f.tva) || 8.1) / 100) || 0), 0);
         if (totalFactureHT > ca * (avancement / 100) * 1.1) {
           alertes.push({ id: uid('ac-surfact'), agent: 'AlerteChantier', type: 'surfacturation', niveau: 'ATTENTION',
             message: `${c.nom || c.numero} — sur-facturation détectée`,

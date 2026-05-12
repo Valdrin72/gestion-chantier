@@ -32,7 +32,7 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
   const margeAvantImpots = margeAvantCharges - chargesSociales - fraisGeneraux;
   const impots = margeAvantImpots > 0 ? margeAvantImpots * (tauxImpots / 100) : 0;
   const margeNette = margeAvantImpots - impots;
-  const margeNettePct = caTotal > 0 ? ((margeNette / caTotal) * 100).toFixed(1) : 0;
+  const margeNettePct = caTotal > 0 ? Math.round((margeNette / caTotal) * 1000) / 10 : 0;
 
   // SEUIL DE RENTABILITÉ
   const chargesFixes = fraisGeneraux + (coutsTotal * 0.3);
@@ -65,16 +65,16 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
       : (c.equipe?.length ? Math.max(...c.equipe.map(m => parseFloat(m.joursRealises) || 0), 0) : 0);
 
     const ecartBudget = couts.totalCoutsReel > 0 && couts.totalCoutsPrevu > 0
-      ? (((couts.totalCoutsReel - couts.totalCoutsPrevu) / couts.totalCoutsPrevu) * 100).toFixed(1)
+      ? Math.round(((couts.totalCoutsReel - couts.totalCoutsPrevu) / couts.totalCoutsPrevu) * 1000) / 10
       : 0;
 
-    const coutParHeure = heuresRealise > 0 ? (couts.totalCoutsReel / heuresRealise).toFixed(0) : 0;
-    const caParHeure = (caDisponible && heuresRealise > 0) ? (montantTotal / heuresRealise).toFixed(0) : null;
-    const coutParM2 = surface > 0 ? (couts.totalCoutsReel / surface).toFixed(0) : 0;
-    const caParM2 = (caDisponible && surface > 0) ? (montantTotal / surface).toFixed(0) : null;
-    const margeParM2 = (couts.margeReel !== null && surface > 0) ? (couts.margeReel / surface).toFixed(0) : null;
-    const ecartJours = joursPrevu > 0 ? (((joursReel - joursPrevu) / joursPrevu) * 100).toFixed(1) : 0;
-    const tauxFacturation = heuresPrevu > 0 ? ((heuresRealise / heuresPrevu) * 100).toFixed(1) : 0;
+    const coutParHeure = heuresRealise > 0 ? Math.round(couts.totalCoutsReel / heuresRealise) : 0;
+    const caParHeure = (caDisponible && heuresRealise > 0) ? Math.round(montantTotal / heuresRealise) : null;
+    const coutParM2 = surface > 0 ? Math.round(couts.totalCoutsReel / surface) : 0;
+    const caParM2 = (caDisponible && surface > 0) ? Math.round(montantTotal / surface) : null;
+    const margeParM2 = (couts.margeReel !== null && surface > 0) ? Math.round(couts.margeReel / surface) : null;
+    const ecartJours = joursPrevu > 0 ? Math.round(((joursReel - joursPrevu) / joursPrevu) * 1000) / 10 : 0;
+    const tauxFacturation = heuresPrevu > 0 ? Math.round((heuresRealise / heuresPrevu) * 1000) / 10 : 0;
 
     const depassements = [];
     if (parseFloat(ecartBudget) > 10) depassements.push(`Budget dépassé de ${ecartBudget}%`);
@@ -100,8 +100,8 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
       const ca = calculerCA(c, devis);
       return ca !== null ? t + (ca * pctJours) : t;
     }, 0);
-    const coutHoraire = heuresTotal > 0 ? (coutTotal / heuresTotal).toFixed(0) : 0;
-    const productivite = coutTotal > 0 ? ((caGenere / coutTotal) * 100).toFixed(0) : 0;
+    const coutHoraire = heuresTotal > 0 ? Math.round(coutTotal / heuresTotal) : 0;
+    const productivite = coutTotal > 0 ? Math.round((caGenere / coutTotal) * 100) : 0;
     const chargesSoc = coutTotal * (tauxChargesSociales / 100);
     const coutReel = coutTotal + chargesSoc;
 
@@ -116,10 +116,10 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
     const ca = avecDevis.reduce((s, c) => s + calculerCA(c, devis), 0);
     const couts = avecDevis.reduce((s, c) => s + calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis).totalCoutsReel, 0);
     const marge = ca - couts;
-    const caParM2 = surface > 0 ? (ca / surface).toFixed(0) : 0;
-    const coutParM2 = surface > 0 ? (couts / surface).toFixed(0) : 0;
-    const margeParM2 = surface > 0 ? (marge / surface).toFixed(0) : 0;
-    const margePct = ca > 0 ? ((marge / ca) * 100).toFixed(1) : 0;
+    const caParM2 = surface > 0 ? Math.round(ca / surface) : 0;
+    const coutParM2 = surface > 0 ? Math.round(couts / surface) : 0;
+    const margeParM2 = surface > 0 ? Math.round(marge / surface) : 0;
+    const margePct = ca > 0 ? Math.round((marge / ca) * 1000) / 10 : 0;
     return { nom: t.nom, count: tous.length, nbAvecDevis: avecDevis.length, surface, ca, couts, marge, caParM2, coutParM2, margeParM2, margePct };
   }).filter(t => t.count > 0);
 
@@ -131,7 +131,7 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
     const ca = cs.reduce((t, c) => t + calculerCA(c, devis), 0);
     const couts = cs.reduce((t, c) => t + calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis).totalCoutsReel, 0);
     const marge = ca - couts;
-    const margePct = ca > 0 ? ((marge / ca) * 100).toFixed(1) : 0;
+    const margePct = ca > 0 ? Math.round((marge / ca) * 1000) / 10 : 0;
     const enCours = tous.filter(isChantierActif).length;
     const termines = tous.filter(c => c.statut?.trim().toLowerCase() === 'terminé').length;
     return { ...cl, nbChantiers: tous.length, nbAvecDevis: avecDevis.length, ca, couts, marge, margePct, enCours, termines };
@@ -264,12 +264,12 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               {[
                 { label: 'Chiffre d\'affaires total', val: caTotal, pct: 100, couleur: '#10b981', bg: 'rgba(16,185,129,0.08)', bold: false, big: false },
-                { label: 'Coûts directs chantiers', val: -coutsTotal, pct: -(coutsTotal / caTotal * 100).toFixed(1), couleur: '#ef4444', bg: 'rgba(239,68,68,0.08)', bold: false, big: false },
-                { label: '= Marge brute', val: margeAvantCharges, pct: (margeAvantCharges / caTotal * 100).toFixed(1), couleur: margeAvantCharges >= 0 ? '#10b981' : '#ef4444', bg: 'var(--bg-hover)', bold: true, big: false },
-                { label: 'Charges sociales', val: -chargesSociales, pct: -(chargesSociales / caTotal * 100).toFixed(1), couleur: '#f59e0b', bg: 'rgba(245,158,11,0.08)', bold: false, big: false },
-                { label: 'Frais généraux', val: -fraisGeneraux, pct: -(fraisGeneraux / caTotal * 100).toFixed(1), couleur: '#f59e0b', bg: 'rgba(245,158,11,0.08)', bold: false, big: false },
-                { label: '= Résultat avant impôts', val: margeAvantImpots, pct: (margeAvantImpots / caTotal * 100).toFixed(1), couleur: margeAvantImpots >= 0 ? '#10b981' : '#ef4444', bg: 'var(--bg-hover)', bold: true, big: false },
-                { label: 'Impôts estimés', val: -impots, pct: -(impots / caTotal * 100).toFixed(1), couleur: '#ef4444', bg: 'rgba(239,68,68,0.08)', bold: false, big: false },
+                { label: 'Coûts directs chantiers', val: -coutsTotal, pct: caTotal > 0 ? -(Math.round((coutsTotal / caTotal) * 1000) / 10) : 0, couleur: '#ef4444', bg: 'rgba(239,68,68,0.08)', bold: false, big: false },
+                { label: '= Marge brute', val: margeAvantCharges, pct: caTotal > 0 ? Math.round((margeAvantCharges / caTotal) * 1000) / 10 : 0, couleur: margeAvantCharges >= 0 ? '#10b981' : '#ef4444', bg: 'var(--bg-hover)', bold: true, big: false },
+                { label: 'Charges sociales', val: -chargesSociales, pct: caTotal > 0 ? -(Math.round((chargesSociales / caTotal) * 1000) / 10) : 0, couleur: '#f59e0b', bg: 'rgba(245,158,11,0.08)', bold: false, big: false },
+                { label: 'Frais généraux', val: -fraisGeneraux, pct: caTotal > 0 ? -(Math.round((fraisGeneraux / caTotal) * 1000) / 10) : 0, couleur: '#f59e0b', bg: 'rgba(245,158,11,0.08)', bold: false, big: false },
+                { label: '= Résultat avant impôts', val: margeAvantImpots, pct: caTotal > 0 ? Math.round((margeAvantImpots / caTotal) * 1000) / 10 : 0, couleur: margeAvantImpots >= 0 ? '#10b981' : '#ef4444', bg: 'var(--bg-hover)', bold: true, big: false },
+                { label: 'Impôts estimés', val: -impots, pct: caTotal > 0 ? -(Math.round((impots / caTotal) * 1000) / 10) : 0, couleur: '#ef4444', bg: 'rgba(239,68,68,0.08)', bold: false, big: false },
                 { label: '= MARGE NETTE', val: margeNette, pct: margeNettePct, couleur: margeNette >= 0 ? '#10b981' : '#ef4444', bg: margeNette >= 0 ? 'rgba(16,185,129,0.12)' : 'rgba(239,68,68,0.10)', bold: true, big: true },
               ].map((s) => (
                 <div key={s.label} style={{ background: s.bg, borderRadius: '10px', padding: s.big ? '18px 20px' : '12px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: s.bold ? `2px solid ${s.couleur}` : 'none' }}>

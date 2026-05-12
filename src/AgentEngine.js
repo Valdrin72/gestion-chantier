@@ -84,7 +84,8 @@ export function runAlerteChantier({ chantiers, devis, factures = [], parametres 
 
       // ── Sur-facturation : total facturé HT > CA × avancement% × 1.1 (tolérance 10%) ──
       const ca = couts.montantTotal;
-      const avancement = parseFloat(c.avancement) || 0;
+      const joursRSurf = new Set((c.journal || []).map(e => e.date).filter(Boolean)).size;
+      const avancement = c.nombreJours > 0 ? Math.min(100, Math.round((joursRSurf / c.nombreJours) * 100)) : (parseFloat(c.avancement) || 0);
       if (ca > 0 && avancement < 100) {
         const facturesChantier = factures.filter(f => String(f.chantierId) === String(c.id) && f.statut !== 'annulee');
         const totalFactureHT = facturesChantier.reduce((s, f) => s + (parseFloat(f.montantHT) || parseFloat(f.montantTTC) / 1.081 || 0), 0);
@@ -1228,9 +1229,9 @@ export function runAlerteRisqueClient({ chantiers, clients, factures, agentConte
       const sante = santesClients.find(s => String(s.id) === String(client.id));
       const impayees = (factures || []).filter(f =>
         String(f.clientId) === String(client.id) &&
-        ['en attente', 'impayée', 'impayee'].includes((f.statut || '').toLowerCase())
+        ['envoyee', 'partielle', 'retard'].includes((f.statut || '').toLowerCase())
       );
-      const montantImpaye = impayees.reduce((s, f) => s + (parseFloat(f.montantHT) || 0), 0);
+      const montantImpaye = impayees.reduce((s, f) => s + Math.max(0, (parseFloat(f.montantTTC) || 0) - (parseFloat(f.montantPaye) || 0)), 0);
 
       let scoreRisque = 0;
       const facteurs = [];

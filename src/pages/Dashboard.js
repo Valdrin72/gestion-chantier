@@ -105,7 +105,7 @@ function Dashboard() {
       const etat = calculerEtatChantier(c, parametres?.employes || [], devis, parametres?.parametres || parametres);
       const avancement = etat?.avancementPct ?? 0;
       const montantFacture = (factures || [])
-        .filter(f => parseInt(f.chantierId) === c.id)
+        .filter(f => String(f.chantierId) === String(c.id))
         .reduce((s, f) => s + (parseFloat(f.montantTTC) || 0), 0);
       const facturationPotentielle = (avancement / 100) * devisTotal;
       const resteAFacturer = Math.max(0, facturationPotentielle - montantFacture);
@@ -333,7 +333,7 @@ function Dashboard() {
     });
 
     // Chantiers avec devis mais statut ≠ En cours (CA non comptabilisé)
-    chantiers.filter(c => c.devisId && !isChantierActif(c) && !STATUTS_CLOS.includes(c.statut)).forEach(c => {
+    chantiers.filter(c => c.devisId && !isChantierActif(c) && !STATUTS_CLOS.map(s => s.toLowerCase()).includes((c.statut || '').toLowerCase())).forEach(c => {
       list.push({
         id: `devis-inactif-${c.id}`,
         message: `${c.nom || c.numero} — devis lié mais statut "${c.statut}" · CA non comptabilisé`,
@@ -495,7 +495,7 @@ function Dashboard() {
     });
 
     // 4. Devis envoyé sans réponse > 14 jours
-    devis.filter(d => d.statut === 'Envoyé' && !d.chantierId).forEach(d => {
+    devis.filter(d => (d.statut || '').toLowerCase() === 'envoyé' && !d.chantierId).forEach(d => {
       const joursAttente = Math.floor((now - new Date(d.dateEmission || d.date || 0)) / 86400000);
       if (joursAttente > 14) {
         list.push({

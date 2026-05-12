@@ -509,7 +509,7 @@ export default function Finances({
       {/* ── Alertes retard ── */}
       {kpis.enRetard > 0 && (() => {
         const today = new Date().toISOString().slice(0, 10);
-        const nbRetard = facturesPeriode.filter(f =>
+        const nbRetard = facturesValides.filter(f =>
           f.statut !== 'payee' && f.statut !== 'annulee' && f.dateEcheance && f.dateEcheance < today
         ).length;
         return (
@@ -544,7 +544,7 @@ export default function Finances({
 
       {/* ── Contenu ── */}
       {onglet === 'tresorerie' && (
-        <Tresorerie factures={facturesPeriode} chantiers={chantiers} clients={clients} devis={devis} />
+        <Tresorerie factures={facturesValides} chantiers={chantiers} clients={clients} devis={devis} />
       )}
       <div style={{ display: onglet === 'factures' ? 'block' : 'none' }}>
         <Factures

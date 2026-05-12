@@ -15,7 +15,7 @@ export function Sidebar({ sidebarOuvert, setSidebarOuvert, navAutorisees, page, 
               width: 'auto',
               maxWidth: '100%',
               objectFit: 'contain',
-              filter: darkMode ? 'invert(1)' : 'none',
+              filter: darkMode ? 'brightness(0) invert(1)' : 'brightness(0)',
             }}
           />
         </div>

@@ -7,7 +7,7 @@ const ROLE_PAGES = {
     nom: 'Direction',
     icone: '◈',
     couleur: '#3382c2',
-    pages: ['dashboard', 'chantiers', 'devis', 'heures', 'finances', 'planning', 'rapport', 'agents', 'parametres'],
+    pages: ['dashboard', 'chantiers', 'devis', 'heures', 'finances', 'planning', 'rapport', 'agents', 'parametres', 'clients'],
   },
   conducteur: {
     id: 'conducteur',

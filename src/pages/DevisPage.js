@@ -27,11 +27,12 @@ function Devis() {
   };
   const [form, setForm] = useState(vide);
 
-  // Helper unifié : CA signé d'un devis (montant HT + avenants)
+  // Helper unifié : CA signé d'un devis (montant HT + avenants + heures régie)
   const caDevis = (d) => {
     const base = parseFloat(d.montantHT || d.prixPropose) || 0;
     const av = Array.isArray(d.avenants) ? d.avenants.reduce((x, a) => x + (parseFloat(a.montant) || 0), 0) : 0;
-    return base + av;
+    const regie = Array.isArray(d.heuresRegie) ? d.heuresRegie.reduce((x, r) => x + (parseFloat(r.heures) || 0) * (parseFloat(r.tarifHeure) || 0), 0) : 0;
+    return base + av + regie;
   };
 
   // Ouverture directe du formulaire depuis la sidebar

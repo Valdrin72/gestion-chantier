@@ -438,11 +438,15 @@ export default function Finances({
     const enAttente     = actives
       .filter(f => f.statut !== 'payee' && !(f.dateEcheance && f.dateEcheance < today))
       .reduce((s, f) => s + Math.max(0, (parseFloat(f.montantTTC) || 0) - (parseFloat(f.montantPaye) || 0)), 0);
-    // "En retard" = toutes factures non payées avec échéance dépassée (toutes périodes confondues)
-    const enRetard = facturesValides
+    // "En retard période" : cohérent avec totalFacture/totalPaye/enAttente (même filtre période)
+    const enRetard = facturesPeriode
       .filter(f => f.statut !== 'annulee' && f.statut !== 'payee' && f.dateEcheance && f.dateEcheance < today)
       .reduce((s, f) => s + Math.max(0, (parseFloat(f.montantTTC) || 0) - (parseFloat(f.montantPaye) || 0)), 0);
-    return { totalFacture, totalPaye, enAttente, enRetard };
+    // Retard historique (toutes périodes) — affiché dans le bandeau d'alerte uniquement
+    const enRetardTotal = facturesValides
+      .filter(f => f.statut !== 'annulee' && f.statut !== 'payee' && f.dateEcheance && f.dateEcheance < today)
+      .reduce((s, f) => s + Math.max(0, (parseFloat(f.montantTTC) || 0) - (parseFloat(f.montantPaye) || 0)), 0);
+    return { totalFacture, totalPaye, enAttente, enRetard, enRetardTotal };
   }, [facturesPeriode, facturesValides]);
 
   const tabs = [
@@ -507,7 +511,7 @@ export default function Finances({
       </div>
 
       {/* ── Alertes retard ── */}
-      {kpis.enRetard > 0 && (() => {
+      {kpis.enRetardTotal > 0 && (() => {
         const today = new Date().toISOString().slice(0, 10);
         const nbRetard = facturesValides.filter(f =>
           f.statut !== 'payee' && f.statut !== 'annulee' && f.dateEcheance && f.dateEcheance < today
@@ -515,7 +519,7 @@ export default function Finances({
         return (
           <div className="alert-banner alert-banner-danger" style={{ marginBottom: 20 }}>
             <strong>{nbRetard} facture{nbRetard > 1 ? 's' : ''} en retard</strong>
-            {' — '}CHF {fmt(kpis.enRetard)} impayé{nbRetard > 1 ? 's' : ''}. Consultez l'onglet Factures pour les détails.
+            {' — '}CHF {fmt(kpis.enRetardTotal)} impayé{nbRetard > 1 ? 's' : ''} (toutes périodes). Consultez l'onglet Factures pour les détails.
           </div>
         );
       })()}

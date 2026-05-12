@@ -6,7 +6,7 @@ export function useChantierFiltres() {
   const [filtre, setFiltre] = useState(contexte?.filtreStatut || 'Tous');
 
   const chantiersFiltres = useMemo(() => {
-    let liste = filtre === 'Tous' ? chantiers : chantiers.filter(c => c.statut === filtre);
+    let liste = filtre === 'Tous' ? chantiers : chantiers.filter(c => (c.statut || '').trim().toLowerCase() === filtre.trim().toLowerCase());
     if (contexte?.clientActif) liste = liste.filter(c => c.clientId === contexte.clientActif);
     if (contexte?.employeActif) liste = liste.filter(c => c.equipe?.some(m => parseInt(m.employeId) === contexte.employeActif));
     return liste;

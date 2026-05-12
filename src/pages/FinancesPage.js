@@ -5,7 +5,7 @@ import React, { useState, useMemo, useCallback } from 'react';
 import { DollarSign, FileText, Clock, AlertTriangle, CreditCard, TrendingUp, Calendar, Zap } from 'lucide-react';
 import Factures from '../Factures';
 import Paiements from '../Paiements';
-import { getIntervallesPeriode, getPeriodeLabel, facturesInPeriode, calculerCA } from '../donnees';
+import { getIntervallesPeriode, getPeriodeLabel, facturesInPeriode, calculerCA, calculerStatutFacture } from '../donnees';
 
 const fmt  = (n) => (parseFloat(n) || 0).toLocaleString('fr-CH', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 const fmtK = (n) => { const v = parseFloat(n) || 0; return v >= 1000 ? `${(v/1000).toFixed(1)}k` : String(Math.round(v)); };
@@ -17,7 +17,7 @@ function Tresorerie({ factures = [], chantiers = [], clients = [], devis = [] })
   const data = useMemo(() => {
     // ── 1. Factures impayées classées par urgence ────────────────
     const impayees = factures
-      .filter(f => f.statut !== 'annulee' && f.statut !== 'payee')
+      .filter(f => f.statut !== 'annulee' && f.statut !== 'brouillon' && calculerStatutFacture(f) !== 'payee')
       .map(f => {
         const restant = Math.max(0, (parseFloat(f.montantTTC)||0) - (parseFloat(f.montantPaye)||0));
         const echeance = f.dateEcheance ? new Date(f.dateEcheance) : null;
@@ -403,9 +403,11 @@ export default function Finances({
 }) {
   const [onglet, setOnglet] = useState('tresorerie');
 
-  // ── Exclure les factures orphelines (chantier, devis ou client supprimé) ──
+  // ── Exclure les factures orphelines (chantier, devis ou client supprimé, ou sans ancrage) ──
   const facturesOrphelines = useMemo(() =>
     factures.filter(f => {
+      // Facture sans chantierId ni devisId = orpheline (pas d'ancrage dans le portefeuille)
+      if (!f.chantierId && !f.devisId) return true;
       if (f.chantierId && !chantiers.some(ch => String(ch.id) === String(f.chantierId))) return true;
       if (f.devisId   && !devis.some(d   => String(d.id)   === String(f.devisId)))   return true;
       if (f.clientId  && !clients.some(cl => String(cl.id)  === String(f.clientId)))  return true;
@@ -432,14 +434,17 @@ export default function Finances({
   // ── KPIs synthèse globale (toutes périodes — cohérent avec onglet Trésorerie) ─
   const kpis = useMemo(() => {
     const today = new Date().toISOString().slice(0, 10);
-    const actives = facturesValides.filter(f => f.statut !== 'annulee');
-    const totalFacture  = actives.reduce((s, f) => s + (parseFloat(f.montantTTC)  || 0), 0);
+    // Exclure brouillons (non envoyés) et annulées — seules les factures réelles comptent
+    const actives = facturesValides
+      .filter(f => f.statut !== 'annulee' && f.statut !== 'brouillon')
+      .map(f => ({ ...f, statutCalc: calculerStatutFacture(f) }));
+    const totalFacture  = actives.reduce((s, f) => s + (parseFloat(f.montantTTC) || 0), 0);
     const totalPaye     = actives.reduce((s, f) => s + Math.min(parseFloat(f.montantPaye)||0, parseFloat(f.montantTTC)||0), 0);
     const enAttente     = actives
-      .filter(f => f.statut !== 'payee' && !(f.dateEcheance && f.dateEcheance < today))
+      .filter(f => f.statutCalc !== 'payee' && !(f.dateEcheance && f.dateEcheance < today))
       .reduce((s, f) => s + Math.max(0, (parseFloat(f.montantTTC) || 0) - (parseFloat(f.montantPaye) || 0)), 0);
     const enRetard = actives
-      .filter(f => f.statut !== 'payee' && f.dateEcheance && f.dateEcheance < today)
+      .filter(f => f.statutCalc !== 'payee' && f.dateEcheance && f.dateEcheance < today)
       .reduce((s, f) => s + Math.max(0, (parseFloat(f.montantTTC) || 0) - (parseFloat(f.montantPaye) || 0)), 0);
     return { totalFacture, totalPaye, enAttente, enRetard };
   }, [facturesValides]);

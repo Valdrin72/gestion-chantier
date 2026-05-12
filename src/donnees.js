@@ -737,6 +737,8 @@ export const calculerStatutFacture = (facture) => {
   const totalPaye = Math.max(payeHistorique, parseFloat(facture.montantPaye) || 0);
   if (totalPaye >= total - 0.01 && total > 0) return 'payee';
   if (totalPaye > 0) return 'partielle';
+  // Respecter le statut 'payee' positionné manuellement même si montantPaye non renseigné
+  if (facture.statut === 'payee') return 'payee';
   if (facture.dateEcheance) {
     const ech = new Date(facture.dateEcheance);
     if (!isNaN(ech.getTime()) && ech < new Date()) return 'retard';

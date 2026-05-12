@@ -612,8 +612,8 @@ export default function SoumissionAssistee({ parametres, onCreerDevis, naviguer 
       {/* ── Résumé global ── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 14, marginBottom: 16 }}>
         {[
-          { label: 'Total heures',     val: totaux.totalHeures.toFixed(1) + ' h',                               couleur: C.primaire },
-          { label: 'Total jours',      val: totaux.totalJours.toFixed(1) + ' j',                                couleur: C.info },
+          { label: 'Total heures',     val: (Math.round(totaux.totalHeures * 10) / 10) + ' h',                   couleur: C.primaire },
+          { label: 'Total jours',      val: (Math.round(totaux.totalJours * 10) / 10) + ' j',                    couleur: C.info },
           { label: 'Coût main-d\'œuvre', val: 'CHF ' + totaux.coutMOTotal.toLocaleString('fr-CH', { maximumFractionDigits: 0 }), couleur: C.violet },
           { label: 'Total achats',     val: 'CHF ' + totaux.totalAchats.toLocaleString('fr-CH', { maximumFractionDigits: 0 }), couleur: C.warning },
           { label: 'Coût total',       val: 'CHF ' + totaux.coutAvecFreis.toLocaleString('fr-CH', { maximumFractionDigits: 0 }), couleur: '#546e7a' },

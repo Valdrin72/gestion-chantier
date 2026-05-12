@@ -293,7 +293,7 @@ function buildChecks({ chantiers, devis, factures, clients, parametres }) {
           recommandation: 'Analysez les coûts de ces chantiers et ajustez la facturation ou réduisez les charges',
           items: perdants.map(c => {
             const co = calculerCoutsChantier(c, employes, parametres.localites, cfg, devis);
-            return `${c.nom || c.numero} — marge ${co.margeReelPct != null ? co.margeReelPct.toFixed(1) : '?'}%`;
+            return `${c.nom || c.numero} — marge ${co.margeReelPct != null ? Math.round(co.margeReelPct * 10) / 10 : '?'}%`;
           }),
         };
       },
@@ -317,7 +317,7 @@ function buildChecks({ chantiers, devis, factures, clients, parametres }) {
           recommandation: `Visez ≥ ${SEUILS.margeRentable}% de marge nette (seuil cible BTP Genève)`,
           items: faibles.map(c => {
             const co = calculerCoutsChantier(c, employes, parametres.localites, cfg, devis);
-            return `${c.nom || c.numero} — marge ${co.margeReelPct != null ? co.margeReelPct.toFixed(1) : '?'}%`;
+            return `${c.nom || c.numero} — marge ${co.margeReelPct != null ? Math.round(co.margeReelPct * 10) / 10 : '?'}%`;
           }),
         };
       },

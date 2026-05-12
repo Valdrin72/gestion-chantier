@@ -519,7 +519,7 @@ export const exportRapportMensuel = async (chantiers, clients, parametres, mois,
   const caTotal = chantiersMois.reduce((t, c) => t + (calculerCA(c, devis) ?? 0), 0);
   const coutsTotal = chantiersMois.reduce((t, c) => t + calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis).totalCoutsReel, 0);
   const margeTotal = caTotal - coutsTotal;
-  const margePct = caTotal > 0 ? ((margeTotal / caTotal) * 100).toFixed(1) : 0;
+  const margePct = caTotal > 0 ? Math.round((margeTotal / caTotal) * 1000) / 10 : 0;
 
   // KPIs VISUELS
   const kpis = [
@@ -600,7 +600,7 @@ export const exportRapportMensuel = async (chantiers, clients, parametres, mois,
     if (cs.length === 0) return null;
     const ca = cs.reduce((s, c) => s + calculerCA(c, devis), 0);
     const couts = cs.reduce((s, c) => s + calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis).totalCoutsReel, 0);
-    return [t.nom, cs.length, `CHF ${ca.toLocaleString()}`, `CHF ${couts.toLocaleString()}`, `CHF ${(ca - couts).toLocaleString()}`, ca > 0 ? `${(((ca - couts) / ca) * 100).toFixed(1)}%` : '-'];
+    return [t.nom, cs.length, `CHF ${ca.toLocaleString()}`, `CHF ${couts.toLocaleString()}`, `CHF ${(ca - couts).toLocaleString()}`, ca > 0 ? `${Math.round(((ca - couts) / ca) * 1000) / 10}%` : '-'];
   }).filter(Boolean);
 
   if (parType.length > 0) {

@@ -8,9 +8,9 @@ const seuils = { bon: SEUILS.margeRentable, ok: SEUILS.margeLimite };
 
 function statutMarge(pct) {
   if (pct === null) return { label: 'N/D', bg: '#F1F5F9', color: '#94A3B8', Icon: Minus };
-  if (pct >= seuils.bon) return { label: `${pct.toFixed(1)}%`, bg: '#D1FAE5', color: '#065F46', Icon: TrendingUp };
-  if (pct >= seuils.ok)  return { label: `${pct.toFixed(1)}%`, bg: '#FEF3C7', color: '#92400E', Icon: Minus };
-  return { label: `${pct.toFixed(1)}%`, bg: '#FEE2E2', color: '#991B1B', Icon: TrendingDown };
+  if (pct >= seuils.bon) return { label: `${Math.round(pct * 10) / 10}%`, bg: '#D1FAE5', color: '#065F46', Icon: TrendingUp };
+  if (pct >= seuils.ok)  return { label: `${Math.round(pct * 10) / 10}%`, bg: '#FEF3C7', color: '#92400E', Icon: Minus };
+  return { label: `${Math.round(pct * 10) / 10}%`, bg: '#FEE2E2', color: '#991B1B', Icon: TrendingDown };
 }
 
 export default function Marges({ chantiers = [], clients = [], devis = [], parametres = {} }) {
@@ -87,7 +87,7 @@ export default function Marges({ chantiers = [], clients = [], devis = [], param
         <KpiCard label="MARGE TOTALE" value={fmt(kpi.margeTotal)}
           {...(kpi.margeTotal >= 0 ? DS.kpi.green : DS.kpi.red)} />
         <KpiCard label="MARGE MOYENNE"
-          value={kpi.margePct !== null ? `${kpi.margePct.toFixed(1)}%` : '—'}
+          value={kpi.margePct !== null ? `${Math.round(kpi.margePct * 10) / 10}%` : '—'}
           badge={kpi.nbRouge > 0 ? `${kpi.nbRouge} critique${kpi.nbRouge > 1 ? 's' : ''}` : kpi.nbVert > 0 ? `${kpi.nbVert} rentable${kpi.nbVert > 1 ? 's' : ''}` : null}
           {...kpiColor} />
       </div>
@@ -175,7 +175,7 @@ export default function Marges({ chantiers = [], clients = [], devis = [], param
                     <td style={DS.td}>
                       {kpi.margePct !== null && (
                         <span style={{ ...statutMarge(kpi.margePct), borderRadius: 6, padding: '3px 10px', fontSize: 12, fontWeight: 800, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                          {kpi.margePct.toFixed(1)}%
+                          {Math.round(kpi.margePct * 10) / 10}%
                         </span>
                       )}
                     </td>

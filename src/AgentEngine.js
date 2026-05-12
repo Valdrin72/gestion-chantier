@@ -1066,7 +1066,7 @@ export function runCoutMOAnalyse({ chantiers, devis, parametres, agentContext })
     // Alerte si MO > 70% des coûts totaux
     if (pctMO > 70 && couts.coutMOReel > 5000) {
       alertes.push({ id: uid('mo-fort'), agent: 'CoutMOAnalyse', type: 'couts', niveau: 'INFO',
-        message: `${c.nom || c.numero} — MO à ${pctMO.toFixed(0)}% des coûts`,
+        message: `${c.nom || c.numero} — MO à ${Math.round(pctMO)}% des coûts`,
         detail: `CHF ${fmtN(Math.round(couts.coutMOReel))} en main-d'œuvre · vérifier coefficient charges`,
         chantier_id: c.id, timestamp: Date.now(), lu: false, action: { page: 'chantiers', ctx: { chantierActif: c.id } } });
     }

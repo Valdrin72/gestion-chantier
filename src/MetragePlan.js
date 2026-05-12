@@ -532,7 +532,7 @@ export default function MetragePlan({ parametres, onCreerChantier, onCreerDevis 
                 ville: projet.batiment || '',
                 typesTravaux: [...new Set(zonesIncluses.map(z => TYPES_POSTES.find(t => t.id === z.typeId)?.nom).filter(Boolean))],
                 notes: `Métrage depuis plan — ${nomFichier}\n${projet.batiment} ${projet.niveau}\n` +
-                  totauxParType.map(t => `${t.icone} ${t.nom} : ${t.quantiteTotale.toFixed(1)} ${t.unite} — CHF ${Math.round(t.coutTotal).toLocaleString()}`).join('\n'),
+                  totauxParType.map(t => `${t.icone} ${t.nom} : ${Math.round(t.quantiteTotale * 10) / 10} ${t.unite} — CHF ${Math.round(t.coutTotal).toLocaleString()}`).join('\n'),
                 equipe: [],
               });
             }}

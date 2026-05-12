@@ -354,8 +354,8 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
                   ok:         { couleur: '#10b981', bg: '#10b98110', label: 'Bien estimé',    conseil: 'Bonne maîtrise de ce type de chantier.' },
                   inconnu:    { couleur: '#6b7280', bg: '#6b728010', label: 'Données insuffisantes', conseil: 'Ajoute plus de chantiers liés à des devis.' },
                 }[d.signal];
-                const fmtPct  = (v, plus = true) => v === null ? '—' : `${plus && v > 0 ? '+' : ''}${v.toFixed(1)}%`;
-                const fmtJours = (v) => v === null ? '—' : `${v > 0 ? '+' : ''}${v.toFixed(0)}%`;
+                const fmtPct  = (v, plus = true) => v === null ? '—' : `${plus && v > 0 ? '+' : ''}${Math.round(v * 10) / 10}%`;
+                const fmtJours = (v) => v === null ? '—' : `${v > 0 ? '+' : ''}${Math.round(v)}%`;
                 return (
                   <div key={d.nom} style={{ ...carteStyle, marginBottom: 16, borderLeft: `4px solid ${signalCfg.couleur}` }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 8 }}>
@@ -400,7 +400,7 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
                               <span style={{ fontSize: 11, color: 'var(--text-muted)', minWidth: 80 }}>{l.joursPrevu}j → {l.joursReel}j{l.ecartJours !== null ? <span style={{ color: l.ecartJours > 15 ? '#ef4444' : 'var(--text-muted)', fontWeight: 700 }}> ({l.ecartJours > 0 ? '+' : ''}{l.ecartJours?.toFixed(0)}%)</span> : ''}</span>
                               {l.margeReelPct !== null && (
                                 <span style={{ fontSize: 11, fontWeight: 700, color: l.margeReelPct < 10 ? '#ef4444' : l.margeReelPct < 20 ? '#f59e0b' : '#10b981' }}>
-                                  Marge {l.margeReelPct.toFixed(1)}%
+                                  Marge {Math.round(l.margeReelPct * 10) / 10}%
                                 </span>
                               )}
                             </div>
@@ -709,7 +709,7 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
                 {[
                   { label: 'Clients actifs', val: donneesClients.length, couleur: '#3b82f6' },
                   { label: 'Meilleur CA', val: `CHF ${fmtN(Math.round(donneesClients[0]?.ca || 0))}`, couleur: '#10b981' },
-                  { label: 'Marge moy.', val: `${(donneesClients.reduce((t,c)=>t+parseFloat(c.margePct||0),0)/donneesClients.length).toFixed(1)}%`, couleur: '#8b5cf6' },
+                  { label: 'Marge moy.', val: `${Math.round((donneesClients.reduce((t,c)=>t+parseFloat(c.margePct||0),0)/donneesClients.length) * 10) / 10}%`, couleur: '#8b5cf6' },
                   { label: 'Chantiers total', val: donneesClients.reduce((t,c)=>t+c.nbChantiers,0), couleur: '#f59e0b' },
                 ].map(s => (
                   <div key={s.label} style={{ background: s.couleur + '10', border: `1px solid ${s.couleur}28`, borderRadius: 12, padding: '18px 20px' }}>
@@ -826,7 +826,7 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
                   <div style={{ background: 'var(--border-soft)', borderRadius: 8, height: 10, overflow: 'hidden' }}>
                     <div style={{ background: `linear-gradient(90deg, ${item.couleur}, ${item.couleur}cc)`, width: `${item.pct}%`, height: '100%', borderRadius: 8, boxShadow: `0 0 8px ${item.couleur}55`, transition: 'width 0.5s ease' }} />
                   </div>
-                  <div style={{ fontSize: 12, color: item.couleur, fontWeight: 700, marginTop: 6 }}>{item.pct.toFixed(0)}% de l'objectif atteint</div>
+                  <div style={{ fontSize: 12, color: item.couleur, fontWeight: 700, marginTop: 6 }}>{Math.round(item.pct)}% de l'objectif atteint</div>
                 </div>
               ));
             })()}

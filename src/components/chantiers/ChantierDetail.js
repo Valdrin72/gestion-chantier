@@ -142,9 +142,9 @@ function ChantierDetail({ chantier, detailOnglet, setDetailOnglet, modeCompleter
     }
     if (etat.projectionDisponible && etat.margeEstimeePct !== null) {
       if (etat.margeEstimee < 0) {
-        list.push({ id: 'perte', texte: `Chantier en perte — déficit estimé CHF ${fmtN(Math.abs(etat.margeEstimee))} (${etat.margeEstimeePct.toFixed(1)}%)`, gravite: 'critique', icone: 'danger' });
+        list.push({ id: 'perte', texte: `Chantier en perte — déficit estimé CHF ${fmtN(Math.abs(etat.margeEstimee))} (${Math.round(etat.margeEstimeePct * 10) / 10}%)`, gravite: 'critique', icone: 'danger' });
       } else if (etat.margeEstimeePct < 15) {
-        list.push({ id: 'marge_faible', texte: `Rentabilité faible — marge estimée ${etat.margeEstimeePct.toFixed(1)}% · seuil cible 15%`, gravite: 'warning', icone: 'warning' });
+        list.push({ id: 'marge_faible', texte: `Rentabilité faible — marge estimée ${Math.round(etat.margeEstimeePct * 10) / 10}% · seuil cible 15%`, gravite: 'warning', icone: 'warning' });
       }
     }
     if (etat.coutMOReel > 0 && etat.coutTotalReel > 0) {

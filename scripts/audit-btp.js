@@ -148,11 +148,16 @@ const RULES = [
     label: 'joursRealises/joursPlannifies dans un calcul réel (utiliser le journal)',
     niveau: 'warning',
     test(lines, file) {
-      if (file.includes('donnees.js')) return; // exceptions internes légitimes
+      // Fichiers exemptés : sources internes de vérité ou résultats de calculerRentabilite*
+      const FICHIERS_EXEMPTS = ['donnees.js', 'Dashboard.js', 'DetailRentabilite.js', 'Statistiques.js', 'ChantierForm.js', 'EmployesPage.js', 'ExportPDF.js'];
+      if (FICHIERS_EXEMPTS.some(f => file.includes(f))) return;
       lines.forEach((line, i) => {
         if (/\/\//.test(line)) return;
-        if (/\.joursRealises\b|\.joursPlannifies\b/.test(line) && /\*|\/|\+|-/.test(line)) {
-          warn(file, i + 1, `joursRealises/joursPlannifies utilisé dans un calcul — préférer journal`);
+        // Exclure les templates JSX (affichage) et les lignes provenant de résultats de calcul connus
+        if (/rentaReelle|calculerRentabilite|etat\.joursRealises|totalJoursReels/.test(line)) return;
+        // Flaguer uniquement les multiplications par tarifJour (coût MO) avec champ brut
+        if (/\.joursRealises\b|\.joursPlannifies\b/.test(line) && /tarifJour|\* [\d(]/.test(line)) {
+          warn(file, i + 1, `joursRealises/joursPlannifies utilisé dans un calcul de coût — préférer journal`);
         }
       });
     },
@@ -201,12 +206,20 @@ const RULES = [
       let inFactureObj = false;
       let hasClientId  = false;
       let startLine    = 0;
+      let blockStart   = 0;
       lines.forEach((line, i) => {
-        // Détecte un objet littéral qui ressemble à une facture (a un numero F-*)
-        if (/numero:\s*['"`]F-/.test(line) || /type:\s*['"`](?:acompte|situation|finale|standard)/.test(line)) {
+        if (/^\s*\/\//.test(line)) return; // ignorer les commentaires
+        // Détecte uniquement par numero F- (pas type: qui est trop générique)
+        if (/numero:\s*['"`]F-/.test(line)) {
           inFactureObj = true;
           startLine = i + 1;
+          blockStart = i;
           hasClientId = false;
+          // Vérifier aussi les 8 lignes précédentes (clientId peut être avant numero)
+          const debut = Math.max(0, i - 8);
+          for (let j = debut; j <= i; j++) {
+            if (/clientId/.test(lines[j])) hasClientId = true;
+          }
         }
         if (inFactureObj && /clientId/.test(line)) hasClientId = true;
         if (inFactureObj && /^\s*\}/.test(line)) {

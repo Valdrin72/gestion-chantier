@@ -455,8 +455,8 @@ export const exportDevis = async (devis, clients, parametres) => {
 
   [
     [`Prix HT :`, `CHF ${prixPropose.toLocaleString()}`],
-    [`TVA 8.1% :`, `CHF ${Math.round(prixPropose * 0.081).toLocaleString()}`],
-    [`TOTAL TTC :`, `CHF ${Math.round(prixPropose * 1.081).toLocaleString()}`],
+    [`TVA ${parseFloat(devis.tva) || parseFloat(parametres.parametres?.tauxTVA) || 8.1}% :`, `CHF ${Math.round(prixPropose * ((parseFloat(devis.tva) || parseFloat(parametres.parametres?.tauxTVA) || 8.1) / 100)).toLocaleString()}`],
+    [`TOTAL TTC :`, `CHF ${Math.round(prixPropose * (1 + (parseFloat(devis.tva) || parseFloat(parametres.parametres?.tauxTVA) || 8.1) / 100)).toLocaleString()}`],
   ].forEach(([label, val], i) => {
     doc.setFont('helvetica', i === 2 ? 'bold' : 'normal');
     doc.setFontSize(i === 2 ? 12 : 10);

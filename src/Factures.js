@@ -911,7 +911,8 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
           const imprimer = () => {
             const w = window.open('', '_blank', 'width=800,height=900');
             if (!w) return;
-            w.document.write(`<!DOCTYPE html><html><head><title>${contenu.objet}</title>
+            const escHtml = (s) => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+            w.document.write(`<!DOCTYPE html><html><head><title>${escHtml(contenu.objet)}</title>
               <style>body{font-family:Georgia,serif;padding:40px;line-height:1.6;white-space:pre-wrap;font-size:13px;color:#222;}</style>
               </head><body>${contenu.texte.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</body></html>`);
             w.document.close();

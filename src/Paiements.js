@@ -78,7 +78,7 @@ export default function Paiements({ chantiers, clients, devis = [], paiementsDat
     const montantPaye = getMontantPaye(c.id);
     const montantRestant = montantTotal - montantPaye;
     const pctPaye = montantTotal > 0 ? Math.round((montantPaye / montantTotal) * 100) : 0;
-    const client = clients.find(cl => cl.id === c.clientId);
+    const client = clients.find(cl => String(cl.id) === String(c.clientId));
 
     return (
       <div>
@@ -332,7 +332,7 @@ export default function Paiements({ chantiers, clients, devis = [], paiementsDat
           const montantPaye = getMontantPaye(c.id);
           const montantRetard = getMontantEnRetard(c.id);
           const pctPaye = montantTotal > 0 ? Math.round((montantPaye / montantTotal) * 100) : 0;
-          const client = clients.find(cl => cl.id === c.clientId);
+          const client = clients.find(cl => String(cl.id) === String(c.clientId));
           const nbPaiements = getPaiements(c.id).length;
 
           return (

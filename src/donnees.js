@@ -392,7 +392,7 @@ export const calculerCoutsChantier = (chantier, employes, localites, cfg = {}, d
     && avancement < 80;
 
   return {
-    coutDeplacement, coutEquipePrevu, coutEquipeReel, coutEquipeReelDetaille,
+    coutDeplacement, coutDeplacementReel, coutDeplacementPrevu, coutEquipePrevu, coutEquipeReel, coutEquipeReelDetaille,
     coutMaterielPrevu, coutMaterielReel, coutMaterielReelRaw,
     coutSousTraitancePrevu, coutSousTraitanceReel, coutSousTraitanceReelRaw,
     autresCoutsPrevu, autresCoutsReel, autresCoutsReelRaw,

@@ -559,7 +559,7 @@ export const calculerRentabiliteEquipe = (chantier, parametres) => {
     membres: membres.map(m => ({
       ...m,
       partPct: coutTotalEquipe > 0
-        ? parseFloat(((m.coutTotal / coutTotalEquipe) * 100).toFixed(1))
+        ? Math.round((m.coutTotal / coutTotalEquipe) * 1000) / 10
         : 0,
     })),
     coutTotalEquipe,
@@ -577,7 +577,7 @@ export const calculerEcartChantier = (chantier) => {
   const joursRealises = new Set((chantier.journal || []).map(e => e.date).filter(Boolean)).size;
   const ecartJours    = joursRealises - joursPrevu;
   const ecartPct      = joursPrevu > 0
-    ? parseFloat(((ecartJours / joursPrevu) * 100).toFixed(1))
+    ? Math.round((ecartJours / joursPrevu) * 1000) / 10
     : null;
   const statut = joursRealises === 0
     ? 'non_saisi'
@@ -628,7 +628,7 @@ export const calculerRentabiliteReelle = (chantier, parametres, devisList = []) 
     ? caTotal - (coutMOPrevu + autresCouts)
     : null;
   const rentabiliteProjetee_Pct = (rentabiliteProjetee !== null && caTotal > 0)
-    ? parseFloat(((rentabiliteProjetee / caTotal) * 100).toFixed(1))
+    ? Math.round((rentabiliteProjetee / caTotal) * 1000) / 10
     : null;
 
   return {
@@ -1178,7 +1178,7 @@ export const calculerEtatChantier = (chantier, employes = [], devisList = [], pa
     : null;
 
   const margeEstimeePct = (projectionDisponible && devisTotal !== null && devisTotal > 0)
-    ? parseFloat(((margeEstimee / devisTotal) * 100).toFixed(1))
+    ? Math.round((margeEstimee / devisTotal) * 1000) / 10
     : null;
 
   // ── Résultat ──────────────────────────────────────────────────────────
@@ -1349,7 +1349,7 @@ export const calculerVitesseChantier = (chantier, etat) => {
   const gainJours = Math.max(0, retardEstime - nouveauRetard);
 
   return {
-    vitesse: parseFloat(vitesse.toFixed(3)),
+    vitesse: Math.round(vitesse * 1000) / 1000,
     joursCalendaires,
     dureeEstimee,
     retardEstime,

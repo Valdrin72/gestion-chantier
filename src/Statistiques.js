@@ -123,7 +123,7 @@ export default function Statistiques({ chantiers, clients, devis = [], parametre
     .sort((a, b) => b.ecartJours - a.ecartJours); // dépassements en tête
 
   const moyenneEcart = donneesEcarts.length > 0
-    ? parseFloat((donneesEcarts.reduce((s, d) => s + d.ecartJours, 0) / donneesEcarts.length).toFixed(1))
+    ? Math.round(donneesEcarts.reduce((s, d) => s + d.ecartJours, 0) / donneesEcarts.length * 10) / 10
     : null;
 
   return (

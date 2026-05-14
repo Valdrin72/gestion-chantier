@@ -262,7 +262,7 @@ function buildChecks({ chantiers, devis, factures, clients, parametres }) {
           const couts = calculerCoutsChantier(c, employes, parametres.localites, cfg, devis);
           const m = couts.margeReelPct;
           if (m !== null && !isNaN(m) && (m < -100 || m > 200)) {
-            pb.push(`${c.nom || c.numero} — marge aberrante : ${m.toFixed(1)}%`);
+            pb.push(`${c.nom || c.numero} — marge aberrante : ${Math.round(m * 10) / 10}%`);
           }
         });
         if (pb.length === 0) return { niveau: NIV.ok, detail: 'Marges dans les intervalles normaux' };

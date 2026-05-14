@@ -25,6 +25,7 @@ function DetailRentabilite({ c, etat, couts, naviguer, fmtN, fmtK }) {
     rentabilitePct: couts.margeReelPct,
     rentabiliteProjetee: etat.projectionDisponible && etat.margeEstimee !== null ? Math.round(etat.margeEstimee) : null,
     rentabiliteProjetee_Pct: etat.projectionDisponible ? etat.margeEstimeePct : null,
+    coutJournalierEquipe: joursRealises > 0 ? Math.round((couts.coutEquipeReel || 0) / joursRealises) : 0,
   };
 
   const couleurStatutJours = rj.aucuneSaisie

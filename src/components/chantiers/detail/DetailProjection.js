@@ -16,6 +16,13 @@ function DetailProjection({ etat, fmtK }) {
   const fiab = etat.avancementPct < 40
     ? { label: 'Projection à confirmer', couleur: C.warning }
     : { label: 'Projection fiable', couleur: C.secondaire };
+  if (!etat.projectionDisponible) return (
+    <div style={{ ...carteStyle, borderLeft: `4px solid var(--text-muted)`, opacity: 0.6 }}>
+      <div style={{ textAlign: 'center', padding: '24px 0', color: 'var(--text-muted)', fontSize: 13 }}>
+        Projection disponible dès 20% d'avancement — saisir les heures dans le journal
+      </div>
+    </div>
+  );
   const margeVal = etat.margeEstimee ?? 0;
   const margePct = etat.margeEstimeePct ?? 0;
   return (

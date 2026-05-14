@@ -55,6 +55,8 @@ function Devis() {
 
   const sauvegarder = () => {
     if (!form.clientId) return;
+    const montant = parseFloat(form.montantHT);
+    if (Number.isFinite(montant) && montant < 0) { alert('Le montant HT ne peut pas être négatif.'); return; }
     if (form.id) {
       setDevis(devis.map(d => d.id === form.id ? form : d));
       // Sync CA sur les chantiers liés si montantHT a changé
@@ -400,7 +402,7 @@ function Devis() {
                     ? d.avenants.reduce((s, a) => s + (parseFloat(a.montant) || 0), 0)
                     : 0;
                   const chantierLie = chantiers.find(ch => String(ch.devisId) === String(d.id));
-                  const isAccepte = d.statut === 'accepté';
+                  const isAccepte = d.statut?.toLowerCase() === 'accepté';
                   const statutStyle = DS.statuts[d.statut] || { bg: '#F1F5F9', color: '#475569' };
                   return (
                     <tr

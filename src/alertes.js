@@ -155,7 +155,7 @@ export function calculerAlertes({ chantiers = [], devis = [], factures = [], pai
         const joursDepuisTermine = Math.floor((now - dateTermine) / 86400000);
         if (joursDepuisTermine < 7) return; // grâce de 7 jours
         const hasFactureFinale = factures.some(f =>
-          f.chantierId === c.id && (f.type === 'finale' || f.type === 'standard') && f.statut !== 'annulee'
+          String(f.chantierId) === String(c.id) && (f.type === 'finale' || f.type === 'standard') && f.statut !== 'annulee'
         );
         if (!hasFactureFinale) {
           push({

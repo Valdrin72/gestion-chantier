@@ -120,7 +120,7 @@ function ChantierForm({ form, setForm, erreurs, setErreurs, modeCompleter, onSau
       <div style={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', color: 'var(--text-muted)', marginBottom: '12px' }}>Budget prévisionnel</div>
 
       {(() => {
-        const devisAcceptes = devis.filter(d => d.statut === 'accepté');
+        const devisAcceptes = devis.filter(d => d.statut?.toLowerCase() === 'accepté');
         const devisLie = devis.find(d => d.id === form.devisId);
         const caBase = parseFloat(devisLie?.montantHT) || 0;
         const caRegie = Array.isArray(devisLie?.heuresRegie)

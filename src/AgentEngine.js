@@ -15,6 +15,7 @@
 import { calculerCA, calculerCoutsChantier, isChantierActif, fmtN, heuresEmploye, SEUILS } from './donnees';
 
 const uid = (prefix) => `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+const isDev = process.env.NODE_ENV !== 'production';
 
 // ═══════════════════════════════════════════════════════════════
 // TIER 1 — ANALYSE PURE (9 agents)
@@ -1578,7 +1579,7 @@ export function runSentinelAgent({ agentContext, violations = [], agentsStatuts 
     ];
     deps.forEach(({ consumer, needs }) => {
       if (agentsStatuts[consumer]?.actif && (!agentContext[needs] || Object.keys(agentContext[needs]).length === 0)) {
-        console.warn(`[SENTINEL] ${consumer} → dépendance ${needs} vide`);
+        if (isDev) console.warn(`[SENTINEL] ${consumer} → dépendance ${needs} vide`);
       }
     });
 
@@ -1590,13 +1591,13 @@ export function runSentinelAgent({ agentContext, violations = [], agentsStatuts 
     ];
     critiques.forEach(({ name, champ }) => {
       if (agentsStatuts[name]?.actif && agentContext[name]?.[champ] === undefined) {
-        console.warn(`[SENTINEL] ${name}.${champ} absent après exécution`);
+        if (isDev) console.warn(`[SENTINEL] ${name}.${champ} absent après exécution`);
       }
     });
 
     // Violations de schéma accumulées
     if (violations.length > 0) {
-      console.warn(`[SENTINEL] ${violations.length} violation(s) de schéma sur ce cycle`);
+      if (isDev) console.warn(`[SENTINEL] ${violations.length} violation(s) de schéma sur ce cycle`);
       nbCorrections += violations.length;
     }
 
@@ -1642,7 +1643,7 @@ export function runAllAgents({ chantiers, devis, factures, clients, parametres, 
         // SchemaGuard : valide puis sanitize avant injection dans agentContext
         const violations = validateAgentOutput(name, res.data);
         if (violations.length > 0) {
-          violations.forEach(v => console.warn(`[SCHEMA-GUARD] ${v.agent}.${v.champ} attendu ${v.attendu} — reçu ${v.recu}`));
+          if (isDev) violations.forEach(v => console.warn(`[SCHEMA-GUARD] ${v.agent}.${v.champ} attendu ${v.attendu} — reçu ${v.recu}`));
           schemaViolations.push(...violations);
         }
         // Auto-correction silencieuse : NaN → null dans toute la sortie
@@ -1699,6 +1700,6 @@ export function runAllAgents({ chantiers, devis, factures, clients, parametres, 
   // ── SENTINEL (toujours le dernier — scanne tout) ──
   runAgent('SentinelAgent', () => runSentinelAgent({ agentContext, violations: schemaViolations, agentsStatuts: result.statuts }));
 
-  console.log(`[ORCHESTRATEUR] ${result.alertes.length} alerte(s) · ${Object.keys(result.statuts).length} agents exécutés · ${schemaViolations.length} violation(s) schéma`);
+  if (process.env.NODE_ENV !== 'production') console.log(`[ORCHESTRATEUR] ${result.alertes.length} alerte(s) · ${Object.keys(result.statuts).length} agents exécutés · ${schemaViolations.length} violation(s) schéma`);
   return result;
 }

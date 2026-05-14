@@ -79,8 +79,9 @@ function Parametres({ parametres, setParametres, clients = [], setClients = () =
     try {
       const texte = await fichier.text();
       const data = JSON.parse(texte);
-      if (!data.parametres || !Array.isArray(data.chantiers)) {
-        alert('Fichier de sauvegarde invalide — structure incorrecte.');
+      if (!data.parametres || !Array.isArray(data.chantiers) ||
+          !Array.isArray(data.devis) || !Array.isArray(data.factures) || !Array.isArray(data.clients)) {
+        alert('Fichier de sauvegarde invalide — structure incorrecte (chantiers, devis, factures ou clients manquants).');
         return;
       }
       const ok = window.confirm(

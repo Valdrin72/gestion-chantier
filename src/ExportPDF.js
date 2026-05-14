@@ -298,7 +298,7 @@ export const exportFicheChantier = async (chantier, clients, parametres, devis =
       ['Déplacement', `CHF ${couts.coutDeplacement.toLocaleString()}`, `CHF ${couts.coutDeplacement.toLocaleString()}`, '-'],
       ['Imprévus', 'CHF 0', `CHF ${couts.coutImprevus.toLocaleString()}`, `+CHF ${couts.coutImprevus.toLocaleString()}`],
       ['TOTAL COÛTS', `CHF ${couts.totalCoutsPrevu.toLocaleString()}`, `CHF ${couts.totalCoutsReel.toLocaleString()}`, `${couts.totalCoutsReel > couts.totalCoutsPrevu ? '+' : ''}CHF ${(couts.totalCoutsReel - couts.totalCoutsPrevu).toLocaleString()}`],
-      ['MARGE', `CHF ${couts.margePrevu.toLocaleString()} (${couts.margePrevuPct}%)`, `CHF ${couts.margeReel.toLocaleString()} (${couts.margeReelPct}%)`, '-'],
+      ['MARGE', couts.margePrevu !== null ? `CHF ${Math.round(couts.margePrevu).toLocaleString()} (${couts.margePrevuPct}%)` : '—', couts.margeReel !== null ? `CHF ${Math.round(couts.margeReel).toLocaleString()} (${couts.margeReelPct ?? '—'}%)` : '—', '-'],
     ],
     headStyles: { fillColor: VERT, fontSize: 8 },
     bodyStyles: { fontSize: 8 },
@@ -316,7 +316,7 @@ export const exportFicheChantier = async (chantier, clients, parametres, devis =
 
   // KPIs
   const kpis = [
-    { label: 'Marge réelle', val: `${couts.margeReelPct}%`, ok: parseFloat(couts.margeReelPct) >= 15 },
+    { label: 'Marge réelle', val: couts.margeReelPct !== null ? `${couts.margeReelPct}%` : '—', ok: Number.isFinite(couts.margeReelPct) && couts.margeReelPct >= 15 },
     { label: 'Coût/m² réel', val: couts.coutParM2Reel !== null ? `CHF ${couts.coutParM2Reel}/m²` : '—', ok: true },
     { label: 'Prix/m² devis', val: couts.prixParM2Devis !== null ? `CHF ${couts.prixParM2Devis}/m²` : '—', ok: true },
     { label: 'Avancement', val: `${chantier.avancement || 0}%`, ok: true },
@@ -571,13 +571,13 @@ export const exportRapportMensuel = async (chantiers, clients, parametres, mois,
       head: [['Chantier', 'Client', 'Ville', 'Statut', 'Devis CHF', 'Coûts CHF', 'Marge %', 'Gain CHF']],
       body: chantiersMois.map(c => {
         const client = clients.find(cl => cl.id === c.clientId);
-        const couts = calculerCoutsChantier(c, parametres.employes, parametres.localites);
+        const couts = calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis);
         return [
           c.nom, client?.entreprise || '-', c.ville || '-', c.statut,
-          couts.montantTotal.toLocaleString(),
-          couts.totalCoutsReel.toLocaleString(),
-          `${couts.margeReelPct}%`,
-          couts.margeReel.toLocaleString(),
+          couts.montantTotal !== null ? Math.round(couts.montantTotal).toLocaleString() : '—',
+          Math.round(couts.totalCoutsReel).toLocaleString(),
+          couts.margeReelPct !== null ? `${couts.margeReelPct}%` : '—',
+          couts.margeReel !== null ? Math.round(couts.margeReel).toLocaleString() : '—',
         ];
       }),
       headStyles: { fillColor: BLEU, fontSize: 7.5 },

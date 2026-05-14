@@ -216,7 +216,7 @@ export const migrerDevisId = (chantiers, devisList) => {
 
 export const calculerCoutsChantier = (chantier, employes, localites, cfg = {}, devisList = []) => {
   const coefficient = parseFloat(cfg.coefficientMainOeuvre) || 1.35;
-  const tauxFG = parseFloat(cfg.tauxFraisGeneraux) || 0;
+  const tauxFG = parseFloat(cfg.tauxFraisGeneraux) || 12;
 
   // Helper : tarif journalier chargé (applique le coefficient si tarif non déjà chargé)
   const getTarifJour = (emp) => {
@@ -362,8 +362,8 @@ export const calculerCoutsChantier = (chantier, employes, localites, cfg = {}, d
     ? Math.round((montantTotal - coutFinalEstime) / montantTotal * 1000) / 10
     : null;
 
-  // Marge finale estimée nette — après déduction des frais généraux
-  const margeFinaleNettePct = margeFinaleEstimeePct !== null
+  // Marge finale estimée nette — frais généraux déduits du CA (formule correcte)
+  const margeFinaleNettePct = (margeFinaleEstimeePct !== null && montantTotal > 0)
     ? Math.round((margeFinaleEstimeePct - tauxFG) * 10) / 10
     : null;
 
@@ -450,7 +450,7 @@ export const calculerDevis = (form, parametres) => {
   const coutTransport = parseFloat(form.coutTransport) || 0;
   const coutSousTraitance = parseFloat(form.coutSousTraitance) || 0;
   const coutDirect = coutPose + coutMateriel + coutTransport + coutSousTraitance;
-  const totalRevient = coutDirect * (1 + parseFloat(parametres.tauxFraisGeneraux) / 100);
+  const totalRevient = coutDirect * (1 + (parseFloat(parametres.tauxFraisGeneraux) || 12) / 100);
 
   const margeCible  = parseFloat(form.margeCible || parametres.margeCible) / 100;
   const margeMin    = parseFloat(parametres.seuilRentabiliteMin) / 100;
@@ -494,7 +494,7 @@ export const calculerDevisClient = (devis, coutMO = 0) => {
   const coutSousTraitance = parseFloat(devis.coutSousTraitance) || 0;
   const coutTotal         = coutMainOeuvre + coutMateriel + coutTransport + coutSousTraitance;
   const marge             = chiffreAffaires - coutTotal;
-  const margePct          = chiffreAffaires > 0 ? (marge / chiffreAffaires) * 100 : 0;
+  const margePct          = chiffreAffaires > 0 ? Math.round((marge / chiffreAffaires) * 1000) / 10 : 0;
   return { chiffreAffaires, coutMainOeuvre, coutMateriel, coutTransport, coutSousTraitance, coutTotal, marge, margePct };
 };
 

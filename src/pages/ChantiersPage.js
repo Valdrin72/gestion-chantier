@@ -109,7 +109,7 @@ function Chantiers() {
       ? `Supprimer le chantier "${c?.nom}" et ses ${facturesLiees.length} facture(s) liée(s) ? Cette action est irréversible.`
       : `Supprimer le chantier "${c?.nom}" ? Cette action est irréversible.`;
     if (!window.confirm(msg)) return;
-    setChantiers(chantiers.filter(ch => ch.id !== id));
+    setChantiers(chantiers.filter(ch => String(ch.id) !== String(id)));
     if (facturesLiees.length > 0) setFactures(factures.filter(f => String(f.chantierId) !== String(id)));
     setSelected(null);
     setVue('liste');

@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import {
-  HardHat, Users, TrendingUp, Plus, AlertTriangle, XCircle,
-  ChevronRight, CheckCircle, ShieldCheck, DollarSign, Bell, Clock, CreditCard, Bot,
+  HardHat, Users, TrendingUp, AlertTriangle, XCircle,
+  ChevronRight, CheckCircle, ShieldCheck, DollarSign, Bell, Clock, Bot,
 } from 'lucide-react';
 import { LineChart, Line, PieChart, Pie, Cell, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 import {
@@ -21,10 +21,9 @@ function Dashboard() {
   const { chantiers, clients, factures, devis = [], parametres, naviguer, actionsLog = [], periodeGlobale = 'mois', setPeriodeGlobale = () => {}, agentState } = useApp();
   const agentAlertes = agentState?.alertes || [];
   const nbAgentAlertes = agentState?.nbNonLues || 0;
-  const agentPredictions = agentState?.predictions || {};
   const marquerLu = agentState?.marquerLu || (() => {});
   const naviguerAgents = () => naviguer('agents');
-  const facturesSafe = factures || [];
+  const facturesSafe = useMemo(() => factures || [], [factures]);
   const [insightsFerme, setInsightsFerme] = useState(false);
 
   // ── Actifs = tous les chantiers "En cours", sans filtre de période ─
@@ -97,6 +96,7 @@ function Dashboard() {
     }, new Set()).size;
 
     return { caEnCours, cashEnAttente, rentaMoyenne, nbChantiersRenta, heuresEngagees, nbFacturesEnAttente, nbFacturesRetard, nbEmployes, nbChantiersActifs, nbActifsSansDevis };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [actifs, facturesPeriode, devis, chantiers, parametres.employes, parametres.localites, coutsMap]);
 
   // ── Prévision trésorerie 30 jours ───────────────────────────
@@ -132,6 +132,7 @@ function Dashboard() {
       return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
     })() : null;
     return { total, top3, alerteFaible: total < seuil && actifs.length > 0, couverture, interpretation, dateLimite };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [actifs, factures, parametres.parametres, devis]);
 
   // ── Rentabilité par chantier (calcul complet via calculerCoutsChantier) ─
@@ -178,74 +179,7 @@ function Dashboard() {
     };
   }, [rentaReelleParChantier]);
 
-  // ── KPI équipe (Dashboard) — moteur ─────────────────────────
-  const kpiEquipe = useMemo(() => {
-    const resultsAvecEquipe = actifs
-      .map(c => {
-        const etatC = calculerEtatChantier(c, parametres.employes, devis, parametres?.parametres || parametres);
-        const reel = rentaReelleParChantier[c.id];
-        return { c, coutMOReel: etatC.coutMOReel, reel };
-      })
-      .filter(r => r.coutMOReel > 0);
 
-    if (resultsAvecEquipe.length === 0) return null;
-
-    const coutMoyenEquipe = Math.round(
-      resultsAvecEquipe.reduce((s, r) => s + r.coutMOReel, 0) / resultsAvecEquipe.length
-    );
-    const plusCher = resultsAvecEquipe.reduce(
-      (max, r) => r.coutMOReel > (max?.coutMOReel || 0) ? r : max, null
-    );
-    const plusRentable = resultsAvecEquipe
-      .filter(r => r.reel && !r.reel.aucuneSaisie && r.reel.montantDevis !== null && r.reel.montantDevis > 0)
-      .reduce((max, r) => !max || (r.reel.rentabilitePct ?? -Infinity) > (max.reel.rentabilitePct ?? -Infinity) ? r : max, null);
-
-    return { coutMoyenEquipe, plusCher, plusRentable };
-  }, [actifs, parametres, rentaReelleParChantier]);
-
-  // ── Analyse chantiers — "À traiter en priorité" ─────────────
-  const analyseChantiers = useMemo(() => {
-    const ORDRE = { perte: 0, depassement: 1, faible: 2, non_saisi: 3 };
-    return actifs.map(c => {
-      const reel = rentaReelleParChantier[c.id];
-      const client = clients.find(cl => String(cl.id) === String(c.clientId));
-      let statut, probleme, marge, couleur;
-
-      if (!reel || reel.aucuneSaisie) {
-        statut = 'non_saisi';
-        probleme = 'Aucun jour réalisé saisi';
-        marge = null;
-        couleur = '#78909c';
-      } else if (reel.montantDevis === null) {
-        statut = 'non_saisi';
-        probleme = 'Aucun devis lié — CA indisponible';
-        marge = null;
-        couleur = '#78909c';
-      } else if (reel.rentabilite !== null && reel.rentabilite < 0) {
-        statut = 'perte';
-        probleme = `Déficit CHF ${fmtN(Math.abs(Math.round(reel.rentabilite)))}`;
-        marge = reel.rentabilitePct;
-        couleur = C.danger;
-      } else if (reel.enDepassement) {
-        statut = 'depassement';
-        const surplus = reel.joursRealises - reel.joursPrevu;
-        probleme = `Dépassement ${surplus}j réalisé${surplus > 1 ? 's' : ''} (prévu : ${reel.joursPrevu}j)`;
-        marge = reel.rentabilitePct;
-        couleur = C.warning;
-      } else if (reel.rentabilitePct !== null && reel.rentabilitePct < 10) {
-        statut = 'faible';
-        probleme = `Marge ${Math.round(reel.rentabilitePct * 10) / 10}% — sous le seuil cible de 10%`;
-        marge = reel.rentabilitePct;
-        couleur = C.warning;
-      } else {
-        return null; // chantier sain → hors liste
-      }
-
-      return { c, client, statut, probleme, marge, couleur, reel, ordre: ORDRE[statut] };
-    })
-    .filter(Boolean)
-    .sort((a, b) => a.ordre - b.ordre);
-  }, [actifs, rentaReelleParChantier, clients]);
 
   // ── Alertes ──────────────────────────────────────────────────
   const alertes = useMemo(() => {
@@ -255,17 +189,15 @@ function Dashboard() {
     actifs.forEach(c => {
       const j = joursParChantier[c.id];
       if (j !== null && j < 0) {
-        {
-          const absEffectif = Math.abs(j);
-          const dateFin = calculerDateFinOuvrables(c.dateDebut, parseInt(c.nombreJours) || 0, c.inclusSamedi);
-          const dateFinStr = dateFin ? new Date(dateFin).toLocaleDateString('fr-CH', { day: '2-digit', month: '2-digit' }) : null;
-          list.push({
-            id: `retard-${c.id}`,
-            message: `${c.nom || c.numero} — retard de ${absEffectif} jour${absEffectif > 1 ? 's' : ''}${dateFinStr ? ` · fin prévue dépassée (${dateFinStr})` : ''}`,
-            page: 'chantiers', ctx: { chantierActif: c.id },
-            critique: absEffectif > 7,
-          });
-        }
+        const absEffectif = Math.abs(j);
+        const dateFin = calculerDateFinOuvrables(c.dateDebut, parseInt(c.nombreJours) || 0, c.inclusSamedi);
+        const dateFinStr = dateFin ? new Date(dateFin).toLocaleDateString('fr-CH', { day: '2-digit', month: '2-digit' }) : null;
+        list.push({
+          id: `retard-${c.id}`,
+          message: `${c.nom || c.numero} — retard de ${absEffectif} jour${absEffectif > 1 ? 's' : ''}${dateFinStr ? ` · fin prévue dépassée (${dateFinStr})` : ''}`,
+          page: 'chantiers', ctx: { chantierActif: c.id },
+          critique: absEffectif > 7,
+        });
       }
     });
 
@@ -350,7 +282,7 @@ function Dashboard() {
     const existingIds = new Set(list.map(a => a.id));
     calculerAlertes(
       { chantiers, devis, factures, clients, paiements: {} },
-      profil?.role || 'direction'
+      'direction'
     )
       .filter(a => TYPES_ADDITIFS.has(a.type))
       .forEach(a => {
@@ -366,17 +298,8 @@ function Dashboard() {
       });
 
     return list.sort((a, b) => (b.critique ? 1 : 0) - (a.critique ? 1 : 0));
-  }, [actifs, joursParChantier, facturesSafe, parametres, rentaReelleParChantier, devis, chantiers, coutsMap, factures, clients, profil]);
-
-  // ── Couleur état chantier ────────────────────────────────────
-  const couleurEtat = (c) => {
-    const j = joursParChantier[c.id];
-    const r = rentaParChantier[c.id];
-    const retardInterne = j !== null && j < 0 && !estRetardJustifie(c);
-    if (retardInterne || (r !== null && r < 0)) return C.danger;
-    if ((j !== null && j < 3) || (r !== null && r < 10)) return C.warning;
-    return C.secondaire;
-  };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [actifs, joursParChantier, facturesSafe, rentaReelleParChantier, devis, chantiers, coutsMap, factures, clients]);
 
   // ── Priorité chantier ────────────────────────────────────────
   // Retourne { niveau: 'critique'|'attention'|'ok', score: 0|1|2 }
@@ -386,7 +309,6 @@ function Dashboard() {
     const reel = rentaReelleParChantier[c.id];
     const retardJ = j !== null && j < 0 && !estRetardJustifie(c) ? Math.abs(j) : 0;
     const avancement = parseFloat(c.avancement) || 0;
-    const aCommence = !!c.dateDebut && new Date(c.dateDebut) <= new Date();
 
     // Critique : retard interne > 5j OU rentabilité négative OU dépassement > 20% des jours OU marge réelle négative
     const depassementCritique = reel && reel.enDepassement && reel.joursPrevu > 0 &&
@@ -407,11 +329,6 @@ function Dashboard() {
     return { niveau: 'ok', score: 0 };
   };
 
-  const PRIORITE_BADGE = {
-    critique: { label: 'Critique',    bg: 'rgba(239,68,68,0.12)',  color: C.danger,     border: 'rgba(239,68,68,0.28)' },
-    attention: { label: 'À surveiller', bg: 'rgba(245,158,11,0.12)', color: C.warning,    border: 'rgba(245,158,11,0.28)' },
-    ok:        { label: 'OK',           bg: 'rgba(16,185,129,0.12)', color: C.secondaire, border: 'rgba(16,185,129,0.28)' },
-  };
 
   // Calculé une seule fois, partagé par les deux sections pour garantir l'exclusivité
   const top3 = [...actifs]
@@ -420,35 +337,6 @@ function Dashboard() {
     .slice(0, 3);
   const top3Ids = new Set(top3.map(c => c.id));
 
-  // ── Actions recommandées ─────────────────────────────────────
-  const actionsRecommandees = (() => {
-    const list = [];
-
-    actifs.forEach(c => {
-      const j = joursParChantier[c.id];
-      const r = rentaParChantier[c.id];
-      const retardJ = j !== null && j < 0 ? Math.abs(j) : 0;
-
-      if (r !== null && r < 0) {
-        list.push({ id: `urgence-${c.id}`, nom: c.nom || c.numero, action: 'Chantier à perte — analyser les coûts', btnLabel: 'Urgence', btnCouleur: C.danger, Icon: AlertTriangle, page: 'chantiers', ctx: { chantierActif: c.id }, score: 4, type: 'urgence' });
-      } else if (retardJ > 3) {
-        list.push({ id: `ressource-${c.id}`, nom: c.nom || c.numero, action: 'Retard important — ajouter des ressources', btnLabel: 'Voir chantier', btnCouleur: C.warning, Icon: Plus, page: 'chantiers', ctx: { chantierActif: c.id }, score: 3, type: 'ressource' });
-      } else if (r !== null && r >= 0 && r < 10) {
-        list.push({ id: `marge-${c.id}`, nom: c.nom || c.numero, action: 'Marge faible — vérifier les coûts', btnLabel: 'Analyser', btnCouleur: C.primaire, Icon: TrendingUp, page: 'chantiers', ctx: { chantierActif: c.id }, score: 2, type: 'analyse' });
-      }
-    });
-
-    // Factures en retard → relancer client (une action groupée)
-    const fRetard = facturesSafe.filter(f =>
-      f.statut === 'retard' ||
-      (f.statut === 'envoyee' && f.dateEcheance && new Date(f.dateEcheance) < new Date())
-    );
-    if (fRetard.length > 0) {
-      list.push({ id: 'relance-factures', nom: `${fRetard.length} facture${fRetard.length > 1 ? 's' : ''} en retard`, action: 'Relancer le client', btnLabel: 'Relancer', btnCouleur: C.violet, Icon: CreditCard, page: 'finances', ctx: {}, score: 3, type: 'relance', factureIds: fRetard.map(f => f.id) });
-    }
-
-    return list.sort((a, b) => b.score - a.score).slice(0, 5);
-  })();
 
   // ── À ne pas oublier ─────────────────────────────────────────
   // eslint-disable-next-line no-unused-vars
@@ -667,6 +555,7 @@ function Dashboard() {
       return s + pct;
     }, 0);
     return sum / actifs.length;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [actifs, parametres.employes, devis]);
 
   const BADGE_STATUT_DASH = {

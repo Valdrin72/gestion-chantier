@@ -18,7 +18,7 @@ import { calculerAlertes } from '../alertes';
 
 function Dashboard() {
   const isMobile = useIsMobile();
-  const { chantiers, clients, factures, devis = [], parametres, naviguer, actionsLog = [], logAction = () => {}, periodeGlobale = 'mois', setPeriodeGlobale = () => {}, profil = null, agentState } = useApp();
+  const { chantiers, clients, factures, devis = [], parametres, naviguer, actionsLog = [], periodeGlobale = 'mois', setPeriodeGlobale = () => {}, agentState } = useApp();
   const agentAlertes = agentState?.alertes || [];
   const nbAgentAlertes = agentState?.nbNonLues || 0;
   const agentPredictions = agentState?.predictions || {};

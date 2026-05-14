@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { TrendingUp, TrendingDown, Minus, Award, AlertTriangle, CheckCircle, Lightbulb } from 'lucide-react';
+import { TrendingUp, TrendingDown, Award, AlertTriangle, CheckCircle, Lightbulb } from 'lucide-react';
 import { DS } from './ds';
 import { fmtN, calculerCoutsChantier, calculerCA, SEUILS } from './donnees';
 
@@ -17,13 +17,6 @@ function BadgeMarge({ pct }) {
   );
 }
 
-function Trend({ v, prev }) {
-  if (v === null || prev === null) return null;
-  const diff = v - prev;
-  if (Math.abs(diff) < 1) return <Minus size={12} color="#9ca3af" />;
-  if (diff > 0) return <TrendingUp size={12} color="#10b981" />;
-  return <TrendingDown size={12} color="#ef4444" />;
-}
 
 export default function BenchmarkMarche({ chantiers = [], devis = [], parametres = {}, agentData = {} }) {
   const [vue, setVue] = useState('type'); // 'type' | 'client' | 'taille'
@@ -64,7 +57,6 @@ export default function BenchmarkMarche({ chantiers = [], devis = [], parametres
 
   // ── Benchmark par client ──
   const benchmarkClient = useMemo(() => {
-    const clients = parametres.employes ? [] : []; // juste pour la forme
     const map = {};
     termines.forEach(c => {
       const ca = calculerCA(c, devis);

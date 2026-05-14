@@ -71,8 +71,6 @@ export default function AssistantDevisIA({ chantiers = [], devis = [], parametre
   }, [chantiers, devis, parametres]);
 
   const typesDisponibles = typesTravaux.filter(t => stats[t.nom]);
-  const suggestion = typeSelectionne ? stats[typeSelectionne] : null;
-
   // Auto-sélectionne le premier type avec données si aucun sélectionné
   const typeActif = typeSelectionne || (typesDisponibles[0]?.nom) || '';
   const suggestionActive = stats[typeActif];

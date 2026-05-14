@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { C, fmtN, calculerCoutsChantier, calculerCA, statutRentabilite, isChantierActif, heuresEmploye, getIntervallesPeriode, chantiersInPeriode, couleurMarge, SEUILS } from './donnees';
+import { fmtN, calculerCoutsChantier, calculerCA, statutRentabilite, isChantierActif, heuresEmploye, getIntervallesPeriode, chantiersInPeriode, couleurMarge, SEUILS } from './donnees';
 import { DS } from './ds';
 import Statistiques from './Statistiques';
 import Rapport from './Rapport';
@@ -27,7 +27,6 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
 
   // ===== CALCULS GLOBAUX (uniquement chantiers avec devis pour CA et marges) =====
   const chantiersAvecDevis = chantiersPeriode.filter(c => calculerCA(c, devis) !== null);
-  const nbSansDevis = chantiersPeriode.length - chantiersAvecDevis.length;
   const caTotal = chantiersAvecDevis.reduce((t, c) => t + calculerCA(c, devis), 0);
   const coutsTotal = chantiersAvecDevis.reduce((t, c) => t + calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis).totalCoutsReel, 0);
   const margeAvantCharges = caTotal - coutsTotal;

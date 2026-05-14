@@ -203,16 +203,6 @@ export default function useAgents({ chantiers, devis, factures, clients, paramet
   const toggleAgent = useCallback((name) => setAgentsActifs(prev => ({ ...prev, [name]: !prev[name] })), []);
   const forcerExecution = useCallback(() => executer(true), [executer]);
 
-  // eslint-disable-next-line no-unused-vars
-  const effacerMemoire = useCallback((agentName = null) => {
-    if (agentName) {
-      memoireRef.current = { ...memoireRef.current, [agentName]: {} };
-    } else {
-      memoireRef.current = {};
-    }
-    saveMemoire(memoireRef.current);
-  }, []);
-
   const nbNonLues = alertes.filter(a => !a.lu).length;
   const hasNouveauRapport = rapports.some(r => r.nouveau);
   const scoreGlobal = agentData?.CoachDirecteur?.scoreGlobal ?? null;

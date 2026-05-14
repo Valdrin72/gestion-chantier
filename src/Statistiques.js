@@ -4,7 +4,7 @@ import {
   LineChart, Line, PieChart, Pie, Cell, ResponsiveContainer
 } from 'recharts';
 import { TrendingUp, DollarSign, HardHat, Calendar } from 'lucide-react';
-import { calculerCoutsChantier, calculerCA, C, fmtN, getIntervallesPeriode, getPeriodeLabel, chantiersInPeriode, calculerEcartChantier, calculerRentabiliteEquipe, SEUILS, couleurMarge } from './donnees';
+import { calculerCoutsChantier, calculerCA, C, fmtN, getIntervallesPeriode, getPeriodeLabel, chantiersInPeriode, calculerEcartChantier, calculerRentabiliteEquipe, couleurMarge } from './donnees';
 import { DS } from './ds';
 
 const carteStyle = DS.card;

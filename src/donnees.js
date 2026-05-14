@@ -242,8 +242,6 @@ export const calculerCoutsChantier = (chantier, employes, localites, cfg = {}, d
 
   // Source unique : journal (heuresTravaillees) — aucun fallback
   const journalCouts = chantier.journal || [];
-  const getJoursReels = (membre) =>
-    heuresEmploye(journalCouts, parseInt(membre.employeId)) / 8;
 
   const coutEquipePrevu = chantier.equipe?.reduce((total, membre) => {
     const emp = employes.find(e => e.id === parseInt(membre.employeId));
@@ -260,7 +258,6 @@ export const calculerCoutsChantier = (chantier, employes, localites, cfg = {}, d
     .filter(id => !empIdsAvecHeures.includes(id));
   const coutEquipeReelDetaille = [...empIdsAvecHeures, ...empIdsEquipeSansHeures].map(empId => {
     const emp = employes.find(e => e.id === empId);
-    const membre = (chantier.equipe || []).find(m => parseInt(m.employeId) === empId);
     const joursReels = heuresEmploye(journalCouts, empId) / 8;
     const tarif = getTarifJour(emp);
     return { employeId: empId, joursReels, tarif, cout: tarif * joursReels };

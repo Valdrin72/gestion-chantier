@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import {
   Bot, AlertTriangle, FileText, TrendingUp, TrendingDown, FileBarChart2, Brain,
-  ToggleLeft, ToggleRight, Play, CheckCircle, Clock, RefreshCw,
+  ToggleLeft, ToggleRight, CheckCircle, Clock, RefreshCw,
   ChevronDown, ChevronRight, Activity, Zap, Users, Shield,
-  BarChart2, Target, Layers, AlertCircle, Star, Eye, Trash2,
+  BarChart2, Target, Layers, AlertCircle, Star, Eye,
 } from 'lucide-react';
 import { fmtN } from './donnees';
 import { DS } from './ds';

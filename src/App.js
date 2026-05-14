@@ -63,7 +63,7 @@ function AppInner({ profil, deconnecter, userId }) {
     factures, setFactures,
     clients, setClients,
     parametres, setParametres,
-    loading: dataLoading, syncing,
+    loading: _dataLoading, syncing: _syncing,
   } = useSupabaseData(userId);
 
   const [page, setPage] = useState('dashboard');

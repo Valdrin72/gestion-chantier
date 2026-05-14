@@ -714,7 +714,6 @@ export function runProjectionAnnuelle({ chantiers, factures, devis, parametres, 
     const now = new Date();
     const annee = now.getFullYear();
     const moisActuel = now.getMonth(); // 0-11
-    const tresorerie = agentContext?.TresoreriePredictor || {};
 
     // CA réalisé cette année
     const chantiersAnnee = chantiers.filter(c => {
@@ -801,8 +800,6 @@ export function runBenchmarkTypeTravaux({ chantiers, devis, parametres, agentCon
 export function runConformiteBTP({ chantiers, parametres, agentContext }) {
   const alertes = [];
   const violations = [];
-  const statsHeures = agentContext?.ProductiviteEquipe?.statsParEmploye || {};
-
   // Vérifie dépassement 8h/jour par employé par chantier
   chantiers.forEach(c => {
     (c.journal || []).forEach(entry => {

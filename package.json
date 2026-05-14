@@ -23,7 +23,11 @@
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
-    "deploy": "react-scripts build && netlify deploy --prod --dir=build"
+    "deploy": "react-scripts build && netlify deploy --prod --dir=build",
+    "monitor": "node scripts/monitor-continu.js",
+    "scan": "node scripts/security-deep-scan.js && node scripts/audit-btp.js",
+    "rapport": "node scripts/rapport-securite.js",
+    "check": "npm run scan && npm audit"
   },
   "eslintConfig": {
     "extends": [

@@ -27,3 +27,6 @@ yarn-error.log*
 *.png
 *.jpeg
 .playwright-mcp/
+
+# Logs monitoring sécurité
+/logs/

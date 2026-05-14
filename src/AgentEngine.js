@@ -77,7 +77,7 @@ export function runAlerteChantier({ chantiers, devis, factures = [], parametres 
         if (dep > cfg.seuilBudgetAttention) {
           alertes.push({ id: uid('ac-budget'), agent: 'AlerteChantier', type: 'budget',
             niveau: dep > cfg.seuilBudgetDanger ? 'DANGER' : 'ATTENTION',
-            message: `${c.nom || c.numero} — budget dépassé de ${dep.toFixed(0)}%`,
+            message: `${c.nom || c.numero} — budget dépassé de ${Math.round(dep)}%`,
             detail: `Prévu CHF ${fmtN(Math.round(couts.totalCoutsPrevu))} · Réel CHF ${fmtN(Math.round(couts.totalCoutsReel))}`,
             chantier_id: c.id, timestamp: Date.now(), lu: false, action: { page: 'chantiers', ctx: { chantierActif: c.id } } });
         }
@@ -86,8 +86,10 @@ export function runAlerteChantier({ chantiers, devis, factures = [], parametres 
       // ── Sur-facturation : total facturé HT > CA × avancement% × 1.1 (tolérance 10%) ──
       const ca = couts.montantTotal;
       const joursRSurf = new Set((c.journal || []).map(e => e.date).filter(Boolean)).size;
-      const avancement = c.nombreJours > 0 ? Math.min(100, Math.round((joursRSurf / c.nombreJours) * 100)) : (parseFloat(c.avancement) || 0);
-      if (ca > 0 && avancement < 100) {
+      const avancement = c.nombreJours > 0 && joursRSurf > 0
+        ? Math.min(100, Math.round((joursRSurf / c.nombreJours) * 100))
+        : null;
+      if (ca > 0 && avancement !== null && avancement < 100) {
         const facturesChantier = factures.filter(f => String(f.chantierId) === String(c.id) && f.statut !== 'annulee');
         const totalFactureHT = facturesChantier.reduce((s, f) => s + (parseFloat(f.montantHT) || (parseFloat(f.montantTTC) || 0) / (1 + (parseFloat(f.tva) || 8.1) / 100) || 0), 0);
         if (totalFactureHT > ca * (avancement / 100) * 1.1) {
@@ -353,7 +355,7 @@ export function runRelancePaiements({ factures, clients, memoire = {} }) {
     const stats = { nb30: 0, nb60: 0, nb90: 0, montant30: 0, montant60: 0, montant90: 0, dsoParClient: {} };
 
     facturesOuvertes.forEach(f => {
-      const dateRef = f.dateEmission || f.dateFacture || f.creeLe;
+      const dateRef = f.dateEmission || f.creeLe;
       if (!dateRef) return;
       const jours = Math.floor((now - new Date(dateRef)) / 86400000);
       const restant = Math.max(0, (parseFloat(f.montantTTC) || 0) - (parseFloat(f.montantPaye) || 0));
@@ -452,8 +454,10 @@ export function runOptimisationFacturation({ chantiers, factures, devis, paramet
     if (!ca || ca <= 0) return;
 
     const joursR = new Set((c.journal || []).map(e => e.date).filter(Boolean)).size;
-    const avancement = c.nombreJours > 0 ? Math.min(100, Math.round((joursR / c.nombreJours) * 100)) : parseFloat(c.avancement) || 0;
-    if (avancement < 25) return;
+    const avancement = c.nombreJours > 0 && joursR > 0
+      ? Math.min(100, Math.round((joursR / c.nombreJours) * 100))
+      : null;
+    if (avancement === null || avancement < 25) return;
 
     const dejaFacture = (factures || [])
       .filter(f => String(f.chantierId) === String(c.id))
@@ -647,8 +651,8 @@ export function runApprentissageMarge({ chantiers, devis, parametres, agentConte
 
     if (margePredictive !== null && margePredictive < SEUILS.margeLimite) {
       alertes.push({ id: uid('am-pred'), agent: 'ApprentissageMarge', type: 'prediction', niveau: 'ATTENTION',
-        message: `${c.nom || c.numero} — marge finale prédite à ${margePredictive.toFixed(1)}%`,
-        detail: `Basé sur ${pattern.count} chantiers "${type}" similaires · écart habituel +${pattern.ecartMoyen?.toFixed(1)}%`,
+        message: `${c.nom || c.numero} — marge finale prédite à ${Math.round(margePredictive * 10) / 10}%`,
+        detail: `Basé sur ${pattern.count} chantiers "${type}" similaires · écart habituel +${Number.isFinite(pattern.ecartMoyen) ? Math.round(pattern.ecartMoyen * 10) / 10 : 0}%`,
         chantier_id: c.id, timestamp: Date.now(), lu: false, action: { page: 'chantiers', ctx: { chantierActif: c.id } } });
     }
   });
@@ -693,7 +697,7 @@ export function runSanteClient({ chantiers, clients, devis, factures, parametres
     // Alerte marge faible sur client
     if (marge !== null && marge < SEUILS.margeLimite && caTotal > 20000) {
       alertes.push({ id: uid('sc-marge'), agent: 'SanteClient', type: 'client', niveau: 'ATTENTION',
-        message: `${nom} — marge faible : ${marge.toFixed(1)}% sur CHF ${fmtN(Math.round(caTotal))}`,
+        message: `${nom} — marge faible : ${Math.round(marge * 10) / 10}% sur CHF ${fmtN(Math.round(caTotal))}`,
         detail: `Ce client génère peu de rentabilité — réviser les tarifs`,
         timestamp: Date.now(), lu: false, action: { page: 'rapport', ctx: {} } });
     }
@@ -782,7 +786,7 @@ export function runBenchmarkTypeTravaux({ chantiers, devis, parametres, agentCon
 
     if (marge !== null && marge < SEUILS.margeLimite) {
       alertes.push({ id: uid('bt-marge'), agent: 'BenchmarkTypeTravaux', type: 'benchmark', niveau: 'ATTENTION',
-        message: `Type "${t.nom}" — marge globale : ${marge.toFixed(1)}% (objectif ≥ ${SEUILS.margeRentable}%)`,
+        message: `Type "${t.nom}" — marge globale : ${Math.round(marge * 10) / 10}% (objectif ≥ ${SEUILS.margeRentable}%)`,
         detail: `${chantiersDuType.length} chantier(s) · CA CHF ${fmtN(Math.round(caTotal))}`,
         timestamp: Date.now(), lu: false, action: { page: 'rapport', ctx: {} } });
     }
@@ -943,8 +947,8 @@ export function runRadarPrecoce({ chantiers, devis, parametres, agentContext }) 
     // Facteur 3 : budget dépassé
     if (couts.totalCoutsPrevu > 0 && couts.totalCoutsReel > 0) {
       const dep = ((couts.totalCoutsReel - couts.totalCoutsPrevu) / couts.totalCoutsPrevu) * 100;
-      if (dep > 20) { score += 25; facteurs.push(`budget +${dep.toFixed(0)}%`); }
-      else if (dep > 5) { score += 10; facteurs.push(`budget +${dep.toFixed(0)}%`); }
+      if (dep > 20) { score += 25; facteurs.push(`budget +${Math.round(dep)}%`); }
+      else if (dep > 5) { score += 10; facteurs.push(`budget +${Math.round(dep)}%`); }
     }
 
     // Facteur 4 : prédiction ApprentissageMarge négative
@@ -1245,7 +1249,7 @@ export function runAlerteRisqueClient({ chantiers, clients, factures, agentConte
       if (montantImpaye > 20000) { scoreRisque += 35; facteurs.push(`CHF ${fmtN(Math.round(montantImpaye))} impayés`); }
       else if (montantImpaye > 5000) { scoreRisque += 20; facteurs.push(`CHF ${fmtN(Math.round(montantImpaye))} impayés`); }
 
-      if (sante && sante.marge !== null && sante.marge < 10) { scoreRisque += 20; facteurs.push(`marge client faible (${sante.marge.toFixed(1)}%)`); }
+      if (sante && Number.isFinite(sante.marge) && sante.marge < 10) { scoreRisque += 20; facteurs.push(`marge client faible (${Math.round(sante.marge * 10) / 10}%)`); }
       if (impayees.length >= 2) { scoreRisque += 15; facteurs.push(`${impayees.length} factures impayées`); }
 
       if (scoreRisque >= 30) {

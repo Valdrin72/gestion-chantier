@@ -436,7 +436,7 @@ function buildChecks({ chantiers, devis, factures, clients, parametres }) {
         const retard = factures.filter(f => {
           const st = f.statut?.trim().toLowerCase();
           if (['payé', 'payee', 'payée'].includes(st)) return false;
-          const dateRef = new Date(f.dateEcheance || f.dateEmission || f.dateFacture || '');
+          const dateRef = new Date(f.dateEcheance || f.dateEmission || f.creeLe || '');
           if (isNaN(dateRef)) return false;
           const joursDiff = Math.floor((today - dateRef) / 86400000);
           return joursDiff > 30;

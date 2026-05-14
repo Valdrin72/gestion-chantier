@@ -477,8 +477,8 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
               {facturesFiltrees.map((f, idx) => {
                 const client = clients.find(c => String(c.id) === String(f.clientId));
                 const restant = (f.montantTTC ?? 0) - (f.montantPaye ?? 0);
-                const pctPaye = (f.montantTTC ?? 0) > 0
-                  ? Math.min((f.montantPaye ?? 0) / (f.montantTTC ?? 1) * 100, 100)
+                const pctPaye = f.montantTTC > 0
+                  ? Math.min(Math.round((f.montantPaye ?? 0) / f.montantTTC * 100), 100)
                   : 0;
                 const couleurBar = restant <= 0.01 ? '#10b981' : '#f59e0b';
                 return (
@@ -713,10 +713,10 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
               <div style={{ marginTop: 10 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--text-secondary)', marginBottom: 4 }}>
                   <span>Recouvrement</span>
-                  <span>{Math.round((f.montantPaye ?? 0) / (f.montantTTC ?? 1) * 100)}%</span>
+                  <span>{f.montantTTC > 0 ? Math.round((f.montantPaye ?? 0) / f.montantTTC * 100) : 0}%</span>
                 </div>
                 <div style={{ height: 5, background: 'var(--border)', borderRadius: 3, overflow: 'hidden' }}>
-                  <div style={{ height: '100%', width: `${Math.min((f.montantPaye ?? 0) / (f.montantTTC ?? 1) * 100, 100)}%`, background: '#10b981', borderRadius: 3 }} />
+                  <div style={{ height: '100%', width: `${f.montantTTC > 0 ? Math.min(Math.round((f.montantPaye ?? 0) / f.montantTTC * 100), 100) : 0}%`, background: '#10b981', borderRadius: 3 }} />
                 </div>
               </div>
             )}

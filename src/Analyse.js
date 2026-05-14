@@ -13,7 +13,11 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
   const [tauxFraisGeneraux, setTauxFraisGeneraux] = useState(parametres.parametres?.tauxFraisGeneraux || 12);
   const [taxSaved, setTaxSaved] = useState(false);
 
-  const couleurEcart = (pct) => parseFloat(pct) <= 5 ? '#10b981' : parseFloat(pct) <= 15 ? '#f59e0b' : '#ef4444';
+  const couleurEcart = (pct) => {
+    const v = parseFloat(pct);
+    if (pct === null || pct === undefined || !Number.isFinite(v)) return '#10b981';
+    return v <= 5 ? '#10b981' : v <= 15 ? '#f59e0b' : '#ef4444';
+  };
 
   // ===== FILTRE PAR PÉRIODE GLOBALE (cohérent avec Dashboard et Statistiques) =====
   const chantiersPeriode = useMemo(() => {
@@ -60,9 +64,7 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
     const surface = parseFloat(c.surface) || 0;
     const joursPrevu = parseInt(c.nombreJours) || 0;
     const joursReelJournal = new Set((c.journal || []).map(e => e.date).filter(Boolean)).size;
-    const joursReel = joursReelJournal > 0
-      ? joursReelJournal
-      : (c.equipe?.length ? Math.max(...c.equipe.map(m => parseFloat(m.joursRealises) || 0), 0) : 0);
+    const joursReel = joursReelJournal;
 
     const ecartBudget = couts.totalCoutsReel > 0 && couts.totalCoutsPrevu > 0
       ? Math.round(((couts.totalCoutsReel - couts.totalCoutsPrevu) / couts.totalCoutsPrevu) * 1000) / 10
@@ -332,8 +334,8 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
                     {[
                       { label: 'Types analysés', val: donneesDerive.length, couleur: '#3b82f6', sub: `${donneesDerive.reduce((s,d) => s + d.count, 0)} chantiers` },
                       { label: 'Sous-estimés', val: sousEstimes.length, couleur: '#ef4444', sub: sousEstimes.length > 0 ? sousEstimes.map(d => d.nom).join(', ') : 'Aucun' },
-                      { label: 'Plus grande dérive', val: pireType.nom, couleur: '#f59e0b', sub: pireType.ecartCoutMoyen !== null ? `+${pireType.ecartCoutMoyen.toFixed(0)}% coût réel` : '—' },
-                      { label: 'Perte de marge moy.', val: pireType.perteMarge !== null ? `${pireType.perteMarge.toFixed(1)}%` : '—', couleur: pireType.perteMarge !== null && pireType.perteMarge < -3 ? '#ef4444' : '#10b981', sub: 'sur le type le + déviant' },
+                      { label: 'Plus grande dérive', val: pireType.nom, couleur: '#f59e0b', sub: Number.isFinite(pireType.ecartCoutMoyen) ? `+${Math.round(pireType.ecartCoutMoyen)}% coût réel` : '—' },
+                      { label: 'Perte de marge moy.', val: Number.isFinite(pireType.perteMarge) ? `${Math.round(pireType.perteMarge * 10) / 10}%` : '—', couleur: Number.isFinite(pireType.perteMarge) && pireType.perteMarge < -3 ? '#ef4444' : '#10b981', sub: 'sur le type le + déviant' },
                     ].map(k => (
                       <div key={k.label} style={{ background: `${k.couleur}10`, border: `1px solid ${k.couleur}25`, borderRadius: 12, padding: '16px 18px' }}>
                         <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px', color: 'var(--text-muted)', marginBottom: 8 }}>{k.label}</div>

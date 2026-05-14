@@ -37,7 +37,7 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
   // SEUIL DE RENTABILITÉ
   const chargesFixes = fraisGeneraux + (coutsTotal * 0.3);
   const tauxMargeContribution = caTotal > 0 ? ((caTotal - coutsTotal * 0.7) / caTotal) : 0;
-  const seuilRentabilite = tauxMargeContribution > 0 ? chargesFixes / tauxMargeContribution : 0;
+  const seuilRentabilite = (caTotal > 0 && tauxMargeContribution > 0) ? chargesFixes / tauxMargeContribution : 0;
 
   // PROJECTION CA
   const moisActuel = new Date().getMonth();
@@ -79,7 +79,7 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
     const depassements = [];
     if (parseFloat(ecartBudget) > 10) depassements.push(`Budget dépassé de ${ecartBudget}%`);
     if (parseFloat(ecartJours) > 10) depassements.push(`Jours dépassés de ${ecartJours}%`);
-    if (parseFloat(couts.margeReelPct) < SEUILS.margeLimite) depassements.push(`Marge critique ${couts.margeReelPct}%`);
+    if (couts.margeReelPct !== null && Number.isFinite(couts.margeReelPct) && couts.margeReelPct < SEUILS.margeLimite) depassements.push(`Marge critique ${couts.margeReelPct}%`);
 
     return { ...c, couts, montantTotal, ecartBudget, coutParHeure, caParHeure, coutParM2, caParM2, margeParM2, ecartJours, tauxFacturation, heuresPrevu, heuresRealise, joursPrevu, joursReel, depassements };
   });
@@ -125,7 +125,7 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
 
   // ===== DONNÉES PAR CLIENT (uniquement chantiers avec devis pour CA/marge, période filtrée) =====
   const donneesClients = useMemo(() => clients.map(cl => {
-    const tous = chantiersPeriode.filter(c => c.clientId === cl.id);
+    const tous = chantiersPeriode.filter(c => String(c.clientId) === String(cl.id));
     const avecDevis = tous.filter(c => calculerCA(c, devis) !== null);
     const cs = avecDevis; // alias pour clarté
     const ca = cs.reduce((t, c) => t + calculerCA(c, devis), 0);
@@ -487,7 +487,7 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
               </thead>
               <tbody>
                 {donneesChantiers.filter(c => c.heuresPrevu > 0 || c.heuresRealise > 0).map((c, i) => {
-                  const margeParHeure = c.heuresRealise > 0 ? (c.couts.margeReel / c.heuresRealise).toFixed(0) : 0;
+                  const margeParHeure = c.heuresRealise > 0 ? Math.round(c.couts.margeReel / c.heuresRealise) : 0;
                   return (
                     <tr key={c.id} style={{ borderBottom: '1px solid var(--ds-td-border)' }}>
                       <td style={{ padding: '10px 12px' }}><strong style={{ color: 'var(--text-primary)' }}>{c.nom}</strong></td>
@@ -566,7 +566,7 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
                 { label: 'Salaires bruts', val: `CHF ${fmtN(donneesEmployes.reduce((t, e) => t + e.coutTotal, 0))}`, couleur: '#10b981', bg: 'rgba(16,185,129,0.12)' },
                 { label: 'Charges sociales', val: `CHF ${fmtN(Math.round(donneesEmployes.reduce((t, e) => t + e.chargesSoc, 0)))}`, couleur: '#f59e0b', bg: 'rgba(245,158,11,0.12)' },
                 { label: 'Coût total RH', val: `CHF ${fmtN(Math.round(donneesEmployes.reduce((t, e) => t + e.coutReel, 0)))}`, couleur: '#ef4444', bg: 'rgba(239,68,68,0.12)' },
-                { label: '% du CA', val: `${caTotal > 0 ? ((donneesEmployes.reduce((t, e) => t + e.coutReel, 0) / caTotal) * 100).toFixed(1) : 0}%`, couleur: '#8b5cf6', bg: 'rgba(139,92,246,0.12)' },
+                { label: '% du CA', val: `${caTotal > 0 ? Math.round((donneesEmployes.reduce((t, e) => t + e.coutReel, 0) / caTotal) * 1000) / 10 : 0}%`, couleur: '#8b5cf6', bg: 'rgba(139,92,246,0.12)' },
               ].map(s => (
                 <div key={s.label} style={{ background: s.bg, border: `2px solid ${s.couleur}`, borderRadius: '12px', padding: '18px', textAlign: 'center' }}>
                   <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>{s.label}</div>
@@ -666,7 +666,7 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
                 { scenario: 'Réaliste', ca: projectionAnnuelle },
                 { scenario: 'Optimiste (+20%)', ca: projectionAnnuelle * 1.2 },
               ].map((s, i) => {
-                const couts = s.ca * (coutsTotal / caTotal || 0.6);
+                const couts = s.ca * (caTotal > 0 ? coutsTotal / caTotal : 0.6);
                 const chargesSoc = couts * (tauxChargesSociales / 100);
                 const fraisGen = s.ca * (tauxFraisGeneraux / 100);
                 const avantImpots = s.ca - couts - chargesSoc - fraisGen;

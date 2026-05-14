@@ -36,9 +36,9 @@ export default function Marges({ chantiers = [], clients = [], devis = [], param
           coutsReel: hasCouts ? couts.totalCoutsReel : null,
           coutsPrevu: couts.totalCoutsPrevu > 0 ? couts.totalCoutsPrevu : null,
           margeReel: hasCa && hasCouts ? couts.margeReel : null,
-          margeReelPct: hasCa && hasCouts ? parseFloat(couts.margeReelPct) : null,
+          margeReelPct: hasCa && hasCouts ? couts.margeReelPct : null,
           margePrevu: hasCa && couts.totalCoutsPrevu > 0 ? couts.margePrevu : null,
-          margePrevuPct: hasCa && couts.totalCoutsPrevu > 0 ? parseFloat(couts.margePrevuPct) : null,
+          margePrevuPct: hasCa && couts.totalCoutsPrevu > 0 ? couts.margePrevuPct : null,
         };
       })
       .sort((a, b) => {

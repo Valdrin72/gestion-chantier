@@ -47,18 +47,19 @@ export function runAlerteChantier({ chantiers, devis, factures = [], parametres 
         }
       }
 
-      if (couts.montantTotal > 0 && couts.totalCoutsReel > 0) {
-        const marge = parseFloat(couts.margeReelPct);
+      if (couts.montantTotal > 0 && couts.totalCoutsReel > 0 && Number.isFinite(couts.margeReelPct)) {
+        const marge = couts.margeReelPct;
+        const margeStr = Math.round(marge * 10) / 10;
         if (marge < cfg.seuilMargeDanger) {
           data.chantiersEnDanger.push({ id: c.id, nom: c.nom || c.numero, marge, deficit: Math.abs(Math.round(couts.margeReel)) });
           alertes.push({ id: uid('ac-perte'), agent: 'AlerteChantier', type: 'marge', niveau: 'DANGER',
-            message: `${c.nom || c.numero} — chantier à perte · marge ${marge.toFixed(1)}%`,
+            message: `${c.nom || c.numero} — chantier à perte · marge ${margeStr}%`,
             detail: `Déficit estimé : CHF ${fmtN(Math.abs(Math.round(couts.margeReel)))}`,
             chantier_id: c.id, timestamp: Date.now(), lu: false, action: { page: 'chantiers', ctx: { chantierActif: c.id } } });
         } else if (marge < cfg.seuilMargeAttention) {
           alertes.push({ id: uid('ac-marge'), agent: 'AlerteChantier', type: 'marge', niveau: 'ATTENTION',
-            message: `${c.nom || c.numero} — marge faible à ${marge.toFixed(1)}%`,
-            detail: `Seuil cible : ${cfg.seuilMargeAttention}% · écart : ${(cfg.seuilMargeAttention - marge).toFixed(1)} pts`,
+            message: `${c.nom || c.numero} — marge faible à ${margeStr}%`,
+            detail: `Seuil cible : ${cfg.seuilMargeAttention}% · écart : ${Math.round((cfg.seuilMargeAttention - marge) * 10) / 10} pts`,
             chantier_id: c.id, timestamp: Date.now(), lu: false, action: { page: 'chantiers', ctx: { chantierActif: c.id } } });
         } else data.chantiersOk++;
       }
@@ -927,10 +928,10 @@ export function runRadarPrecoce({ chantiers, devis, parametres, agentContext }) 
 
     // Facteur 1 : marge faible
     const couts = calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis);
-    if (couts.montantTotal > 0 && couts.totalCoutsReel > 0) {
-      const marge = parseFloat(couts.margeReelPct);
-      if (marge < 0) { score += 40; facteurs.push(`marge à perte (${marge.toFixed(1)}%)`); }
-      else if (marge < SEUILS.margeLimite) { score += 20; facteurs.push(`marge faible (${marge.toFixed(1)}%)`); }
+    if (couts.montantTotal > 0 && couts.totalCoutsReel > 0 && Number.isFinite(couts.margeReelPct)) {
+      const marge = couts.margeReelPct;
+      if (marge < 0) { score += 40; facteurs.push(`marge à perte (${Math.round(marge * 10) / 10}%)`); }
+      else if (marge < SEUILS.margeLimite) { score += 20; facteurs.push(`marge faible (${Math.round(marge * 10) / 10}%)`); }
     }
 
     // Facteur 2 : retard
@@ -948,7 +949,7 @@ export function runRadarPrecoce({ chantiers, devis, parametres, agentContext }) 
 
     // Facteur 4 : prédiction ApprentissageMarge négative
     const pred = (agentContext?.ApprentissageMarge?.predictions || []).find(p => p.chantierId === c.id);
-    if (pred?.margePredictive < SEUILS.margeLimite) { score += 15; facteurs.push(`prédiction historique : ${pred.margePredictive.toFixed(1)}%`); }
+    if (Number.isFinite(pred?.margePredictive) && pred.margePredictive < SEUILS.margeLimite) { score += 15; facteurs.push(`prédiction historique : ${Math.round(pred.margePredictive * 10) / 10}%`); }
 
     if (score >= 30) {
       risques.push({ chantierId: c.id, nom: c.nom || c.numero, score, facteurs, niveau: score >= 60 ? 'CRITIQUE' : score >= 40 ? 'DANGER' : 'ATTENTION' });

@@ -162,7 +162,7 @@ function Dashboard() {
     const nbEnRetard  = actives.filter(r => r.enDepassement).length;
     const ecarts      = actives.map(r => r.joursRealises - r.joursPrevu);
     const moyenneEcartJours = actives.length > 0
-      ? parseFloat((ecarts.reduce((s, e) => s + e, 0) / actives.length).toFixed(1))
+      ? Math.round(ecarts.reduce((s, e) => s + e, 0) / actives.length * 10) / 10
       : null;
     const margeReelleTotale = activesAvecDevis.reduce((s, r) => s + r.rentabilite, 0);
     const caActifTotal = activesAvecDevis.reduce((s, r) => s + r.montantDevis, 0);
@@ -401,7 +401,7 @@ function Dashboard() {
     const joursPlannedC = c.nombreJours || 0;
     const avancementRetard = joursPlannedC > 0 && joursRealisesC > joursPlannedC * 0.5 && avancement < 30;
     if (retardJ >= 1 || (r !== null && r < 10) || avancementRetard ||
-        (reel && reel.enDepassement) || (reel && !reel.aucuneSaisie && reel.rentabilitePct < 15))
+        (reel && reel.enDepassement) || (reel && !reel.aucuneSaisie && Number.isFinite(reel.rentabilitePct) && reel.rentabilitePct < 15))
       return { niveau: 'attention', score: 1 };
 
     return { niveau: 'ok', score: 0 };

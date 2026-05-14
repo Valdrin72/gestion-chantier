@@ -115,7 +115,7 @@ function Devis() {
       <div className="page-header-row">
         <div className="page-title-block">
           <div className="page-title-main">Devis</div>
-          <div className="page-title-sub">{devis.length} devis · {devis.filter(d => d.statut === 'accepté').length} acceptés ce mois</div>
+          <div className="page-title-sub">{devis.length} devis · {devis.filter(d => d.statut?.toLowerCase() === 'accepté').length} acceptés ce mois</div>
         </div>
         <div className="page-actions-group">
           <button onClick={() => { setForm(vide); setAjout(!ajout); }} style={btnPrimaire}><Plus size={14} /> Nouveau devis</button>
@@ -124,10 +124,10 @@ function Devis() {
 
       {/* ── KPI GRID ── */}
       {(() => {
-        const devisAcceptes = devis.filter(d => d.statut === 'accepté');
+        const devisAcceptes = devis.filter(d => d.statut?.toLowerCase() === 'accepté');
         const caSigné = devisAcceptes.reduce((s, d) => s + caDevis(d), 0);
         const tauxAcceptation = devis.length > 0 ? Math.round((devisAcceptes.length / devis.length) * 100) : 0;
-        const enAttente = devis.filter(d => d.statut === 'envoyé');
+        const enAttente = devis.filter(d => d.statut?.toLowerCase() === 'envoyé');
         const montantAttente = enAttente.reduce((s, d) => s + caDevis(d), 0);
         const now = Date.now();
         const delaisMoyen = enAttente.length > 0

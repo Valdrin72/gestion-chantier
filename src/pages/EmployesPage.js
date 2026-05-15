@@ -196,7 +196,13 @@ export function EditEmployeRow({ e, parametres, sauv }) {
       <td style={tdStyle}><input value={ed.email || ''} onChange={ev => setEd({ ...ed, email: ev.target.value })} style={{ ...inputStyle, padding: '5px 8px' }} /></td>
       <td style={tdStyle}>
         <div style={{ display: 'flex', gap: 4 }}>
-          <button onClick={() => { sauv({ ...parametres, employes: parametres.employes.map(emp => String(emp.id) === String(e.id) ? { ...ed, tarifJour: parseFloat(ed.tarifJour) } : emp) }); setEditing(false); }} style={btnSucces}>OK</button>
+          <button onClick={() => {
+            const tarif = parseFloat(ed.tarifJour);
+            if (!ed.nom?.trim()) return alert('Le nom est obligatoire.');
+            if (!tarif || tarif <= 0) return alert('Le tarif journalier doit être supérieur à 0.');
+            sauv({ ...parametres, employes: parametres.employes.map(emp => String(emp.id) === String(e.id) ? { ...ed, tarifJour: tarif } : emp) });
+            setEditing(false);
+          }} style={btnSucces}>OK</button>
           <button onClick={() => setEditing(false)} style={btnDanger}>×</button>
         </div>
       </td>

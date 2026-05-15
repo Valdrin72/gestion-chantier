@@ -56,12 +56,18 @@ function ChantierForm({ form, setForm, erreurs, setErreurs, modeCompleter, onSau
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'var(--g-form3)', gap: '15px', marginBottom: '20px' }}>
-        {[['Numéro', 'numero', 'text', 'CH-2026-001'], ['Nom du chantier *', 'nom', 'text', 'Ex: Bureaux Dupont'], ['Conducteur', 'conducteur', 'text', 'Jean Martin'], ['Adresse', 'adresse', 'text', 'Rue...'], ['Canton', 'canton', 'text', 'GE'], ['Date de début *', 'dateDebut', 'date', ''], ['Jours ouvrables prévus *', 'nombreJours', 'number', '15'], ['Surface (m²)', 'surface', 'number', '250']].map(([label, key, type, placeholder]) => (
+        {[['Numéro', 'numero', 'text', 'CH-2026-001', {}], ['Nom du chantier *', 'nom', 'text', 'Ex: Bureaux Dupont', {}], ['Conducteur', 'conducteur', 'text', 'Jean Martin', {}], ['Adresse', 'adresse', 'text', 'Rue...', {}], ['Canton', 'canton', 'text', 'GE', {}], ['Date de début *', 'dateDebut', 'date', '', {}], ['Jours ouvrables prévus *', 'nombreJours', 'number', '15', { min: 1, max: 999 }], ['Surface (m²)', 'surface', 'number', '250', { min: 0 }]].map(([label, key, type, placeholder, attrs]) => (
           <div key={key}>
             <label style={labelStyle}>{label}</label>
             <input
               type={type} placeholder={placeholder} value={form[key] ?? ''}
-              onChange={e => { setForm({ ...form, [key]: e.target.value }); if (erreurs[key]) setErreurs(prev => ({ ...prev, [key]: null })); }}
+              onChange={e => {
+                let val = e.target.value;
+                if (type === 'number' && attrs.min !== undefined && parseFloat(val) < attrs.min) val = String(attrs.min);
+                setForm({ ...form, [key]: val });
+                if (erreurs[key]) setErreurs(prev => ({ ...prev, [key]: null }));
+              }}
+              {...attrs}
               style={{ ...inputStyle, ...(erreurs[key] ? { borderColor: '#ef4444', boxShadow: '0 0 0 1px #ef444440' } : {}) }}
             />
             {erreurs[key] && <div style={{ color: '#ef4444', fontSize: 12, marginTop: 5, fontWeight: 600 }}>{erreurs[key]}</div>}

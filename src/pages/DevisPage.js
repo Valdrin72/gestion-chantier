@@ -481,14 +481,17 @@ function Devis() {
                             return (
                               <button
                                 onClick={() => {
+                                  if (!chantierLie) {
+                                    if (!window.confirm('Ce devis n\'a pas de chantier lié.\nLa facture sera créée sans chantierId — elle n\'apparaîtra pas dans le suivi de facturation des chantiers.\n\nContinuer quand même ?')) return;
+                                  }
                                   const nouvelleFacture = creerFactureDepuisDevis(d, chantierLie || null, factures, parseFloat(d.tva) || 8.1);
                                   setFactures([...factures, nouvelleFacture]);
                                   naviguer('finances');
                                 }}
                                 style={{ background: 'rgba(139,92,246,0.12)', color: '#8b5cf6', border: '1px solid rgba(139,92,246,0.3)', borderRadius: 8, padding: '6px 12px', cursor: 'pointer', fontSize: 12, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 5, fontFamily: 'inherit', transition: 'all 0.15s' }}
-                                title="Créer la facture depuis ce devis"
+                                title={chantierLie ? 'Créer la facture depuis ce devis' : 'Attention : aucun chantier lié à ce devis'}
                               >
-                                <Receipt size={13} /> Créer la facture
+                                <Receipt size={13} /> Créer la facture{!chantierLie && ' ⚠'}
                               </button>
                             );
                           })()}

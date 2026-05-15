@@ -16,7 +16,7 @@ const btnSucces = DS.btnSuccess;
 const btnDanger = DS.btnDanger;
 
 function Devis() {
-  const { devis, setDevis, clients, parametres, naviguer, setChantiers, chantiers, factures, setFactures, contexte = {} } = useApp();
+  const { devis, setDevis, clients, parametres, naviguer, setChantiers, chantiers, factures, setFactures, contexte = {}, afficherNotif } = useApp();
   const [ajout, setAjout] = useState(false);
   const [filtreDevis, setFiltreDevis] = useState('Tous');
   const [confirmConversion, setConfirmConversion] = useState(null); // { devis, nomChantier }
@@ -26,6 +26,7 @@ function Devis() {
     montantHT: '', dureeEstimee: '', nombrePersonnes: '', avenants: [], heuresRegie: [], notes: '',
   };
   const [form, setForm] = useState(vide);
+  const [erreurs, setErreurs] = useState({});
 
   // Helper unifié : CA signé d'un devis (montant HT + avenants + heures régie)
   const caDevis = (d) => {
@@ -54,7 +55,13 @@ function Devis() {
   const formatDateCH = (s) => { if (!s) return '—'; const [y, m, d] = (s || '').split('-'); return (d && m && y) ? `${d}.${m}.${y}` : s; };
 
   const sauvegarder = () => {
-    if (!form.clientId) return;
+    const nouvellesErreurs = {};
+    if (!form.clientId) nouvellesErreurs.clientId = 'Sélectionner un client';
+    if (!form.typesTravaux?.length) nouvellesErreurs.typesTravaux = 'Sélectionner au moins un type de travaux';
+    if (Object.keys(nouvellesErreurs).length > 0) {
+      setErreurs(nouvellesErreurs);
+      return;
+    }
     const montant = parseFloat(form.montantHT);
     if (Number.isFinite(montant) && montant < 0) { alert('Le montant HT ne peut pas être négatif.'); return; }
     if (form.id) {
@@ -68,11 +75,12 @@ function Devis() {
     } else {
       setDevis([...devis, { ...form, id: Date.now() }]);
     }
-    setAjout(false); setForm(vide);
+    if (afficherNotif) afficherNotif(form.id ? 'Devis mis à jour' : 'Devis créé');
+    setAjout(false); setForm(vide); setErreurs({});
   };
 
   const ouvrirConfirmConversion = (d) => {
-    const client = clients.find(c => c.id === d.clientId);
+    const client = clients.find(c => String(c.id) === String(d.clientId));
     const nomSuggere = client?.entreprise
       ? `${client.entreprise} — ${d.numero}`
       : `Chantier ${d.numero}`;
@@ -194,11 +202,18 @@ function Devis() {
           )}
           <div style={{ display: 'grid', gridTemplateColumns: 'var(--g-devis)', gap: '14px', marginBottom: 20 }}>
             <div><label style={labelStyle}>Numéro</label><input value={form.numero} onChange={e => setForm({ ...form, numero: e.target.value })} style={inputStyle} /></div>
-            <div><label style={labelStyle}>Client</label>
-              <select value={form.clientId} onChange={e => setForm({ ...form, clientId: parseInt(e.target.value) || '' })} style={inputStyle}>
+            <div>
+              <label style={labelStyle}>Client <span style={{ color: C.danger }}>*</span></label>
+              <select
+                value={form.clientId}
+                onChange={e => { setForm({ ...form, clientId: parseInt(e.target.value) || '' }); if (erreurs.clientId) setErreurs(prev => ({ ...prev, clientId: null })); }}
+                style={{ ...inputStyle, ...(erreurs.clientId ? { borderColor: '#ef4444', boxShadow: '0 0 0 1px #ef444440' } : {}) }}
+              >
                 <option value="">Sélectionner...</option>
                 {clients.map(c => <option key={c.id} value={c.id}>{c.prenom} {c.nom} — {c.entreprise}</option>)}
-              </select></div>
+              </select>
+              {erreurs.clientId && <div style={{ color: '#ef4444', fontSize: 12, marginTop: 5, fontWeight: 600 }}>{erreurs.clientId}</div>}
+            </div>
             <div><label style={labelStyle}>Date</label><input type="date" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} style={inputStyle} /></div>
             <div><label style={labelStyle}>Statut</label>
               <select value={form.statut} onChange={e => setForm({ ...form, statut: e.target.value })} style={inputStyle}>
@@ -365,9 +380,14 @@ function Devis() {
             <label style={labelStyle}>Notes</label>
             <textarea placeholder="Observations, conditions particulières..." value={form.notes || ''} onChange={e => setForm({ ...form, notes: e.target.value })} style={{ ...inputStyle, height: '70px', resize: 'vertical' }} />
           </div>
+          {Object.keys(erreurs).length > 0 && (
+            <div style={{ color: '#ef4444', fontSize: 13, marginBottom: 8, fontWeight: 600 }}>
+              {Object.values(erreurs).filter(Boolean)[0]}
+            </div>
+          )}
           <div style={{ display: 'flex', gap: '10px' }}>
             <button onClick={sauvegarder} style={btnSucces}>Sauvegarder</button>
-            <button onClick={() => { setAjout(false); setForm(vide); }} style={btnDanger}>Annuler</button>
+            <button onClick={() => { setAjout(false); setForm(vide); setErreurs({}); }} style={btnDanger}>Annuler</button>
           </div>
         </div>
       )}
@@ -393,7 +413,7 @@ function Devis() {
               </thead>
               <tbody>
                 {devisFiltres.map(d => {
-                  const client = clients.find(c => c.id === d.clientId);
+                  const client = clients.find(c => String(c.id) === String(d.clientId));
                   const montant = parseFloat(d.montantHT || d.prixPropose) || 0;
                   const totalRegie = Array.isArray(d.heuresRegie)
                     ? d.heuresRegie.reduce((s, r) => s + (parseFloat(r.heures) || 0) * (parseFloat(r.tarifHeure) || 0), 0)
@@ -513,7 +533,7 @@ function Devis() {
       {/* ── Modale confirmation conversion devis → chantier ── */}
       {confirmConversion && (() => {
         const d = confirmConversion.devis;
-        const client = clients.find(c => c.id === d.clientId);
+        const client = clients.find(c => String(c.id) === String(d.clientId));
         const montant = parseFloat(d.montantHT || d.prixPropose) || 0;
         return (
           <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(4px)' }}

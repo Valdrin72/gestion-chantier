@@ -329,101 +329,28 @@ function Dashboard() {
     return { niveau: 'ok', score: 0 };
   };
 
+  // ── Cache des priorités — évite O(n log n) appels à calculerPriorite à chaque render ──
+  const prioriteMap = useMemo(() => {
+    const map = new Map();
+    actifs.forEach(c => map.set(c.id, calculerPriorite(c)));
+    return map;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [actifs, joursParChantier, rentaParChantier, rentaReelleParChantier]);
 
   // Calculé une seule fois, partagé par les deux sections pour garantir l'exclusivité
-  const top3 = [...actifs]
-    .sort((a, b) => calculerPriorite(b).score - calculerPriorite(a).score)
-    .filter(c => calculerPriorite(c).niveau !== 'ok')
-    .slice(0, 3);
-  const top3Ids = new Set(top3.map(c => c.id));
+  // Mémoïsé pour éviter un sort O(n log n) + new Set à chaque render
+  const { top3, top3Ids } = useMemo(() => {
+    const sorted = [...actifs]
+      .sort((a, b) => (prioriteMap.get(b.id) || { score: 0 }).score - (prioriteMap.get(a.id) || { score: 0 }).score)
+      .filter(c => (prioriteMap.get(c.id) || { niveau: 'ok' }).niveau !== 'ok')
+      .slice(0, 3);
+    return { top3: sorted, top3Ids: new Set(sorted.map(c => c.id)) };
+  }, [actifs, prioriteMap]);
 
-
-  // ── À ne pas oublier ─────────────────────────────────────────
-  // eslint-disable-next-line no-unused-vars
-  const aNesPasOublier = (() => {
-    const list = [];
-    const now = Date.now();
-
-    // 1. Factures en retard sans relance depuis > 7 jours
-    const facturesEnRetard = facturesSafe.filter(f =>
-      f.statut === 'retard' ||
-      (f.statut === 'envoyee' && f.dateEcheance && new Date(f.dateEcheance) < new Date())
-    );
-    const facsSansRelance = facturesEnRetard.filter(f => {
-      const derniere = actionsLog
-        .filter(a => a.type === 'relance' && (a.factureIds || []).includes(f.id))
-        .sort((a, b) => b.date - a.date)[0];
-      return !derniere || Math.floor((now - derniere.date) / 86400000) > 7;
-    });
-    if (facsSansRelance.length > 0) {
-      const montant = facsSansRelance.reduce((t, f) =>
-        t + Math.max(0, (parseFloat(f.montantTTC) || 0) - (parseFloat(f.montantPaye) || 0)), 0);
-      list.push({
-        id: 'factures-sans-relance',
-        nom: `${facsSansRelance.length} facture${facsSansRelance.length > 1 ? 's' : ''} en retard`,
-        probleme: `Aucune relance depuis > 7 jours · CHF ${fmtN(montant)}`,
-        btnLabel: 'Relancer', btnCouleur: C.violet, page: 'finances', ctx: {}, score: 4,
-      });
-    }
-
-    // 2. Chantier actif sans aucune action depuis > 14 jours
-    actifs.forEach(c => {
-      if (!c.dateDebut) return;
-      const joursDemarre = Math.floor((now - new Date(c.dateDebut)) / 86400000);
-      if (joursDemarre < 7) return;
-      const derniere = actionsLog.filter(a => a.chantierId === c.id).sort((a, b) => b.date - a.date)[0];
-      const joursInactivite = derniere ? Math.floor((now - derniere.date) / 86400000) : joursDemarre;
-      if (joursInactivite > 14) {
-        list.push({
-          id: `inactivite-${c.id}`,
-          nom: c.nom || c.numero,
-          probleme: `Aucune action depuis ${joursInactivite} jour${joursInactivite > 1 ? 's' : ''}`,
-          btnLabel: 'Voir', btnCouleur: C.primaire, page: 'chantiers', ctx: { chantierActif: c.id }, score: 1,
-        });
-      }
-    });
-
-    // 3. Action récente (≤ 5 jours) mais problème toujours présent
-    actifs.forEach(c => {
-      const j = joursParChantier[c.id];
-      const r = rentaParChantier[c.id];
-      const retardJ = j !== null && j < 0 ? Math.abs(j) : 0;
-      const actionRecente = actionsLog
-        .filter(a => a.chantierId === c.id && Math.floor((now - a.date) / 86400000) <= 5)
-        .sort((a, b) => b.date - a.date)[0];
-      if (!actionRecente) return;
-      const problemePersiste =
-        (retardJ > 3 && actionRecente.type === 'ressource') ||
-        (r !== null && r < 0 && actionRecente.type === 'urgence');
-      if (problemePersiste) {
-        list.push({
-          id: `persistant-${c.id}`,
-          nom: c.nom || c.numero,
-          probleme: 'Action effectuée mais problème toujours présent',
-          btnLabel: 'Analyser', btnCouleur: C.warning, page: 'chantiers', ctx: { chantierActif: c.id }, score: 3,
-        });
-      }
-    });
-
-    // 4. Devis envoyé sans réponse > 14 jours
-    devis.filter(d => (d.statut || '').toLowerCase() === 'envoyé' && !d.chantierId).forEach(d => {
-      const joursAttente = Math.floor((now - new Date(d.dateEmission || d.date || 0)) / 86400000);
-      if (joursAttente > 14) {
-        list.push({
-          id: `devis-attente-${d.id}`,
-          nom: d.numero || 'Devis',
-          probleme: `Sans réponse depuis ${joursAttente} jour${joursAttente > 1 ? 's' : ''}`,
-          btnLabel: 'Relancer', btnCouleur: C.primaire, page: 'devis', ctx: {}, score: 2,
-        });
-      }
-    });
-
-    return list.sort((a, b) => b.score - a.score).slice(0, 5);
-  })();
 
   // ── À anticiper ──────────────────────────────────────────────
   // eslint-disable-next-line no-unused-vars
-  const aAnticiper = (() => {
+  const aAnticiper = useMemo(() => {
     const list = [];
     const now = new Date();
 
@@ -478,11 +405,12 @@ function Dashboard() {
       });
 
     return list.sort((a, b) => b.score - a.score).slice(0, 3);
-  })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [actifs, joursParChantier, facturesSafe, devis]);
 
   // ── Risque futur (pré-calculé pour réutilisation dans JSX) ───
   // eslint-disable-next-line no-unused-vars
-  const risqueFuturData = (() => {
+  const risqueFuturData = useMemo(() => {
     const evaluerRisque = (c) => {
       if (top3Ids.has(c.id)) return null;
       const j = joursParChantier[c.id];
@@ -500,7 +428,8 @@ function Dashboard() {
       return raisons.length > 0 ? { score, raisons } : null;
     };
     return actifs.map(c => ({ c, risque: evaluerRisque(c) })).filter(({ risque }) => risque !== null).sort((a, b) => b.risque.score - a.risque.score).slice(0, 3);
-  })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [actifs, joursParChantier, rentaParChantier, top3Ids]);
 
   // ── Chart data : aperçu financier (4 dernières semaines) ──
   const donneesMensuelles = useMemo(() => {
@@ -678,8 +607,8 @@ function Dashboard() {
           {actifs.length === 0
             ? <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: 0, textAlign: 'center', padding: '16px 0' }}>Aucun chantier actif</p>
             : <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {[...actifs].sort((a, b) => calculerPriorite(b).score - calculerPriorite(a).score).slice(0, 4).map(c => {
-                  const priorite = calculerPriorite(c);
+                {[...actifs].sort((a, b) => (prioriteMap.get(b.id) || { score: 0 }).score - (prioriteMap.get(a.id) || { score: 0 }).score).slice(0, 4).map(c => {
+                  const priorite = prioriteMap.get(c.id) || { niveau: 'ok', score: 0 };
                   const montantCA = calculerCA(c, devis);
                   const couts = coutsMap.get(c.id) || {};
                   const joursTotal = c.nombreJours || 0;
@@ -984,8 +913,8 @@ function Dashboard() {
           {actifs.length === 0
             ? <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: 0, textAlign: 'center', padding: '24px 0' }}>Aucun chantier actif</p>
             : <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                {[...actifs].sort((a, b) => calculerPriorite(b).score - calculerPriorite(a).score).slice(0, isMobile ? 2 : 3).map(c => {
-                  const priorite = calculerPriorite(c);
+                {[...actifs].sort((a, b) => (prioriteMap.get(b.id) || { score: 0 }).score - (prioriteMap.get(a.id) || { score: 0 }).score).slice(0, isMobile ? 2 : 3).map(c => {
+                  const priorite = prioriteMap.get(c.id) || { niveau: 'ok', score: 0 };
                   const montantCA = calculerCA(c, devis);
                   const couts = coutsMap.get(c.id) || {};
                   const progress = Math.max(0, Math.min(100, Number(c.avancement ?? 0)));

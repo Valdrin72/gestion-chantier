@@ -63,6 +63,8 @@ function AppInner({ profil, deconnecter, userId }) {
     factures, setFactures,
     clients, setClients,
     parametres, setParametres,
+    loading: dataLoading,
+    syncing,
   } = useSupabaseData(userId);
 
   const [page, setPage] = useState('dashboard');
@@ -132,6 +134,12 @@ function AppInner({ profil, deconnecter, userId }) {
     try { localStorage.setItem('cyna_paiements', JSON.stringify(data)); } catch {}
   };
 
+  const [notif, setNotif] = useState(null);
+  const afficherNotif = useCallback((message, type = 'success') => {
+    setNotif({ message, type });
+    setTimeout(() => setNotif(null), 3000);
+  }, []);
+
   const [saisieHeuresCtx, setSaisieHeuresCtx] = useState(null);
   const ouvrirSaisieHeuresApp = useCallback((chantier, date) => {
     setSaisieHeuresCtx({ chantierId: chantier.id, date: date || new Date().toISOString().split('T')[0] });
@@ -189,7 +197,7 @@ function AppInner({ profil, deconnecter, userId }) {
     paiementsData, setPaiementsData, actionsLog, profil,
     logAction, naviguer, contexte, periodeGlobale, setPeriodeGlobale,
     agentState, ouvrirSaisieHeures: ouvrirSaisieHeuresApp,
-    deconnecter,
+    deconnecter, afficherNotif,
   };
 
   return (
@@ -208,6 +216,25 @@ function AppInner({ profil, deconnecter, userId }) {
           darkMode={darkMode} toggleDarkMode={toggleDarkMode} profil={profil}
           deconnecter={deconnecter}
         />
+        {(dataLoading || syncing) && (
+          <div style={{
+            position: 'fixed', top: 0, left: 0, right: 0, zIndex: 9999,
+            height: 3, background: 'rgba(0,0,0,0.08)',
+          }}>
+            <div style={{
+              height: '100%',
+              background: 'var(--brand, #0d3d6e)',
+              animation: 'cyna-loading-bar 1.2s ease-in-out infinite',
+              width: '60%',
+            }} />
+            <style>{`
+              @keyframes cyna-loading-bar {
+                0%   { transform: translateX(-100%); }
+                100% { transform: translateX(260%); }
+              }
+            `}</style>
+          </div>
+        )}
         <main className="app-main">
           {page === 'dashboard'    && <Dashboard />}
           {page === 'chantiers'    && pagesAutorisees.includes('chantiers')  && <Chantiers />}
@@ -218,8 +245,18 @@ function AppInner({ profil, deconnecter, userId }) {
           {page === 'planning'     && pagesAutorisees.includes('planning')   && <PlanningPage chantiers={chantiers} setChantiers={setChantiers} clients={clients} devis={devis} factures={factures} parametres={parametres} naviguer={naviguer} />}
           {page === 'rapport'      && pagesAutorisees.includes('rapport')    && <RapportsPage chantiers={chantiers} clients={clients} devis={devis} factures={factures} parametres={parametres} setParametres={setParametres} paiementsData={paiementsData} periodeGlobale={periodeGlobale} naviguer={naviguer} />}
           {page === 'agents'       && pagesAutorisees.includes('agents')     && <CentreIA />}
-          {page === 'parametres'   && pagesAutorisees.includes('parametres') && <Parametres parametres={parametres} setParametres={setParametres} clients={clients} setClients={setClients} chantiers={chantiers} devis={devis} factures={factures} naviguer={naviguer} />}
+          {page === 'parametres'   && pagesAutorisees.includes('parametres') && <Parametres parametres={parametres} setParametres={setParametres} clients={clients} setClients={setClients} chantiers={chantiers} setChantiers={setChantiers} devis={devis} setDevis={setDevis} factures={factures} setFactures={setFactures} naviguer={naviguer} />}
           {page === 'heures'       && pagesAutorisees.includes('heures')     && <Heures chantiers={chantiers} parametres={parametres} setChantiers={setChantiers} />}
+          {/* Fallback 404 */}
+          {!['dashboard', 'chantiers', 'devis', 'finances', 'clients', 'employes', 'planning', 'rapport', 'agents', 'parametres', 'heures'].includes(page) && (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', gap: 16, color: 'var(--text-secondary)' }}>
+              <div style={{ fontSize: 48 }}>404</div>
+              <div style={{ fontSize: 18, fontWeight: 600 }}>Page introuvable</div>
+              <button onClick={() => naviguer('dashboard')} style={{ marginTop: 8, padding: '10px 24px', background: 'var(--brand)', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: 14 }}>
+                Retour au tableau de bord
+              </button>
+            </div>
+          )}
         </main>
         {saisieHeuresCtx && (() => {
           const chantierLive = chantiers.find(c => c.id === saisieHeuresCtx.chantierId) || null;
@@ -247,6 +284,17 @@ function AppInner({ profil, deconnecter, userId }) {
       </div>
     </div>
     <InstallPWA />
+    {notif && (
+      <div style={{
+        position: 'fixed', bottom: 24, right: 24, zIndex: 9999,
+        background: notif.type === 'success' ? '#10b981' : '#ef4444',
+        color: '#fff', padding: '12px 20px', borderRadius: 10,
+        boxShadow: '0 4px 20px rgba(0,0,0,0.15)', fontSize: 14, fontWeight: 500,
+        display: 'flex', alignItems: 'center', gap: 8,
+      }}>
+        {notif.type === 'success' ? '✓' : '✕'} {notif.message}
+      </div>
+    )}
     </AppProvider>
   );
 }

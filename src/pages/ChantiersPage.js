@@ -13,7 +13,7 @@ const sanitiser = (obj) => {
 };
 
 function Chantiers() {
-  const { chantiers, setChantiers, devis = [], factures = [], setFactures, parametres, naviguer, contexte } = useApp();
+  const { chantiers, setChantiers, devis = [], factures = [], setFactures, parametres, naviguer, contexte, afficherNotif } = useApp();
   const { filtre, setFiltre, chantiersFiltres, joursParChantier } = useChantierFiltres();
 
   const [vue, setVue] = useState('liste');
@@ -52,12 +52,15 @@ function Chantiers() {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const sauvegarder = () => {
-    if (!form.nom) return;
-    if (!form.devisId) {
-      setErreurs(prev => ({ ...prev, devisId: 'Un devis signé est obligatoire pour créer un chantier' }));
+    const nouvellesErreurs = {};
+    if (!form.nom?.trim()) nouvellesErreurs.nom = 'Le nom du chantier est obligatoire';
+    if (!form.devisId) nouvellesErreurs.devisId = 'Un devis signé est obligatoire pour créer un chantier';
+    if (!form.id && !form.dateDebut) nouvellesErreurs.dateDebut = 'La date de début est obligatoire';
+    if (!form.id && (!form.nombreJours || parseInt(form.nombreJours) <= 0)) nouvellesErreurs.nombreJours = 'Le nombre de jours doit être supérieur à 0';
+    if (Object.keys(nouvellesErreurs).length > 0) {
+      setErreurs(nouvellesErreurs);
       return;
     }
-    if (!form.id && (!form.dateDebut || !form.nombreJours)) return;
     const nb = parseInt(form.nombreJours);
     if (form.nombreJours && (isNaN(nb) || nb <= 0)) { alert('Le nombre de jours doit être un entier positif.'); return; }
     const formSain = sanitiser(form);
@@ -94,6 +97,7 @@ function Chantiers() {
       tableauFinal = [...chantiers, { ...chantiersData, id: Date.now() }];
     }
     setChantiers(tableauFinal);
+    if (afficherNotif) afficherNotif(form.id ? 'Chantier mis à jour' : 'Chantier créé');
     if (modeCompleter && form.id) {
       const saved = tableauFinal.find(c => c.id === form.id);
       if (saved) { setSelected(saved); setVue('detail'); }

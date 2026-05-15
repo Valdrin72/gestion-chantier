@@ -48,7 +48,7 @@ const btnPrimaire = DS.btnPrimary;
 const btnSucces  = DS.btnSuccess;
 const btnDanger  = DS.btnDanger;
 
-function Parametres({ parametres, setParametres, clients = [], setClients = () => {}, chantiers = [], devis = [], factures = [], naviguer = () => {} }) {
+function Parametres({ parametres, setParametres, clients = [], setClients = () => {}, chantiers = [], setChantiers = () => {}, devis = [], setDevis = () => {}, factures = [], setFactures = () => {}, naviguer = () => {} }) {
   const [onglet, setOnglet] = useState('dashboard');
   const [nouvelEmploye, setNouvelEmploye] = useState({ nom: '', poste: 'Ouvrier qualifié', tarifJour: '', telephone: '', email: '' });
   const [nouveauClient, setNouveauClient] = useState({ nom: '', prenom: '', entreprise: '', telephone: '', email: '' });
@@ -95,7 +95,10 @@ function Parametres({ parametres, setParametres, clients = [], setClients = () =
       if (!ok) return;
       if (data.parametres) setParametres(data.parametres);
       if (data.clients) setClients(data.clients);
-      alert('Sauvegarde restaurée. Rechargez la page pour voir toutes les données.');
+      if (data.chantiers) setChantiers(data.chantiers);
+      if (data.devis) setDevis(data.devis);
+      if (data.factures) setFactures(data.factures);
+      alert('Sauvegarde restaurée avec succès — chantiers, devis, factures, clients et paramètres.');
     } catch {
       alert('Erreur lors de la lecture du fichier. Assurez-vous que c\'est un fichier backup CYNA valide.');
     }

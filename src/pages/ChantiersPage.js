@@ -13,7 +13,7 @@ const sanitiser = (obj) => {
 };
 
 function Chantiers() {
-  const { chantiers, setChantiers, devis = [], factures = [], setFactures, parametres, naviguer, contexte, afficherNotif } = useApp();
+  const { chantiers, setChantiers, devis = [], factures = [], setFactures, parametres, naviguer, contexte, afficherNotif, confirmer } = useApp();
   const { filtre, setFiltre, chantiersFiltres, joursParChantier } = useChantierFiltres();
 
   const [vue, setVue] = useState('liste');
@@ -106,13 +106,13 @@ function Chantiers() {
     setAjout(false); setForm(vide); setErreurs({});
   };
 
-  const supprimer = (id) => {
+  const supprimer = async (id) => {
     const c = chantiers.find(ch => ch.id === id);
     const facturesLiees = factures.filter(f => String(f.chantierId) === String(id));
     const msg = facturesLiees.length > 0
-      ? `Supprimer le chantier "${c?.nom}" et ses ${facturesLiees.length} facture(s) liée(s) ? Cette action est irréversible.`
-      : `Supprimer le chantier "${c?.nom}" ? Cette action est irréversible.`;
-    if (!window.confirm(msg)) return;
+      ? `Supprimer le chantier "${c?.nom}" et ses ${facturesLiees.length} facture(s) liée(s) ?\n\nCette action est irréversible.`
+      : `Supprimer le chantier "${c?.nom}" ?\n\nCette action est irréversible.`;
+    if (!await confirmer(msg, { labelOui: 'Supprimer' })) return;
     setChantiers(chantiers.filter(ch => String(ch.id) !== String(id)));
     if (facturesLiees.length > 0) setFactures(factures.filter(f => String(f.chantierId) !== String(id)));
     setSelected(null);

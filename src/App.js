@@ -23,6 +23,7 @@ import CentreIA from './pages/CentreIA';
 import Parametres from './pages/ParametresPage';
 import { AppProvider } from './context/AppContext';
 import InstallPWA from './components/InstallPWA';
+import ConfirmModal from './components/ui/ConfirmModal';
 
 // Fallback par page quand l'historique est vide
 const NAV_FALLBACK = {
@@ -140,6 +141,18 @@ function AppInner({ profil, deconnecter, userId }) {
     setTimeout(() => setNotif(null), 3000);
   }, []);
 
+  const [confirmState, setConfirmState] = useState(null);
+  const confirmer = useCallback((message, options = {}) => new Promise(resolve => {
+    setConfirmState({
+      message,
+      labelOui: options.labelOui,
+      labelNon: options.labelNon,
+      danger: options.danger !== false,
+      onOui: () => { setConfirmState(null); resolve(true); },
+      onNon: () => { setConfirmState(null); resolve(false); },
+    });
+  }), []);
+
   const [saisieHeuresCtx, setSaisieHeuresCtx] = useState(null);
   const ouvrirSaisieHeuresApp = useCallback((chantier, date) => {
     setSaisieHeuresCtx({ chantierId: chantier.id, date: date || new Date().toISOString().split('T')[0] });
@@ -197,7 +210,7 @@ function AppInner({ profil, deconnecter, userId }) {
     paiementsData, setPaiementsData, actionsLog, profil,
     logAction, naviguer, contexte, periodeGlobale, setPeriodeGlobale,
     agentState, ouvrirSaisieHeures: ouvrirSaisieHeuresApp,
-    deconnecter, afficherNotif,
+    deconnecter, afficherNotif, confirmer,
   };
 
   return (
@@ -294,6 +307,16 @@ function AppInner({ profil, deconnecter, userId }) {
       }}>
         {notif.type === 'success' ? '✓' : '✕'} {notif.message}
       </div>
+    )}
+    {confirmState && (
+      <ConfirmModal
+        message={confirmState.message}
+        labelOui={confirmState.labelOui}
+        labelNon={confirmState.labelNon}
+        danger={confirmState.danger}
+        onOui={confirmState.onOui}
+        onNon={confirmState.onNon}
+      />
     )}
     </AppProvider>
   );

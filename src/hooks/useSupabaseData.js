@@ -126,7 +126,7 @@ export default function useSupabaseData(userId) {
           rowIdRef.current = id;
         }
       } catch (e) {
-        console.warn('[Sync] Chargement Supabase échoué, fallback localStorage:', e.message);
+        if (process.env.NODE_ENV !== 'production') console.warn('[Sync] Chargement Supabase échoué, fallback localStorage:', e.message);
         if (!cancelled) appliquerData({
           chantiers:  chargerLocal('cyna_chantiers', donneesInitiales.chantiers),
           devis:      chargerLocal('cyna_devis', donneesInitiales.devis),
@@ -200,7 +200,7 @@ export default function useSupabaseData(userId) {
         const id = await ecrireRowUser(userId, rowIdRef.current, payload);
         rowIdRef.current = id;
       } catch (e) {
-        console.warn('[Sync Supabase]', e.message);
+        if (process.env.NODE_ENV !== 'production') console.warn('[Sync Supabase]', e.message);
       } finally {
         setSyncing(false);
       }

@@ -6,6 +6,7 @@ import { DollarSign, FileText, Clock, AlertTriangle, CreditCard, TrendingUp, Cal
 import Factures from '../Factures';
 import Paiements from '../Paiements';
 import { getIntervallesPeriode, getPeriodeLabel, facturesInPeriode, calculerCA, calculerStatutFacture, calculerEtatChantier } from '../donnees';
+import { useApp } from '../context/AppContext';
 
 const fmt  = (n) => (parseFloat(n) || 0).toLocaleString('fr-CH', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 const fmtK = (n) => { const v = parseFloat(n) || 0; return v >= 1000 ? `${(v/1000).toFixed(1)}k` : String(Math.round(v)); };
@@ -406,6 +407,7 @@ export default function Finances({
   periodeGlobale = 'mois',
   parametres = null,
 }) {
+  const { confirmer } = useApp();
   const [onglet, setOnglet] = useState('tresorerie');
 
   // ── Exclure les factures orphelines (chantier, devis ou client supprimé, ou sans ancrage) ──
@@ -481,7 +483,7 @@ export default function Finances({
             {' '}— liée{facturesOrphelines.length > 1 ? 's' : ''} à un chantier ou devis supprimé. Ces montants sont exclus des calculs.
           </div>
           <button
-            onClick={() => { if (window.confirm(`Supprimer définitivement ${facturesOrphelines.length} facture(s) orpheline(s) ?`)) onSave(factures.filter(f => !facturesOrphelines.some(o => o.id === f.id))); }}
+            onClick={async () => { if (await confirmer(`Supprimer définitivement ${facturesOrphelines.length} facture(s) orpheline(s) ?\n\nCette action est irréversible.`, { labelOui: 'Supprimer' })) onSave(factures.filter(f => !facturesOrphelines.some(o => o.id === f.id))); }}
             style={{ padding: '6px 14px', borderRadius: 8, border: '1px solid rgba(239,68,68,0.4)', background: 'rgba(239,68,68,0.12)', color: '#ef4444', fontSize: 12, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}
           >
             Supprimer

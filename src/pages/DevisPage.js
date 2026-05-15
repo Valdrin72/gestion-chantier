@@ -16,7 +16,7 @@ const btnSucces = DS.btnSuccess;
 const btnDanger = DS.btnDanger;
 
 function Devis() {
-  const { devis, setDevis, clients, parametres, naviguer, setChantiers, chantiers, factures, setFactures, contexte = {}, afficherNotif } = useApp();
+  const { devis, setDevis, clients, parametres, naviguer, setChantiers, chantiers, factures, setFactures, contexte = {}, afficherNotif, confirmer } = useApp();
   const [ajout, setAjout] = useState(false);
   const [filtreDevis, setFiltreDevis] = useState('Tous');
   const [confirmConversion, setConfirmConversion] = useState(null); // { devis, nomChantier }
@@ -480,9 +480,9 @@ function Devis() {
                             if (factureExistante) return null;
                             return (
                               <button
-                                onClick={() => {
+                                onClick={async () => {
                                   if (!chantierLie) {
-                                    if (!window.confirm('Ce devis n\'a pas de chantier lié.\nLa facture sera créée sans chantierId — elle n\'apparaîtra pas dans le suivi de facturation des chantiers.\n\nContinuer quand même ?')) return;
+                                    if (!await confirmer('Ce devis n\'a pas de chantier lié.\nLa facture sera créée sans chantierId — elle n\'apparaîtra pas dans le suivi de facturation des chantiers.\n\nContinuer quand même ?', { labelOui: 'Continuer', danger: false })) return;
                                   }
                                   const nouvelleFacture = creerFactureDepuisDevis(d, chantierLie || null, factures, parseFloat(d.tva) || 8.1);
                                   setFactures([...factures, nouvelleFacture]);
@@ -501,14 +501,14 @@ function Devis() {
                             title="Modifier"
                           ><Pencil size={14} /></button>
                           <button
-                            onClick={() => {
+                            onClick={async () => {
                               const chantiersLies = chantiers.filter(ch => String(ch.devisId) === String(d.id));
                               const facturesLiees = factures.filter(f => chantiersLies.some(ch => String(ch.id) === String(f.chantierId)) || String(f.devisId) === String(d.id));
                               const lignes = [`Supprimer le devis "${d.numero}" ?`];
                               if (chantiersLies.length > 0) lignes.push(`→ ${chantiersLies.length} chantier(s) lié(s) seront aussi supprimé(s)`);
                               if (facturesLiees.length > 0) lignes.push(`→ ${facturesLiees.length} facture(s) liée(s) seront aussi supprimée(s)`);
                               lignes.push('Cette action est irréversible.');
-                              if (!window.confirm(lignes.join('\n'))) return;
+                              if (!await confirmer(lignes.join('\n'), { labelOui: 'Supprimer' })) return;
                               const idsChantiers = new Set(chantiersLies.map(ch => ch.id));
                               setDevis(devis.filter(dv => dv.id !== d.id));
                               if (idsChantiers.size > 0) setChantiers(chantiers.filter(ch => !idsChantiers.has(ch.id)));

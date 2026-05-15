@@ -21,7 +21,7 @@ function ChantiersListe({
   onSupprimer,
   formSlot,
 }) {
-  const { chantiers, clients, devis = [], parametres, naviguer, contexte, agentState } = useApp();
+  const { chantiers, clients, devis = [], parametres, naviguer, contexte, agentState, confirmer } = useApp();
   const deriveMap = React.useMemo(() => {
     const map = {};
     (agentState?.agentData?.DerivePredictor?.resultats || []).forEach(r => { map[r.chantierId] = r; });
@@ -276,7 +276,7 @@ function ChantiersListe({
                           ><Pencil size={14} /></button>
                           {onSupprimer && (
                             <button
-                              onClick={() => { if (window.confirm(`Supprimer "${c.nom || c.numero}" ?`)) onSupprimer(c.id); }}
+                              onClick={async () => { if (await confirmer(`Supprimer "${c.nom || c.numero}" ?\n\nCette action est irréversible.`, { labelOui: 'Supprimer' })) onSupprimer(c.id); }}
                               style={{ ...DS.iconBtn, color: '#ef4444' }}
                               title="Supprimer"
                             ><Trash2 size={14} /></button>

@@ -256,6 +256,20 @@ export const DS = {
     'En retard':  { bg: '#FEE2E2', color: '#991B1B' },
     'En attente': { bg: '#FEF3C7', color: '#92400E' },
     'Partielle':  { bg: '#FEF3C7', color: '#92400E' },
+    // Alias minuscules — normalisés par LEGACY_STATUTS dans DevisPage
+    'en cours':   { bg: '#DBEAFE', color: '#1E40AF' },
+    'terminé':    { bg: '#D1FAE5', color: '#065F46' },
+    'planifié':   { bg: '#E0E7FF', color: '#3730A3' },
+    'suspendu':   { bg: '#FEE2E2', color: '#991B1B' },
+    'facturé':    { bg: '#EDE9FE', color: '#5B21B6' },
+    'brouillon':  { bg: '#F1F5F9', color: '#475569' },
+    'envoyé':     { bg: '#DBEAFE', color: '#1E40AF' },
+    'accepté':    { bg: '#D1FAE5', color: '#065F46' },
+    'refusé':     { bg: '#FEE2E2', color: '#991B1B' },
+    'payée':      { bg: '#D1FAE5', color: '#065F46' },
+    'en retard':  { bg: '#FEE2E2', color: '#991B1B' },
+    'en attente': { bg: '#FEF3C7', color: '#92400E' },
+    'partielle':  { bg: '#FEF3C7', color: '#92400E' },
   },
 
   // ── Couleurs palette (source: CYNA App.html) ────────────────
@@ -286,5 +300,8 @@ export const DS = {
 };
 
 // ── Helpers statuts (source unique = DS.statuts) ────────────────
-export const couleurStatut = (s) => DS.statuts[s]?.color || '#3B82F6';
-export const badgeStatut   = (s) => DS.statuts[s] || { bg: '#F1F5F9', color: '#475569' };
+// Lookup insensible à la casse : tente d'abord la valeur exacte,
+// puis la valeur en minuscules (normalisation LEGACY_STATUTS).
+const _lookupStatut = (s) => DS.statuts[s] || DS.statuts[s?.trim().toLowerCase()] || null;
+export const couleurStatut = (s) => _lookupStatut(s)?.color || '#3B82F6';
+export const badgeStatut   = (s) => _lookupStatut(s) || { bg: '#F1F5F9', color: '#475569' };

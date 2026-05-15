@@ -6,6 +6,7 @@ import {
 import { fmtN, C } from '../donnees';
 import { DS } from '../ds';
 import { Badge } from '../components/SharedBadges';
+import { useApp } from '../context/AppContext';
 
 const inputStyle = DS.input;
 const labelStyle = DS.label;
@@ -16,6 +17,8 @@ const btnSucces  = DS.btnSuccess;
 const btnDanger  = DS.btnDanger;
 
 function Employes({ parametres, setParametres, chantiers, naviguer }) {
+  const { profil } = useApp();
+  const voirSalaires = profil?.role === 'direction';
   const [ajout, setAjout] = useState(false);
   const [form, setForm] = useState({ nom: '', poste: 'Ouvrier qualifié', tarifJour: '', telephone: '', email: '', actif: true });
   const sauvegarder = () => {
@@ -47,8 +50,10 @@ function Employes({ parametres, setParametres, chantiers, naviguer }) {
         const kpiItems = [
           { label: 'EFFECTIF',      val: employes.length, Icon: Users,      ...DS.kpi.blue,   badge: `${nbActifs} actifs` },
           { label: 'HEURES TOTALES',val: `${fmtN(Math.round(heuresTotal))}h`, Icon: Clock, ...DS.kpi.green },
-          { label: 'COÛT MENSUEL',  val: `CHF ${fmtN(coutMensuel)}`, Icon: DollarSign, ...DS.kpi.amber },
-          { label: 'TARIF MOYEN',   val: `CHF ${fmtN(tarifMoyen)}/j`, Icon: TrendingUp, ...DS.kpi.purple },
+          ...(voirSalaires ? [
+            { label: 'COÛT MENSUEL',  val: `CHF ${fmtN(coutMensuel)}`, Icon: DollarSign, ...DS.kpi.amber },
+            { label: 'TARIF MOYEN',   val: `CHF ${fmtN(tarifMoyen)}/j`, Icon: TrendingUp, ...DS.kpi.purple },
+          ] : []),
         ];
         return (
           <div className="kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'var(--g4)', gap: 16, marginBottom: 20 }}>
@@ -77,7 +82,7 @@ function Employes({ parametres, setParametres, chantiers, naviguer }) {
               <select value={form.poste} onChange={e => setForm({ ...form, poste: e.target.value })} style={inputStyle}>
                 {["Chef de chantier", "Ouvrier qualifié", "Manœuvre", "Technicien", "Comptable", "Chef d'équipe", "Sous-traitant"].map(p => <option key={p}>{p}</option>)}
               </select></div>
-            <div><label style={labelStyle}>Tarif/jour (CHF) *</label><input type="text" inputMode="numeric" placeholder="350" value={form.tarifJour ? fmtN(form.tarifJour) : ''} onChange={e => { const raw = e.target.value.replace(/'/g, '').replace(/[^0-9.]/g, ''); setForm({ ...form, tarifJour: raw }); }} style={inputStyle} /></div>
+            {voirSalaires && <div><label style={labelStyle}>Tarif/jour (CHF) *</label><input type="text" inputMode="numeric" placeholder="350" value={form.tarifJour ? fmtN(form.tarifJour) : ''} onChange={e => { const raw = e.target.value.replace(/'/g, '').replace(/[^0-9.]/g, ''); setForm({ ...form, tarifJour: raw }); }} style={inputStyle} /></div>}
             <div><label style={labelStyle}>Téléphone</label><input placeholder="079 000 00 00" value={form.telephone} onChange={e => setForm({ ...form, telephone: e.target.value })} style={inputStyle} /></div>
             <div><label style={labelStyle}>Email</label><input placeholder="email@cyna.ch" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} style={inputStyle} /></div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, paddingTop: '10px' }}>
@@ -99,8 +104,13 @@ function Employes({ parametres, setParametres, chantiers, naviguer }) {
       )}
       <div style={{ display: 'grid', gridTemplateColumns: 'var(--g3)', gap: '15px' }}>
         {parametres.employes.map(e => {
-          const chantiersEmp = chantiers.filter(c => c.equipe?.some(m => parseInt(m.employeId) === e.id));
-          const joursTotal = chantiers.reduce((t, c) => { const m = c.equipe?.find(m => parseInt(m.employeId) === e.id); return t + (m ? parseInt(m.joursPlannifies || 0) : 0); }, 0);
+          const chantiersEmp = chantiers.filter(c => c.equipe?.some(m => String(m.employeId) === String(e.id)));
+          const joursTotal = chantiers.reduce((t, c) => {
+            const joursReels = (c.journal || []).filter(entry =>
+              (entry.employes || []).some(emp => String(emp.employeId) === String(e.id) && parseFloat(emp.heuresTravaillees) > 0)
+            ).length;
+            return t + joursReels;
+          }, 0);
           const couleurPoste = { 'Chef de chantier': C.primaire, "Chef d'équipe": C.info, 'Ouvrier qualifié': C.secondaire, 'Manœuvre': C.orange, 'Sous-traitant': C.violet, 'Technicien': '#06b6d4', 'Comptable': '#a855f7' }[e.poste] || C.primaire;
           return (
             <div key={e.id} style={{ ...carteStyle, opacity: e.actif ? 1 : 0.55 }}>
@@ -120,9 +130,9 @@ function Employes({ parametres, setParametres, chantiers, naviguer }) {
                 {e.telephone && <div style={{ color: 'var(--text-secondary)', fontSize: '12px', marginTop: '3px' }}>{e.telephone}</div>}
                 {e.email && <div style={{ color: 'var(--text-muted)', fontSize: '12px' }}>{e.email}</div>}
               </div>
-              <div style={{ marginTop: '14px', display: 'grid', gridTemplateColumns: 'var(--g3)', gap: '8px' }}>
+              <div style={{ marginTop: '14px', display: 'grid', gridTemplateColumns: voirSalaires ? 'var(--g3)' : 'var(--g2)', gap: '8px' }}>
                 {[
-                  { label: 'CHF/jour', val: `${e.tarifJour}`, couleur: C.primaire },
+                  ...(voirSalaires ? [{ label: 'CHF/jour', val: `${e.tarifJour}`, couleur: C.primaire }] : []),
                   { label: 'Chantiers', val: chantiersEmp.length, couleur: C.secondaire },
                   { label: 'Jours', val: joursTotal, couleur: C.violet },
                 ].map(s => (
@@ -137,7 +147,14 @@ function Employes({ parametres, setParametres, chantiers, naviguer }) {
                   <HardHat size={13} /> Chantiers ({chantiersEmp.length})
                 </button>
                 <button onClick={() => { setForm(e); setAjout(true); }} style={{ ...DS.btnGhost, padding: '6px 10px' }}><Pencil size={13} /></button>
-                <button onClick={() => { if (window.confirm(`Supprimer ${e.nom} ?`)) setParametres({ ...parametres, employes: parametres.employes.filter(emp => emp.id !== e.id) }); }} style={{ ...btnDanger, padding: '6px 10px' }}><Trash2 size={13} /></button>
+                <button onClick={() => {
+                  const heuresEmp = chantiers.reduce((total, c) => total + (c.journal || []).reduce((jt, j) => jt + (j.employes || []).filter(m => String(m.employeId) === String(e.id)).reduce((et, m) => et + (parseFloat(m.heuresTravaillees) || 0), 0), 0), 0);
+                  const joursEmp = heuresEmp > 0 ? Math.round(heuresEmp / 8 * 10) / 10 : 0;
+                  const avertissement = heuresEmp > 0
+                    ? `\n\n⚠ ATTENTION : ${e.nom} a ${Math.round(heuresEmp)}h travaillées (≈ ${joursEmp} jours) dans le journal. Après suppression, le coût MO de ces entrées sera recalculé à 0 CHF dans tous les chantiers concernés.`
+                    : '';
+                  if (window.confirm(`Supprimer ${e.nom} ?${avertissement}`)) setParametres({ ...parametres, employes: parametres.employes.filter(emp => emp.id !== e.id) });
+                }} style={{ ...btnDanger, padding: '6px 10px' }}><Trash2 size={13} /></button>
               </div>
             </div>
           );
@@ -161,7 +178,7 @@ export function EditEmployeRow({ e, parametres, sauv }) {
       <td style={tdStyle}>
         <div style={{ display: 'flex', gap: 4 }}>
           <button onClick={() => setEditing(true)} style={{ ...DS.btnGhost, padding: '4px 10px', fontSize: 12 }}><Pencil size={12} /> Modifier</button>
-          <button onClick={() => { if (window.confirm(`Supprimer ${e.nom} ?`)) sauv({ ...parametres, employes: parametres.employes.filter(emp => emp.id !== e.id) }); }} style={{ ...btnDanger, padding: '4px 8px' }}>Suppr</button>
+          <button onClick={() => { if (window.confirm(`Supprimer ${e.nom} ?\n\n⚠ ATTENTION : si cet employé a des heures dans le journal des chantiers, le coût MO de ces entrées sera recalculé à 0 CHF après suppression.`)) sauv({ ...parametres, employes: parametres.employes.filter(emp => emp.id !== e.id) }); }} style={{ ...btnDanger, padding: '4px 8px' }}>Suppr</button>
         </div>
       </td>
     </tr>

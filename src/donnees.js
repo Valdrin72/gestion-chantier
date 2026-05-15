@@ -453,10 +453,10 @@ export const calculerDevis = (form, parametres) => {
   const margeMin    = parseFloat(parametres.seuilRentabiliteMin) / 100;
   const margeExtra  = parseFloat(parametres.plafondCredi) / 100;
 
-  // Règles métier — prix = coût × (1 + taux_marge)
+  // Règles métier — prix = coût / (1 - marge%) — mark-up sur vente (BTP suisse)
   // prixMinRentable utilise toujours margeMin (jamais margeCible) — plancher absolu
-  const prixMinRentable = totalRevient * (1 + margeMin);
-  const prixConseille   = totalRevient * (1 + margeCible);
+  const prixMinRentable = (margeMin >= 0 && margeMin < 1) ? totalRevient / (1 - margeMin) : totalRevient;
+  const prixConseille   = (margeCible >= 0 && margeCible < 1) ? totalRevient / (1 - margeCible) : totalRevient;
   const prixPlafond     = totalRevient * (1 + margeCible + margeExtra);
   const prixPropose = parseFloat(form.prixPropose) || prixConseille;
   const margeEstimee = prixPropose - totalRevient;
@@ -484,7 +484,7 @@ export const calculerDevis = (form, parametres) => {
  * Formules : coûtTotal = coutMO + mat + transp + ST, marge = CA − coûtTotal, marge% = marge / CA × 100
  */
 export const calculerDevisClient = (devis, coutMO = 0) => {
-  const chiffreAffaires   = parseFloat(devis.prixPropose)       || 0;
+  const chiffreAffaires   = parseFloat(devis.montantHT || devis.prixPropose) || 0;
   const coutMainOeuvre    = parseFloat(coutMO)                  || 0;
   const coutMateriel      = parseFloat(devis.coutMateriel)      || 0;
   const coutTransport     = parseFloat(devis.coutTransport)     || 0;
@@ -527,7 +527,7 @@ export const calculerJoursRestants = (chantier) => {
  */
 export const calculerRentabiliteEquipe = (chantier, parametres) => {
   const employes = parametres?.employes || [];
-  const coefficient = parseFloat(parametres?.parametres?.coefficientMainOeuvre) || 1.0;
+  const coefficient = parseFloat(parametres?.parametres?.coefficientMainOeuvre) || 1.35;
   // Source unique : journal (heuresTravaillees) — aucun fallback
   const journalEq = chantier.journal || [];
   const getJoursReelsEq = (m) => heuresEmploye(journalEq, parseInt(m.employeId)) / 8;

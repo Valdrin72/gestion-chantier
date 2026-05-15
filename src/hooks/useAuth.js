@@ -34,9 +34,9 @@ export default function useAuth() {
   const resolverProfil = useCallback((user) => {
     if (!user) return null;
     const ROLES_AUTORISES = ['direction', 'conducteur', 'administratif'];
-    // app_metadata est réservé aux admins (non modifiable par l'utilisateur)
-    // user_metadata peut être modifié par l'utilisateur → ne jamais utiliser pour les rôles
-    const roleRaw = user.app_metadata?.role ?? user.user_metadata?.role;
+    // app_metadata est réservé aux admins (non modifiable par l'utilisateur via l'API publique)
+    // user_metadata NE DOIT PAS être utilisé pour les rôles : modifiable par tout utilisateur authentifié
+    const roleRaw = user.app_metadata?.role;
     const role = ROLES_AUTORISES.includes(roleRaw) ? roleRaw : 'conducteur';
     return ROLE_PAGES[role];
   }, []);

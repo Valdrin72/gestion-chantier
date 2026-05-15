@@ -26,18 +26,23 @@ export default function Statistiques({ chantiers, clients, devis = [], parametre
   }, [chantiers, periodeGlobale]);
 
   // ===== CALCULS GLOBAUX (sur chantiers filtrés, uniquement ceux avec devis) =====
-  const filtresAvecDevis = chantiersFiltres.filter(c => calculerCA(c, devis) !== null);
-  const nbSansDevis = chantiersFiltres.length - filtresAvecDevis.length;
-  const caTotal = filtresAvecDevis.reduce((t, c) => t + calculerCA(c, devis), 0);
-  const coutsTotaux = filtresAvecDevis.reduce((t, c) => t + calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis).totalCoutsReel, 0);
-  const rentabilite = caTotal - coutsTotaux;
-  const margeGlobale = caTotal > 0 ? Math.round((rentabilite / caTotal) * 1000) / 10 : 0;
+  const { filtresAvecDevis, nbSansDevis, caTotal, coutsTotaux, rentabilite, margeGlobale, margeNettePct } = useMemo(() => {
+    const filtresAvecDevis = chantiersFiltres.filter(c => calculerCA(c, devis) !== null);
+    const nbSansDevis = chantiersFiltres.length - filtresAvecDevis.length;
+    const caTotal = filtresAvecDevis.reduce((t, c) => t + calculerCA(c, devis), 0);
+    const coutsTotaux = filtresAvecDevis.reduce((t, c) => t + calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis).totalCoutsReel, 0);
+    const rentabilite = caTotal - coutsTotaux;
+    const margeGlobale = caTotal > 0 ? Math.round((rentabilite / caTotal) * 1000) / 10 : 0;
+    const tauxFG = parseFloat(parametres?.parametres?.fraisGeneraux || parametres?.fraisGeneraux) || 12;
+    const margeNettePct = caTotal > 0 ? Math.round(((caTotal - coutsTotaux - caTotal * tauxFG / 100) / caTotal) * 1000) / 10 : 0;
+    return { filtresAvecDevis, nbSansDevis, caTotal, coutsTotaux, rentabilite, margeGlobale, margeNettePct };
+  }, [chantiersFiltres, devis, parametres]);
 
   // ===== DONNÉES MENSUELLES (sur TOUS les chantiers filtrés par l'année du picker) =====
   // Le picker "année" contrôle le graphique mensuel indépendamment de periodeGlobale.
   // Les KPI globaux en haut restent basés sur periodeGlobale (chantiersFiltres).
   const mois = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc'];
-  const donneesMensuelles = mois.map((m, i) => {
+  const donneesMensuelles = useMemo(() => mois.map((m, i) => {
     const tousMois = chantiers.filter(c => {
       const d = new Date(c.dateDebut);
       return d.getMonth() === i && d.getFullYear() === parseInt(periode);
@@ -48,29 +53,29 @@ export default function Statistiques({ chantiers, clients, devis = [], parametre
     const marge = ca - couts;
     const margePct = ca > 0 ? Math.round((marge / ca) * 1000) / 10 : 0;
     return { mois: m, CA: ca, Coûts: couts, Marge: marge, 'Marge %': margePct, chantiers: tousMois.length };
-  });
+  }), [chantiers, devis, parametres, periode]);
 
   // ===== DONNÉES PAR TYPE DE TRAVAUX (uniquement chantiers avec devis) =====
-  const donneesTravaux = parametres.typesTravaux.map(t => {
+  const donneesTravaux = useMemo(() => parametres.typesTravaux.map(t => {
     const tous = chantiersFiltres.filter(c => (c.typesTravaux || []).includes(t.nom));
     const avecDevis = tous.filter(c => calculerCA(c, devis) !== null);
     const ca = avecDevis.reduce((s, c) => s + calculerCA(c, devis), 0);
     const couts = avecDevis.reduce((s, c) => s + calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis).totalCoutsReel, 0);
     const m2 = avecDevis.reduce((s, c) => s + (parseFloat(c.surface) || 0), 0);
     return { nom: t.nom, CA: ca, Coûts: couts, Marge: ca - couts, m2, count: tous.length, nbAvecDevis: avecDevis.length, margePct: ca > 0 ? Math.round(((ca - couts) / ca) * 1000) / 10 : 0 };
-  }).filter(t => t.count > 0);
+  }).filter(t => t.count > 0), [chantiersFiltres, devis, parametres]);
 
   // ===== DONNÉES CLIENTS (uniquement chantiers avec devis pour le CA) =====
-  const donneesClients = clients.map(cl => {
+  const donneesClients = useMemo(() => clients.map(cl => {
     const tous = chantiersFiltres.filter(c => c.clientId === cl.id);
     const avecDevis = tous.filter(c => calculerCA(c, devis) !== null);
     const ca = avecDevis.reduce((s, c) => s + calculerCA(c, devis), 0);
     const couts = avecDevis.reduce((s, c) => s + calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis).totalCoutsReel, 0);
     return { nom: cl.entreprise || `${cl.prenom} ${cl.nom}`, CA: ca, Marge: ca - couts, chantiers: tous.length };
-  }).filter(c => c.CA > 0).sort((a, b) => b.CA - a.CA);
+  }).filter(c => c.CA > 0).sort((a, b) => b.CA - a.CA), [clients, chantiersFiltres, devis, parametres]);
 
   // ===== DONNÉES EMPLOYÉS (top utilisés + coût moyen) =====
-  const donneesEmployes = parametres.employes
+  const donneesEmployes = useMemo(() => parametres.employes
     .filter(emp => emp.actif !== false)
     .map(emp => {
       const chantiersEmp = chantiersFiltres.filter(c =>
@@ -97,7 +102,7 @@ export default function Statistiques({ chantiers, clients, devis = [], parametre
       };
     })
     .filter(e => e.nbChantiers > 0)
-    .sort((a, b) => b.coutTotal - a.coutTotal);
+    .sort((a, b) => b.coutTotal - a.coutTotal), [chantiersFiltres, parametres]);
 
   // ===== PRÉVISIONS =====
   const moisActuel = new Date().getMonth();
@@ -106,25 +111,32 @@ export default function Statistiques({ chantiers, clients, devis = [], parametre
   const previsionAnnuelle = moyenneMensuelle * 12;
   const prevision3Mois = moyenneMensuelle * 3;
 
-  // ── Écarts prévu vs réel (uniquement chantiers avec joursRealises > 0) ──
-  const donneesEcarts = chantiersFiltres
-    .filter(c => parseInt(c.joursRealises) > 0 && parseInt(c.nombreJours) > 0)
-    .map(c => {
-      const ec = calculerEcartChantier(c);
-      return {
-        nom: (c.nom || c.numero || '—').substring(0, 18),
-        Prévus: ec.joursPrevu,
-        Réalisés: ec.joursRealises,
-        ecartJours: ec.ecartJours,
-        ecartPct: ec.ecartPct,
-        statut: ec.statut,
-      };
-    })
-    .sort((a, b) => b.ecartJours - a.ecartJours); // dépassements en tête
+  // ── Écarts prévu vs réel (uniquement chantiers avec jours réels dans le journal) ──
+  const { donneesEcarts, moyenneEcart } = useMemo(() => {
+    const donneesEcarts = chantiersFiltres
+      .filter(c => {
+        const joursReels = new Set((c.journal || []).map(e => e.date).filter(Boolean)).size;
+        return joursReels > 0 && parseInt(c.nombreJours) > 0;
+      })
+      .map(c => {
+        const ec = calculerEcartChantier(c);
+        return {
+          nom: (c.nom || c.numero || '—').substring(0, 18),
+          Prévus: ec.joursPrevu,
+          Réalisés: ec.joursRealises,
+          ecartJours: ec.ecartJours,
+          ecartPct: ec.ecartPct,
+          statut: ec.statut,
+        };
+      })
+      .sort((a, b) => b.ecartJours - a.ecartJours); // dépassements en tête
 
-  const moyenneEcart = donneesEcarts.length > 0
-    ? Math.round(donneesEcarts.reduce((s, d) => s + d.ecartJours, 0) / donneesEcarts.length * 10) / 10
-    : null;
+    const moyenneEcart = donneesEcarts.length > 0
+      ? Math.round(donneesEcarts.reduce((s, d) => s + d.ecartJours, 0) / donneesEcarts.length * 10) / 10
+      : null;
+
+    return { donneesEcarts, moyenneEcart };
+  }, [chantiersFiltres]);
 
   return (
     <div>
@@ -144,7 +156,7 @@ export default function Statistiques({ chantiers, clients, devis = [], parametre
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24 }}>
         {[
           { label: 'CA ANNÉE',          val: `CHF ${fmtN(caTotal)}`,     gradient: 'linear-gradient(135deg, #1E40AF 0%, #3B82F6 100%)', glow: 'rgba(59,130,246,0.32)',  Icon: TrendingUp },
-          { label: 'MARGE NETTE',       val: `${margeGlobale}%`,          gradient: rentabilite >= 0 ? 'linear-gradient(135deg, #065F46 0%, #10B981 100%)' : 'linear-gradient(135deg, #991B1B 0%, #EF4444 100%)', glow: rentabilite >= 0 ? 'rgba(16,185,129,0.32)' : 'rgba(239,68,68,0.32)', Icon: DollarSign, badge: `CHF ${fmtN(rentabilite)}` },
+          { label: 'MARGE NETTE',       val: `${margeNettePct}%`,          gradient: margeNettePct >= 0 ? 'linear-gradient(135deg, #065F46 0%, #10B981 100%)' : 'linear-gradient(135deg, #991B1B 0%, #EF4444 100%)', glow: margeNettePct >= 0 ? 'rgba(16,185,129,0.32)' : 'rgba(239,68,68,0.32)', Icon: DollarSign, badge: `CHF ${fmtN(rentabilite)}` },
           { label: 'CHANTIERS',         val: chantiersFiltres.length,     gradient: 'linear-gradient(135deg, #92400E 0%, #F59E0B 100%)', glow: 'rgba(245,158,11,0.32)', Icon: HardHat, badge: nbSansDevis > 0 ? `${nbSansDevis} sans devis` : `${filtresAvecDevis.length} avec devis` },
           { label: 'PRÉVISION 3 MOIS',  val: `CHF ${fmtN(Math.round(prevision3Mois))}`, gradient: 'linear-gradient(135deg, #4C1D95 0%, #8B5CF6 100%)', glow: 'rgba(139,92,246,0.32)', Icon: Calendar },
         ].map(k => (

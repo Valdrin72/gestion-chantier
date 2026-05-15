@@ -133,7 +133,7 @@ function DetailRentabilite({ c, etat, couts, naviguer, fmtN, fmtK }) {
               { label: 'Autres coûts',      valeur: `CHF ${fmtN(rj.autresCouts)}`,    couleur: '#78909c' },
               { label: 'Total coûts réels', valeur: `CHF ${fmtN(rj.totalCoutsReel)}`, couleur: C.danger },
               { label: 'Rentabilité réelle',valeur: `CHF ${fmtN(rj.rentabilite)}`,    couleur: couleurRenta },
-              { label: 'Marge réelle (%)',  valeur: `${rj.rentabilitePct}%`,           couleur: couleurRenta },
+              { label: 'Marge réelle (%)',  valeur: rj.rentabilitePct !== null && rj.rentabilitePct !== undefined ? `${rj.rentabilitePct}%` : '—', couleur: couleurRenta },
               ...(rj.rentabiliteProjetee !== null ? [{ label: 'Projection fin chantier', valeur: `CHF ${fmtN(rj.rentabiliteProjetee)}`, couleur: rj.rentabiliteProjetee_Pct >= 15 ? C.secondaire : C.warning }] : []),
             ].map(s => (
               <div key={s.label} style={{ background: s.couleur + '10', border: `1px solid ${s.couleur}25`, borderRadius: 10, padding: '12px 14px', textAlign: 'center' }}>

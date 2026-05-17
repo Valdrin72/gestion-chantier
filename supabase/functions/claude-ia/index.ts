@@ -287,6 +287,54 @@ Deno.serve(async (req) => {
 
     const { action, data } = await req.json();
 
+    // ── Chat email : génération + retouches conversationnelles ─
+    if (action === 'chat_email') {
+      const p = data.emailParams ?? {};
+      let system = `Tu es l'assistant de communication professionnelle de CYNA SÀRL, entreprise BTP à Genève.
+Tu génères et retouches des emails professionnels en français suisse (vouvoiement, ton sérieux et courtois).
+
+CONTEXTE DE L'EMAIL :
+- Type : ${p.type ?? 'N/D'}
+- Destinataire : ${p.destinataire ?? 'N/D'}
+- Contexte : ${p.contexte ?? 'N/D'}
+- Montant : ${p.montant ? 'CHF ' + p.montant : 'non précisé'}
+
+Quand l'utilisateur demande des modifications, retourne TOUJOURS l'email complet retouché (objet + corps + formule de politesse).
+Format : **Objet :** ... / **Corps :** ... / **Formule de politesse :** ...
+Signature : "Avec nos meilleures salutations, / L'équipe CYNA SÀRL"`;
+      if (data.contexte_cyna) system += `\n\nMÉMOIRE CYNA :\n${data.contexte_cyna}`;
+      const chatResponse = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'x-api-key': ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
+        body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 2048, system, messages: data.messages }),
+      });
+      if (!chatResponse.ok) throw new Error(`Anthropic API error ${chatResponse.status}: ${await chatResponse.text()}`);
+      const r = await chatResponse.json();
+      return new Response(JSON.stringify({ texte: r.content?.[0]?.text ?? '' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
+    // ── Chat PDF : analyse + questions sur le document ──────────
+    if (action === 'chat_pdf') {
+      let system = `Tu es un juriste et expert technique BTP à Genève, spécialisé dans l'analyse de documents contractuels.
+Tu as analysé le document suivant et tu réponds à toutes les questions dessus. Tu peux approfondir, expliquer des clauses, identifier des risques supplémentaires, comparer avec les normes suisses.
+
+TYPE DE DOCUMENT : ${data.typeDoc ?? 'Document BTP'}
+
+TEXTE DU DOCUMENT :
+${data.pdfTexte ?? ''}
+
+Réponds toujours en français, de façon claire et structurée. Si l'utilisateur demande de modifier ou compléter l'analyse, donne une réponse complète.`;
+      if (data.contexte_cyna) system += `\n\nMÉMOIRE CYNA :\n${data.contexte_cyna}`;
+      const chatResponse = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'x-api-key': ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
+        body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 2048, system, messages: data.messages }),
+      });
+      if (!chatResponse.ok) throw new Error(`Anthropic API error ${chatResponse.status}: ${await chatResponse.text()}`);
+      const r = await chatResponse.json();
+      return new Response(JSON.stringify({ texte: r.content?.[0]?.text ?? '' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
     // ── Chat libre : multi-tours avec mémoire ──────────────────
     if (action === 'chat_libre') {
       const chatMessages = data.messages ?? [{ role: 'user', content: data.question ?? '' }];

@@ -543,30 +543,46 @@ function ChatLibre({ memoire, setMemoire }) {
   );
 }
 
-// ── Onglet : Générer email ─────────────────────────────────────
+// ── Onglet : Générer email (conversationnel) ───────────────────
 function GenererEmail({ memoire, onSauvegarder }) {
   const { appeler, loading, error } = useClaudeAI();
   const [form, setForm] = useState({ type: 'Relance facture', destinataire: '', contexte: '', montant: '' });
-  const [resultat, setResultat] = useState('');
+  const [messages, setMessages] = useState([]);
+  const [input, setInput] = useState('');
+  const [phase, setPhase] = useState('form'); // 'form' | 'chat'
+  const bottomRef = useRef(null);
+
+  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
+
   const inputStyle = { padding: '9px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-main)', fontSize: 13, fontFamily: 'inherit' };
   const labelStyle = { fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' };
   const fieldStyle = { display: 'flex', flexDirection: 'column', gap: 4 };
 
+  const envoyer = async (question) => {
+    const q = (question ?? input).trim();
+    if (!q || loading) return;
+    if (!question) setInput('');
+    const newMessages = [...messages, { role: 'user', content: q }];
+    setMessages(newMessages);
+    const reponse = await appeler('chat_email', { emailParams: form, messages: newMessages, contexte_cyna: memoire });
+    if (reponse) setMessages(prev => [...prev, { role: 'assistant', content: reponse }]);
+  };
+
   const generer = async () => {
     if (!form.destinataire.trim() || !form.contexte.trim()) return;
-    const texte = await appeler('generer_email', { ...form, contexte_cyna: memoire });
-    setResultat(texte);
+    setPhase('chat');
+    setMessages([]);
+    const premierMsg = `Génère un email de type "${form.type}" pour ${form.destinataire}. Contexte : ${form.contexte}.${form.montant ? ` Montant : CHF ${form.montant}.` : ''}`;
+    await envoyer(premierMsg);
   };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-      <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0 }}>
-        Génère un email professionnel adapté à la situation — relance, avis de travaux, envoi de devis ou remerciement.
-      </p>
+      {/* Formulaire (toujours visible pour modifier) */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
         <div style={fieldStyle}>
           <label style={labelStyle}>Type d'email *</label>
-          <select value={form.type} onChange={e => { setForm(f => ({ ...f, type: e.target.value })); setResultat(''); }} style={inputStyle}>
+          <select value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value }))} style={inputStyle}>
             <option value="Relance facture">Relance facture</option>
             <option value="Avis de travaux">Avis de travaux</option>
             <option value="Envoi devis">Envoi devis</option>
@@ -575,24 +591,78 @@ function GenererEmail({ memoire, onSauvegarder }) {
         </div>
         <div style={fieldStyle}>
           <label style={labelStyle}>Destinataire *</label>
-          <input type="text" value={form.destinataire} onChange={e => { setForm(f => ({ ...f, destinataire: e.target.value })); setResultat(''); }} placeholder="Ex: M. Dupont, Société XYZ SA" style={inputStyle} />
+          <input type="text" value={form.destinataire} onChange={e => setForm(f => ({ ...f, destinataire: e.target.value }))} placeholder="Ex: M. Dupont, Société XYZ SA" style={inputStyle} />
         </div>
         <div style={fieldStyle}>
           <label style={labelStyle}>Montant (optionnel)</label>
-          <input type="text" value={form.montant} onChange={e => setForm(f => ({ ...f, montant: e.target.value }))} placeholder="Ex: CHF 12'000" style={inputStyle} />
+          <input type="text" value={form.montant} onChange={e => setForm(f => ({ ...f, montant: e.target.value }))} placeholder="Ex: 12000" style={inputStyle} />
         </div>
       </div>
       <div style={fieldStyle}>
         <label style={labelStyle}>Contexte *</label>
-        <textarea value={form.contexte} onChange={e => { setForm(f => ({ ...f, contexte: e.target.value })); setResultat(''); }} rows={3}
+        <textarea value={form.contexte} onChange={e => setForm(f => ({ ...f, contexte: e.target.value }))} rows={2}
           placeholder="Ex: Facture du 15 mai, CHF 12'000, impayée depuis 35 jours. Deuxième relance."
           style={{ ...inputStyle, resize: 'vertical' }} />
       </div>
       <button onClick={generer} disabled={!form.destinataire.trim() || !form.contexte.trim() || loading}
         style={{ ...DS.btnPrimary, display: 'flex', alignItems: 'center', gap: 6, alignSelf: 'flex-start', opacity: (!form.destinataire.trim() || !form.contexte.trim() || loading) ? 0.6 : 1 }}>
-        <Sparkles size={14} /> Générer l'email
+        <Sparkles size={14} /> {phase === 'chat' ? 'Regénérer' : 'Générer l\'email'}
       </button>
-      <ResultatIA texte={resultat} error={error} loading={loading} onSauvegarder={onSauvegarder} />
+
+      {/* Zone de conversation */}
+      {phase === 'chat' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, borderTop: '1px solid var(--border)', paddingTop: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: DS.brand.secondary, display: 'flex', alignItems: 'center', gap: 5 }}>
+              <Mail size={12} /> Retouchez l'email directement en discutant
+            </div>
+            <button onClick={() => { setPhase('form'); setMessages([]); }}
+              style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 4, padding: '4px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-muted)', fontSize: 11, cursor: 'pointer', fontFamily: 'inherit' }}>
+              <Trash2 size={11} /> Recommencer
+            </button>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxHeight: 460, overflowY: 'auto' }}>
+            {messages.map((msg, i) => (
+              <div key={i}>
+                <BulleMessage msg={msg} />
+                {msg.role === 'assistant' && (
+                  <div style={{ display: 'flex', justifyContent: 'flex-start', marginTop: 4, paddingLeft: 4 }}>
+                    <button onClick={() => onSauvegarder && onSauvegarder(msg.content)}
+                      style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '3px 10px', borderRadius: 6, border: `1px solid ${DS.brand.secondary}44`, background: 'transparent', color: DS.brand.secondary, fontSize: 11, cursor: 'pointer', fontFamily: 'inherit' }}>
+                      <Brain size={10} /> Mémoriser
+                    </button>
+                  </div>
+                )}
+              </div>
+            ))}
+            {loading && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: DS.brand.secondary, fontSize: 13 }}>
+                <Loader size={14} style={{ animation: 'spin 1s linear infinite' }} /> Claude rédige…
+              </div>
+            )}
+            {error && (
+              <div style={{ padding: '10px 14px', background: '#fef2f2', borderRadius: 10, border: '1px solid #fecaca', color: '#dc2626', fontSize: 13 }}>
+                {error}
+              </div>
+            )}
+            <div ref={bottomRef} />
+          </div>
+
+          <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', borderTop: '1px solid var(--border)', paddingTop: 12 }}>
+            <textarea value={input} onChange={e => setInput(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); envoyer(); } }}
+              placeholder='Ex: "Rends-le plus ferme", "Ajoute les intérêts moratoires", "Raccourcis le corps"…'
+              rows={2}
+              style={{ flex: 1, padding: '10px 14px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-main)', fontSize: 13, resize: 'none', fontFamily: 'inherit', lineHeight: 1.5 }}
+            />
+            <button onClick={() => envoyer()} disabled={!input.trim() || loading}
+              style={{ ...DS.btnPrimary, padding: '10px 14px', borderRadius: 10, display: 'flex', alignItems: 'center', opacity: (!input.trim() || loading) ? 0.5 : 1, flexShrink: 0 }}>
+              <SendHorizontal size={15} />
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -661,46 +731,124 @@ function ComparerDevis({ memoire, onSauvegarder }) {
   );
 }
 
-// ── Onglet : Analyser PDF ──────────────────────────────────────
+// ── Onglet : Analyser PDF (conversationnel) ────────────────────
 function AnalyserPdfTexte({ memoire, onSauvegarder }) {
   const { appeler, loading, error } = useClaudeAI();
   const [texte, setTexte] = useState('');
   const [typeDoc, setTypeDoc] = useState('Devis');
-  const [resultat, setResultat] = useState('');
+  const [messages, setMessages] = useState([]);
+  const [input, setInput] = useState('');
+  const [phase, setPhase] = useState('form'); // 'form' | 'chat'
+  const bottomRef = useRef(null);
+
+  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
+
+  const envoyer = async (question) => {
+    const q = (question ?? input).trim();
+    if (!q || loading) return;
+    if (!question) setInput('');
+    const newMessages = [...messages, { role: 'user', content: q }];
+    setMessages(newMessages);
+    const reponse = await appeler('chat_pdf', { pdfTexte: texte, typeDoc, messages: newMessages, contexte_cyna: memoire });
+    if (reponse) setMessages(prev => [...prev, { role: 'assistant', content: reponse }]);
+  };
 
   const analyser = async () => {
     if (!texte.trim()) return;
-    const rep = await appeler('analyser_pdf_texte', { texte, typeDoc, contexte_cyna: memoire });
-    setResultat(rep);
+    setPhase('chat');
+    setMessages([]);
+    await envoyer(`Analyse ce ${typeDoc} en détail : résumé exécutif, informations clés, points de risque, conformité BTP suisse, et questions à clarifier.`);
   };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-      <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0 }}>
-        Colle le texte extrait d'un document PDF et Claude en fait l'analyse détaillée.
-      </p>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-        <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>Type de document *</label>
-        <select value={typeDoc} onChange={e => { setTypeDoc(e.target.value); setResultat(''); }}
-          style={{ padding: '9px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-main)', fontSize: 13, alignSelf: 'flex-start', minWidth: 180 }}>
-          <option value="Devis">Devis</option>
-          <option value="Contrat">Contrat</option>
-          <option value="CCTP">CCTP</option>
-          <option value="Facture">Facture</option>
-          <option value="Autre">Autre</option>
-        </select>
-      </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-        <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>Texte du document *</label>
-        <textarea value={texte} onChange={e => { setTexte(e.target.value); setResultat(''); }} rows={8}
-          placeholder="Colle le texte du PDF ici… (Ctrl+A dans votre lecteur PDF, puis copier-coller)"
-          style={{ padding: '9px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-main)', fontSize: 13, resize: 'vertical', fontFamily: 'inherit' }} />
-      </div>
-      <button onClick={analyser} disabled={!texte.trim() || loading}
-        style={{ ...DS.btnPrimary, display: 'flex', alignItems: 'center', gap: 6, alignSelf: 'flex-start', opacity: (!texte.trim() || loading) ? 0.6 : 1 }}>
-        <Sparkles size={14} /> Analyser
-      </button>
-      <ResultatIA texte={resultat} error={error} loading={loading} onSauvegarder={onSauvegarder} />
+      {/* Formulaire (masqué en mode chat pour gagner de l'espace) */}
+      {phase === 'form' ? (
+        <>
+          <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0 }}>
+            Colle le texte d'un document et discutez avec Claude dessus — analyse, questions sur des clauses, risques, conformité.
+          </p>
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+            <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', flexShrink: 0 }}>Type de document</label>
+            <select value={typeDoc} onChange={e => setTypeDoc(e.target.value)}
+              style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-main)', fontSize: 13 }}>
+              <option value="Devis">Devis</option>
+              <option value="Contrat">Contrat</option>
+              <option value="CCTP">CCTP</option>
+              <option value="Facture">Facture</option>
+              <option value="Autre">Autre</option>
+            </select>
+          </div>
+          <textarea value={texte} onChange={e => setTexte(e.target.value)} rows={9}
+            placeholder="Colle le texte du PDF ici… (Ctrl+A dans votre lecteur PDF, puis copier-coller)"
+            style={{ padding: '9px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-main)', fontSize: 13, resize: 'vertical', fontFamily: 'inherit' }} />
+          <button onClick={analyser} disabled={!texte.trim() || loading}
+            style={{ ...DS.btnPrimary, display: 'flex', alignItems: 'center', gap: 6, alignSelf: 'flex-start', opacity: (!texte.trim() || loading) ? 0.6 : 1 }}>
+            <Sparkles size={14} /> Analyser et discuter
+          </button>
+        </>
+      ) : (
+        /* Mode chat : résumé du document + bouton pour revenir */
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', background: DS.brand.soft, borderRadius: 10, border: `1px solid ${DS.brand.secondary}33` }}>
+          <FileSearch size={14} color={DS.brand.secondary} style={{ flexShrink: 0 }} />
+          <div style={{ flex: 1, fontSize: 12, color: DS.brand.secondary, fontWeight: 600 }}>
+            {typeDoc} · {texte.length} caractères analysés
+          </div>
+          <button onClick={() => { setPhase('form'); setMessages([]); }}
+            style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '5px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-muted)', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>
+            <Trash2 size={11} /> Nouveau document
+          </button>
+        </div>
+      )}
+
+      {/* Zone de conversation */}
+      {phase === 'chat' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, borderTop: '1px solid var(--border)', paddingTop: 12 }}>
+          <div style={{ fontSize: 12, fontWeight: 600, color: DS.brand.secondary, display: 'flex', alignItems: 'center', gap: 5 }}>
+            <FileSearch size={12} /> Posez toutes vos questions sur ce document
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxHeight: 460, overflowY: 'auto' }}>
+            {messages.map((msg, i) => (
+              <div key={i}>
+                <BulleMessage msg={msg} />
+                {msg.role === 'assistant' && (
+                  <div style={{ display: 'flex', justifyContent: 'flex-start', marginTop: 4, paddingLeft: 4 }}>
+                    <button onClick={() => onSauvegarder && onSauvegarder(msg.content)}
+                      style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '3px 10px', borderRadius: 6, border: `1px solid ${DS.brand.secondary}44`, background: 'transparent', color: DS.brand.secondary, fontSize: 11, cursor: 'pointer', fontFamily: 'inherit' }}>
+                      <Brain size={10} /> Mémoriser
+                    </button>
+                  </div>
+                )}
+              </div>
+            ))}
+            {loading && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: DS.brand.secondary, fontSize: 13 }}>
+                <Loader size={14} style={{ animation: 'spin 1s linear infinite' }} /> Claude analyse…
+              </div>
+            )}
+            {error && (
+              <div style={{ padding: '10px 14px', background: '#fef2f2', borderRadius: 10, border: '1px solid #fecaca', color: '#dc2626', fontSize: 13 }}>
+                {error}
+              </div>
+            )}
+            <div ref={bottomRef} />
+          </div>
+
+          <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', borderTop: '1px solid var(--border)', paddingTop: 12 }}>
+            <textarea value={input} onChange={e => setInput(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); envoyer(); } }}
+              placeholder='Ex: "Quels sont les risques sur la clause 4 ?", "La TVA est-elle correcte ?", "Résume les délais importants"…'
+              rows={2}
+              style={{ flex: 1, padding: '10px 14px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-main)', fontSize: 13, resize: 'none', fontFamily: 'inherit', lineHeight: 1.5 }}
+            />
+            <button onClick={() => envoyer()} disabled={!input.trim() || loading}
+              style={{ ...DS.btnPrimary, padding: '10px 14px', borderRadius: 10, display: 'flex', alignItems: 'center', opacity: (!input.trim() || loading) ? 0.5 : 1, flexShrink: 0 }}>
+              <SendHorizontal size={15} />
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

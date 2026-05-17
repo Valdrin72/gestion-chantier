@@ -1,4 +1,6 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
+
+const PAGE_SIZE = 50;
 import {
   HardHat, X, Pencil, Trash2, AlertTriangle, ChevronRight, DollarSign, Clock, Eye, TrendingUp,
 } from 'lucide-react';
@@ -22,6 +24,9 @@ function ChantiersListe({
   formSlot,
 }) {
   const { chantiers, clients, devis = [], parametres, naviguer, contexte, agentState, confirmer, periodeGlobale = 'mois' } = useApp();
+  const [page, setPage] = useState(0);
+  useEffect(() => { setPage(0); }, [filtre, periodeGlobale, chantiersFiltres.length]);
+
   const deriveMap = React.useMemo(() => {
     const map = {};
     (agentState?.agentData?.DerivePredictor?.resultats || []).forEach(r => { map[r.chantierId] = r; });
@@ -116,6 +121,9 @@ function ChantiersListe({
   const nbCritique = useMemo(() => scored.filter(x => x.decision.niveau === 'critique').length, [scored]);
   const nbWarning  = useMemo(() => scored.filter(x => x.decision.niveau === 'warning').length, [scored]);
 
+  const totalPages = Math.ceil(scored.length / PAGE_SIZE);
+  const scoredPage = scored.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+
   return (
     <div>
       <div className="page-header-row">
@@ -208,7 +216,7 @@ function ChantiersListe({
                 </tr>
               </thead>
               <tbody>
-                {scored.map(({ c, etatC, decision }) => {
+                {scoredPage.map(({ c, etatC, decision }) => {
                   const client = clients.find(cl => String(cl.id) === String(c.clientId));
                   const sc = couleurStatut(c.statut);
                   const derive = deriveMap[c.id];
@@ -298,6 +306,25 @@ function ChantiersListe({
           </div>
         )}
       </div>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, marginTop: 12 }}>
+          <button
+            onClick={() => setPage(p => Math.max(0, p - 1))}
+            disabled={page === 0}
+            style={{ background: 'var(--bg-glass-2)', border: '1px solid var(--border)', borderRadius: 8, padding: '6px 14px', cursor: page === 0 ? 'not-allowed' : 'pointer', opacity: page === 0 ? 0.4 : 1, fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', fontFamily: 'inherit' }}
+          >← Préc.</button>
+          <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>
+            {page + 1} / {totalPages} · {scored.length} chantiers
+          </span>
+          <button
+            onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
+            disabled={page === totalPages - 1}
+            style={{ background: 'var(--bg-glass-2)', border: '1px solid var(--border)', borderRadius: 8, padding: '6px 14px', cursor: page === totalPages - 1 ? 'not-allowed' : 'pointer', opacity: page === totalPages - 1 ? 0.4 : 1, fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', fontFamily: 'inherit' }}
+          >Suiv. →</button>
+        </div>
+      )}
     </div>
   );
 }

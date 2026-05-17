@@ -172,11 +172,11 @@ function ChantierDetail({ chantier, detailOnglet, setDetailOnglet, modeCompleter
   const margeTile = (() => {
     if (etat.projectionDisponible && etat.margeEstimeePct !== null) {
       const v = etat.margeEstimeePct;
-      return { val: `${v >= 0 ? '+' : ''}${v.toFixed(1)}%`, label: 'Marge estimée finale', couleur: v >= 15 ? C.secondaire : v >= 5 ? C.warning : C.danger };
+      return { val: `${v >= 0 ? '+' : ''}${Math.round(v * 10) / 10}%`, label: 'Marge estimée finale', couleur: v >= 15 ? C.secondaire : v >= 5 ? C.warning : C.danger };
     }
     if (couts.margeReelPct !== null && etat.coutTotalReel > 0) {
       const v = couts.margeReelPct;
-      return { val: `${v >= 0 ? '+' : ''}${v.toFixed(1)}%`, label: 'Marge actuelle', couleur: v >= 15 ? C.secondaire : v >= 5 ? C.warning : C.danger };
+      return { val: `${v >= 0 ? '+' : ''}${Math.round(v * 10) / 10}%`, label: 'Marge actuelle', couleur: v >= 15 ? C.secondaire : v >= 5 ? C.warning : C.danger };
     }
     return devisTotal !== null
       ? { val: '—', label: 'Saisir des heures', couleur: '#78909c' }
@@ -232,7 +232,7 @@ function ChantierDetail({ chantier, detailOnglet, setDetailOnglet, modeCompleter
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, background: positif ? '#FEF3C7' : '#ECFDF5', border: `1px solid ${positif ? '#FDE68A' : '#6EE7B7'}`, borderRadius: 12, padding: '12px 16px', marginBottom: 16 }}>
             <AlertTriangle size={18} style={{ color: positif ? '#92400E' : '#065F46', flexShrink: 0 }} />
             <div style={{ flex: 1, fontSize: 13, color: positif ? '#92400E' : '#065F46' }}>
-              <strong>Mémoire IA — {c.typeChantier}</strong> · Historiquement ce type {positif ? 'dépasse' : 'reste sous'} le budget de {Math.abs(patternChantier.ecartMoyen).toFixed(1)}% (sur {patternChantier.count} chantier{patternChantier.count > 1 ? 's' : ''})
+              <strong>Mémoire IA — {c.typeChantier}</strong> · Historiquement ce type {positif ? 'dépasse' : 'reste sous'} le budget de {Math.round(Math.abs(patternChantier.ecartMoyen) * 10) / 10}% (sur {patternChantier.count} chantier{patternChantier.count > 1 ? 's' : ''})
               {budgetSuggere !== null && (<> — budget suggéré : <strong>CHF {fmtN(budgetSuggere)}</strong></>)}
             </div>
           </div>

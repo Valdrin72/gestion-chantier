@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useRef } from 'react';
+import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import {
   LayoutDashboard, HardHat, FileText, Calendar,
   ClipboardList, Settings, DollarSign, Clock, Bot,
@@ -204,14 +204,17 @@ function AppInner({ profil, deconnecter, userId }) {
   const navAutorisees = navItems.filter(item => pagesAutorisees.includes(item.id));
   const navMobileItems = navAutorisees.slice(0, 4);
 
-  const appValue = {
+  const appValue = useMemo(() => ({
     chantiers, setChantiers, clients, setClients, devis, setDevis,
     factures, setFactures, parametres, setParametres,
     paiementsData, setPaiementsData, actionsLog, profil,
     logAction, naviguer, contexte, periodeGlobale, setPeriodeGlobale,
     agentState, ouvrirSaisieHeures: ouvrirSaisieHeuresApp,
     deconnecter, afficherNotif, confirmer,
-  };
+  }), [ // eslint-disable-line react-hooks/exhaustive-deps
+    chantiers, clients, devis, factures, parametres,
+    paiementsData, actionsLog, profil, contexte, periodeGlobale, agentState,
+  ]);
 
   return (
     <AppProvider value={appValue}>

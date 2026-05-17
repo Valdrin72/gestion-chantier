@@ -123,6 +123,8 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
   const [paiementModal, setPaiementModal] = useState(null); // facture sur laquelle on enregistre
   const [paiementForm, setPaiementForm] = useState({ montant: '', date: new Date().toISOString().slice(0, 10), note: '' });
   const [rappelModal, setRappelModal] = useState(null); // { facture, niveau, contenu }
+  const [pageFact, setPageFact] = useState(0);
+  const PAGE_SIZE_FACT = 50;
 
   const canEdit = profil?.id === 'direction' || profil?.id === 'administratif';
 
@@ -213,6 +215,12 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
       return true;
     }).sort((a, b) => new Date(b.dateEmission || b.creeLe || 0) - new Date(a.dateEmission || a.creeLe || 0));
   }, [factures, filtreStatut, filtreType, recherche, clients, periodeGlobale]);
+
+  // Reset page quand les filtres changent
+  React.useEffect(() => { setPageFact(0); }, [filtreStatut, filtreType, recherche, periodeGlobale]);
+
+  const totalPagesFact = Math.ceil(facturesFiltrees.length / PAGE_SIZE_FACT);
+  const facturesPage = facturesFiltrees.slice(pageFact * PAGE_SIZE_FACT, (pageFact + 1) * PAGE_SIZE_FACT);
 
   const fmt = (n) => fmtN(n, 2);
 
@@ -474,7 +482,7 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
               </tr>
             </thead>
             <tbody>
-              {facturesFiltrees.map((f, idx) => {
+              {facturesPage.map((f, idx) => {
                 const client = clients.find(c => String(c.id) === String(f.clientId));
                 const restant = (f.montantTTC ?? 0) - (f.montantPaye ?? 0);
                 const pctPaye = f.montantTTC > 0
@@ -548,6 +556,23 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
           </table>
         )}
       </div>
+
+      {/* Pagination factures */}
+      {totalPagesFact > 1 && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, marginTop: 12 }}>
+          <button onClick={() => setPageFact(p => Math.max(0, p - 1))} disabled={pageFact === 0}
+            style={{ background: 'var(--bg-glass-2)', border: '1px solid var(--border)', borderRadius: 8, padding: '6px 14px', cursor: pageFact === 0 ? 'not-allowed' : 'pointer', opacity: pageFact === 0 ? 0.4 : 1, fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', fontFamily: 'inherit' }}>
+            ← Préc.
+          </button>
+          <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>
+            {pageFact + 1} / {totalPagesFact} · {facturesFiltrees.length} factures
+          </span>
+          <button onClick={() => setPageFact(p => Math.min(totalPagesFact - 1, p + 1))} disabled={pageFact === totalPagesFact - 1}
+            style={{ background: 'var(--bg-glass-2)', border: '1px solid var(--border)', borderRadius: 8, padding: '6px 14px', cursor: pageFact === totalPagesFact - 1 ? 'not-allowed' : 'pointer', opacity: pageFact === totalPagesFact - 1 ? 0.4 : 1, fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', fontFamily: 'inherit' }}>
+            Suiv. →
+          </button>
+        </div>
+      )}
 
       {/* ── Modal paiement ── */}
       {paiementModal && (

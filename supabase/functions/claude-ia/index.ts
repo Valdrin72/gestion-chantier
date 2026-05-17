@@ -1,7 +1,10 @@
 const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY') ?? '';
+const SUPABASE_URL       = Deno.env.get('SUPABASE_URL') ?? '';
+const SUPABASE_ANON_KEY  = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
+const ALLOWED_ORIGIN     = Deno.env.get('ALLOWED_ORIGIN') ?? 'https://gestion-chantier.vercel.app';
 
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Origin': ALLOWED_ORIGIN,
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
@@ -283,6 +286,19 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: 'Non autorisé' }), {
         status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
+    }
+
+    // Vérification JWT Supabase — le token doit appartenir à un utilisateur authentifié
+    const token = authHeader.replace('Bearer ', '');
+    if (SUPABASE_URL && SUPABASE_ANON_KEY) {
+      const authCheck = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+        headers: { 'Authorization': `Bearer ${token}`, 'apikey': SUPABASE_ANON_KEY },
+      });
+      if (!authCheck.ok) {
+        return new Response(JSON.stringify({ error: 'Token invalide ou expiré' }), {
+          status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
     }
 
     const body = await req.json();

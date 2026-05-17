@@ -512,8 +512,6 @@ export function runConflitsPlanning({ chantiers, parametres, agentContext }) {
     });
   });
 
-  // eslint-disable-next-line no-unused-vars
-  const statsProductivite = agentContext?.ProductiviteEquipe?.statsParEmploye || {};
   Object.entries(empChantiers).forEach(([eid, noms]) => {
     if (noms.length > 3) {
       const emp = (parametres?.employes || []).find(e => String(e.id) === eid);

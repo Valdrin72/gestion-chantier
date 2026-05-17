@@ -237,9 +237,9 @@ export default function Planning({ chantiers, setChantiers, clients, parametres,
           </div>
         </div>
         <div className="page-actions-group">
-          <button onClick={moisPrecedent} style={btnNav}>←</button>
+          <button onClick={moisPrecedent} style={btnNav} title="Mois précédent">←</button>
           <button onClick={() => { setMoisActuel(new Date().getMonth()); setAnneeActuelle(new Date().getFullYear()); }} style={btnNav}>Aujourd'hui</button>
-          <button onClick={moisSuivant} style={btnNav}>→</button>
+          <button onClick={moisSuivant} style={btnNav} title="Mois suivant">→</button>
           <button
             onClick={() => setShowOptimiseur(v => !v)}
             style={{
@@ -451,9 +451,9 @@ export default function Planning({ chantiers, setChantiers, clients, parametres,
           {/* Mini calendrier */}
           <div style={DS.card}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-              <button onClick={moisPrecedent} style={btnNav}>‹</button>
+              <button onClick={moisPrecedent} style={btnNav} title="Mois précédent">‹</button>
               <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-primary)' }}>{MOIS[moisActuel]} {anneeActuelle}</div>
-              <button onClick={moisSuivant} style={btnNav}>›</button>
+              <button onClick={moisSuivant} style={btnNav} title="Mois suivant">›</button>
             </div>
 
             {/* En-têtes jours */}

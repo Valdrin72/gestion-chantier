@@ -114,12 +114,6 @@ function Devis() {
     naviguer('chantiers', { chantierActif: newId, modeCompleter: true });
   };
 
-  // eslint-disable-next-line no-unused-vars
-  const STATUTS_COULEUR = {
-    'brouillon': '#64748b', 'envoyé': C.info, 'accepté': C.secondaire, 'refusé': C.danger,
-    'En cours': C.info, 'Validé': C.secondaire, 'Envoyé': C.info, 'Refusé': C.danger, 'Annulé': '#64748b', 'Signé': C.secondaire,
-  };
-
   return (
     <div>
       <div className="page-header-row">
@@ -174,8 +168,8 @@ function Devis() {
           <div style={{ display: 'flex', gap: '6px', marginBottom: '20px', flexWrap: 'wrap' }}>
             {STATUTS_DEVIS.map(s => (
               <button key={s} onClick={() => setFiltreDevis(s)} style={{
-                background: filtreDevis === s ? '#EEF2FF' : 'transparent',
-                color: filtreDevis === s ? '#4F46E5' : 'var(--text-muted)',
+                background: filtreDevis === s ? DS.brand.soft : 'transparent',
+                color: filtreDevis === s ? DS.brand.secondary : 'var(--text-muted)',
                 border: '1px solid transparent',
                 padding: '5px 14px', borderRadius: '20px', cursor: 'pointer', fontSize: '13px',
                 fontWeight: filtreDevis === s ? 600 : 400, fontFamily: 'inherit',
@@ -308,6 +302,7 @@ function Devis() {
                 <button
                   onClick={() => setForm({ ...form, avenants: form.avenants.filter((_, j) => j !== i) })}
                   style={{ ...DS.btnDanger, padding: '6px 10px', fontSize: 12 }}
+                  title="Supprimer cet avenant"
                 >×</button>
               </div>
             ))}
@@ -361,6 +356,7 @@ function Devis() {
                 <button
                   onClick={() => setForm({ ...form, heuresRegie: form.heuresRegie.filter((_, j) => j !== i) })}
                   style={{ ...DS.btnDanger, padding: '6px 10px', fontSize: 12 }}
+                  title="Supprimer cette ligne de régie"
                 >×</button>
               </div>
             ))}

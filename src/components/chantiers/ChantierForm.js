@@ -16,7 +16,6 @@ const btnDanger = DS.btnDanger;
 
 function ChantierForm({ form, setForm, erreurs, setErreurs, modeCompleter, onSauvegarder, onAnnuler, naviguer }) {
   const { clients, parametres, devis = [] } = useApp();
-  const [membreEquipe, setMembreEquipe] = useState({ employeId: '', joursPlannifies: '', joursRealises: '', role: 'Ouvrier' });
   const [imprévu, setImprévu] = useState({ description: '', montant: '' });
 
   const toggleTravaux = (t) => {
@@ -29,14 +28,6 @@ function ChantierForm({ form, setForm, erreurs, setErreurs, modeCompleter, onSau
       setImprévu({ description: '', montant: '' });
     }
   };
-  // eslint-disable-next-line no-unused-vars
-  const ajouterMembre = () => {
-    if (membreEquipe.employeId && membreEquipe.joursPlannifies) {
-      setForm({ ...form, equipe: [...form.equipe, { ...membreEquipe, _uid: `${membreEquipe.employeId}_${Date.now()}` }] });
-      setMembreEquipe({ employeId: '', joursPlannifies: '', joursRealises: '', role: 'Ouvrier' });
-    }
-  };
-
   return (
     <div style={carteStyle}>
       <div className="ds-card-title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>

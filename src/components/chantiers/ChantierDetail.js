@@ -5,7 +5,7 @@ import {
 } from 'lucide-react';
 import {
   fmtN, calculerDateFinOuvrables,
-  getAlerteChantier, getChantierStatus, C,
+  getChantierStatus, C,
   assertEtatValide, assertEtatCoherent,
   sommeAvenants, calculerCA, isChantierActif,
 } from '../../donnees';
@@ -108,8 +108,6 @@ function ChantierDetail({ chantier, detailOnglet, setDetailOnglet, modeCompleter
       ? { icone: 'warning', label: 'Chantier à risque — à traiter aujourd\'hui', couleur: C.warning, fond: 'radial-gradient(ellipse at 6% 50%, rgba(245,158,11,0.13) 0%, rgba(245,158,11,0.04) 100%)' }
       : null;
 
-  // eslint-disable-next-line no-unused-vars
-  const al = getAlerteChantier(c);
   const client = clients.find(cl => String(cl.id) === String(c.clientId));
   const directeurTravaux = c.directeurTravauxId ? parametres.employes.find(e => String(e.id) === String(c.directeurTravauxId)) : null;
   const fmtK = (n) => fmtN(n);

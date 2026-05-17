@@ -185,13 +185,13 @@ function Parametres({ parametres, setParametres, clients = [], setClients = () =
               <div key={o.id} onClick={() => setOnglet(o.id)} style={{
                 display: 'flex', alignItems: 'center', gap: 10,
                 padding: '10px 12px', borderRadius: 10, cursor: 'pointer',
-                background: isActive ? '#EEF2FF' : 'transparent',
-                color: isActive ? '#4F46E5' : 'var(--text-primary)',
+                background: isActive ? DS.brand.soft : 'transparent',
+                color: isActive ? DS.brand.secondary : 'var(--text-primary)',
                 transition: 'all 0.15s', marginBottom: 2,
               }}>
                 <span style={{ flex: 1, fontSize: 13, fontWeight: isActive ? 700 : 500 }}>{o.label}</span>
-                <span style={{ fontSize: 10, color: isActive ? '#6366F1' : 'var(--text-muted)', flex: 2, display: 'none' }}>{o.desc}</span>
-                <ChevronRight size={14} strokeWidth={2} style={{ color: isActive ? '#4F46E5' : 'var(--text-muted)', flexShrink: 0 }} />
+                <span style={{ fontSize: 10, color: isActive ? DS.brand.soft : 'var(--text-muted)', flex: 2, display: 'none' }}>{o.desc}</span>
+                <ChevronRight size={14} strokeWidth={2} style={{ color: isActive ? DS.brand.secondary : 'var(--text-muted)', flexShrink: 0 }} />
               </div>
             );
           })}

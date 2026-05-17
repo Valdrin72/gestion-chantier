@@ -17,16 +17,21 @@ const btnSucces  = DS.btnSuccess;
 const btnDanger  = DS.btnDanger;
 
 function Employes({ parametres, setParametres, chantiers, naviguer }) {
-  const { profil } = useApp();
+  const { profil, afficherNotif } = useApp();
   const voirSalaires = profil?.id === 'direction';
   const [ajout, setAjout] = useState(false);
   const [form, setForm] = useState({ nom: '', poste: 'Ouvrier qualifié', tarifJour: '', telephone: '', email: '', actif: true });
   const sauvegarder = () => {
-    if (!form.nom || !form.tarifJour) return;
-    if (form.id) setParametres({ ...parametres, employes: parametres.employes.map(e => String(e.id) === String(form.id) ? { ...form, tarifJour: parseFloat(form.tarifJour) } : e) });
+    if (!form.nom || !form.tarifJour) {
+      if (afficherNotif) afficherNotif('Le nom et le tarif journalier sont obligatoires', 'error');
+      return;
+    }
+    const isEdit = !!form.id;
+    if (isEdit) setParametres({ ...parametres, employes: parametres.employes.map(e => String(e.id) === String(form.id) ? { ...form, tarifJour: parseFloat(form.tarifJour) } : e) });
     else setParametres({ ...parametres, employes: [...parametres.employes, { ...form, id: Date.now(), tarifJour: parseFloat(form.tarifJour) }] });
     setAjout(false);
     setForm({ nom: '', poste: 'Ouvrier qualifié', tarifJour: '', telephone: '', email: '', actif: true });
+    if (afficherNotif) afficherNotif(isEdit ? 'Employé mis à jour' : 'Employé ajouté à l\'équipe');
   };
   return (
     <div>
@@ -111,7 +116,7 @@ function Employes({ parametres, setParametres, chantiers, naviguer }) {
             ).length;
             return t + joursReels;
           }, 0);
-          const couleurPoste = { 'Chef de chantier': C.primaire, "Chef d'équipe": C.info, 'Ouvrier qualifié': C.secondaire, 'Manœuvre': C.orange, 'Sous-traitant': C.violet, 'Technicien': '#06b6d4', 'Comptable': '#a855f7' }[e.poste] || C.primaire;
+          const couleurPoste = { 'Chef de chantier': C.primaire, "Chef d'équipe": C.info, 'Ouvrier qualifié': C.secondaire, 'Manœuvre': C.orange, 'Sous-traitant': C.violet, 'Technicien': C.cyan, 'Comptable': C.mauve }[e.poste] || C.primaire;
           return (
             <div key={e.id} style={{ ...carteStyle, opacity: e.actif ? 1 : 0.55 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>

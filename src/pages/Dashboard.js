@@ -347,90 +347,6 @@ function Dashboard() {
     return { top3: sorted, top3Ids: new Set(sorted.map(c => c.id)) };
   }, [actifs, prioriteMap]);
 
-
-  // ── À anticiper ──────────────────────────────────────────────
-  // eslint-disable-next-line no-unused-vars
-  const aAnticiper = useMemo(() => {
-    const list = [];
-    const now = new Date();
-
-    // 1. Chantier proche du retard : ≤ 3 jours restants et avancement < 80%
-    actifs.forEach(c => {
-      const j = joursParChantier[c.id];
-      const avancement = parseFloat(c.avancement) || 0;
-      if (j !== null && j >= 0 && j <= 3 && avancement < 80) {
-        list.push({
-          id: `proche-retard-${c.id}`,
-          nom: c.nom || c.numero,
-          probleme: `${j === 0 ? 'Dernier jour' : `${j}j restant${j > 1 ? 's' : ''}`} · avancement ${avancement}%`,
-          btnLabel: 'Voir', btnCouleur: C.warning,
-          page: 'chantiers', ctx: { chantierActif: c.id }, score: 3 - j,
-        });
-      }
-    });
-
-    // 2. Rentabilité en danger : coûts > 80% du devis, chantier non terminé
-    actifs.forEach(c => {
-      const ca = calculerCA(c, devis);
-      const cout = (parseFloat(c.materielReel) || parseFloat(c.coutMaterielReel) || 0)
-        + (parseFloat(c.sousTraitanceReelle) || parseFloat(c.coutSousTraitanceReel) || 0)
-        + (parseFloat(c.autresCoutsReels) || parseFloat(c.autresCoutsReel) || 0);
-      if (ca > 0 && cout > ca * 0.8 && cout <= ca) {
-        const margePct = Math.round((ca - cout) / ca * 100);
-        list.push({
-          id: `renta-danger-${c.id}`,
-          nom: c.nom || c.numero,
-          probleme: `Coûts à ${Math.round(cout / ca * 100)}% du devis · marge restante ${margePct}%`,
-          btnLabel: 'Analyser', btnCouleur: C.warning,
-          page: 'chantiers', ctx: { chantierActif: c.id }, score: 2,
-        });
-      }
-    });
-
-    // 3. Facture dont l'échéance arrive dans ≤ 3 jours
-    facturesSafe
-      .filter(f => ['envoyee', 'partielle'].includes(f.statut) && f.dateEcheance)
-      .forEach(f => {
-        const joursAvantEcheance = Math.floor((new Date(f.dateEcheance) - now) / 86400000);
-        if (joursAvantEcheance >= 0 && joursAvantEcheance <= 3) {
-          const restant = Math.max(0, (parseFloat(f.montantTTC) || 0) - (parseFloat(f.montantPaye) || 0));
-          list.push({
-            id: `echeance-${f.id}`,
-            nom: f.numero || 'Facture',
-            probleme: `Échéance ${joursAvantEcheance === 0 ? "aujourd'hui" : `dans ${joursAvantEcheance}j`} · CHF ${fmtN(restant)}`,
-            btnLabel: 'Suivre', btnCouleur: C.primaire,
-            page: 'finances', ctx: {}, score: 3 - joursAvantEcheance,
-          });
-        }
-      });
-
-    return list.sort((a, b) => b.score - a.score).slice(0, 3);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [actifs, joursParChantier, facturesSafe, devis]);
-
-  // ── Risque futur (pré-calculé pour réutilisation dans JSX) ───
-  // eslint-disable-next-line no-unused-vars
-  const risqueFuturData = useMemo(() => {
-    const evaluerRisque = (c) => {
-      if (top3Ids.has(c.id)) return null;
-      const j = joursParChantier[c.id];
-      const r = rentaParChantier[c.id];
-      const retardJ = j !== null && j < 0 ? Math.abs(j) : 0;
-      const joursRestants = j !== null && j >= 0 ? j : null;
-      const avancement = parseFloat(c.avancement) || 0;
-      const aCommence = !!c.dateDebut && new Date(c.dateDebut) <= new Date();
-      const raisons = [];
-      let score = 0;
-      if (retardJ >= 1 && retardJ <= 3) { raisons.push('léger retard'); score += 3; }
-      else if (joursRestants !== null && joursRestants <= 3) { raisons.push('fin imminente'); score += 2; }
-      if (r !== null && r >= 0 && r < 10) { raisons.push('marge faible'); score += 2; }
-      if (aCommence && avancement < 30) { raisons.push('avancement lent'); score += 1; }
-      return raisons.length > 0 ? { score, raisons } : null;
-    };
-    return actifs.map(c => ({ c, risque: evaluerRisque(c) })).filter(({ risque }) => risque !== null).sort((a, b) => b.risque.score - a.risque.score).slice(0, 3);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [actifs, joursParChantier, rentaParChantier, top3Ids]);
-
   // ── Chart data : aperçu financier (4 dernières semaines) ──
   const donneesMensuelles = useMemo(() => {
     const now = new Date();
@@ -493,35 +409,6 @@ function Dashboard() {
     critique:  { label: 'Danger',    bg: '#FEE2E2', color: '#991B1B' },
     neutre:    { label: 'Planifié',  bg: 'var(--bg-glass-2)', color: 'var(--text-muted)' },
   };
-
-  // ── Helpers JSX (conservés pour compatibilité) ──────────────
-  // eslint-disable-next-line no-unused-vars
-  const SectionLabel = ({ children }) => (
-    <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.8px', color: 'var(--text-muted)', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8, paddingBottom: 12, borderBottom: '1px solid var(--border)' }}>
-      <span style={{ width: 3, height: 12, borderRadius: 2, background: '#2563eb', flexShrink: 0, display: 'inline-block' }} />
-      {children}
-    </div>
-  );
-
-  // eslint-disable-next-line no-unused-vars
-  const ActionRow = ({ nom, texte, btnLabel, btnCouleur, onAction, Icon: RowIcon }) => (
-    <div
-      onClick={onAction}
-      style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', borderRadius: 10, marginBottom: 6, background: 'var(--bg-glass)', border: '1px solid var(--border)', cursor: 'pointer', transition: 'background 0.3s ease, border-color 0.3s ease, transform 0.3s ease, box-shadow 0.3s ease' }}
-      onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(59,130,246,0.2)'; e.currentTarget.style.background = 'rgba(59,130,246,0.04)'; e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.2)'; }}
-      onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.background = 'var(--bg-glass)'; e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = ''; }}
-    >
-      {RowIcon && <RowIcon size={14} strokeWidth={1.8} style={{ color: btnCouleur, flexShrink: 0 }} />}
-      <span style={{ fontWeight: 700, fontSize: 13, color: 'var(--text-primary)', flexShrink: 0 }}>{nom}</span>
-      <span style={{ fontSize: 12, color: 'var(--text-muted)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{texte}</span>
-      <button
-        onClick={e => { e.stopPropagation(); onAction(); }}
-        style={{ background: 'rgba(59,130,246,0.1)', color: '#2563eb', border: '1px solid rgba(59,130,246,0.25)', borderRadius: 8, padding: '6px 14px', cursor: 'pointer', fontSize: 12, fontWeight: 700, flexShrink: 0, transition: 'all 0.2s ease', whiteSpace: 'nowrap', fontFamily: 'inherit' }}
-        onMouseEnter={e => { e.stopPropagation(); e.currentTarget.style.background = 'linear-gradient(135deg, rgba(59,130,246,0.32) 0%, rgba(99,102,241,0.24) 100%)'; e.currentTarget.style.boxShadow = '0 0 20px rgba(59,130,246,0.3), 0 0 0 1px rgba(59,130,246,0.5)'; e.currentTarget.style.borderColor = 'rgba(59,130,246,0.55)'; }}
-        onMouseLeave={e => { e.currentTarget.style.background = 'linear-gradient(135deg, rgba(59,130,246,0.2) 0%, rgba(99,102,241,0.14) 100%)'; e.currentTarget.style.boxShadow = ''; e.currentTarget.style.borderColor = 'rgba(59,130,246,0.35)'; }}
-      >{btnLabel}</button>
-    </div>
-  );
 
   const CARD = { background: 'var(--dash-card)', border: '1px solid var(--dash-border)', borderRadius: 16, padding: isMobile ? '12px' : '20px', boxShadow: 'var(--ds-card-shadow)' };
 

@@ -3,6 +3,7 @@ import { Bot, Shield } from 'lucide-react';
 import Agents from '../Agents';
 import AuditApp from '../AuditApp';
 import { useApp } from '../context/AppContext';
+import { DS } from '../ds';
 
 function CentreIA() {
   const { chantiers, devis, factures, clients, parametres, agentState } = useApp();
@@ -11,7 +12,7 @@ function CentreIA() {
     { id: 'agents', label: 'Agents IA', Icon: Bot },
     { id: 'audit',  label: 'Audit',     Icon: Shield },
   ];
-  const pillActive   = { background: '#EEF2FF', color: '#4F46E5', border: '1px solid transparent' };
+  const pillActive   = { background: DS.brand.soft, color: DS.brand.secondary, border: '1px solid transparent' };
   const pillInactive = { background: 'transparent', color: 'var(--text-muted)', border: '1px solid var(--border)' };
   return (
     <div>

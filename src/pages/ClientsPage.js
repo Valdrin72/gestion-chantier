@@ -21,16 +21,21 @@ const btnSucces = DS.btnSuccess;
 const btnDanger = DS.btnDanger;
 
 function Clients({ clients, setClients, chantiers, setChantiers, devis = [], setDevis, factures = [], setFactures, naviguer }) {
-  const { confirmer } = useApp();
+  const { confirmer, afficherNotif } = useApp();
   const [ajout, setAjout] = useState(false);
   const [form, setForm] = useState({ nom: '', prenom: '', entreprise: '', telephone: '', email: '', adresse: '', ville: '', canton: '', type: 'Entreprise', notes: '' });
   const sauvegarder = () => {
-    if (!form.nom || !form.prenom) return;
+    if (!form.nom || !form.prenom) {
+      if (afficherNotif) afficherNotif('Le nom et le prénom du client sont obligatoires', 'error');
+      return;
+    }
     const formSain = sanitiser(form);
-    if (form.id) setClients(clients.map(c => c.id === form.id ? formSain : c));
+    const isEdit = !!form.id;
+    if (isEdit) setClients(clients.map(c => c.id === form.id ? formSain : c));
     else setClients([...clients, { ...formSain, id: Date.now() }]);
     setAjout(false);
     setForm({ nom: '', prenom: '', entreprise: '', telephone: '', email: '', adresse: '', ville: '', canton: '', type: 'Entreprise', notes: '' });
+    if (afficherNotif) afficherNotif(isEdit ? 'Client mis à jour' : 'Client créé');
   };
   return (
     <div>
@@ -159,7 +164,7 @@ function Clients({ clients, setClients, chantiers, setChantiers, devis = [], set
                   if (devisDuClient.length > 0) setDevis(devis.filter(dv => String(dv.clientId) !== String(c.id)));
                   if (idsFactures.size > 0) setFactures(factures.filter(f => !idsFactures.has(f.id)));
                   setClients(clients.filter(cl => String(cl.id) !== String(c.id)));
-                }} style={{ ...btnDanger, padding: '6px 10px' }}><Trash2 size={13} /></button>
+                }} style={{ ...btnDanger, padding: '6px 10px' }} title="Supprimer ce client"><Trash2 size={13} /></button>
               </div>
             </div>
           );

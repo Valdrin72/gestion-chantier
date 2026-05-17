@@ -69,7 +69,7 @@ function RapportsPage({ chantiers, clients, devis, parametres, setParametres, pa
     { id: 'simulateur',    label: 'Simulateur',    Icon: TrendingUp },
     { id: 'benchmark',     label: 'Benchmark',     Icon: Award },
   ];
-  const pillActive   = { background: '#EEF2FF', color: '#4F46E5', border: '1px solid transparent' };
+  const pillActive   = { background: DS.brand.soft, color: DS.brand.secondary, border: '1px solid transparent' };
   const pillInactive = { background: 'transparent', color: 'var(--text-muted)', border: '1px solid var(--border)' };
   return (
     <div>

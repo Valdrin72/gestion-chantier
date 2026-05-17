@@ -449,7 +449,7 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
                       <strong style={{ color: 'var(--text-primary)' }}>{c.nom}</strong>
                       <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>{c.statut}</div>
                     </td>
-                    <td style={{ padding: '10px 12px', fontSize: '13px', color: 'var(--text-primary)' }}>CHF {fmtN(c.montantTotal)}</td>
+                    <td style={{ padding: '10px 12px', fontSize: '13px', color: 'var(--text-primary)' }}>{c.montantTotal !== null ? `CHF ${fmtN(c.montantTotal)}` : '—'}</td>
                     <td style={{ padding: '10px 12px', fontSize: '13px', color: 'var(--text-primary)' }}>CHF {fmtN(c.couts.totalCoutsPrevu)}</td>
                     <td style={{ padding: '10px 12px', fontSize: '13px', fontWeight: 'bold', color: 'var(--text-primary)' }}>CHF {fmtN(c.couts.totalCoutsReel)}</td>
                     <td style={{ padding: '10px 12px' }}>
@@ -459,7 +459,7 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
                     </td>
                     <td style={{ padding: '10px 12px' }}>
                       <span style={{ background: couleurMarge(c.couts.margeReelPct) + '18', color: couleurMarge(c.couts.margeReelPct), fontWeight: 600, padding: '3px 10px', borderRadius: '12px', fontSize: '12px' }}>
-                        {c.couts.margeReelPct}%
+                        {c.couts.margeReelPct !== null ? `${c.couts.margeReelPct}%` : '—'}
                       </span>
                     </td>
                     <td style={{ padding: '10px 12px', fontSize: '13px', color: 'var(--text-primary)' }}>{c.joursPrevu}j</td>
@@ -870,7 +870,7 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
                             {c.depassements.length > 0 && <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{c.depassements.join(' · ')}</div>}
                           </div>
                           <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                            <div style={{ fontSize: 16, fontWeight: 800, color: r.couleur }}>{c.couts.margeReelPct}%</div>
+                            <div style={{ fontSize: 16, fontWeight: 800, color: r.couleur }}>{c.couts.margeReelPct !== null ? `${c.couts.margeReelPct}%` : '—'}</div>
                             <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>marge réelle</div>
                           </div>
                         </div>

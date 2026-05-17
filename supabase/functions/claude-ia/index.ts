@@ -285,7 +285,40 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { action, data } = await req.json();
+    const body = await req.json();
+    const { action, data } = body;
+
+    // Validation de base — action doit être une string
+    if (typeof action !== 'string' || !action) {
+      return new Response(JSON.stringify({ error: 'action manquante' }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Limites de taille pour prévenir les abus (attaque portefeuille)
+    const MAX_TEXT = 50_000;
+    const MAX_MESSAGES = 40;
+    if (typeof data?.pdfTexte === 'string' && data.pdfTexte.length > MAX_TEXT) {
+      return new Response(JSON.stringify({ error: 'Texte PDF trop long (max 50 000 chars)' }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    if (typeof data?.memoire === 'string' && data.memoire.length > MAX_TEXT) {
+      return new Response(JSON.stringify({ error: 'Mémoire trop longue' }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    // Valider et filtrer messages[] avant envoi à Anthropic
+    if (data?.messages !== undefined) {
+      if (!Array.isArray(data.messages)) {
+        return new Response(JSON.stringify({ error: 'messages doit être un tableau' }), {
+          status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      data.messages = (data.messages as any[])
+        .filter((m: any) => ['user', 'assistant'].includes(m?.role) && typeof m?.content === 'string' && m.content.length > 0)
+        .slice(-MAX_MESSAGES);
+    }
 
     // ── Résumer mémoire : condenser les insights en mémoire propre ─
     if (action === 'resumer_memoire') {

@@ -139,7 +139,7 @@ function Devis() {
         const montantAttente = enAttente.reduce((s, d) => s + caDevis(d), 0);
         const now = Date.now();
         const delaisMoyen = enAttente.length > 0
-          ? Math.round(enAttente.reduce((s, d) => { const dt = d.dateEmission || d.date || 0; return s + Math.floor((now - new Date(dt)) / 86400000); }, 0) / enAttente.length)
+          ? Math.round(enAttente.reduce((s, d) => { const dt = d.dateEmission || d.date; return dt ? s + Math.floor((now - new Date(dt)) / 86400000) : s; }, 0) / enAttente.length)
           : null;
         const kpiItems = [
           { label: 'CA SIGNÉ',            val: `CHF ${fmtN(caSigné)}`, sous: `${devisAcceptes.length} accepté${devisAcceptes.length !== 1 ? 's' : ''} / ${devisPeriode.length} ce ${periodeGlobale === 'semaine' ? 'sem.' : periodeGlobale === 'mois' ? 'mois' : 'an'}`, Icon: DollarSign, ...DS.kpi.green },
@@ -394,7 +394,7 @@ function Devis() {
 
       {/* ── Liste des devis ── */}
       {(() => {
-        const devisFiltres = filtreDevis === 'Tous' ? devis : devis.filter(d => d.statut === filtreDevis);
+        const devisFiltres = filtreDevis === 'Tous' ? devis : devis.filter(d => d.statut?.trim().toLowerCase() === filtreDevis.toLowerCase());
         return (
       <div style={{ ...DS.card, padding: 0, overflow: 'hidden' }}>
         {devisFiltres.length === 0 ? (

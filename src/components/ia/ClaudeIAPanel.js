@@ -9,6 +9,15 @@ import { useApp } from '../../context/AppContext';
 import { calculerCoutsChantier } from '../../donnees';
 import { DS } from '../../ds';
 
+// ── Limite mémoire partagée ─────────────────────────────────────
+const LIMITE_MEMOIRE = 8000;
+function trimMemoire(texte) {
+  if (texte.length <= LIMITE_MEMOIRE) return texte;
+  const coupe = texte.slice(texte.length - LIMITE_MEMOIRE);
+  const premier = coupe.indexOf('\n');
+  return premier >= 0 ? coupe.slice(premier + 1) : coupe;
+}
+
 // ── Mémoire CYNA partagée (localStorage) ──────────────────────
 function useMemoire() {
   const [memoire, setMemoireState] = useState(() => localStorage.getItem('cyna_ia_memoire') || '');
@@ -23,7 +32,7 @@ function useMemoire() {
     const date = new Date().toLocaleDateString('fr-CH');
     const ligne = `[${date}] ${extrait.slice(0, 400)}`;
     setMemoireState(prev => {
-      const update = prev ? `${prev}\n${ligne}` : ligne;
+      const update = trimMemoire(prev ? `${prev}\n${ligne}` : ligne);
       localStorage.setItem('cyna_ia_memoire', update);
       return update;
     });
@@ -32,15 +41,12 @@ function useMemoire() {
   // Auto-save : extrait compact (1-2 phrases max) ajouté automatiquement
   const autoSave = useCallback((contexte, reponse) => {
     const date = new Date().toLocaleDateString('fr-CH');
-    // Prend les 200 premiers caractères de la réponse comme insight compact
     const apercu = reponse.replace(/\n+/g, ' ').replace(/\*\*/g, '').slice(0, 200);
     const ligne = `[${date}][${contexte}] ${apercu}`;
     setMemoireState(prev => {
-      // Limite à 8000 caractères pour ne pas surcharger le contexte
-      const update = prev ? `${prev}\n${ligne}` : ligne;
-      const trimmed = update.length > 8000 ? update.slice(update.length - 8000) : update;
-      localStorage.setItem('cyna_ia_memoire', trimmed);
-      return trimmed;
+      const update = trimMemoire(prev ? `${prev}\n${ligne}` : ligne);
+      localStorage.setItem('cyna_ia_memoire', update);
+      return update;
     });
   }, []);
 
@@ -505,16 +511,19 @@ function ChatLibre({ memoire, setMemoire }) {
     if (!question || loading) return;
     setInput('');
     const newMessages = [...messages, { role: 'user', content: question }];
-    setMessages(newMessages);
-    const reponse = await appeler('chat_libre', { messages: newMessages, contexte_cyna: memoire });
-    if (reponse) setMessages(prev => [...prev, { role: 'assistant', content: reponse }]);
+    // Cap RAM à 100 messages, envoie uniquement les 30 derniers à l'API
+    const cappedMessages = newMessages.slice(-100);
+    setMessages(cappedMessages);
+    const reponse = await appeler('chat_libre', { messages: cappedMessages.slice(-30), contexte_cyna: memoire });
+    if (reponse) setMessages(prev => [...prev, { role: 'assistant', content: reponse }].slice(-100));
   };
 
   const sauvegarderInsight = (msg) => {
     if (msg.role !== 'assistant') return;
     const date = new Date().toLocaleDateString('fr-CH');
     const ligne = `[${date}] ${msg.content.slice(0, 300)}`;
-    const update = memoire ? `${memoire}\n${ligne}` : ligne;
+    // Utilise trimMemoire pour respecter la limite unifiée
+    const update = trimMemoire(memoire ? `${memoire}\n${ligne}` : ligne);
     setMemoire(update);
   };
 

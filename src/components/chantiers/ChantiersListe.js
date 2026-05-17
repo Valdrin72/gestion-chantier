@@ -1,10 +1,10 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   HardHat, X, Pencil, Trash2, AlertTriangle, ChevronRight, DollarSign, Clock, Eye, TrendingUp,
 } from 'lucide-react';
 import {
   fmtN, calculerCoutsChantier, C, calculerEtatChantier,
-  assertEtatCoherent, calculerCA, isChantierActif, getIntervallesPeriode,
+  assertEtatCoherent, calculerCA, isChantierActif, getIntervallesPeriode, chantiersInPeriode,
 } from '../../donnees';
 import { DS, couleurStatut as couleurStatutDS } from '../../ds';
 import { useApp } from '../../context/AppContext';
@@ -29,34 +29,32 @@ function ChantiersListe({
   }, [agentState]);
   const couleurStatut = couleurStatutDS;
 
-  // KPIs — filtrés par période pour CA, marge, jours
-  const { debut, fin } = getIntervallesPeriode(periodeGlobale);
-  const debutStr = debut.toISOString().slice(0, 10);
-  const finStr = fin.toISOString().slice(0, 10);
-  const chantiersPeriode = chantiersFiltres.filter(c => {
-    const d = c.dateDebut || '';
-    return d >= debutStr && d <= finStr;
-  });
-  const nbEnCours = chantiers.filter(c => (c.statut || '').toLowerCase() === 'en cours').length;
-  const nbEnRetard = chantiersFiltres.filter(c => { const j = joursParChantier[c.id]; return j !== null && j < 0; }).length;
-  const caTotal = chantiersPeriode.reduce((t, c) => t + (calculerCA(c, devis) || 0), 0);
-  const joursPlanifies = chantiersPeriode.reduce((t, c) => t + (parseInt(c.nombreJours) || 0), 0);
-  const chantiersAvecData = chantiersPeriode.filter(c => { const ca = calculerCA(c, devis); return ca !== null && ca > 0; });
-  let margeMoyenne = null;
-  if (chantiersAvecData.length > 0) {
-    const sum = chantiersAvecData.reduce((s, c) => {
-      const couts = calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis);
-      return s + (couts.totalCoutsReel > 0 && couts.margeReelPct !== null ? couts.margeReelPct : 0);
-    }, 0);
-    margeMoyenne = Math.round(sum / chantiersAvecData.length);
-  }
-  const nbAvecDevis = chantiersPeriode.filter(c => calculerCA(c, devis) !== null).length;
-  const kpiItems = [
-    { label: 'EN COURS',       val: nbEnCours,  Icon: HardHat,    ...DS.kpi.blue,   badge: nbEnRetard > 0 ? `${nbEnRetard} en retard` : null },
-    { label: 'CA CHANTIERS',   val: `CHF ${fmtN(caTotal)}`, sous: `${nbAvecDevis} avec devis · ${chantiersPeriode.length} ce ${periodeGlobale === 'semaine' ? 'sem.' : periodeGlobale === 'mois' ? 'mois' : 'an'}`, Icon: DollarSign, ...DS.kpi.green },
-    { label: 'MARGE MOYENNE',  val: margeMoyenne !== null ? `${margeMoyenne}%` : '—', Icon: TrendingUp, ...DS.kpi.amber },
-    { label: 'JOURS PLANIFIÉS',val: `${fmtN(joursPlanifies)}j`, Icon: Clock, ...DS.kpi.purple },
-  ];
+  // KPIs — mémoïsés, filtrés par période avec chevauchement correct
+  const kpiItems = useMemo(() => {
+    const { debut, fin } = getIntervallesPeriode(periodeGlobale);
+    const chantiersPeriode = chantiersFiltres.filter(c => chantiersInPeriode(c, debut, fin));
+    const nbEnCours = chantiers.filter(c => (c.statut || '').toLowerCase() === 'en cours').length;
+    const nbEnRetard = chantiersFiltres.filter(c => { const j = joursParChantier[c.id]; return j !== null && j < 0; }).length;
+    const caTotal = chantiersPeriode.reduce((t, c) => t + (calculerCA(c, devis) || 0), 0);
+    const joursPlanifies = chantiersPeriode.reduce((t, c) => t + (parseInt(c.nombreJours) || 0), 0);
+    const chantiersAvecData = chantiersPeriode.filter(c => { const ca = calculerCA(c, devis); return ca !== null && ca > 0; });
+    let margeMoyenne = null;
+    if (chantiersAvecData.length > 0) {
+      const sum = chantiersAvecData.reduce((s, c) => {
+        const couts = calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis);
+        return s + (couts.totalCoutsReel > 0 && couts.margeReelPct !== null ? couts.margeReelPct : 0);
+      }, 0);
+      margeMoyenne = Math.round(sum / chantiersAvecData.length);
+    }
+    const nbAvecDevis = chantiersPeriode.filter(c => calculerCA(c, devis) !== null).length;
+    const periodeLabel = periodeGlobale === 'semaine' ? 'sem.' : periodeGlobale === 'mois' ? 'mois' : 'an';
+    return [
+      { label: 'EN COURS',       val: nbEnCours,  Icon: HardHat,    ...DS.kpi.blue,   badge: nbEnRetard > 0 ? `${nbEnRetard} en retard` : null },
+      { label: 'CA CHANTIERS',   val: `CHF ${fmtN(caTotal)}`, sous: `${nbAvecDevis} avec devis · ${chantiersPeriode.length} ce ${periodeLabel}`, Icon: DollarSign, ...DS.kpi.green },
+      { label: 'MARGE MOYENNE',  val: margeMoyenne !== null ? `${margeMoyenne}%` : '—', Icon: TrendingUp, ...DS.kpi.amber },
+      { label: 'JOURS PLANIFIÉS',val: `${fmtN(joursPlanifies)}j`, Icon: Clock, ...DS.kpi.purple },
+    ];
+  }, [chantiersFiltres, chantiers, devis, parametres, joursParChantier, periodeGlobale]);
 
   // Décisions/scoring chantiers
   const getDecisionChantier = (etatC) => {
@@ -84,37 +82,39 @@ function ChantiersListe({
 
   const DECISION_INVALIDE = { icone: '', label: 'Données invalides', couleur: '#90a4ae', message: 'Impossible d\'analyser ce chantier', sous: 'Vérifier les données saisies', niveau: 'invalid', priorite: 0 };
 
-  const scored = [...chantiersFiltres].map(c => {
-    const etatC = calculerEtatChantier(c, parametres.employes, devis);
-    const coherence = assertEtatCoherent(etatC);
-    if (!coherence.ok)
-      return { c, etatC, decision: DECISION_INVALIDE, indicateurs: [], actions: [] };
-    const decision = getDecisionChantier(etatC);
-    const estTermine = etatC.avancementPct >= 100;
-    const perteDejaExprimee = decision.priorite === 2 || (decision.priorite === 1 && decision.sous !== null);
-    const deriveDejaExprimee = decision.priorite === 1 || decision.priorite === 3;
-    const dataDejaExprimee   = decision.priorite === 4;
-    const margeAbs = (etatC.margeEstimee !== null && !isNaN(etatC.margeEstimee)) ? Math.round(Math.abs(etatC.margeEstimee)) : 0;
+  const scored = useMemo(() => {
     const todayStr = new Date().toISOString().split('T')[0];
-    const hasHeuresAuj = (c.journal || []).some(e =>
-      e.date === todayStr && (e.employes || []).some(emp => (parseFloat(emp.heuresTravaillees) || 0) > 0)
-    );
-    const ind = [];
-    if (!estTermine && !perteDejaExprimee && etatC.projectionDisponible && margeAbs > 0 && etatC.margeEstimee < 0)
-      ind.push({ type: 'perte',  label: `Perte CHF ${fmtN(margeAbs)}`,  couleur: C.danger,  tooltip: 'Le chantier est déficitaire selon la projection' });
-    if (!estTermine && !dataDejaExprimee && etatC.totalJoursReels === 0 && etatC.coutTotalReel > 0)
-      ind.push({ type: 'data',   label: 'Données',                        couleur: '#90a4ae', tooltip: 'Des données sont incohérentes ou manquantes' });
-    if (!estTermine && !deriveDejaExprimee && etatC.totalJoursReels > 0 && etatC.deriveJours >= 2 && !isNaN(etatC.deriveJours))
-      ind.push({ type: 'derive', label: `+${etatC.deriveJours} j`,        couleur: C.warning, tooltip: 'Décalage entre prévu et réel' });
-    if (!estTermine && isChantierActif(c) && etatC.totalJoursReels > 0 && !hasHeuresAuj)
-      ind.push({ type: 'no_hours', label: 'Aucune saisie aujourd\'hui', couleur: C.warning, tooltip: 'Aucune heure déclarée pour ce chantier aujourd\'hui' });
-    const PRIO_IND = { perte: 0, data: 1, derive: 2, no_hours: 3 };
-    const indicateurs = ind.sort((a, b) => PRIO_IND[a.type] - PRIO_IND[b.type]).slice(0, 2);
-    return { c, etatC, decision, indicateurs };
-  }).sort((a, b) => a.decision.priorite - b.decision.priorite);
+    return [...chantiersFiltres].map(c => {
+      const etatC = calculerEtatChantier(c, parametres.employes, devis);
+      const coherence = assertEtatCoherent(etatC);
+      if (!coherence.ok)
+        return { c, etatC, decision: DECISION_INVALIDE, indicateurs: [], actions: [] };
+      const decision = getDecisionChantier(etatC);
+      const estTermine = etatC.avancementPct >= 100;
+      const perteDejaExprimee = decision.priorite === 2 || (decision.priorite === 1 && decision.sous !== null);
+      const deriveDejaExprimee = decision.priorite === 1 || decision.priorite === 3;
+      const dataDejaExprimee   = decision.priorite === 4;
+      const margeAbs = (etatC.margeEstimee !== null && !isNaN(etatC.margeEstimee)) ? Math.round(Math.abs(etatC.margeEstimee)) : 0;
+      const hasHeuresAuj = (c.journal || []).some(e =>
+        e.date === todayStr && (e.employes || []).some(emp => (parseFloat(emp.heuresTravaillees) || 0) > 0)
+      );
+      const ind = [];
+      if (!estTermine && !perteDejaExprimee && etatC.projectionDisponible && margeAbs > 0 && etatC.margeEstimee < 0)
+        ind.push({ type: 'perte',  label: `Perte CHF ${fmtN(margeAbs)}`,  couleur: C.danger,  tooltip: 'Le chantier est déficitaire selon la projection' });
+      if (!estTermine && !dataDejaExprimee && etatC.totalJoursReels === 0 && etatC.coutTotalReel > 0)
+        ind.push({ type: 'data',   label: 'Données',                        couleur: '#90a4ae', tooltip: 'Des données sont incohérentes ou manquantes' });
+      if (!estTermine && !deriveDejaExprimee && etatC.totalJoursReels > 0 && etatC.deriveJours >= 2 && !isNaN(etatC.deriveJours))
+        ind.push({ type: 'derive', label: `+${etatC.deriveJours} j`,        couleur: C.warning, tooltip: 'Décalage entre prévu et réel' });
+      if (!estTermine && isChantierActif(c) && etatC.totalJoursReels > 0 && !hasHeuresAuj)
+        ind.push({ type: 'no_hours', label: 'Aucune saisie aujourd\'hui', couleur: C.warning, tooltip: 'Aucune heure déclarée pour ce chantier aujourd\'hui' });
+      const PRIO_IND = { perte: 0, data: 1, derive: 2, no_hours: 3 };
+      const indicateurs = ind.sort((a, b) => PRIO_IND[a.type] - PRIO_IND[b.type]).slice(0, 2);
+      return { c, etatC, decision, indicateurs };
+    }).sort((a, b) => a.decision.priorite - b.decision.priorite);
+  }, [chantiersFiltres, parametres.employes, devis]);
 
-  const nbCritique = scored.filter(x => x.decision.niveau === 'critique').length;
-  const nbWarning  = scored.filter(x => x.decision.niveau === 'warning').length;
+  const nbCritique = useMemo(() => scored.filter(x => x.decision.niveau === 'critique').length, [scored]);
+  const nbWarning  = useMemo(() => scored.filter(x => x.decision.niveau === 'warning').length, [scored]);
 
   return (
     <div>
@@ -259,7 +259,7 @@ function ChantiersListe({
                         }}>{decision.label}</span>
                         {derive && (
                           <div style={{ marginTop: 4, fontSize: 10, fontWeight: 700, color: derive.statut === 'rouge' ? '#ef4444' : derive.statut === 'orange' ? '#f59e0b' : '#10b981', whiteSpace: 'nowrap' }}>
-                            EAC {derive.margeEstimeePct > 0 ? '+' : ''}{derive.margeEstimeePct}% · {derive.confiance}
+                            EAC {Number.isFinite(derive.margeEstimeePct) ? `${derive.margeEstimeePct > 0 ? '+' : ''}${derive.margeEstimeePct}%` : '—'} · {derive.confiance}
                           </div>
                         )}
                       </td>

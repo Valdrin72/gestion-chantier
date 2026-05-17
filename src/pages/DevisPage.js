@@ -509,12 +509,12 @@ function Devis() {
                               if (facturesLiees.length > 0) lignes.push(`→ ${facturesLiees.length} facture(s) liée(s) seront aussi supprimée(s)`);
                               lignes.push('Cette action est irréversible.');
                               if (!await confirmer(lignes.join('\n'), { labelOui: 'Supprimer' })) return;
-                              const idsChantiers = new Set(chantiersLies.map(ch => ch.id));
-                              setDevis(devis.filter(dv => dv.id !== d.id));
-                              if (idsChantiers.size > 0) setChantiers(chantiers.filter(ch => !idsChantiers.has(ch.id)));
+                              const idsChantiers = new Set(chantiersLies.map(ch => String(ch.id)));
+                              setDevis(devis.filter(dv => String(dv.id) !== String(d.id)));
+                              if (idsChantiers.size > 0) setChantiers(chantiers.filter(ch => !idsChantiers.has(String(ch.id))));
                               if (facturesLiees.length > 0) {
-                                const idsFactures = new Set(facturesLiees.map(f => f.id));
-                                setFactures(factures.filter(f => !idsFactures.has(f.id)));
+                                const idsFactures = new Set(facturesLiees.map(f => String(f.id)));
+                                setFactures(factures.filter(f => !idsFactures.has(String(f.id))));
                               }
                             }}
                             style={{ ...DS.iconBtn, color: '#EF4444' }}

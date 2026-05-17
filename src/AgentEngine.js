@@ -950,7 +950,7 @@ export function runRadarPrecoce({ chantiers, devis, parametres, agentContext }) 
     }
 
     // Facteur 4 : prédiction ApprentissageMarge négative
-    const pred = (agentContext?.ApprentissageMarge?.predictions || []).find(p => p.chantierId === c.id);
+    const pred = (agentContext?.ApprentissageMarge?.predictions || []).find(p => String(p.chantierId) === String(c.id));
     if (Number.isFinite(pred?.margePredictive) && pred.margePredictive < SEUILS.margeLimite) { score += 15; facteurs.push(`prédiction historique : ${Math.round(pred.margePredictive * 10) / 10}%`); }
 
     if (score >= 30) {

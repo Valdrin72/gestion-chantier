@@ -5,6 +5,7 @@ import {
 import { fmtN, C, calculerCA } from '../donnees';
 import { DS } from '../ds';
 import { Badge } from '../components/SharedBadges';
+import { useApp } from '../context/AppContext';
 
 // Supprime les balises HTML des champs texte avant sauvegarde (protection XSS dans PDF)
 const sanitiser = (obj) => {
@@ -20,6 +21,7 @@ const btnSucces = DS.btnSuccess;
 const btnDanger = DS.btnDanger;
 
 function Clients({ clients, setClients, chantiers, setChantiers, devis = [], setDevis, factures = [], setFactures, naviguer }) {
+  const { confirmer } = useApp();
   const [ajout, setAjout] = useState(false);
   const [form, setForm] = useState({ nom: '', prenom: '', entreprise: '', telephone: '', email: '', adresse: '', ville: '', canton: '', type: 'Entreprise', notes: '' });
   const sauvegarder = () => {
@@ -44,9 +46,9 @@ function Clients({ clients, setClients, chantiers, setChantiers, devis = [], set
 
       {/* ── KPI GRID ── */}
       {(() => {
-        const caTotal = clients.reduce((s, c) => { const ch = chantiers.filter(ch => ch.clientId === c.id); return s + ch.reduce((t, ch) => t + (calculerCA(ch, devis) || 0), 0); }, 0);
-        const nbAvecChantier = clients.filter(c => chantiers.some(ch => ch.clientId === c.id)).length;
-        const nbActifs = clients.filter(c => chantiers.some(ch => ch.clientId === c.id && (ch.statut || '').trim().toLowerCase() === 'en cours')).length;
+        const caTotal = clients.reduce((s, c) => { const ch = chantiers.filter(ch => String(ch.clientId) === String(c.id)); return s + ch.reduce((t, ch) => t + (calculerCA(ch, devis) || 0), 0); }, 0);
+        const nbAvecChantier = clients.filter(c => chantiers.some(ch => String(ch.clientId) === String(c.id))).length;
+        const nbActifs = clients.filter(c => chantiers.some(ch => String(ch.clientId) === String(c.id) && (ch.statut || '').trim().toLowerCase() === 'en cours')).length;
         const entreprises = clients.filter(c => c.type === 'Entreprise').length;
         const kpiItems = [
           { label: 'TOTAL CLIENTS',    val: clients.length,      Icon: Users,      ...DS.kpi.blue,   badge: `${nbActifs} actifs` },
@@ -97,7 +99,7 @@ function Clients({ clients, setClients, chantiers, setChantiers, devis = [], set
       )}
       <div style={{ display: 'grid', gridTemplateColumns: 'var(--g3)', gap: '15px' }}>
         {clients.map(c => {
-          const chantiersC = chantiers.filter(ch => ch.clientId === c.id);
+          const chantiersC = chantiers.filter(ch => String(ch.clientId) === String(c.id));
           const ca = chantiersC.reduce((t, ch) => t + (calculerCA(ch, devis) ?? 0), 0);
           return (
             <div key={c.id} className="ds-card ds-animate-in" style={{ marginBottom: 0 }}>
@@ -145,16 +147,18 @@ function Clients({ clients, setClients, chantiers, setChantiers, devis = [], set
                 <button onClick={() => { setForm(c); setAjout(true); window.scrollTo({ top: 0, behavior: 'smooth' }); }} style={{ ...DS.btnGhost, fontSize: '12px', padding: '6px 11px' }}>
                   <Pencil size={13} /> Modifier
                 </button>
-                <button onClick={() => {
-                  if (!window.confirm(`Supprimer ${c.prenom} ${c.nom} ?\nLes chantiers, devis et factures liés seront aussi supprimés.`)) return;
+                <button onClick={async () => {
+                  const nbCh = chantiers.filter(ch => String(ch.clientId) === String(c.id)).length;
+                  const msg = `Supprimer ${c.prenom} ${c.nom} ?${nbCh > 0 ? `\n→ ${nbCh} chantier(s) et leurs factures liées seront aussi supprimés.` : ''}\n\nCette action est irréversible.`;
+                  if (!await confirmer(msg, { labelOui: 'Supprimer' })) return;
                   const chantiersDuClient = chantiers.filter(ch => String(ch.clientId) === String(c.id));
-                  const idsCh = new Set(chantiersDuClient.map(ch => ch.id));
+                  const idsCh = new Set(chantiersDuClient.map(ch => String(ch.id)));
                   const devisDuClient = devis.filter(dv => String(dv.clientId) === String(c.id));
-                  const idsFactures = new Set(factures.filter(f => idsCh.has(f.chantierId) || devisDuClient.some(dv => String(dv.id) === String(f.devisId))).map(f => f.id));
-                  if (idsCh.size > 0) setChantiers(chantiers.filter(ch => !idsCh.has(ch.id)));
+                  const idsFactures = new Set(factures.filter(f => idsCh.has(String(f.chantierId)) || devisDuClient.some(dv => String(dv.id) === String(f.devisId))).map(f => f.id));
+                  if (idsCh.size > 0) setChantiers(chantiers.filter(ch => !idsCh.has(String(ch.id))));
                   if (devisDuClient.length > 0) setDevis(devis.filter(dv => String(dv.clientId) !== String(c.id)));
                   if (idsFactures.size > 0) setFactures(factures.filter(f => !idsFactures.has(f.id)));
-                  setClients(clients.filter(cl => cl.id !== c.id));
+                  setClients(clients.filter(cl => String(cl.id) !== String(c.id)));
                 }} style={{ ...btnDanger, padding: '6px 10px' }}><Trash2 size={13} /></button>
               </div>
             </div>

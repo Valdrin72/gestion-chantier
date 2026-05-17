@@ -73,6 +73,42 @@ responsable du domaine touché. L'équipe ne dort jamais.
 4. `/veille-auto` — mensuel + avant chaque mise en production
 5. `/skill-creator` — pour créer de nouveaux skills si besoin
 
+### 🧠 DOMAINE MÉMOIRE & ORCHESTRATION
+
+> **Équipe Cerveau** — s'active pour organiser, mémoriser et piloter les sprints complexes.
+
+| Skill | Déclencheur | Rôle |
+|-------|-------------|------|
+| `mempalace` (skill) | `/mempalace` | Palais de la mémoire — ancre dans Memory MCP tous les bugs, patterns et décisions de la session |
+| `claude-task-master` (skill) | `/claude-task-master [feature]` | Chef de projet IA — décompose, délègue et suit les sprints multi-agents |
+
+**Protocole Équipe Cerveau :**
+- `/mempalace` → fin de chaque session longue ou après un sprint majeur
+- `/mempalace --read` → début de session pour le briefing complet
+- `/claude-task-master` → dès qu'une feature nécessite plus de 3 tâches distinctes
+
+### 🎨 DOMAINE DESIGN & QUALITÉ VISUELLE
+
+> **Équipe Design** — s'active pour tout ce qui touche à l'interface, l'esthétique et l'expérience utilisateur.
+
+| Skill | Déclencheur | Rôle |
+|-------|-------------|------|
+| `taste-skill` (skill) | `/taste-skill` | Bon goût UI/UX — cohérence visuelle, typographie, espacement, mobile-first |
+| `huashu-design` (skill) | `/huashu-design` | Design system vivant — palette, tokens, composants atomiques, dark mode |
+| `playwright-cyna` (skill) | `/playwright-cyna` | Tests navigateur réels — flows complets, screenshots, validation visuelle |
+| `impeccable` (skill) | `/impeccable` | Perfection absolue — excellence du code + UX avant chaque release majeure |
+
+**Protocole Équipe Design :**
+1. `/taste-skill` — après tout ajout de page ou composant
+2. `/huashu-design` — pour étendre ou harmoniser le design system
+3. `/playwright-cyna` — validation visuelle dans un vrai navigateur
+4. `/impeccable` — dernier passage avant release (code + UX + calculs)
+
+**Ordre release idéal :**
+```
+/darwin → /graph-skill → /taste-skill → /playwright-cyna → /impeccable → /mempalace
+```
+
 ---
 
 ## Règles d'intervention automatique

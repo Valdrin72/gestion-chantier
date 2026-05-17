@@ -1,11 +1,37 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { Sparkles, Building2, FileText, Bell, BarChart2, Loader, AlertCircle, ChevronRight, MessageSquare, Mail, GitCompare, FileSearch, SendHorizontal, Brain, Trash2, Save, ChevronDown, ChevronUp } from 'lucide-react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import {
+  Sparkles, Building2, FileText, Bell, BarChart2, Loader, AlertCircle,
+  ChevronRight, MessageSquare, Mail, GitCompare, FileSearch,
+  SendHorizontal, Brain, Trash2, Save, ChevronDown, ChevronUp, Telescope,
+} from 'lucide-react';
 import { useClaudeAI } from '../../hooks/useClaudeAI';
 import { useApp } from '../../context/AppContext';
 import { calculerCoutsChantier } from '../../donnees';
 import { DS } from '../../ds';
 
-// ── Rendu gras inline sans dangerouslySetInnerHTML ─────────────
+// ── Mémoire CYNA partagée (localStorage) ──────────────────────
+function useMemoire() {
+  const [memoire, setMemoireState] = useState(() => localStorage.getItem('cyna_ia_memoire') || '');
+
+  const setMemoire = useCallback((texte) => {
+    setMemoireState(texte);
+    localStorage.setItem('cyna_ia_memoire', texte);
+  }, []);
+
+  const sauvegarder = useCallback((extrait) => {
+    const date = new Date().toLocaleDateString('fr-CH');
+    const ligne = `[${date}] ${extrait.slice(0, 400)}`;
+    setMemoireState(prev => {
+      const update = prev ? `${prev}\n${ligne}` : ligne;
+      localStorage.setItem('cyna_ia_memoire', update);
+      return update;
+    });
+  }, []);
+
+  return { memoire, setMemoire, sauvegarder };
+}
+
+// ── Rendu gras inline ──────────────────────────────────────────
 function GrasInline({ texte }) {
   const parties = texte.split(/\*\*(.+?)\*\*/g);
   return (
@@ -17,7 +43,7 @@ function GrasInline({ texte }) {
   );
 }
 
-// ── Rendu Markdown simplifié ────────────────────────────────────
+// ── Rendu Markdown simplifié ───────────────────────────────────
 function MarkdownSimple({ texte }) {
   if (!texte) return null;
   const lignes = texte.split('\n');
@@ -25,27 +51,27 @@ function MarkdownSimple({ texte }) {
     <div style={{ lineHeight: 1.7, color: 'var(--text-main)', fontSize: 14 }}>
       {lignes.map((ligne, i) => {
         if (!ligne.trim()) return <br key={i} />;
-        // Titre ligne entière **...**
-        if (ligne.startsWith('**') && ligne.endsWith('**')) {
+        if (ligne.startsWith('**') && ligne.endsWith('**'))
           return <p key={i} style={{ fontWeight: 700, color: DS.brand.secondary, marginTop: 12, marginBottom: 4 }}>{ligne.replace(/\*\*/g, '')}</p>;
-        }
-        // Puce
-        if (ligne.startsWith('- ') || ligne.startsWith('• ')) {
+        if (ligne.startsWith('- ') || ligne.startsWith('• '))
           return <p key={i} style={{ paddingLeft: 16, marginBottom: 4 }}>• <GrasInline texte={ligne.replace(/^[-•]\s/, '')} /></p>;
-        }
         return <p key={i} style={{ marginBottom: 4 }}><GrasInline texte={ligne} /></p>;
       })}
     </div>
   );
 }
 
-// ── Bloc résultat ───────────────────────────────────────────────
-function ResultatIA({ texte, error, loading }) {
+// ── Bloc résultat avec bouton Mémoriser ────────────────────────
+function ResultatIA({ texte, error, loading, onSauvegarder }) {
+  const [memorise, setMemorise] = useState(false);
+
+  useEffect(() => { setMemorise(false); }, [texte]);
+
   if (loading) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '24px 0', color: DS.brand.secondary }}>
         <Loader size={16} style={{ animation: 'spin 1s linear infinite' }} />
-        <span style={{ fontSize: 14 }}>Claude analyse en cours...</span>
+        <span style={{ fontSize: 14 }}>Claude analyse en cours…</span>
       </div>
     );
   }
@@ -56,11 +82,6 @@ function ResultatIA({ texte, error, loading }) {
         <div>
           <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 2 }}>Erreur</div>
           <div style={{ fontSize: 13 }}>{error}</div>
-          {error.includes('Edge Function') || error.includes('invoke') ? (
-            <div style={{ fontSize: 12, marginTop: 6, color: '#991b1b' }}>
-              ℹ️ Vérifier que la fonction "claude-ia" est déployée dans Supabase Dashboard.
-            </div>
-          ) : null}
         </div>
       </div>
     );
@@ -68,22 +89,75 @@ function ResultatIA({ texte, error, loading }) {
   if (!texte) return null;
   return (
     <div style={{ background: 'var(--bg-page)', borderRadius: 10, padding: '16px 18px', border: '1px solid var(--border)', marginTop: 16 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12, color: DS.brand.secondary, fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-        <Sparkles size={12} />
-        Analyse Claude AI
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12, paddingBottom: 10, borderBottom: '1px solid var(--border)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: DS.brand.secondary, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+          <Sparkles size={12} /> Analyse Claude AI
+        </div>
+        {onSauvegarder && (
+          <button
+            onClick={() => { onSauvegarder(texte); setMemorise(true); }}
+            style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 5, padding: '5px 12px', borderRadius: 8, border: `1px solid ${DS.brand.secondary}55`, background: memorise ? DS.brand.soft : 'transparent', color: DS.brand.secondary, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+            <Brain size={12} />
+            {memorise ? 'Mémorisé ✓' : 'Mémoriser'}
+          </button>
+        )}
       </div>
       <MarkdownSimple texte={texte} />
     </div>
   );
 }
 
-// ── Onglet : Analyser un chantier ──────────────────────────────
-function AnalyseChantier() {
+// ── Panneau mémoire CYNA ───────────────────────────────────────
+function PanneauMemoire({ memoire, onSave }) {
+  const [texte, setTexte] = useState(memoire);
+  const [sauve, setSauve] = useState(false);
+
+  useEffect(() => { setTexte(memoire); }, [memoire]);
+
+  const sauver = () => {
+    onSave(texte);
+    setSauve(true);
+    setTimeout(() => setSauve(false), 2000);
+  };
+
+  return (
+    <div style={{ background: 'var(--bg-page)', border: `1px solid ${DS.brand.secondary}44`, borderRadius: 10, padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div style={{ fontSize: 12, fontWeight: 700, color: DS.brand.secondary, display: 'flex', alignItems: 'center', gap: 6 }}>
+        <Brain size={13} /> Mémoire CYNA — Ce que Claude sait sur votre entreprise
+      </div>
+      <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: 0 }}>
+        Tout ce que vous écrivez ici est injecté dans chaque analyse et conversation. Les insights mémorisés via le bouton "Mémoriser" s'accumulent automatiquement ici.
+      </p>
+      <textarea
+        value={texte}
+        onChange={e => setTexte(e.target.value)}
+        rows={6}
+        placeholder={`Exemples :\n- CYNA SÀRL spécialisée en faux-plafonds et faux-planchers à Genève\n- Principaux clients : architectes et promoteurs genevois\n- Tarif journalier moyen : CHF 750 chargé\n- Marge cible : 22% minimum\n- Équipe : 8 employés dont 3 chefs de chantier`}
+        style={{ padding: '9px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-main)', fontSize: 13, resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.6 }}
+      />
+      <div style={{ display: 'flex', gap: 8 }}>
+        <button onClick={sauver}
+          style={{ ...DS.btnPrimary, display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
+          <Save size={13} />
+          {sauve ? 'Sauvegardé ✓' : 'Sauvegarder'}
+        </button>
+        {texte && (
+          <button onClick={() => { setTexte(''); onSave(''); }}
+            style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '8px 14px', borderRadius: 8, border: '1px solid #fecaca', background: '#fef2f2', color: '#dc2626', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>
+            <Trash2 size={13} /> Effacer tout
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Onglet : Analyser un chantier ─────────────────────────────
+function AnalyseChantier({ memoire, onSauvegarder }) {
   const { chantiers, devis, parametres } = useApp();
   const { appeler, loading, error } = useClaudeAI();
   const [chantierId, setChantierId] = useState('');
   const [resultat, setResultat] = useState('');
-
   const actifs = chantiers.filter(c => c.statut?.trim().toLowerCase() !== 'annulé');
 
   const analyser = async () => {
@@ -92,16 +166,10 @@ function AnalyseChantier() {
     const couts = calculerCoutsChantier(c, parametres?.employes || [], parametres?.localites || [], parametres?.parametres || {}, devis);
     const joursReels = new Set((c.journal || []).map(e => e.date).filter(Boolean)).size;
     const texte = await appeler('analyser_chantier', {
-      nom: c.nom || c.numero,
-      ca: couts.montantTotal,
-      coutReel: couts.totalCoutsReel,
-      margePct: couts.margeReelPct,
-      avancement: parseFloat(c.avancement) || 0,
-      joursPrevus: c.nombreJours,
-      joursReels,
-      statut: c.statut,
-      eac: couts.eac,
-      rad: couts.rad,
+      nom: c.nom || c.numero, ca: couts.montantTotal, coutReel: couts.totalCoutsReel,
+      margePct: couts.margeReelPct, avancement: parseFloat(c.avancement) || 0,
+      joursPrevus: c.nombreJours, joursReels, statut: c.statut,
+      eac: couts.eac, rad: couts.rad, contexte_cyna: memoire,
     });
     setResultat(texte);
   };
@@ -119,24 +187,23 @@ function AnalyseChantier() {
         </select>
         <button onClick={analyser} disabled={!chantierId || loading}
           style={{ ...DS.btnPrimary, display: 'flex', alignItems: 'center', gap: 6, opacity: (!chantierId || loading) ? 0.6 : 1 }}>
-          <Sparkles size={14} />
-          Analyser
+          <Sparkles size={14} /> Analyser
         </button>
       </div>
-      <ResultatIA texte={resultat} error={error} loading={loading} />
+      <ResultatIA texte={resultat} error={error} loading={loading} onSauvegarder={onSauvegarder} />
     </div>
   );
 }
 
-// ── Onglet : Suggestion de devis ───────────────────────────────
-function SuggestionDevis() {
+// ── Onglet : Suggestion de devis ──────────────────────────────
+function SuggestionDevis({ memoire, onSauvegarder }) {
   const { appeler, loading, error } = useClaudeAI();
   const [form, setForm] = useState({ description: '', typeTraveaux: '', surface: '', finition: 'standard' });
   const [resultat, setResultat] = useState('');
 
   const generer = async () => {
     if (!form.description.trim()) return;
-    const texte = await appeler('suggerer_devis', form);
+    const texte = await appeler('suggerer_devis', { ...form, contexte_cyna: memoire });
     setResultat(texte);
   };
 
@@ -160,9 +227,9 @@ function SuggestionDevis() {
       <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0 }}>
         Décris les travaux et Claude génère un chiffrage BTP Genève avec postes et prix.
       </p>
-      {champ('Description des travaux *', 'description', { textarea: true, placeholder: 'Ex: Pose de faux-plafond en plaque de plâtre + isolation acoustique dans un bureau de 80m²...' })}
+      {champ('Description des travaux *', 'description', { textarea: true, placeholder: 'Ex: Pose de faux-plafond en plaque de plâtre + isolation acoustique dans un bureau de 80m²…' })}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12 }}>
-        {champ('Type de travaux', 'typeTraveaux', { placeholder: 'Ex: Faux-plafond, carrelage...' })}
+        {champ('Type de travaux', 'typeTraveaux', { placeholder: 'Ex: Faux-plafond, carrelage…' })}
         {champ('Surface / Quantité', 'surface', { placeholder: 'Ex: 80 m²' })}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
           <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>Niveau de finition</label>
@@ -176,31 +243,25 @@ function SuggestionDevis() {
       </div>
       <button onClick={generer} disabled={!form.description.trim() || loading}
         style={{ ...DS.btnPrimary, display: 'flex', alignItems: 'center', gap: 6, alignSelf: 'flex-start', opacity: (!form.description.trim() || loading) ? 0.6 : 1 }}>
-        <Sparkles size={14} />
-        Générer le chiffrage
+        <Sparkles size={14} /> Générer le chiffrage
       </button>
-      <ResultatIA texte={resultat} error={error} loading={loading} />
+      <ResultatIA texte={resultat} error={error} loading={loading} onSauvegarder={onSauvegarder} />
     </div>
   );
 }
 
-// ── Onglet : Explication des alertes ───────────────────────────
-function ExplicationAlertes() {
+// ── Onglet : Explication des alertes ──────────────────────────
+function ExplicationAlertes({ memoire, onSauvegarder }) {
   const { agentState } = useApp();
   const { appeler, loading, error } = useClaudeAI();
   const [resultat, setResultat] = useState('');
-
   const alertes = agentState?.alertes || [];
   const nonLues = alertes.filter(a => !a.lu);
 
   const expliquer = async () => {
     const texte = await appeler('expliquer_alertes', {
-      alertes: nonLues.slice(0, 15).map(a => ({
-        niveau: a.niveau,
-        message: a.message,
-        detail: a.detail,
-        agent: a.agent,
-      })),
+      alertes: nonLues.slice(0, 15).map(a => ({ niveau: a.niveau, message: a.message, detail: a.detail, agent: a.agent })),
+      contexte_cyna: memoire,
     });
     setResultat(texte);
   };
@@ -220,16 +281,15 @@ function ExplicationAlertes() {
       </div>
       <button onClick={expliquer} disabled={nonLues.length === 0 || loading}
         style={{ ...DS.btnPrimary, display: 'flex', alignItems: 'center', gap: 6, opacity: (nonLues.length === 0 || loading) ? 0.6 : 1 }}>
-        <Sparkles size={14} />
-        Expliquer les alertes
+        <Sparkles size={14} /> Expliquer les alertes
       </button>
-      <ResultatIA texte={resultat} error={error} loading={loading} />
+      <ResultatIA texte={resultat} error={error} loading={loading} onSauvegarder={onSauvegarder} />
     </div>
   );
 }
 
-// ── Onglet : Analyse globale ────────────────────────────────────
-function AnalysePortefeuille() {
+// ── Onglet : Analyse globale ───────────────────────────────────
+function AnalysePortefeuille({ memoire, onSauvegarder }) {
   const { chantiers, devis, factures, parametres } = useApp();
   const { appeler, loading, error } = useClaudeAI();
   const [resultat, setResultat] = useState('');
@@ -238,24 +298,13 @@ function AnalysePortefeuille() {
     const actifs = chantiers.filter(c => c.statut?.trim().toLowerCase() !== 'annulé');
     const chantiersData = actifs.map(c => {
       const couts = calculerCoutsChantier(c, parametres?.employes || [], parametres?.localites || [], parametres?.parametres || {}, devis);
-      return {
-        nom: c.nom || c.numero,
-        ca: couts.montantTotal,
-        marge: couts.margeReelPct,
-        statut: c.statut,
-      };
+      return { nom: c.nom || c.numero, ca: couts.montantTotal, marge: couts.margeReelPct, statut: c.statut };
     });
-
     const caTotal = chantiersData.reduce((s, c) => s + (c.ca || 0), 0);
     const margesValides = chantiersData.filter(c => c.marge != null && Number.isFinite(c.marge));
-    const margeMoyenne = margesValides.length > 0
-      ? margesValides.reduce((s, c) => s + c.marge, 0) / margesValides.length
-      : null;
-    const facture = factures
-      .filter(f => f.statut?.trim().toLowerCase() === 'payée')
-      .reduce((s, f) => s + (parseFloat(f.montantHT) || 0), 0);
-
-    const texte = await appeler('analyse_portefeuille', { chantiers: chantiersData, caTotal, margeMoyenne, facture });
+    const margeMoyenne = margesValides.length > 0 ? margesValides.reduce((s, c) => s + c.marge, 0) / margesValides.length : null;
+    const facture = factures.filter(f => f.statut?.trim().toLowerCase() === 'payée').reduce((s, f) => s + (parseFloat(f.montantHT) || 0), 0);
+    const texte = await appeler('analyse_portefeuille', { chantiers: chantiersData, caTotal, margeMoyenne, facture, contexte_cyna: memoire });
     setResultat(texte);
   };
 
@@ -267,11 +316,7 @@ function AnalysePortefeuille() {
         Analyse stratégique de ton portefeuille complet — tendances, risques, décisions à prendre.
       </p>
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 20 }}>
-        {[
-          { label: 'Chantiers actifs', val: nbActifs },
-          { label: 'Total chantiers', val: chantiers.length },
-          { label: 'Factures', val: factures.length },
-        ].map(k => (
+        {[{ label: 'Chantiers actifs', val: nbActifs }, { label: 'Total chantiers', val: chantiers.length }, { label: 'Factures', val: factures.length }].map(k => (
           <div key={k.label} style={{ padding: '10px 16px', background: DS.brand.soft, borderRadius: 10, border: `1px solid ${DS.brand.secondary}33` }}>
             <div style={{ fontSize: 20, fontWeight: 800, color: DS.brand.secondary }}>{k.val}</div>
             <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{k.label}</div>
@@ -280,15 +325,94 @@ function AnalysePortefeuille() {
       </div>
       <button onClick={analyser} disabled={chantiers.length === 0 || loading}
         style={{ ...DS.btnPrimary, display: 'flex', alignItems: 'center', gap: 6, opacity: (chantiers.length === 0 || loading) ? 0.6 : 1 }}>
-        <Sparkles size={14} />
-        Analyser le portefeuille
+        <Sparkles size={14} /> Analyser le portefeuille
       </button>
-      <ResultatIA texte={resultat} error={error} loading={loading} />
+      <ResultatIA texte={resultat} error={error} loading={loading} onSauvegarder={onSauvegarder} />
     </div>
   );
 }
 
-// ── Bulle de message ───────────────────────────────────────────
+// ── Onglet : Anticiper ─────────────────────────────────────────
+function Anticiper({ memoire, onSauvegarder }) {
+  const { chantiers, devis, factures, parametres, agentState } = useApp();
+  const { appeler, loading, error } = useClaudeAI();
+  const [horizon, setHorizon] = useState('30');
+  const [resultat, setResultat] = useState('');
+
+  const anticiper = async () => {
+    const chantiersData = chantiers
+      .filter(c => c.statut?.trim().toLowerCase() !== 'annulé')
+      .map(c => {
+        const couts = calculerCoutsChantier(c, parametres?.employes || [], parametres?.localites || [], parametres?.parametres || {}, devis);
+        return {
+          nom: c.nom || c.numero,
+          statut: c.statut,
+          avancement: parseFloat(c.avancement) || 0,
+          marge: couts.margeReelPct,
+          ca: couts.montantTotal,
+          coutReel: couts.totalCoutsReel,
+          eac: couts.eac,
+          rad: couts.rad,
+          finPrevue: c.dateFin,
+          joursPrevus: c.nombreJours,
+        };
+      });
+
+    const facturesEnCours = factures
+      .filter(f => f.statut?.trim().toLowerCase() !== 'payée')
+      .map(f => ({ montantHT: parseFloat(f.montantHT) || 0, statut: f.statut, dateEmission: f.dateEmission }));
+
+    const alertes = (agentState?.alertes || [])
+      .filter(a => !a.lu)
+      .slice(0, 20)
+      .map(a => ({ niveau: a.niveau, message: a.message }));
+
+    const texte = await appeler('anticiper', {
+      horizon: parseInt(horizon),
+      chantiers: chantiersData,
+      facturesEnCours,
+      alertes,
+      contexte_cyna: memoire,
+    });
+    setResultat(texte);
+  };
+
+  return (
+    <div>
+      <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 16 }}>
+        Claude analyse toutes vos données en temps réel et prédit ce qui va se passer — risques, opportunités, trésorerie, chantiers en danger.
+      </p>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
+        <span style={{ fontSize: 13, fontWeight: 600 }}>Horizon de prévision :</span>
+        {['30', '60', '90'].map(j => (
+          <button key={j} onClick={() => setHorizon(j)}
+            style={{ padding: '7px 18px', borderRadius: 20, border: `1px solid ${horizon === j ? DS.brand.secondary : 'var(--border)'}`, background: horizon === j ? DS.brand.soft : 'transparent', color: horizon === j ? DS.brand.secondary : 'var(--text-main)', fontWeight: horizon === j ? 700 : 400, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>
+            J+{j}
+          </button>
+        ))}
+      </div>
+      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 20 }}>
+        {[
+          { label: 'Chantiers analysés', val: chantiers.filter(c => c.statut?.trim().toLowerCase() !== 'annulé').length },
+          { label: 'Factures en attente', val: factures.filter(f => f.statut?.trim().toLowerCase() !== 'payée').length },
+          { label: 'Alertes actives', val: (agentState?.alertes || []).filter(a => !a.lu).length },
+        ].map(k => (
+          <div key={k.label} style={{ padding: '10px 16px', background: DS.brand.soft, borderRadius: 10, border: `1px solid ${DS.brand.secondary}33` }}>
+            <div style={{ fontSize: 20, fontWeight: 800, color: DS.brand.secondary }}>{k.val}</div>
+            <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{k.label}</div>
+          </div>
+        ))}
+      </div>
+      <button onClick={anticiper} disabled={chantiers.length === 0 || loading}
+        style={{ ...DS.btnPrimary, display: 'flex', alignItems: 'center', gap: 6, opacity: (chantiers.length === 0 || loading) ? 0.6 : 1 }}>
+        <Telescope size={14} /> Anticiper à J+{horizon}
+      </button>
+      <ResultatIA texte={resultat} error={error} loading={loading} onSauvegarder={onSauvegarder} />
+    </div>
+  );
+}
+
+// ── Bulle de message (Chat libre) ──────────────────────────────
 function BulleMessage({ msg }) {
   const estUser = msg.role === 'user';
   return (
@@ -297,14 +421,12 @@ function BulleMessage({ msg }) {
         {estUser ? 'Vous' : '✦ Claude AI'}
       </div>
       <div style={{
-        maxWidth: '88%',
-        padding: '10px 14px',
+        maxWidth: '88%', padding: '10px 14px',
         borderRadius: estUser ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
         background: estUser ? DS.brand.secondary : 'var(--bg-page)',
         color: estUser ? '#fff' : 'var(--text-main)',
         border: estUser ? 'none' : '1px solid var(--border)',
-        fontSize: 13,
-        lineHeight: 1.65,
+        fontSize: 13, lineHeight: 1.65,
       }}>
         {estUser ? msg.content : <MarkdownSimple texte={msg.content} />}
       </div>
@@ -312,58 +434,13 @@ function BulleMessage({ msg }) {
   );
 }
 
-// ── Panneau mémoire CYNA ───────────────────────────────────────
-function PanneauMemoire({ memoire, onSave }) {
-  const [texte, setTexte] = useState(memoire);
-  const [sauve, setSauve] = useState(false);
-
-  const sauver = () => {
-    onSave(texte);
-    setSauve(true);
-    setTimeout(() => setSauve(false), 2000);
-  };
-
-  return (
-    <div style={{ background: 'var(--bg-page)', border: `1px solid ${DS.brand.secondary}44`, borderRadius: 10, padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-      <div style={{ fontSize: 12, fontWeight: 700, color: DS.brand.secondary, display: 'flex', alignItems: 'center', gap: 6 }}>
-        <Brain size={13} /> Mémoire CYNA — Ce que Claude sait sur votre entreprise
-      </div>
-      <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: 0 }}>
-        Écrivez ici tout ce que Claude doit mémoriser sur CYNA (clients importants, types de chantiers, préférences, tarifs, équipe…). Cette mémoire est active dans chaque conversation.
-      </p>
-      <textarea
-        value={texte}
-        onChange={e => setTexte(e.target.value)}
-        rows={6}
-        placeholder={`Exemples :\n- CYNA SÀRL est spécialisée en faux-plafonds et faux-planchers à Genève\n- Nos principaux clients : architectes et promoteurs genevois\n- Tarif journalier employé moyen : CHF 750 chargé\n- Marge cible : 22% minimum\n- Equipe : 8 employés dont 3 chefs de chantier`}
-        style={{ padding: '9px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-main)', fontSize: 13, resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.6 }}
-      />
-      <div style={{ display: 'flex', gap: 8 }}>
-        <button onClick={sauver}
-          style={{ ...DS.btnPrimary, display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
-          <Save size={13} />
-          {sauve ? 'Sauvegardé ✓' : 'Sauvegarder la mémoire'}
-        </button>
-        {texte && (
-          <button onClick={() => { setTexte(''); onSave(''); }}
-            style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '8px 14px', borderRadius: 8, border: '1px solid #fecaca', background: '#fef2f2', color: '#dc2626', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>
-            <Trash2 size={13} />
-            Effacer
-          </button>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ── Onglet : Chat libre (conversation multi-tours) ─────────────
-function ChatLibre() {
+// ── Onglet : Chat libre (multi-tours + mémoire) ────────────────
+function ChatLibre({ memoire, setMemoire }) {
   const { appeler, loading, error } = useClaudeAI();
   const [messages, setMessages] = useState(() => {
     try { return JSON.parse(localStorage.getItem('cyna_chat_history') || '[]'); } catch { return []; }
   });
   const [input, setInput] = useState('');
-  const [memoire, setMemoire] = useState(() => localStorage.getItem('cyna_ia_memoire') || '');
   const [showMemoire, setShowMemoire] = useState(false);
   const bottomRef = useRef(null);
 
@@ -374,37 +451,26 @@ function ChatLibre() {
     }
   }, [messages]);
 
-  const sauvegarderMemoire = (texte) => {
-    setMemoire(texte);
-    localStorage.setItem('cyna_ia_memoire', texte);
-  };
-
   const envoyer = async () => {
     const question = input.trim();
     if (!question || loading) return;
     setInput('');
     const newMessages = [...messages, { role: 'user', content: question }];
     setMessages(newMessages);
-
-    const reponse = await appeler('chat_libre', {
-      messages: newMessages,
-      contexte_cyna: memoire,
-    });
-
-    if (reponse) {
-      setMessages(prev => [...prev, { role: 'assistant', content: reponse }]);
-    }
+    const reponse = await appeler('chat_libre', { messages: newMessages, contexte_cyna: memoire });
+    if (reponse) setMessages(prev => [...prev, { role: 'assistant', content: reponse }]);
   };
 
-  const effacerConversation = () => {
-    setMessages([]);
-    localStorage.removeItem('cyna_chat_history');
+  const sauvegarderInsight = (msg) => {
+    if (msg.role !== 'assistant') return;
+    const date = new Date().toLocaleDateString('fr-CH');
+    const ligne = `[${date}] ${msg.content.slice(0, 300)}`;
+    const update = memoire ? `${memoire}\n${ligne}` : ligne;
+    setMemoire(update);
   };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12, height: 'calc(100vh - 280px)', minHeight: 420 }}>
-
-      {/* Barre d'outils */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
         <button onClick={() => setShowMemoire(v => !v)}
           style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', borderRadius: 8, border: `1px solid ${DS.brand.secondary}55`, background: memoire ? DS.brand.soft : 'transparent', color: DS.brand.secondary, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
@@ -413,10 +479,9 @@ function ChatLibre() {
           {showMemoire ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
         </button>
         {messages.length > 0 && (
-          <button onClick={effacerConversation}
+          <button onClick={() => { setMessages([]); localStorage.removeItem('cyna_chat_history'); }}
             style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-muted)', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>
-            <Trash2 size={12} />
-            Nouvelle conversation
+            <Trash2 size={12} /> Nouvelle conversation
           </button>
         )}
         <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--text-muted)' }}>
@@ -424,10 +489,8 @@ function ChatLibre() {
         </span>
       </div>
 
-      {/* Panneau mémoire (rétractable) */}
-      {showMemoire && <PanneauMemoire memoire={memoire} onSave={sauvegarderMemoire} />}
+      {showMemoire && <PanneauMemoire memoire={memoire} onSave={setMemoire} />}
 
-      {/* Zone de conversation */}
       <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 14, padding: '4px 2px' }}>
         {messages.length === 0 && (
           <div style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: 13, padding: '40px 0' }}>
@@ -437,7 +500,19 @@ function ChatLibre() {
             <div style={{ fontSize: 12, marginTop: 4 }}>Je mémorise notre conversation et apprends à connaître CYNA.</div>
           </div>
         )}
-        {messages.map((msg, i) => <BulleMessage key={i} msg={msg} />)}
+        {messages.map((msg, i) => (
+          <div key={i}>
+            <BulleMessage msg={msg} />
+            {msg.role === 'assistant' && (
+              <div style={{ display: 'flex', justifyContent: 'flex-start', marginTop: 4, paddingLeft: 4 }}>
+                <button onClick={() => sauvegarderInsight(msg)}
+                  style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '3px 10px', borderRadius: 6, border: `1px solid ${DS.brand.secondary}44`, background: 'transparent', color: DS.brand.secondary, fontSize: 11, cursor: 'pointer', fontFamily: 'inherit' }}>
+                  <Brain size={10} /> Mémoriser
+                </button>
+              </div>
+            )}
+          </div>
+        ))}
         {loading && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: DS.brand.secondary, fontSize: 13 }}>
             <Loader size={14} style={{ animation: 'spin 1s linear infinite' }} />
@@ -446,18 +521,14 @@ function ChatLibre() {
         )}
         {error && (
           <div style={{ display: 'flex', gap: 8, padding: '10px 14px', background: '#fef2f2', borderRadius: 10, border: '1px solid #fecaca', color: '#dc2626', fontSize: 13 }}>
-            <AlertCircle size={14} style={{ flexShrink: 0, marginTop: 1 }} />
-            {error}
+            <AlertCircle size={14} style={{ flexShrink: 0, marginTop: 1 }} /> {error}
           </div>
         )}
         <div ref={bottomRef} />
       </div>
 
-      {/* Zone de saisie */}
       <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', borderTop: '1px solid var(--border)', paddingTop: 12 }}>
-        <textarea
-          value={input}
-          onChange={e => setInput(e.target.value)}
+        <textarea value={input} onChange={e => setInput(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); envoyer(); } }}
           placeholder="Posez votre question… (Entrée pour envoyer, Maj+Entrée pour saut de ligne)"
           rows={2}
@@ -473,20 +544,19 @@ function ChatLibre() {
 }
 
 // ── Onglet : Générer email ─────────────────────────────────────
-function GenererEmail() {
+function GenererEmail({ memoire, onSauvegarder }) {
   const { appeler, loading, error } = useClaudeAI();
   const [form, setForm] = useState({ type: 'Relance facture', destinataire: '', contexte: '', montant: '' });
   const [resultat, setResultat] = useState('');
-
-  const generer = async () => {
-    if (!form.destinataire.trim() || !form.contexte.trim()) return;
-    const texte = await appeler('generer_email', form);
-    setResultat(texte);
-  };
-
   const inputStyle = { padding: '9px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-main)', fontSize: 13, fontFamily: 'inherit' };
   const labelStyle = { fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' };
   const fieldStyle = { display: 'flex', flexDirection: 'column', gap: 4 };
+
+  const generer = async () => {
+    if (!form.destinataire.trim() || !form.contexte.trim()) return;
+    const texte = await appeler('generer_email', { ...form, contexte_cyna: memoire });
+    setResultat(texte);
+  };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -496,8 +566,7 @@ function GenererEmail() {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
         <div style={fieldStyle}>
           <label style={labelStyle}>Type d'email *</label>
-          <select value={form.type} onChange={e => { setForm(f => ({ ...f, type: e.target.value })); setResultat(''); }}
-            style={inputStyle}>
+          <select value={form.type} onChange={e => { setForm(f => ({ ...f, type: e.target.value })); setResultat(''); }} style={inputStyle}>
             <option value="Relance facture">Relance facture</option>
             <option value="Avis de travaux">Avis de travaux</option>
             <option value="Envoi devis">Envoi devis</option>
@@ -505,78 +574,65 @@ function GenererEmail() {
           </select>
         </div>
         <div style={fieldStyle}>
-          <label style={labelStyle}>Destinataire (nom client) *</label>
-          <input type="text" value={form.destinataire}
-            onChange={e => { setForm(f => ({ ...f, destinataire: e.target.value })); setResultat(''); }}
-            placeholder="Ex: M. Dupont, Société XYZ SA"
-            style={inputStyle} />
+          <label style={labelStyle}>Destinataire *</label>
+          <input type="text" value={form.destinataire} onChange={e => { setForm(f => ({ ...f, destinataire: e.target.value })); setResultat(''); }} placeholder="Ex: M. Dupont, Société XYZ SA" style={inputStyle} />
         </div>
         <div style={fieldStyle}>
           <label style={labelStyle}>Montant (optionnel)</label>
-          <input type="text" value={form.montant}
-            onChange={e => setForm(f => ({ ...f, montant: e.target.value }))}
-            placeholder="Ex: CHF 12'000"
-            style={inputStyle} />
+          <input type="text" value={form.montant} onChange={e => setForm(f => ({ ...f, montant: e.target.value }))} placeholder="Ex: CHF 12'000" style={inputStyle} />
         </div>
       </div>
       <div style={fieldStyle}>
         <label style={labelStyle}>Contexte *</label>
-        <textarea value={form.contexte}
-          onChange={e => { setForm(f => ({ ...f, contexte: e.target.value })); setResultat(''); }}
-          rows={3}
+        <textarea value={form.contexte} onChange={e => { setForm(f => ({ ...f, contexte: e.target.value })); setResultat(''); }} rows={3}
           placeholder="Ex: Facture du 15 mai, CHF 12'000, impayée depuis 35 jours. Deuxième relance."
           style={{ ...inputStyle, resize: 'vertical' }} />
       </div>
       <button onClick={generer} disabled={!form.destinataire.trim() || !form.contexte.trim() || loading}
         style={{ ...DS.btnPrimary, display: 'flex', alignItems: 'center', gap: 6, alignSelf: 'flex-start', opacity: (!form.destinataire.trim() || !form.contexte.trim() || loading) ? 0.6 : 1 }}>
-        <Sparkles size={14} />
-        Générer l'email
+        <Sparkles size={14} /> Générer l'email
       </button>
-      <ResultatIA texte={resultat} error={error} loading={loading} />
+      <ResultatIA texte={resultat} error={error} loading={loading} onSauvegarder={onSauvegarder} />
     </div>
   );
 }
 
 // ── Onglet : Comparer devis ────────────────────────────────────
-function ComparerDevis() {
+function ComparerDevis({ memoire, onSauvegarder }) {
   const { appeler, loading, error } = useClaudeAI();
   const [devis1, setDevis1] = useState({ nom: '', montant: '', description: '' });
   const [devis2, setDevis2] = useState({ nom: '', montant: '', description: '' });
   const [criteres, setCriteres] = useState('');
   const [resultat, setResultat] = useState('');
+  const inputStyle = { padding: '9px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-main)', fontSize: 13, fontFamily: 'inherit', width: '100%', boxSizing: 'border-box' };
+  const labelStyle = { fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' };
+  const fieldStyle = { display: 'flex', flexDirection: 'column', gap: 4 };
 
   const comparer = async () => {
     if (!devis1.nom.trim() || !devis2.nom.trim()) return;
     const texte = await appeler('comparer_devis', {
       devis1: { ...devis1, montant: parseFloat(devis1.montant) || 0 },
       devis2: { ...devis2, montant: parseFloat(devis2.montant) || 0 },
-      criteres,
+      criteres, contexte_cyna: memoire,
     });
     setResultat(texte);
   };
-
-  const inputStyle = { padding: '9px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-main)', fontSize: 13, fontFamily: 'inherit', width: '100%', boxSizing: 'border-box' };
-  const labelStyle = { fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' };
-  const fieldStyle = { display: 'flex', flexDirection: 'column', gap: 4 };
 
   const ColonneDevis = ({ titre, vals, setVals, accent }) => (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 10, padding: '14px 16px', background: DS.brand.soft, borderRadius: 10, border: `1px solid ${accent}33` }}>
       <div style={{ fontSize: 12, fontWeight: 700, color: accent, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 2 }}>{titre}</div>
       <div style={fieldStyle}>
         <label style={labelStyle}>Nom / Référence *</label>
-        <input type="text" value={vals.nom} onChange={e => { setVals(v => ({ ...v, nom: e.target.value })); setResultat(''); }}
-          placeholder="Ex: Devis Entreprise Alpha" style={inputStyle} />
+        <input type="text" value={vals.nom} onChange={e => { setVals(v => ({ ...v, nom: e.target.value })); setResultat(''); }} placeholder="Ex: Devis Entreprise Alpha" style={inputStyle} />
       </div>
       <div style={fieldStyle}>
         <label style={labelStyle}>Montant HT (CHF)</label>
-        <input type="number" value={vals.montant} onChange={e => setVals(v => ({ ...v, montant: e.target.value }))}
-          placeholder="Ex: 45000" style={inputStyle} />
+        <input type="number" value={vals.montant} onChange={e => setVals(v => ({ ...v, montant: e.target.value }))} placeholder="Ex: 45000" style={inputStyle} />
       </div>
       <div style={fieldStyle}>
         <label style={labelStyle}>Description / Prestations</label>
-        <textarea value={vals.description} onChange={e => setVals(v => ({ ...v, description: e.target.value }))}
-          rows={3} placeholder="Détails des prestations, délais, garanties..."
-          style={{ ...inputStyle, resize: 'vertical' }} />
+        <textarea value={vals.description} onChange={e => setVals(v => ({ ...v, description: e.target.value }))} rows={3}
+          placeholder="Détails des prestations, délais, garanties…" style={{ ...inputStyle, resize: 'vertical' }} />
       </div>
     </div>
   );
@@ -598,16 +654,15 @@ function ComparerDevis() {
       </div>
       <button onClick={comparer} disabled={!devis1.nom.trim() || !devis2.nom.trim() || loading}
         style={{ ...DS.btnPrimary, display: 'flex', alignItems: 'center', gap: 6, alignSelf: 'flex-start', opacity: (!devis1.nom.trim() || !devis2.nom.trim() || loading) ? 0.6 : 1 }}>
-        <Sparkles size={14} />
-        Comparer
+        <Sparkles size={14} /> Comparer
       </button>
-      <ResultatIA texte={resultat} error={error} loading={loading} />
+      <ResultatIA texte={resultat} error={error} loading={loading} onSauvegarder={onSauvegarder} />
     </div>
   );
 }
 
 // ── Onglet : Analyser PDF ──────────────────────────────────────
-function AnalyserPdfTexte() {
+function AnalyserPdfTexte({ memoire, onSauvegarder }) {
   const { appeler, loading, error } = useClaudeAI();
   const [texte, setTexte] = useState('');
   const [typeDoc, setTypeDoc] = useState('Devis');
@@ -615,14 +670,14 @@ function AnalyserPdfTexte() {
 
   const analyser = async () => {
     if (!texte.trim()) return;
-    const rep = await appeler('analyser_pdf_texte', { texte, typeDoc });
+    const rep = await appeler('analyser_pdf_texte', { texte, typeDoc, contexte_cyna: memoire });
     setResultat(rep);
   };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0 }}>
-        Colle le texte extrait d'un document PDF et Claude en fait l'analyse détaillée : points clés, risques, montants, délais.
+        Colle le texte extrait d'un document PDF et Claude en fait l'analyse détaillée.
       </p>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
         <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>Type de document *</label>
@@ -637,44 +692,62 @@ function AnalyserPdfTexte() {
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
         <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>Texte du document *</label>
-        <textarea
-          value={texte}
-          onChange={e => { setTexte(e.target.value); setResultat(''); }}
-          rows={8}
-          placeholder="Colle le texte du PDF ici... (Ctrl+A dans votre lecteur PDF, puis copier-coller)"
-          style={{ padding: '9px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-main)', fontSize: 13, resize: 'vertical', fontFamily: 'inherit' }}
-        />
+        <textarea value={texte} onChange={e => { setTexte(e.target.value); setResultat(''); }} rows={8}
+          placeholder="Colle le texte du PDF ici… (Ctrl+A dans votre lecteur PDF, puis copier-coller)"
+          style={{ padding: '9px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-main)', fontSize: 13, resize: 'vertical', fontFamily: 'inherit' }} />
       </div>
       <button onClick={analyser} disabled={!texte.trim() || loading}
         style={{ ...DS.btnPrimary, display: 'flex', alignItems: 'center', gap: 6, alignSelf: 'flex-start', opacity: (!texte.trim() || loading) ? 0.6 : 1 }}>
-        <Sparkles size={14} />
-        Analyser
+        <Sparkles size={14} /> Analyser
       </button>
-      <ResultatIA texte={resultat} error={error} loading={loading} />
+      <ResultatIA texte={resultat} error={error} loading={loading} onSauvegarder={onSauvegarder} />
     </div>
   );
 }
 
-// ── Panneau principal ───────────────────────────────────────────
+// ── Panneau principal ──────────────────────────────────────────
 const FEATURES = [
-  { id: 'chantier',        label: 'Analyser un chantier',  Icon: Building2,    Composant: AnalyseChantier },
-  { id: 'devis',           label: 'Suggestion de devis',   Icon: FileText,     Composant: SuggestionDevis },
-  { id: 'alertes',         label: 'Expliquer les alertes', Icon: Bell,         Composant: ExplicationAlertes },
-  { id: 'portefeuille',    label: 'Analyse globale',       Icon: BarChart2,    Composant: AnalysePortefeuille },
-  { id: 'chat_libre',      label: 'Chat libre',            Icon: MessageSquare, Composant: ChatLibre },
-  { id: 'generer_email',   label: 'Générer email',         Icon: Mail,         Composant: GenererEmail },
-  { id: 'comparer_devis',  label: 'Comparer devis',        Icon: GitCompare,   Composant: ComparerDevis },
-  { id: 'analyser_pdf',    label: 'Analyser PDF',          Icon: FileSearch,   Composant: AnalyserPdfTexte },
+  { id: 'anticiper',      label: 'Anticiper',             Icon: Telescope,     hasMemoire: true },
+  { id: 'chantier',       label: 'Analyser un chantier',  Icon: Building2,     hasMemoire: true },
+  { id: 'devis',          label: 'Suggestion de devis',   Icon: FileText,      hasMemoire: true },
+  { id: 'alertes',        label: 'Expliquer les alertes', Icon: Bell,          hasMemoire: true },
+  { id: 'portefeuille',   label: 'Analyse globale',       Icon: BarChart2,     hasMemoire: true },
+  { id: 'chat_libre',     label: 'Chat libre',            Icon: MessageSquare, hasMemoire: true },
+  { id: 'generer_email',  label: 'Générer email',         Icon: Mail,          hasMemoire: true },
+  { id: 'comparer_devis', label: 'Comparer devis',        Icon: GitCompare,    hasMemoire: true },
+  { id: 'analyser_pdf',   label: 'Analyser PDF',          Icon: FileSearch,    hasMemoire: true },
 ];
 
 export default function ClaudeIAPanel() {
-  const [feature, setFeature] = useState('chantier');
+  const [feature, setFeature] = useState('anticiper');
+  const { memoire, setMemoire, sauvegarder } = useMemoire();
   const active = FEATURES.find(f => f.id === feature);
+
+  const renderFeature = () => {
+    const props = { memoire, onSauvegarder: sauvegarder };
+    switch (feature) {
+      case 'anticiper':      return <Anticiper {...props} />;
+      case 'chantier':       return <AnalyseChantier {...props} />;
+      case 'devis':          return <SuggestionDevis {...props} />;
+      case 'alertes':        return <ExplicationAlertes {...props} />;
+      case 'portefeuille':   return <AnalysePortefeuille {...props} />;
+      case 'chat_libre':     return <ChatLibre memoire={memoire} setMemoire={setMemoire} />;
+      case 'generer_email':  return <GenererEmail {...props} />;
+      case 'comparer_devis': return <ComparerDevis {...props} />;
+      case 'analyser_pdf':   return <AnalyserPdfTexte {...props} />;
+      default:               return null;
+    }
+  };
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '200px 1fr', gap: 20, alignItems: 'start' }}>
       {/* Menu latéral */}
       <div style={{ background: 'var(--bg-card)', borderRadius: 12, border: '1px solid var(--border)', overflow: 'hidden' }}>
+        {/* Indicateur mémoire */}
+        <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: memoire ? DS.brand.secondary : 'var(--text-muted)', fontWeight: 600 }}>
+          <Brain size={11} />
+          {memoire ? 'Mémoire active' : 'Mémoire vide'}
+        </div>
         {FEATURES.map(f => {
           const isActive = f.id === feature;
           return (
@@ -701,11 +774,10 @@ export default function ClaudeIAPanel() {
           {active && <active.Icon size={16} color={DS.brand.secondary} />}
           <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700 }}>{active?.label}</h3>
           <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, color: DS.brand.secondary, fontWeight: 600 }}>
-            <Sparkles size={11} />
-            Claude AI
+            <Sparkles size={11} /> Claude AI
           </div>
         </div>
-        {active && <active.Composant />}
+        {renderFeature()}
       </div>
     </div>
   );

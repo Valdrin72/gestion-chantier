@@ -189,6 +189,55 @@ Réponds en 4 sections :
 Indique clairement quel devis est préférable et pourquoi, en tenant compte du rapport qualité/prix et des risques BTP genevois.`;
 }
 
+function promptAnticiper(d: any): string {
+  const horizon = d.horizon ?? 30;
+  const chantiersStr = (d.chantiers || []).map((c: any) =>
+    `- ${c.nom} | Statut: ${c.statut} | Avancement: ${c.avancement}% | Marge: ${c.marge?.toFixed(1) ?? 'N/A'}% | CA: CHF ${c.ca?.toFixed(0) ?? 0} | EAC: CHF ${c.eac?.toFixed(0) ?? 'N/A'} | Fin prévue: ${c.finPrevue ?? 'N/D'}`
+  ).join('\n');
+
+  const facturesStr = (d.facturesEnCours || []).map((f: any) =>
+    `- CHF ${f.montantHT?.toFixed(0) ?? 0} | Statut: ${f.statut} | Émise le: ${f.dateEmission ?? 'N/D'}`
+  ).join('\n');
+
+  const alertesStr = (d.alertes || []).map((a: any) =>
+    `- [${a.niveau}] ${a.message}`
+  ).join('\n');
+
+  return `Tu es le directeur financier et stratégique de CYNA SÀRL, entreprise BTP à Genève.
+Analyse toutes les données ci-dessous et produis une prévision concrète sur les ${horizon} prochains jours.
+Ton rôle : anticiper les problèmes AVANT qu'ils arrivent, et identifier les opportunités à saisir.
+
+=== DONNÉES EN TEMPS RÉEL ===
+
+CHANTIERS EN COURS :
+${chantiersStr || 'Aucun chantier actif.'}
+
+FACTURES EN ATTENTE :
+${facturesStr || 'Aucune facture en attente.'}
+
+ALERTES ACTIVES :
+${alertesStr || 'Aucune alerte.'}
+
+=== ANALYSE DEMANDÉE : J+${horizon} ===
+
+Réponds en 5 sections :
+
+**1. Trésorerie J+${horizon}**
+Estime les encaissements attendus, les décaissements (salaires, fournisseurs) et le risque de tension de trésorerie. Sois chiffré.
+
+**2. Chantiers à risque**
+Identifie les 1-3 chantiers qui vont poser problème dans les ${horizon} jours : dépassement budget, retard, marge en danger. Explique pourquoi.
+
+**3. Actions urgentes (J+7)**
+Liste 3 actions à faire dans la semaine pour éviter les problèmes identifiés. Sois très concret.
+
+**4. Opportunités à saisir**
+Y a-t-il des chantiers bien avancés à facturer ? Des situations où CYNA peut prendre de l'avance ?
+
+**5. Signal d'alerte précoce**
+Quel est LE signal à surveiller en priorité qui, s'il se dégrade, nécessiterait une réaction immédiate ?`;
+}
+
 function promptAnalyserPdfTexte(d: any): string {
   return `Tu es un juriste et expert technique BTP à Genève, Suisse, spécialisé dans l'analyse de documents contractuels et techniques.
 Analyse ce document extrait d'un PDF et identifie les points essentiels.
@@ -221,7 +270,7 @@ Liste 2-4 points à éclaircir avec le co-contractant avant signature / exécuti
 
 // ── Handler principal ──────────────────────────────────────────
 
-const SONNET_ACTIONS = new Set(['generer_email', 'comparer_devis', 'analyser_pdf_texte']);
+const SONNET_ACTIONS = new Set(['anticiper', 'generer_email', 'comparer_devis', 'analyser_pdf_texte', 'analyse_portefeuille']);
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -273,6 +322,7 @@ Deno.serve(async (req) => {
       case 'suggerer_devis':       prompt = promptSuggererDevis(data);        break;
       case 'expliquer_alertes':    prompt = promptExpliquerAlertes(data);     break;
       case 'analyse_portefeuille': prompt = promptAnalysePortefeuille(data);  break;
+      case 'anticiper':            prompt = promptAnticiper(data);            break;
       case 'generer_email':        prompt = promptGenererEmail(data);         break;
       case 'comparer_devis':       prompt = promptComparerDevis(data);        break;
       case 'analyser_pdf_texte':   prompt = promptAnalyserPdfTexte(data);     break;

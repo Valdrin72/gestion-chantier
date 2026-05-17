@@ -100,9 +100,9 @@ Réponds en 4 sections :
 4. **3 décisions stratégiques** à prendre ce mois`;
 }
 
-function promptChatLibre(d: any): string {
-  return `Tu es un expert BTP à Genève, Suisse, avec 20 ans d'expérience dans le secteur de la construction.
-Tu maîtrises parfaitement :
+function promptChatLibreSystem(contexteCyna?: string): string {
+  let system = `Tu es l'assistant IA intégré de CYNA SÀRL, une entreprise BTP à Genève, Suisse.
+Tu as 20 ans d'expérience dans le secteur de la construction et tu connais parfaitement :
 - La réglementation suisse et genevoise du bâtiment (LCI, normes SIA)
 - Les coûts et tarifs BTP genevois (main d'œuvre ≈ CHF 650-900/jour chargé)
 - La CCT Romande du Second Œuvre (salaires, heures supplémentaires, congés)
@@ -111,17 +111,20 @@ Tu maîtrises parfaitement :
 - Les marges saines BTP Genève (≥ 20% rentable, < 15% danger)
 - La gestion de chantiers, devis, facturation et planification
 
-Réponds en français, de façon claire et pratique. Si la question touche à des montants, utilise les francs suisses (CHF).
+Tu mémorises tout ce qu'on te dit sur CYNA et tu t'en souviens dans la conversation.
+Réponds en français, de façon claire et pratique. Tu peux poser des questions de suivi.`;
 
-QUESTION :
-${d.question}`;
+  if (contexteCyna && contexteCyna.trim()) {
+    system += `\n\n=== MÉMOIRE CYNA (informations mémorisées sur l'entreprise) ===\n${contexteCyna}\n=== FIN MÉMOIRE ===`;
+  }
+  return system;
 }
 
 function promptGenererEmail(d: any): string {
   const typeLabels: Record<string, string> = {
     relance: 'email de relance pour facture impayée',
     avis_travaux: 'avis de démarrage / avancement des travaux',
-    devis: 'envoi ou suivi d\'un devis',
+    devis: "envoi ou suivi d'un devis",
     remerciement: 'email de remerciement après chantier terminé',
   };
   const typeLabel = typeLabels[d.type] ?? d.type;
@@ -218,7 +221,7 @@ Liste 2-4 points à éclaircir avec le co-contractant avant signature / exécuti
 
 // ── Handler principal ──────────────────────────────────────────
 
-const SONNET_ACTIONS = new Set(['chat_libre', 'generer_email', 'comparer_devis', 'analyser_pdf_texte']);
+const SONNET_ACTIONS = new Set(['generer_email', 'comparer_devis', 'analyser_pdf_texte']);
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -226,7 +229,6 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // Vérification basique : l'Authorization header doit être présent (envoyé par supabase.functions.invoke)
     const authHeader = req.headers.get('Authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return new Response(JSON.stringify({ error: 'Non autorisé' }), {
@@ -236,13 +238,41 @@ Deno.serve(async (req) => {
 
     const { action, data } = await req.json();
 
+    // ── Chat libre : multi-tours avec mémoire ──────────────────
+    if (action === 'chat_libre') {
+      const chatMessages = data.messages ?? [{ role: 'user', content: data.question ?? '' }];
+      const systemPrompt = promptChatLibreSystem(data.contexte_cyna);
+      const chatResponse = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'x-api-key': ANTHROPIC_API_KEY,
+          'anthropic-version': '2023-06-01',
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-6',
+          max_tokens: 2048,
+          system: systemPrompt,
+          messages: chatMessages,
+        }),
+      });
+      if (!chatResponse.ok) {
+        const errBody = await chatResponse.text();
+        throw new Error(`Anthropic API error ${chatResponse.status}: ${errBody}`);
+      }
+      const chatResult = await chatResponse.json();
+      return new Response(JSON.stringify({ texte: chatResult.content?.[0]?.text ?? '' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // ── Autres actions : prompt unique ─────────────────────────
     let prompt = '';
     switch (action) {
       case 'analyser_chantier':    prompt = promptAnalyserChantier(data);    break;
       case 'suggerer_devis':       prompt = promptSuggererDevis(data);        break;
       case 'expliquer_alertes':    prompt = promptExpliquerAlertes(data);     break;
       case 'analyse_portefeuille': prompt = promptAnalysePortefeuille(data);  break;
-      case 'chat_libre':           prompt = promptChatLibre(data);            break;
       case 'generer_email':        prompt = promptGenererEmail(data);         break;
       case 'comparer_devis':       prompt = promptComparerDevis(data);        break;
       case 'analyser_pdf_texte':   prompt = promptAnalyserPdfTexte(data);     break;
@@ -275,9 +305,7 @@ Deno.serve(async (req) => {
     }
 
     const result = await response.json();
-    const texte = result.content?.[0]?.text ?? '';
-
-    return new Response(JSON.stringify({ texte }), {
+    return new Response(JSON.stringify({ texte: result.content?.[0]?.text ?? '' }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (err) {

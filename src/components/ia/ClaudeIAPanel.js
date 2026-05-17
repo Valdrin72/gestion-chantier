@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Sparkles, Building2, FileText, Bell, BarChart2, Loader, AlertCircle, ChevronRight, MessageSquare, Mail, GitCompare, FileSearch } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { Sparkles, Building2, FileText, Bell, BarChart2, Loader, AlertCircle, ChevronRight, MessageSquare, Mail, GitCompare, FileSearch, SendHorizontal, Brain, Trash2, Save, ChevronDown, ChevronUp } from 'lucide-react';
 import { useClaudeAI } from '../../hooks/useClaudeAI';
 import { useApp } from '../../context/AppContext';
 import { calculerCoutsChantier } from '../../donnees';
@@ -288,39 +288,186 @@ function AnalysePortefeuille() {
   );
 }
 
-// ── Onglet : Chat libre ────────────────────────────────────────
-function ChatLibre() {
-  const { appeler, loading, error } = useClaudeAI();
-  const [question, setQuestion] = useState('');
-  const [resultat, setResultat] = useState('');
+// ── Bulle de message ───────────────────────────────────────────
+function BulleMessage({ msg }) {
+  const estUser = msg.role === 'user';
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: estUser ? 'flex-end' : 'flex-start', gap: 4 }}>
+      <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600, marginBottom: 2 }}>
+        {estUser ? 'Vous' : '✦ Claude AI'}
+      </div>
+      <div style={{
+        maxWidth: '88%',
+        padding: '10px 14px',
+        borderRadius: estUser ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
+        background: estUser ? DS.brand.secondary : 'var(--bg-page)',
+        color: estUser ? '#fff' : 'var(--text-main)',
+        border: estUser ? 'none' : '1px solid var(--border)',
+        fontSize: 13,
+        lineHeight: 1.65,
+      }}>
+        {estUser ? msg.content : <MarkdownSimple texte={msg.content} />}
+      </div>
+    </div>
+  );
+}
 
-  const envoyer = async () => {
-    if (!question.trim()) return;
-    const texte = await appeler('chat_libre', { question });
-    setResultat(texte);
+// ── Panneau mémoire CYNA ───────────────────────────────────────
+function PanneauMemoire({ memoire, onSave }) {
+  const [texte, setTexte] = useState(memoire);
+  const [sauve, setSauve] = useState(false);
+
+  const sauver = () => {
+    onSave(texte);
+    setSauve(true);
+    setTimeout(() => setSauve(false), 2000);
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-      <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0 }}>
-        Pose n'importe quelle question à Claude sur ton activité BTP, la gestion de chantiers ou la réglementation.
-      </p>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-        <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>Ta question *</label>
-        <textarea
-          value={question}
-          onChange={e => { setQuestion(e.target.value); setResultat(''); }}
-          rows={4}
-          placeholder="Ex: Comment optimiser mes marges sur les chantiers de faux-plafond ? Quelle est la durée légale de garantie décennale en Suisse ?"
-          style={{ padding: '9px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-main)', fontSize: 13, resize: 'vertical', fontFamily: 'inherit' }}
-        />
+    <div style={{ background: 'var(--bg-page)', border: `1px solid ${DS.brand.secondary}44`, borderRadius: 10, padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div style={{ fontSize: 12, fontWeight: 700, color: DS.brand.secondary, display: 'flex', alignItems: 'center', gap: 6 }}>
+        <Brain size={13} /> Mémoire CYNA — Ce que Claude sait sur votre entreprise
       </div>
-      <button onClick={envoyer} disabled={!question.trim() || loading}
-        style={{ ...DS.btnPrimary, display: 'flex', alignItems: 'center', gap: 6, alignSelf: 'flex-start', opacity: (!question.trim() || loading) ? 0.6 : 1 }}>
-        <Sparkles size={14} />
-        Envoyer
-      </button>
-      <ResultatIA texte={resultat} error={error} loading={loading} />
+      <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: 0 }}>
+        Écrivez ici tout ce que Claude doit mémoriser sur CYNA (clients importants, types de chantiers, préférences, tarifs, équipe…). Cette mémoire est active dans chaque conversation.
+      </p>
+      <textarea
+        value={texte}
+        onChange={e => setTexte(e.target.value)}
+        rows={6}
+        placeholder={`Exemples :\n- CYNA SÀRL est spécialisée en faux-plafonds et faux-planchers à Genève\n- Nos principaux clients : architectes et promoteurs genevois\n- Tarif journalier employé moyen : CHF 750 chargé\n- Marge cible : 22% minimum\n- Equipe : 8 employés dont 3 chefs de chantier`}
+        style={{ padding: '9px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-main)', fontSize: 13, resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.6 }}
+      />
+      <div style={{ display: 'flex', gap: 8 }}>
+        <button onClick={sauver}
+          style={{ ...DS.btnPrimary, display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
+          <Save size={13} />
+          {sauve ? 'Sauvegardé ✓' : 'Sauvegarder la mémoire'}
+        </button>
+        {texte && (
+          <button onClick={() => { setTexte(''); onSave(''); }}
+            style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '8px 14px', borderRadius: 8, border: '1px solid #fecaca', background: '#fef2f2', color: '#dc2626', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>
+            <Trash2 size={13} />
+            Effacer
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Onglet : Chat libre (conversation multi-tours) ─────────────
+function ChatLibre() {
+  const { appeler, loading, error } = useClaudeAI();
+  const [messages, setMessages] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('cyna_chat_history') || '[]'); } catch { return []; }
+  });
+  const [input, setInput] = useState('');
+  const [memoire, setMemoire] = useState(() => localStorage.getItem('cyna_ia_memoire') || '');
+  const [showMemoire, setShowMemoire] = useState(false);
+  const bottomRef = useRef(null);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (messages.length > 0) {
+      localStorage.setItem('cyna_chat_history', JSON.stringify(messages.slice(-60)));
+    }
+  }, [messages]);
+
+  const sauvegarderMemoire = (texte) => {
+    setMemoire(texte);
+    localStorage.setItem('cyna_ia_memoire', texte);
+  };
+
+  const envoyer = async () => {
+    const question = input.trim();
+    if (!question || loading) return;
+    setInput('');
+    const newMessages = [...messages, { role: 'user', content: question }];
+    setMessages(newMessages);
+
+    const reponse = await appeler('chat_libre', {
+      messages: newMessages,
+      contexte_cyna: memoire,
+    });
+
+    if (reponse) {
+      setMessages(prev => [...prev, { role: 'assistant', content: reponse }]);
+    }
+  };
+
+  const effacerConversation = () => {
+    setMessages([]);
+    localStorage.removeItem('cyna_chat_history');
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12, height: 'calc(100vh - 280px)', minHeight: 420 }}>
+
+      {/* Barre d'outils */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+        <button onClick={() => setShowMemoire(v => !v)}
+          style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', borderRadius: 8, border: `1px solid ${DS.brand.secondary}55`, background: memoire ? DS.brand.soft : 'transparent', color: DS.brand.secondary, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+          <Brain size={13} />
+          Mémoire CYNA {memoire ? '(active)' : '(vide)'}
+          {showMemoire ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+        </button>
+        {messages.length > 0 && (
+          <button onClick={effacerConversation}
+            style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-muted)', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>
+            <Trash2 size={12} />
+            Nouvelle conversation
+          </button>
+        )}
+        <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--text-muted)' }}>
+          {messages.length > 0 ? `${Math.floor(messages.length / 2)} échange${messages.length > 2 ? 's' : ''}` : 'Conversation vide'}
+        </span>
+      </div>
+
+      {/* Panneau mémoire (rétractable) */}
+      {showMemoire && <PanneauMemoire memoire={memoire} onSave={sauvegarderMemoire} />}
+
+      {/* Zone de conversation */}
+      <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 14, padding: '4px 2px' }}>
+        {messages.length === 0 && (
+          <div style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: 13, padding: '40px 0' }}>
+            <Sparkles size={28} style={{ margin: '0 auto 12px', display: 'block', color: DS.brand.secondary, opacity: 0.5 }} />
+            <div style={{ fontWeight: 600, marginBottom: 6 }}>Bonjour, je suis Claude AI</div>
+            <div style={{ fontSize: 12 }}>Posez-moi n'importe quelle question sur vos chantiers, devis, réglementation BTP…</div>
+            <div style={{ fontSize: 12, marginTop: 4 }}>Je mémorise notre conversation et apprends à connaître CYNA.</div>
+          </div>
+        )}
+        {messages.map((msg, i) => <BulleMessage key={i} msg={msg} />)}
+        {loading && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: DS.brand.secondary, fontSize: 13 }}>
+            <Loader size={14} style={{ animation: 'spin 1s linear infinite' }} />
+            Claude réfléchit…
+          </div>
+        )}
+        {error && (
+          <div style={{ display: 'flex', gap: 8, padding: '10px 14px', background: '#fef2f2', borderRadius: 10, border: '1px solid #fecaca', color: '#dc2626', fontSize: 13 }}>
+            <AlertCircle size={14} style={{ flexShrink: 0, marginTop: 1 }} />
+            {error}
+          </div>
+        )}
+        <div ref={bottomRef} />
+      </div>
+
+      {/* Zone de saisie */}
+      <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', borderTop: '1px solid var(--border)', paddingTop: 12 }}>
+        <textarea
+          value={input}
+          onChange={e => setInput(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); envoyer(); } }}
+          placeholder="Posez votre question… (Entrée pour envoyer, Maj+Entrée pour saut de ligne)"
+          rows={2}
+          style={{ flex: 1, padding: '10px 14px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-main)', fontSize: 13, resize: 'none', fontFamily: 'inherit', lineHeight: 1.5 }}
+        />
+        <button onClick={envoyer} disabled={!input.trim() || loading}
+          style={{ ...DS.btnPrimary, padding: '10px 14px', borderRadius: 10, display: 'flex', alignItems: 'center', gap: 6, opacity: (!input.trim() || loading) ? 0.5 : 1, flexShrink: 0 }}>
+          <SendHorizontal size={15} />
+        </button>
+      </div>
     </div>
   );
 }

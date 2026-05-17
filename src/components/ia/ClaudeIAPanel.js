@@ -5,6 +5,18 @@ import { useApp } from '../../context/AppContext';
 import { calculerCA, calculerCoutsChantier, fmtN } from '../../donnees';
 import { DS } from '../../ds';
 
+// ── Rendu gras inline sans dangerouslySetInnerHTML ─────────────
+function GrasInline({ texte }) {
+  const parties = texte.split(/\*\*(.+?)\*\*/g);
+  return (
+    <>
+      {parties.map((p, i) =>
+        i % 2 === 1 ? <strong key={i}>{p}</strong> : p
+      )}
+    </>
+  );
+}
+
 // ── Rendu Markdown simplifié ────────────────────────────────────
 function MarkdownSimple({ texte }) {
   if (!texte) return null;
@@ -13,16 +25,15 @@ function MarkdownSimple({ texte }) {
     <div style={{ lineHeight: 1.7, color: 'var(--text-main)', fontSize: 14 }}>
       {lignes.map((ligne, i) => {
         if (!ligne.trim()) return <br key={i} />;
-        // Titres **...**
+        // Titre ligne entière **...**
         if (ligne.startsWith('**') && ligne.endsWith('**')) {
           return <p key={i} style={{ fontWeight: 700, color: DS.brand.secondary, marginTop: 12, marginBottom: 4 }}>{ligne.replace(/\*\*/g, '')}</p>;
         }
-        // Gras inline **texte**
-        const avecGras = ligne.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+        // Puce
         if (ligne.startsWith('- ') || ligne.startsWith('• ')) {
-          return <p key={i} style={{ paddingLeft: 16, marginBottom: 4 }} dangerouslySetInnerHTML={{ __html: '• ' + avecGras.replace(/^[-•]\s/, '') }} />;
+          return <p key={i} style={{ paddingLeft: 16, marginBottom: 4 }}>• <GrasInline texte={ligne.replace(/^[-•]\s/, '')} /></p>;
         }
-        return <p key={i} style={{ marginBottom: 4 }} dangerouslySetInnerHTML={{ __html: avecGras }} />;
+        return <p key={i} style={{ marginBottom: 4 }}><GrasInline texte={ligne} /></p>;
       })}
     </div>
   );

@@ -52,6 +52,27 @@ responsable du domaine touché. L'équipe ne dort jamais.
 | `architecte-broker` | Appel d'offres / CCTP / soumission |
 | `client-communicator` | Emails clients, relances, avis travaux |
 
+### 🧬 DOMAINE INNOVATION & ÉVOLUTION
+
+> **Équipe Darwin** — s'active quand le code vieillit, quand un bug résiste, ou quand on veut voir la carte du projet.
+
+| Skill | Déclencheur | Rôle |
+|-------|-------------|------|
+| `darwin` (skill) | `/darwin` | Évolution continue — élimine les patterns fragiles, propage les patterns robustes |
+| `graph-skill` (skill) | `/graph-skill` | Cartographie Obsidian des entités — détecte orphelins et liens brisés |
+| `caveman` (skill) | `/caveman [bug]` | Débogage primitif — logs bruts, isolation couche par couche |
+| `skill-creator` (skill) | `/skill-creator [nom]` | Crée de nouveaux skills CYNA au bon format |
+| `veille-auto` (skill) | `/veille-auto` | Surveillance dépendances, légal suisse, opportunités tech |
+| `anticipator` | Sur demande | Prédiction des prochains bugs avant qu'ils arrivent |
+| `pattern-learner` | Après série de bugs | Consolide les patterns dans la mémoire |
+
+**Protocole d'activation Équipe Innovation :**
+1. `/darwin` — avant chaque release pour éliminer les fragilités accumulées
+2. `/graph-skill` — après un delete ou migration pour détecter les orphelins
+3. `/caveman [bug]` — quand un bug résiste aux autres outils
+4. `/veille-auto` — mensuel + avant chaque mise en production
+5. `/skill-creator` — pour créer de nouveaux skills si besoin
+
 ---
 
 ## Règles d'intervention automatique

@@ -181,7 +181,7 @@ const boiteInfo = (doc, y, label, valeur, couleur = BLEU) => {
 // ===== EXPORT FICHE CHANTIER =====
 export const exportFicheChantier = async (chantier, clients, parametres, devis = []) => {
   const doc = new jsPDF();
-  const client = clients.find(c => c.id === chantier.clientId);
+  const client = clients.find(c => String(c.id) === String(chantier.clientId));
   const couts = calculerCoutsChantier(chantier, parametres.employes, parametres.localites, parametres.parametres, devis);
   const dateFin = calculerDateFinOuvrables(chantier.dateDebut, chantier.nombreJours, chantier.inclusSamedi);
 
@@ -355,7 +355,7 @@ export const exportFicheChantier = async (chantier, clients, parametres, devis =
 // ===== EXPORT DEVIS CLIENT =====
 export const exportDevis = async (devis, clients, parametres) => {
   const doc = new jsPDF();
-  const client = clients.find(c => c.id === devis.clientId);
+  const client = clients.find(c => String(c.id) === String(devis.clientId));
 
   let y = await ajouterEntete(doc, 'DEVIS', `N° ${devis.numero}  ·  ${devis.date}`);
 
@@ -570,7 +570,7 @@ export const exportRapportMensuel = async (chantiers, clients, parametres, mois,
       startY: y,
       head: [['Chantier', 'Client', 'Ville', 'Statut', 'Devis CHF', 'Coûts CHF', 'Marge %', 'Gain CHF']],
       body: chantiersMois.map(c => {
-        const client = clients.find(cl => cl.id === c.clientId);
+        const client = clients.find(cl => String(cl.id) === String(c.clientId));
         const couts = calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis);
         return [
           c.nom, client?.entreprise || '-', c.ville || '-', c.statut,

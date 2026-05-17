@@ -207,7 +207,7 @@ export const migrerDevisId = (chantiers, devisList) => {
     // Tenter de retrouver par numero
     const matchParNumero = devisList.find(d => String(d.numero) === String(ch.devisId));
     if (matchParNumero) {
-      console.log('[CYNA] Migration devisId: chantier', ch.id, '|', ch.devisId, '→', matchParNumero.id);
+      if (process.env.NODE_ENV !== 'production') console.log('[CYNA] Migration devisId: chantier', ch.id, '|', ch.devisId, '→', matchParNumero.id);
       return { ...ch, devisId: matchParNumero.id };
     }
     return ch;

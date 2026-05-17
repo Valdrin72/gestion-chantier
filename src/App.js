@@ -176,7 +176,7 @@ function AppInner({ profil, deconnecter, userId }) {
     const corriges = migrerDevisId(chantiersRef.current, devis);
     const changed = corriges.some((c, i) => c.devisId !== chantiersRef.current[i]?.devisId);
     if (changed) {
-      console.log('[CYNA] Migration devisId appliquée — chantiers mis à jour');
+      if (process.env.NODE_ENV !== 'production') console.log('[CYNA] Migration devisId appliquée — chantiers mis à jour');
       setChantiers(corriges);
     }
   }, [devis]); // eslint-disable-line react-hooks/exhaustive-deps

@@ -202,7 +202,7 @@ function ChantiersListe({
               </thead>
               <tbody>
                 {scored.map(({ c, etatC, decision }) => {
-                  const client = clients.find(cl => cl.id === c.clientId);
+                  const client = clients.find(cl => String(cl.id) === String(c.clientId));
                   const sc = couleurStatut(c.statut);
                   const derive = deriveMap[c.id];
                   const initiales = (c.nom || '').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();

@@ -194,7 +194,7 @@ export default function Rapport({ chantiers, clients, devis = [], parametres, pa
               const today = new Date();
               const retards = getPaiements(c.id).filter(p => isAttente(p) && new Date(p.dateEcheance) < today);
               if (retards.length === 0) return null;
-              const client = clients.find(cl => cl.id === c.clientId);
+              const client = clients.find(cl => String(cl.id) === String(c.clientId));
               return (
                 <div key={c.id} style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid #ef4444', borderRadius: '8px', padding: '12px', marginBottom: '8px' }}>
                   <div style={{ fontWeight: 'bold', color: '#ef4444' }}>{c.nom} — {client?.entreprise}</div>
@@ -224,7 +224,7 @@ export default function Rapport({ chantiers, clients, devis = [], parametres, pa
             </tr></thead>
             <tbody>
               {chantiersSemaineProchaine.map((c, i) => {
-                const client = clients.find(cl => cl.id === c.clientId);
+                const client = clients.find(cl => String(cl.id) === String(c.clientId));
                 return (
                   <tr key={c.id} style={{ borderBottom: '1px solid var(--ds-td-border)' }}>
                     <td style={{ padding: '12px 15px' }}><strong>{c.nom}</strong></td>

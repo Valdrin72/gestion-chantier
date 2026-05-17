@@ -67,7 +67,7 @@ export default function Statistiques({ chantiers, clients, devis = [], parametre
 
   // ===== DONNÉES CLIENTS (uniquement chantiers avec devis pour le CA) =====
   const donneesClients = useMemo(() => clients.map(cl => {
-    const tous = chantiersFiltres.filter(c => c.clientId === cl.id);
+    const tous = chantiersFiltres.filter(c => String(c.clientId) === String(cl.id));
     const avecDevis = tous.filter(c => calculerCA(c, devis) !== null);
     const ca = avecDevis.reduce((s, c) => s + calculerCA(c, devis), 0);
     const couts = avecDevis.reduce((s, c) => s + calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis).totalCoutsReel, 0);

@@ -272,7 +272,7 @@ function AppInner({ profil, deconnecter, userId }) {
           )}
         </main>
         {saisieHeuresCtx && (() => {
-          const chantierLive = chantiers.find(c => c.id === saisieHeuresCtx.chantierId) || null;
+          const chantierLive = chantiers.find(c => String(c.id) === String(saisieHeuresCtx.chantierId)) || null;
           if (!chantierLive) return null;
           return (
             <ModalSaisieHeures

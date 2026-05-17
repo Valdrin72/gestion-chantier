@@ -134,7 +134,7 @@ function ChantierForm({ form, setForm, erreurs, setErreurs, modeCompleter, onSau
 
       {(() => {
         const devisAcceptes = devis.filter(d => d.statut?.toLowerCase() === 'accepté');
-        const devisLie = devis.find(d => d.id === form.devisId);
+        const devisLie = devis.find(d => String(d.id) === String(form.devisId));
         const caBase = parseFloat(devisLie?.montantHT) || 0;
         const caRegie = Array.isArray(devisLie?.heuresRegie)
           ? devisLie.heuresRegie.reduce((s, r) => s + (parseFloat(r.heures) || 0) * (parseFloat(r.tarifHeure) || 0), 0)
@@ -156,7 +156,7 @@ function ChantierForm({ form, setForm, erreurs, setErreurs, modeCompleter, onSau
               >
                 <option value="">— Sélectionner un devis accepté —</option>
                 {devisAcceptes.map(d => {
-                  const cli = clients.find(c => c.id === d.clientId);
+                  const cli = clients.find(c => String(c.id) === String(d.clientId));
                   return <option key={d.id} value={d.id}>{d.numero} · {cli?.nom || 'Client inconnu'} · CHF {fmtN(parseFloat(d.montantHT) || 0)}</option>;
                 })}
               </select>

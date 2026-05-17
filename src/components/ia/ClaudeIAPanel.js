@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Sparkles, Building2, FileText, Bell, BarChart2, Loader, AlertCircle, ChevronRight } from 'lucide-react';
 import { useClaudeAI } from '../../hooks/useClaudeAI';
 import { useApp } from '../../context/AppContext';
-import { calculerCA, calculerCoutsChantier, fmtN } from '../../donnees';
+import { calculerCoutsChantier } from '../../donnees';
 import { DS } from '../../ds';
 
 // ── Rendu gras inline sans dangerouslySetInnerHTML ─────────────

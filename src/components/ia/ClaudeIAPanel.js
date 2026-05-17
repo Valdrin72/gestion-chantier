@@ -18,6 +18,7 @@ function useMemoire() {
     localStorage.setItem('cyna_ia_memoire', texte);
   }, []);
 
+  // Sauvegarde manuelle (bouton "Mémoriser")
   const sauvegarder = useCallback((extrait) => {
     const date = new Date().toLocaleDateString('fr-CH');
     const ligne = `[${date}] ${extrait.slice(0, 400)}`;
@@ -28,7 +29,28 @@ function useMemoire() {
     });
   }, []);
 
-  return { memoire, setMemoire, sauvegarder };
+  // Auto-save : extrait compact (1-2 phrases max) ajouté automatiquement
+  const autoSave = useCallback((contexte, reponse) => {
+    const date = new Date().toLocaleDateString('fr-CH');
+    // Prend les 200 premiers caractères de la réponse comme insight compact
+    const apercu = reponse.replace(/\n+/g, ' ').replace(/\*\*/g, '').slice(0, 200);
+    const ligne = `[${date}][${contexte}] ${apercu}`;
+    setMemoireState(prev => {
+      // Limite à 8000 caractères pour ne pas surcharger le contexte
+      const update = prev ? `${prev}\n${ligne}` : ligne;
+      const trimmed = update.length > 8000 ? update.slice(update.length - 8000) : update;
+      localStorage.setItem('cyna_ia_memoire', trimmed);
+      return trimmed;
+    });
+  }, []);
+
+  return { memoire, setMemoire, sauvegarder, autoSave };
+}
+
+// ── Compteur d'insights mémoire ────────────────────────────────
+function compteurInsights(memoire) {
+  if (!memoire) return 0;
+  return (memoire.match(/^\[/gm) || []).length;
 }
 
 // ── Rendu gras inline ──────────────────────────────────────────
@@ -107,10 +129,12 @@ function ResultatIA({ texte, error, loading, onSauvegarder }) {
   );
 }
 
-// ── Panneau mémoire CYNA ───────────────────────────────────────
+// ── Panneau mémoire CYNA (global + condenseur) ────────────────
 function PanneauMemoire({ memoire, onSave }) {
+  const { appeler, loading } = useClaudeAI();
   const [texte, setTexte] = useState(memoire);
   const [sauve, setSauve] = useState(false);
+  const nb = compteurInsights(memoire);
 
   useEffect(() => { setTexte(memoire); }, [memoire]);
 
@@ -120,27 +144,47 @@ function PanneauMemoire({ memoire, onSave }) {
     setTimeout(() => setSauve(false), 2000);
   };
 
+  const condenser = async () => {
+    if (!memoire.trim()) return;
+    const condensee = await appeler('resumer_memoire', { memoire });
+    if (condensee) {
+      setTexte(condensee);
+      onSave(condensee);
+    }
+  };
+
   return (
     <div style={{ background: 'var(--bg-page)', border: `1px solid ${DS.brand.secondary}44`, borderRadius: 10, padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-      <div style={{ fontSize: 12, fontWeight: 700, color: DS.brand.secondary, display: 'flex', alignItems: 'center', gap: 6 }}>
-        <Brain size={13} /> Mémoire CYNA — Ce que Claude sait sur votre entreprise
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{ fontSize: 12, fontWeight: 700, color: DS.brand.secondary, display: 'flex', alignItems: 'center', gap: 6 }}>
+          <Brain size={13} /> Mémoire CYNA
+        </div>
+        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6 }}>
+          {nb > 0 && (
+            <span style={{ fontSize: 11, background: DS.brand.soft, color: DS.brand.secondary, padding: '2px 8px', borderRadius: 10, fontWeight: 700 }}>
+              {nb} insight{nb > 1 ? 's' : ''} accumulé{nb > 1 ? 's' : ''}
+            </span>
+          )}
+        </div>
       </div>
       <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: 0 }}>
-        Tout ce que vous écrivez ici est injecté dans chaque analyse et conversation. Les insights mémorisés via le bouton "Mémoriser" s'accumulent automatiquement ici.
+        Claude lit cette mémoire dans <strong>chaque</strong> analyse, email, anticipation et conversation. Elle s'enrichit automatiquement après chaque analyse.
       </p>
-      <textarea
-        value={texte}
-        onChange={e => setTexte(e.target.value)}
-        rows={6}
+      <textarea value={texte} onChange={e => setTexte(e.target.value)} rows={7}
         placeholder={`Exemples :\n- CYNA SÀRL spécialisée en faux-plafonds et faux-planchers à Genève\n- Principaux clients : architectes et promoteurs genevois\n- Tarif journalier moyen : CHF 750 chargé\n- Marge cible : 22% minimum\n- Équipe : 8 employés dont 3 chefs de chantier`}
-        style={{ padding: '9px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-main)', fontSize: 13, resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.6 }}
+        style={{ padding: '9px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-main)', fontSize: 12, resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.6 }}
       />
-      <div style={{ display: 'flex', gap: 8 }}>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
         <button onClick={sauver}
           style={{ ...DS.btnPrimary, display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
-          <Save size={13} />
-          {sauve ? 'Sauvegardé ✓' : 'Sauvegarder'}
+          <Save size={13} /> {sauve ? 'Sauvegardé ✓' : 'Sauvegarder'}
         </button>
+        {nb > 3 && (
+          <button onClick={condenser} disabled={loading}
+            style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '8px 14px', borderRadius: 8, border: `1px solid ${DS.brand.secondary}55`, background: DS.brand.soft, color: DS.brand.secondary, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', opacity: loading ? 0.6 : 1 }}>
+            <Sparkles size={13} /> {loading ? 'Condensation…' : 'Condenser avec Claude'}
+          </button>
+        )}
         {texte && (
           <button onClick={() => { setTexte(''); onSave(''); }}
             style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '8px 14px', borderRadius: 8, border: '1px solid #fecaca', background: '#fef2f2', color: '#dc2626', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>
@@ -148,12 +192,17 @@ function PanneauMemoire({ memoire, onSave }) {
           </button>
         )}
       </div>
+      {nb > 3 && (
+        <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: 0 }}>
+          💡 "Condenser avec Claude" réorganise et nettoie la mémoire automatiquement pour la garder efficace.
+        </p>
+      )}
     </div>
   );
 }
 
 // ── Onglet : Analyser un chantier ─────────────────────────────
-function AnalyseChantier({ memoire, onSauvegarder }) {
+function AnalyseChantier({ memoire, onSauvegarder, autoSave }) {
   const { chantiers, devis, parametres } = useApp();
   const { appeler, loading, error } = useClaudeAI();
   const [chantierId, setChantierId] = useState('');
@@ -171,7 +220,7 @@ function AnalyseChantier({ memoire, onSauvegarder }) {
       joursPrevus: c.nombreJours, joursReels, statut: c.statut,
       eac: couts.eac, rad: couts.rad, contexte_cyna: memoire,
     });
-    setResultat(texte);
+    if (texte) { setResultat(texte); autoSave(`Chantier ${c.nom || c.numero}`, texte); }
   };
 
   return (
@@ -196,7 +245,7 @@ function AnalyseChantier({ memoire, onSauvegarder }) {
 }
 
 // ── Onglet : Suggestion de devis ──────────────────────────────
-function SuggestionDevis({ memoire, onSauvegarder }) {
+function SuggestionDevis({ memoire, onSauvegarder, autoSave }) {
   const { appeler, loading, error } = useClaudeAI();
   const [form, setForm] = useState({ description: '', typeTraveaux: '', surface: '', finition: 'standard' });
   const [resultat, setResultat] = useState('');
@@ -204,7 +253,7 @@ function SuggestionDevis({ memoire, onSauvegarder }) {
   const generer = async () => {
     if (!form.description.trim()) return;
     const texte = await appeler('suggerer_devis', { ...form, contexte_cyna: memoire });
-    setResultat(texte);
+    if (texte) { setResultat(texte); autoSave(`Devis ${form.typeTraveaux || form.description.slice(0, 30)}`, texte); }
   };
 
   const champ = (label, key, opts = {}) => (
@@ -251,7 +300,7 @@ function SuggestionDevis({ memoire, onSauvegarder }) {
 }
 
 // ── Onglet : Explication des alertes ──────────────────────────
-function ExplicationAlertes({ memoire, onSauvegarder }) {
+function ExplicationAlertes({ memoire, onSauvegarder, autoSave }) {
   const { agentState } = useApp();
   const { appeler, loading, error } = useClaudeAI();
   const [resultat, setResultat] = useState('');
@@ -263,7 +312,7 @@ function ExplicationAlertes({ memoire, onSauvegarder }) {
       alertes: nonLues.slice(0, 15).map(a => ({ niveau: a.niveau, message: a.message, detail: a.detail, agent: a.agent })),
       contexte_cyna: memoire,
     });
-    setResultat(texte);
+    if (texte) { setResultat(texte); autoSave('Alertes', texte); }
   };
 
   return (
@@ -289,7 +338,7 @@ function ExplicationAlertes({ memoire, onSauvegarder }) {
 }
 
 // ── Onglet : Analyse globale ───────────────────────────────────
-function AnalysePortefeuille({ memoire, onSauvegarder }) {
+function AnalysePortefeuille({ memoire, onSauvegarder, autoSave }) {
   const { chantiers, devis, factures, parametres } = useApp();
   const { appeler, loading, error } = useClaudeAI();
   const [resultat, setResultat] = useState('');
@@ -305,7 +354,7 @@ function AnalysePortefeuille({ memoire, onSauvegarder }) {
     const margeMoyenne = margesValides.length > 0 ? margesValides.reduce((s, c) => s + c.marge, 0) / margesValides.length : null;
     const facture = factures.filter(f => f.statut?.trim().toLowerCase() === 'payée').reduce((s, f) => s + (parseFloat(f.montantHT) || 0), 0);
     const texte = await appeler('analyse_portefeuille', { chantiers: chantiersData, caTotal, margeMoyenne, facture, contexte_cyna: memoire });
-    setResultat(texte);
+    if (texte) { setResultat(texte); autoSave('Portefeuille', texte); }
   };
 
   const nbActifs = chantiers.filter(c => ['en cours', 'planifié'].includes(c.statut?.trim().toLowerCase())).length;
@@ -333,7 +382,7 @@ function AnalysePortefeuille({ memoire, onSauvegarder }) {
 }
 
 // ── Onglet : Anticiper ─────────────────────────────────────────
-function Anticiper({ memoire, onSauvegarder }) {
+function Anticiper({ memoire, onSauvegarder, autoSave }) {
   const { chantiers, devis, factures, parametres, agentState } = useApp();
   const { appeler, loading, error } = useClaudeAI();
   const [horizon, setHorizon] = useState('30');
@@ -374,7 +423,7 @@ function Anticiper({ memoire, onSauvegarder }) {
       alertes,
       contexte_cyna: memoire,
     });
-    setResultat(texte);
+    if (texte) { setResultat(texte); autoSave(`Anticipation J+${horizon}`, texte); }
   };
 
   return (
@@ -868,11 +917,12 @@ const FEATURES = [
 
 export default function ClaudeIAPanel() {
   const [feature, setFeature] = useState('anticiper');
-  const { memoire, setMemoire, sauvegarder } = useMemoire();
+  const { memoire, setMemoire, sauvegarder, autoSave } = useMemoire();
+  const nb = compteurInsights(memoire);
   const active = FEATURES.find(f => f.id === feature);
 
   const renderFeature = () => {
-    const props = { memoire, onSauvegarder: sauvegarder };
+    const props = { memoire, onSauvegarder: sauvegarder, autoSave };
     switch (feature) {
       case 'anticiper':      return <Anticiper {...props} />;
       case 'chantier':       return <AnalyseChantier {...props} />;
@@ -880,9 +930,9 @@ export default function ClaudeIAPanel() {
       case 'alertes':        return <ExplicationAlertes {...props} />;
       case 'portefeuille':   return <AnalysePortefeuille {...props} />;
       case 'chat_libre':     return <ChatLibre memoire={memoire} setMemoire={setMemoire} />;
-      case 'generer_email':  return <GenererEmail {...props} />;
+      case 'generer_email':  return <GenererEmail memoire={memoire} onSauvegarder={sauvegarder} />;
       case 'comparer_devis': return <ComparerDevis {...props} />;
-      case 'analyser_pdf':   return <AnalyserPdfTexte {...props} />;
+      case 'analyser_pdf':   return <AnalyserPdfTexte memoire={memoire} onSauvegarder={sauvegarder} />;
       default:               return null;
     }
   };
@@ -894,7 +944,7 @@ export default function ClaudeIAPanel() {
         {/* Indicateur mémoire */}
         <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: memoire ? DS.brand.secondary : 'var(--text-muted)', fontWeight: 600 }}>
           <Brain size={11} />
-          {memoire ? 'Mémoire active' : 'Mémoire vide'}
+          {nb > 0 ? `${nb} insight${nb > 1 ? 's' : ''} mémorisé${nb > 1 ? 's' : ''}` : 'Mémoire vide'}
         </div>
         {FEATURES.map(f => {
           const isActive = f.id === feature;

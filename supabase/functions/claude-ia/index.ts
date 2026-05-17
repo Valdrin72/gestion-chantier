@@ -287,6 +287,35 @@ Deno.serve(async (req) => {
 
     const { action, data } = await req.json();
 
+    // ── Résumer mémoire : condenser les insights en mémoire propre ─
+    if (action === 'resumer_memoire') {
+      const system = `Tu es l'assistant IA de CYNA SÀRL. Tu reçois une mémoire brute accumulée au fil des analyses et tu dois la condenser en une mémoire structurée, propre et utile.
+Garde les faits importants, élimine les doublons, structure par thème.
+Format de sortie (respecte exactement) :
+**CYNA SÀRL — Profil entreprise**
+[faits sur l'entreprise, spécialités, taille]
+
+**Chantiers & performances**
+[ce qui a été appris sur les chantiers analysés]
+
+**Clients & relations**
+[infos clients mémorisées]
+
+**Paramètres financiers**
+[marges, tarifs, seuils]
+
+**Points de vigilance**
+[risques et alertes récurrents identifiés]`;
+      const chatResponse = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'x-api-key': ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
+        body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 1500, system, messages: [{ role: 'user', content: `Mémoire brute à condenser :\n\n${data.memoire}` }] }),
+      });
+      if (!chatResponse.ok) throw new Error(`Anthropic API error ${chatResponse.status}: ${await chatResponse.text()}`);
+      const r = await chatResponse.json();
+      return new Response(JSON.stringify({ texte: r.content?.[0]?.text ?? '' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
     // ── Chat email : génération + retouches conversationnelles ─
     if (action === 'chat_email') {
       const p = data.emailParams ?? {};

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Sparkles, Building2, FileText, Bell, BarChart2, Loader, AlertCircle, ChevronRight } from 'lucide-react';
+import { Sparkles, Building2, FileText, Bell, BarChart2, Loader, AlertCircle, ChevronRight, MessageSquare, Mail, GitCompare, FileSearch } from 'lucide-react';
 import { useClaudeAI } from '../../hooks/useClaudeAI';
 import { useApp } from '../../context/AppContext';
 import { calculerCoutsChantier } from '../../donnees';
@@ -288,12 +288,236 @@ function AnalysePortefeuille() {
   );
 }
 
+// ── Onglet : Chat libre ────────────────────────────────────────
+function ChatLibre() {
+  const { appeler, loading, error } = useClaudeAI();
+  const [question, setQuestion] = useState('');
+  const [resultat, setResultat] = useState('');
+
+  const envoyer = async () => {
+    if (!question.trim()) return;
+    const texte = await appeler('chat_libre', { question });
+    setResultat(texte);
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0 }}>
+        Pose n'importe quelle question à Claude sur ton activité BTP, la gestion de chantiers ou la réglementation.
+      </p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+        <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>Ta question *</label>
+        <textarea
+          value={question}
+          onChange={e => { setQuestion(e.target.value); setResultat(''); }}
+          rows={4}
+          placeholder="Ex: Comment optimiser mes marges sur les chantiers de faux-plafond ? Quelle est la durée légale de garantie décennale en Suisse ?"
+          style={{ padding: '9px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-main)', fontSize: 13, resize: 'vertical', fontFamily: 'inherit' }}
+        />
+      </div>
+      <button onClick={envoyer} disabled={!question.trim() || loading}
+        style={{ ...DS.btnPrimary, display: 'flex', alignItems: 'center', gap: 6, alignSelf: 'flex-start', opacity: (!question.trim() || loading) ? 0.6 : 1 }}>
+        <Sparkles size={14} />
+        Envoyer
+      </button>
+      <ResultatIA texte={resultat} error={error} loading={loading} />
+    </div>
+  );
+}
+
+// ── Onglet : Générer email ─────────────────────────────────────
+function GenererEmail() {
+  const { appeler, loading, error } = useClaudeAI();
+  const [form, setForm] = useState({ type: 'Relance facture', destinataire: '', contexte: '', montant: '' });
+  const [resultat, setResultat] = useState('');
+
+  const generer = async () => {
+    if (!form.destinataire.trim() || !form.contexte.trim()) return;
+    const texte = await appeler('generer_email', form);
+    setResultat(texte);
+  };
+
+  const inputStyle = { padding: '9px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-main)', fontSize: 13, fontFamily: 'inherit' };
+  const labelStyle = { fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' };
+  const fieldStyle = { display: 'flex', flexDirection: 'column', gap: 4 };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0 }}>
+        Génère un email professionnel adapté à la situation — relance, avis de travaux, envoi de devis ou remerciement.
+      </p>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
+        <div style={fieldStyle}>
+          <label style={labelStyle}>Type d'email *</label>
+          <select value={form.type} onChange={e => { setForm(f => ({ ...f, type: e.target.value })); setResultat(''); }}
+            style={inputStyle}>
+            <option value="Relance facture">Relance facture</option>
+            <option value="Avis de travaux">Avis de travaux</option>
+            <option value="Envoi devis">Envoi devis</option>
+            <option value="Remerciement">Remerciement</option>
+          </select>
+        </div>
+        <div style={fieldStyle}>
+          <label style={labelStyle}>Destinataire (nom client) *</label>
+          <input type="text" value={form.destinataire}
+            onChange={e => { setForm(f => ({ ...f, destinataire: e.target.value })); setResultat(''); }}
+            placeholder="Ex: M. Dupont, Société XYZ SA"
+            style={inputStyle} />
+        </div>
+        <div style={fieldStyle}>
+          <label style={labelStyle}>Montant (optionnel)</label>
+          <input type="text" value={form.montant}
+            onChange={e => setForm(f => ({ ...f, montant: e.target.value }))}
+            placeholder="Ex: CHF 12'000"
+            style={inputStyle} />
+        </div>
+      </div>
+      <div style={fieldStyle}>
+        <label style={labelStyle}>Contexte *</label>
+        <textarea value={form.contexte}
+          onChange={e => { setForm(f => ({ ...f, contexte: e.target.value })); setResultat(''); }}
+          rows={3}
+          placeholder="Ex: Facture du 15 mai, CHF 12'000, impayée depuis 35 jours. Deuxième relance."
+          style={{ ...inputStyle, resize: 'vertical' }} />
+      </div>
+      <button onClick={generer} disabled={!form.destinataire.trim() || !form.contexte.trim() || loading}
+        style={{ ...DS.btnPrimary, display: 'flex', alignItems: 'center', gap: 6, alignSelf: 'flex-start', opacity: (!form.destinataire.trim() || !form.contexte.trim() || loading) ? 0.6 : 1 }}>
+        <Sparkles size={14} />
+        Générer l'email
+      </button>
+      <ResultatIA texte={resultat} error={error} loading={loading} />
+    </div>
+  );
+}
+
+// ── Onglet : Comparer devis ────────────────────────────────────
+function ComparerDevis() {
+  const { appeler, loading, error } = useClaudeAI();
+  const [devis1, setDevis1] = useState({ nom: '', montant: '', description: '' });
+  const [devis2, setDevis2] = useState({ nom: '', montant: '', description: '' });
+  const [criteres, setCriteres] = useState('');
+  const [resultat, setResultat] = useState('');
+
+  const comparer = async () => {
+    if (!devis1.nom.trim() || !devis2.nom.trim()) return;
+    const texte = await appeler('comparer_devis', {
+      devis1: { ...devis1, montant: parseFloat(devis1.montant) || 0 },
+      devis2: { ...devis2, montant: parseFloat(devis2.montant) || 0 },
+      criteres,
+    });
+    setResultat(texte);
+  };
+
+  const inputStyle = { padding: '9px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-main)', fontSize: 13, fontFamily: 'inherit', width: '100%', boxSizing: 'border-box' };
+  const labelStyle = { fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' };
+  const fieldStyle = { display: 'flex', flexDirection: 'column', gap: 4 };
+
+  const ColonneDevis = ({ titre, vals, setVals, accent }) => (
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 10, padding: '14px 16px', background: DS.brand.soft, borderRadius: 10, border: `1px solid ${accent}33` }}>
+      <div style={{ fontSize: 12, fontWeight: 700, color: accent, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 2 }}>{titre}</div>
+      <div style={fieldStyle}>
+        <label style={labelStyle}>Nom / Référence *</label>
+        <input type="text" value={vals.nom} onChange={e => { setVals(v => ({ ...v, nom: e.target.value })); setResultat(''); }}
+          placeholder="Ex: Devis Entreprise Alpha" style={inputStyle} />
+      </div>
+      <div style={fieldStyle}>
+        <label style={labelStyle}>Montant HT (CHF)</label>
+        <input type="number" value={vals.montant} onChange={e => setVals(v => ({ ...v, montant: e.target.value }))}
+          placeholder="Ex: 45000" style={inputStyle} />
+      </div>
+      <div style={fieldStyle}>
+        <label style={labelStyle}>Description / Prestations</label>
+        <textarea value={vals.description} onChange={e => setVals(v => ({ ...v, description: e.target.value }))}
+          rows={3} placeholder="Détails des prestations, délais, garanties..."
+          style={{ ...inputStyle, resize: 'vertical' }} />
+      </div>
+    </div>
+  );
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0 }}>
+        Compare deux devis côte à côte et obtiens une analyse IA avec recommandations.
+      </p>
+      <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
+        <ColonneDevis titre="Devis 1" vals={devis1} setVals={setDevis1} accent={DS.brand.secondary} />
+        <ColonneDevis titre="Devis 2" vals={devis2} setVals={setDevis2} accent="#6366f1" />
+      </div>
+      <div style={fieldStyle}>
+        <label style={labelStyle}>Critères de comparaison (optionnel)</label>
+        <input type="text" value={criteres} onChange={e => setCriteres(e.target.value)}
+          placeholder="Ex: Prix, délais, qualité matériaux, réputation, garantie"
+          style={{ padding: '9px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-main)', fontSize: 13, fontFamily: 'inherit' }} />
+      </div>
+      <button onClick={comparer} disabled={!devis1.nom.trim() || !devis2.nom.trim() || loading}
+        style={{ ...DS.btnPrimary, display: 'flex', alignItems: 'center', gap: 6, alignSelf: 'flex-start', opacity: (!devis1.nom.trim() || !devis2.nom.trim() || loading) ? 0.6 : 1 }}>
+        <Sparkles size={14} />
+        Comparer
+      </button>
+      <ResultatIA texte={resultat} error={error} loading={loading} />
+    </div>
+  );
+}
+
+// ── Onglet : Analyser PDF ──────────────────────────────────────
+function AnalyserPdfTexte() {
+  const { appeler, loading, error } = useClaudeAI();
+  const [texte, setTexte] = useState('');
+  const [typeDoc, setTypeDoc] = useState('Devis');
+  const [resultat, setResultat] = useState('');
+
+  const analyser = async () => {
+    if (!texte.trim()) return;
+    const rep = await appeler('analyser_pdf_texte', { texte, typeDoc });
+    setResultat(rep);
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0 }}>
+        Colle le texte extrait d'un document PDF et Claude en fait l'analyse détaillée : points clés, risques, montants, délais.
+      </p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+        <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>Type de document *</label>
+        <select value={typeDoc} onChange={e => { setTypeDoc(e.target.value); setResultat(''); }}
+          style={{ padding: '9px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-main)', fontSize: 13, alignSelf: 'flex-start', minWidth: 180 }}>
+          <option value="Devis">Devis</option>
+          <option value="Contrat">Contrat</option>
+          <option value="CCTP">CCTP</option>
+          <option value="Facture">Facture</option>
+          <option value="Autre">Autre</option>
+        </select>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+        <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>Texte du document *</label>
+        <textarea
+          value={texte}
+          onChange={e => { setTexte(e.target.value); setResultat(''); }}
+          rows={8}
+          placeholder="Colle le texte du PDF ici... (Ctrl+A dans votre lecteur PDF, puis copier-coller)"
+          style={{ padding: '9px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-main)', fontSize: 13, resize: 'vertical', fontFamily: 'inherit' }}
+        />
+      </div>
+      <button onClick={analyser} disabled={!texte.trim() || loading}
+        style={{ ...DS.btnPrimary, display: 'flex', alignItems: 'center', gap: 6, alignSelf: 'flex-start', opacity: (!texte.trim() || loading) ? 0.6 : 1 }}>
+        <Sparkles size={14} />
+        Analyser
+      </button>
+      <ResultatIA texte={resultat} error={error} loading={loading} />
+    </div>
+  );
+}
+
 // ── Panneau principal ───────────────────────────────────────────
 const FEATURES = [
-  { id: 'chantier',     label: 'Analyser un chantier',  Icon: Building2,   Composant: AnalyseChantier },
-  { id: 'devis',        label: 'Suggestion de devis',   Icon: FileText,    Composant: SuggestionDevis },
-  { id: 'alertes',      label: 'Expliquer les alertes', Icon: Bell,        Composant: ExplicationAlertes },
-  { id: 'portefeuille', label: 'Analyse globale',       Icon: BarChart2,   Composant: AnalysePortefeuille },
+  { id: 'chantier',        label: 'Analyser un chantier',  Icon: Building2,    Composant: AnalyseChantier },
+  { id: 'devis',           label: 'Suggestion de devis',   Icon: FileText,     Composant: SuggestionDevis },
+  { id: 'alertes',         label: 'Expliquer les alertes', Icon: Bell,         Composant: ExplicationAlertes },
+  { id: 'portefeuille',    label: 'Analyse globale',       Icon: BarChart2,    Composant: AnalysePortefeuille },
+  { id: 'chat_libre',      label: 'Chat libre',            Icon: MessageSquare, Composant: ChatLibre },
+  { id: 'generer_email',   label: 'Générer email',         Icon: Mail,         Composant: GenererEmail },
+  { id: 'comparer_devis',  label: 'Comparer devis',        Icon: GitCompare,   Composant: ComparerDevis },
+  { id: 'analyser_pdf',    label: 'Analyser PDF',          Icon: FileSearch,   Composant: AnalyserPdfTexte },
 ];
 
 export default function ClaudeIAPanel() {

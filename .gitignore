@@ -30,3 +30,6 @@ yarn-error.log*
 
 # Logs monitoring sécurité
 /logs/
+
+# Supabase CLI temp files
+/supabase/.temp/

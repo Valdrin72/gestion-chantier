@@ -3,7 +3,7 @@ import {
   Plus, Pencil, Trash2, HardHat, Receipt,
   DollarSign, Clock, FileText, TrendingUp,
 } from 'lucide-react';
-import { fmtN, C, creerFactureDepuisDevis } from '../donnees';
+import { fmtN, C, creerFactureDepuisDevis, getIntervallesPeriode } from '../donnees';
 import { DS } from '../ds';
 import { useApp } from '../context/AppContext';
 import AssistantDevisIA from '../AssistantDevisIA';
@@ -16,7 +16,7 @@ const btnSucces = DS.btnSuccess;
 const btnDanger = DS.btnDanger;
 
 function Devis() {
-  const { devis, setDevis, clients, parametres, naviguer, setChantiers, chantiers, factures, setFactures, contexte = {}, afficherNotif, confirmer } = useApp();
+  const { devis, setDevis, clients, parametres, naviguer, setChantiers, chantiers, factures, setFactures, contexte = {}, afficherNotif, confirmer, periodeGlobale = 'mois' } = useApp();
   const [ajout, setAjout] = useState(false);
   const [filtreDevis, setFiltreDevis] = useState('Tous');
   const [confirmConversion, setConfirmConversion] = useState(null); // { devis, nomChantier }
@@ -119,7 +119,7 @@ function Devis() {
       <div className="page-header-row">
         <div className="page-title-block">
           <div className="page-title-main">Devis</div>
-          <div className="page-title-sub">{devis.length} devis · {devis.filter(d => d.statut?.toLowerCase() === 'accepté').length} acceptés ce mois</div>
+          <div className="page-title-sub">{devis.length} devis · {(() => { const { debut, fin } = getIntervallesPeriode(periodeGlobale); const ds = debut.toISOString().slice(0,10); const fs = fin.toISOString().slice(0,10); return devis.filter(d => { const dt = (d.dateEmission || d.date || ''); return d.statut?.toLowerCase() === 'accepté' && dt >= ds && dt <= fs; }).length; })()} acceptés ({periodeGlobale === 'semaine' ? 'semaine' : periodeGlobale === 'mois' ? 'ce mois' : "l'année"})</div>
         </div>
         <div className="page-actions-group">
           <button onClick={() => { setForm(vide); setAjout(!ajout); }} style={btnPrimaire}><Plus size={14} /> Nouveau devis</button>
@@ -128,9 +128,13 @@ function Devis() {
 
       {/* ── KPI GRID ── */}
       {(() => {
-        const devisAcceptes = devis.filter(d => d.statut?.toLowerCase() === 'accepté');
+        const { debut, fin } = getIntervallesPeriode(periodeGlobale);
+        const debutStr = debut.toISOString().slice(0, 10);
+        const finStr = fin.toISOString().slice(0, 10);
+        const devisPeriode = devis.filter(d => { const dt = d.dateEmission || d.date || ''; return dt >= debutStr && dt <= finStr; });
+        const devisAcceptes = devisPeriode.filter(d => d.statut?.toLowerCase() === 'accepté');
         const caSigné = devisAcceptes.reduce((s, d) => s + caDevis(d), 0);
-        const tauxAcceptation = devis.length > 0 ? Math.round((devisAcceptes.length / devis.length) * 100) : 0;
+        const tauxAcceptation = devisPeriode.length > 0 ? Math.round((devisAcceptes.length / devisPeriode.length) * 100) : 0;
         const enAttente = devis.filter(d => d.statut?.toLowerCase() === 'envoyé');
         const montantAttente = enAttente.reduce((s, d) => s + caDevis(d), 0);
         const now = Date.now();
@@ -138,8 +142,8 @@ function Devis() {
           ? Math.round(enAttente.reduce((s, d) => { const dt = d.dateEmission || d.date || 0; return s + Math.floor((now - new Date(dt)) / 86400000); }, 0) / enAttente.length)
           : null;
         const kpiItems = [
-          { label: 'CA SIGNÉ',            val: `CHF ${fmtN(caSigné)}`, sous: `${devisAcceptes.length} devis accepté${devisAcceptes.length !== 1 ? 's' : ''}`, Icon: DollarSign, ...DS.kpi.green },
-          { label: "TAUX D'ACCEPTATION",  val: `${tauxAcceptation}%`, sous: `sur ${devis.length} devis total`, Icon: TrendingUp, ...DS.kpi.blue },
+          { label: 'CA SIGNÉ',            val: `CHF ${fmtN(caSigné)}`, sous: `${devisAcceptes.length} accepté${devisAcceptes.length !== 1 ? 's' : ''} / ${devisPeriode.length} ce ${periodeGlobale === 'semaine' ? 'sem.' : periodeGlobale === 'mois' ? 'mois' : 'an'}`, Icon: DollarSign, ...DS.kpi.green },
+          { label: "TAUX D'ACCEPTATION",  val: `${tauxAcceptation}%`, sous: `sur ${devisPeriode.length} devis (période)`, Icon: TrendingUp, ...DS.kpi.blue },
           { label: 'EN ATTENTE RÉPONSE',  val: enAttente.length, sous: montantAttente > 0 ? `CHF ${fmtN(montantAttente)} en jeu` : 'Aucun en cours', Icon: Clock, ...DS.kpi.amber },
           { label: 'DÉLAI MOYEN',         val: delaisMoyen !== null ? `${delaisMoyen}j` : '—', sous: 'depuis envoi', Icon: FileText, ...DS.kpi.purple },
         ];

@@ -4,7 +4,7 @@ import {
 } from 'lucide-react';
 import {
   fmtN, calculerCoutsChantier, C, calculerEtatChantier,
-  assertEtatCoherent, calculerCA, isChantierActif,
+  assertEtatCoherent, calculerCA, isChantierActif, getIntervallesPeriode,
 } from '../../donnees';
 import { DS, couleurStatut as couleurStatutDS } from '../../ds';
 import { useApp } from '../../context/AppContext';
@@ -21,7 +21,7 @@ function ChantiersListe({
   onSupprimer,
   formSlot,
 }) {
-  const { chantiers, clients, devis = [], parametres, naviguer, contexte, agentState, confirmer } = useApp();
+  const { chantiers, clients, devis = [], parametres, naviguer, contexte, agentState, confirmer, periodeGlobale = 'mois' } = useApp();
   const deriveMap = React.useMemo(() => {
     const map = {};
     (agentState?.agentData?.DerivePredictor?.resultats || []).forEach(r => { map[r.chantierId] = r; });
@@ -29,12 +29,19 @@ function ChantiersListe({
   }, [agentState]);
   const couleurStatut = couleurStatutDS;
 
-  // KPIs
+  // KPIs — filtrés par période pour CA, marge, jours
+  const { debut, fin } = getIntervallesPeriode(periodeGlobale);
+  const debutStr = debut.toISOString().slice(0, 10);
+  const finStr = fin.toISOString().slice(0, 10);
+  const chantiersPeriode = chantiersFiltres.filter(c => {
+    const d = c.dateDebut || '';
+    return d >= debutStr && d <= finStr;
+  });
   const nbEnCours = chantiers.filter(c => (c.statut || '').toLowerCase() === 'en cours').length;
   const nbEnRetard = chantiersFiltres.filter(c => { const j = joursParChantier[c.id]; return j !== null && j < 0; }).length;
-  const caTotal = chantiersFiltres.reduce((t, c) => t + (calculerCA(c, devis) || 0), 0);
-  const joursPlanifies = chantiersFiltres.reduce((t, c) => t + (parseInt(c.nombreJours) || 0), 0);
-  const chantiersAvecData = chantiersFiltres.filter(c => { const ca = calculerCA(c, devis); return ca !== null && ca > 0; });
+  const caTotal = chantiersPeriode.reduce((t, c) => t + (calculerCA(c, devis) || 0), 0);
+  const joursPlanifies = chantiersPeriode.reduce((t, c) => t + (parseInt(c.nombreJours) || 0), 0);
+  const chantiersAvecData = chantiersPeriode.filter(c => { const ca = calculerCA(c, devis); return ca !== null && ca > 0; });
   let margeMoyenne = null;
   if (chantiersAvecData.length > 0) {
     const sum = chantiersAvecData.reduce((s, c) => {
@@ -43,10 +50,10 @@ function ChantiersListe({
     }, 0);
     margeMoyenne = Math.round(sum / chantiersAvecData.length);
   }
-  const nbAvecDevis = chantiersFiltres.filter(c => calculerCA(c, devis) !== null).length;
+  const nbAvecDevis = chantiersPeriode.filter(c => calculerCA(c, devis) !== null).length;
   const kpiItems = [
     { label: 'EN COURS',       val: nbEnCours,  Icon: HardHat,    ...DS.kpi.blue,   badge: nbEnRetard > 0 ? `${nbEnRetard} en retard` : null },
-    { label: 'CA CHANTIERS',   val: `CHF ${fmtN(caTotal)}`, sous: `${nbAvecDevis} avec devis · tous statuts`, Icon: DollarSign, ...DS.kpi.green },
+    { label: 'CA CHANTIERS',   val: `CHF ${fmtN(caTotal)}`, sous: `${nbAvecDevis} avec devis · ${chantiersPeriode.length} ce ${periodeGlobale === 'semaine' ? 'sem.' : periodeGlobale === 'mois' ? 'mois' : 'an'}`, Icon: DollarSign, ...DS.kpi.green },
     { label: 'MARGE MOYENNE',  val: margeMoyenne !== null ? `${margeMoyenne}%` : '—', Icon: TrendingUp, ...DS.kpi.amber },
     { label: 'JOURS PLANIFIÉS',val: `${fmtN(joursPlanifies)}j`, Icon: Clock, ...DS.kpi.purple },
   ];

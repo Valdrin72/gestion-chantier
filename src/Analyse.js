@@ -884,7 +884,7 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
       )}
 
       {onglet === 'statistiques' && (
-        <Statistiques chantiers={chantiers} clients={clients} devis={devis} parametres={parametres} periodeGlobale="annee" />
+        <Statistiques chantiers={chantiers} clients={clients} devis={devis} parametres={parametres} periodeGlobale={periodeGlobale} />
       )}
 
       {onglet === 'rapport' && (

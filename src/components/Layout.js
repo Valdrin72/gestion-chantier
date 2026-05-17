@@ -1,5 +1,6 @@
 import React from 'react';
 import { Plus, Sun, Moon, Menu, X, ChevronRight, LogOut } from 'lucide-react';
+import { useApp } from '../context/AppContext';
 
 export function Sidebar({ sidebarOuvert, setSidebarOuvert, navAutorisees, page, naviguer, darkMode, toggleDarkMode, profil, deconnecter }) {
   return (
@@ -81,7 +82,19 @@ export function Sidebar({ sidebarOuvert, setSidebarOuvert, navAutorisees, page, 
   );
 }
 
+const PERIODES = [
+  { id: 'semaine', label: 'Semaine' },
+  { id: 'mois',    label: 'Mois' },
+  { id: 'annee',   label: 'Année' },
+];
+
+// Pages où le filtre période a du sens (données temporelles)
+const PAGES_AVEC_PERIODE = ['dashboard', 'finances', 'rapport', 'chantiers', 'devis', 'heures'];
+
 export function Topbar({ setSidebarOuvert, canGoBack, page, revenirArriere, navAutorisees, darkMode, toggleDarkMode, profil }) {
+  const { periodeGlobale, setPeriodeGlobale } = useApp();
+  const montrerPeriode = PAGES_AVEC_PERIODE.includes(page);
+
   return (
     <header className="topbar">
       <div className="topbar-left">
@@ -110,6 +123,31 @@ export function Topbar({ setSidebarOuvert, canGoBack, page, revenirArriere, navA
         <span className="topbar-title">{navAutorisees.find(n => n.id === page)?.label || 'Dashboard'}</span>
       </div>
       <div className="topbar-right" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        {/* Sélecteur de période — visible sur toutes les pages financières */}
+        {montrerPeriode && (
+          <div style={{ display: 'flex', background: 'var(--bg-glass-2)', border: '1px solid var(--border)', borderRadius: 8, padding: 3, gap: 2 }}>
+            {PERIODES.map(p => (
+              <button
+                key={p.id}
+                onClick={() => setPeriodeGlobale(p.id)}
+                style={{
+                  background: periodeGlobale === p.id ? 'var(--brand, #0d3d6e)' : 'transparent',
+                  color: periodeGlobale === p.id ? '#fff' : 'var(--text-muted)',
+                  border: 'none',
+                  borderRadius: 6,
+                  padding: '4px 12px',
+                  cursor: 'pointer',
+                  fontSize: 12,
+                  fontWeight: 600,
+                  fontFamily: 'inherit',
+                  transition: 'all 0.15s',
+                }}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+        )}
         <button
           onClick={toggleDarkMode}
           aria-label="Basculer le thème"

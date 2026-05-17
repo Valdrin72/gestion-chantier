@@ -1,8 +1,9 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Clock, X, Trash2, AlertTriangle } from 'lucide-react';
 import { DS } from './ds';
-import { fmtN, getHeuresParEmployeParDate } from './donnees';
+import { fmtN, getHeuresParEmployeParDate, getIntervallesPeriode } from './donnees';
 import KpiCard from './components/ui/KpiCard';
+import { useApp } from './context/AppContext';
 
 const FORM_VIDE = { employeId: '', chantierId: '', date: '', heures: '8' };
 
@@ -29,8 +30,14 @@ const DAY_LABELS_SHORT = ['LUN', 'MAR', 'MER', 'JEU', 'VEN', 'SAM', 'DIM'];
 
 export default function Heures({ chantiers = [], parametres = {}, setChantiers }) {
   const employes = useMemo(() => parametres.employes || [], [parametres.employes]); // eslint-disable-line react-hooks/exhaustive-deps
+  const { periodeGlobale } = useApp();
   const today = new Date();
   const [weekStart, setWeekStart] = useState(() => getWeekStart(today));
+
+  // Sync to current week when global period changes to 'semaine'
+  useEffect(() => {
+    if (periodeGlobale === 'semaine') setWeekStart(getWeekStart(new Date()));
+  }, [periodeGlobale]);
   const [modal, setModal] = useState(null);
   const [samediConfirme, setSamediConfirme] = useState(false);
 
@@ -108,26 +115,44 @@ export default function Heures({ chantiers = [], parametres = {}, setChantiers }
   // Build hours map: { empId: { isoDate: hours } } — logique centralisée dans donnees.js
   const hoursMap = useMemo(() => getHeuresParEmployeParDate(chantiers, employes), [chantiers, employes]);
 
-  // KPI computations — inclut samedi (index 5) s'il y a des heures saisies ce jour
+  // KPI computations — semaine: current grid; mois/annee: aggregate over the period
   const { totalHeures, totalSupp, nonSaisis, hasSamediHeures } = useMemo(() => {
-    const weekDayIsos = weekDays.slice(0, 6).map(isoDate); // Lun–Sam
+    const actifs = employes.filter(e => e.actif !== false);
     let total = 0, supp = 0, nsSaisis = 0, samH = false;
 
-    employes.filter(e => e.actif !== false).forEach(e => {
-      const empHours = hoursMap[e.id] || {};
-      weekDayIsos.forEach((d, i) => {
-        const h = empHours[d] || 0;
-        total += h;
-        if (h > 8) supp += (h - 8);
-        if (i === 5 && h > 0) samH = true;
+    if (periodeGlobale === 'semaine') {
+      const weekDayIsos = weekDays.slice(0, 6).map(isoDate); // Lun–Sam
+      actifs.forEach(e => {
+        const empHours = hoursMap[e.id] || {};
+        weekDayIsos.forEach((d, i) => {
+          const h = empHours[d] || 0;
+          total += h;
+          if (h > 8) supp += (h - 8);
+          if (i === 5 && h > 0) samH = true;
+        });
+        const hasSaisie = weekDayIsos.slice(0, 5).some(d => (empHours[d] || 0) > 0);
+        if (!hasSaisie) nsSaisis++;
       });
-      // non saisis = aucune heure Lun–Ven (samedi = optionnel)
-      const hasSaisie = weekDayIsos.slice(0, 5).some(d => (empHours[d] || 0) > 0);
-      if (!hasSaisie) nsSaisis++;
-    });
+    } else {
+      const { debut, fin } = getIntervallesPeriode(periodeGlobale);
+      const debutStr = isoDate(debut);
+      const finStr = isoDate(fin);
+      actifs.forEach(e => {
+        const empHours = hoursMap[e.id] || {};
+        let hasSaisie = false;
+        Object.entries(empHours).forEach(([d, h]) => {
+          if (d < debutStr || d > finStr) return;
+          total += h;
+          if (h > 8) supp += (h - 8);
+          if (new Date(d + 'T00:00:00').getDay() === 6 && h > 0) samH = true;
+          if (new Date(d + 'T00:00:00').getDay() !== 0 && new Date(d + 'T00:00:00').getDay() !== 6) hasSaisie = true;
+        });
+        if (!hasSaisie) nsSaisis++;
+      });
+    }
 
     return { totalHeures: total, totalSupp: supp, nonSaisis: nsSaisis, hasSamediHeures: samH };
-  }, [employes, hoursMap, weekDays]);
+  }, [employes, hoursMap, weekDays, periodeGlobale]);
 
   const actifs = employes.filter(e => e.actif !== false);
   const moyenneParEmploye = actifs.length > 0 ? Math.round(totalHeures / actifs.length * 10) / 10 : 0;
@@ -140,16 +165,28 @@ export default function Heures({ chantiers = [], parametres = {}, setChantiers }
 
   const weekLabel = `Semaine du ${weekStart.toLocaleDateString('fr-CH', { day: 'numeric', month: 'long' })} au ${addDays(weekStart, 6).toLocaleDateString('fr-CH', { day: 'numeric', month: 'long', year: 'numeric' })}`;
 
-  const nbSuppEmployes = employes.filter(e => {
-    const m = hoursMap[e.id] || {};
-    return weekDays.slice(0, 6).some(d => (m[isoDate(d)] || 0) > 8);
-  }).length;
+  const nbSuppEmployes = useMemo(() => {
+    if (periodeGlobale === 'semaine') {
+      return employes.filter(e => {
+        const m = hoursMap[e.id] || {};
+        return weekDays.slice(0, 6).some(d => (m[isoDate(d)] || 0) > 8);
+      }).length;
+    }
+    const { debut, fin } = getIntervallesPeriode(periodeGlobale);
+    const debutStr = isoDate(debut);
+    const finStr = isoDate(fin);
+    return employes.filter(e => {
+      const m = hoursMap[e.id] || {};
+      return Object.entries(m).some(([d, h]) => d >= debutStr && d <= finStr && h > 8);
+    }).length;
+  }, [employes, hoursMap, weekDays, periodeGlobale]);
 
+  const periodeLabel = periodeGlobale === 'semaine' ? 'SEMAINE' : periodeGlobale === 'mois' ? 'MOIS' : 'ANNÉE';
   const KPI_ITEMS = [
-    { label: 'HEURES SEMAINE',  value: `${fmtN(Math.round(totalHeures))}h`,  ...DS.kpi.blue, badge: hasSamediHeures ? 'Incl. SAM' : null },
-    { label: 'MOYENNE / EMPLOYÉ', value: `${moyenneParEmploye}h`,            ...DS.kpi.green },
-    { label: 'HEURES SUPP.',    value: `${Math.round(totalSupp)}h`,           ...DS.kpi.amber, badge: totalSupp > 0 ? `${nbSuppEmployes} employé${nbSuppEmployes > 1 ? 's' : ''}` : null },
-    { label: 'NON SAISIES',     value: `${nonSaisis}`,                        ...(nonSaisis > 0 ? DS.kpi.red : DS.kpi.green), badge: nonSaisis > 0 ? 'Relancer' : null },
+    { label: `HEURES ${periodeLabel}`, value: `${fmtN(Math.round(totalHeures))}h`, ...DS.kpi.blue, badge: hasSamediHeures ? 'Incl. SAM' : null },
+    { label: 'MOYENNE / EMPLOYÉ',      value: `${moyenneParEmploye}h`,              ...DS.kpi.green },
+    { label: 'HEURES SUPP.',           value: `${Math.round(totalSupp)}h`,          ...DS.kpi.amber, badge: totalSupp > 0 ? `${nbSuppEmployes} employé${nbSuppEmployes > 1 ? 's' : ''}` : null },
+    { label: 'NON SAISIES',            value: `${nonSaisis}`,                       ...(nonSaisis > 0 ? DS.kpi.red : DS.kpi.green), badge: nonSaisis > 0 ? 'Relancer' : null },
   ];
 
   const btnStyle = { background: 'var(--ds-btn-ghost-bg)', border: '1px solid var(--ds-btn-ghost-border)', borderRadius: 8, padding: '7px 14px', cursor: 'pointer', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', fontFamily: 'inherit', transition: 'all 0.15s' };

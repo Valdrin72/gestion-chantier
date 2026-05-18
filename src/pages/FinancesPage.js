@@ -5,8 +5,10 @@ import React, { useState, useMemo, useCallback } from 'react';
 import { DollarSign, FileText, Clock, AlertTriangle, CreditCard, TrendingUp, Calendar, Zap } from 'lucide-react';
 import Factures from '../Factures';
 import Paiements from '../Paiements';
+import RelancesTab from '../RelancesTab';
 import { getIntervallesPeriode, getPeriodeLabel, facturesInPeriode, calculerCA, calculerStatutFacture, calculerEtatChantier } from '../donnees';
 import { useApp } from '../context/AppContext';
+import { prochainRappel } from '../relances';
 
 const fmt  = (n) => (parseFloat(n) || 0).toLocaleString('fr-CH', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 const fmtK = (n) => { const v = parseFloat(n) || 0; return v >= 1000 ? `${(v/1000).toFixed(1)}k` : String(Math.round(v)); };
@@ -407,7 +409,7 @@ export default function Finances({
   periodeGlobale = 'mois',
   parametres = null,
 }) {
-  const { confirmer } = useApp();
+  const { confirmer, afficherNotif } = useApp();
   const [onglet, setOnglet] = useState('tresorerie');
 
   // ── Exclure les factures orphelines (chantier, devis ou client supprimé, ou sans ancrage) ──
@@ -456,11 +458,23 @@ export default function Finances({
     return { totalFacture, totalPaye, enAttente, enRetard };
   }, [facturesValides]);
 
+  // Nombre de factures nécessitant une relance (badge rouge onglet Relances)
+  const nbRelances = useMemo(() =>
+    factures.filter(f => prochainRappel(f) !== null).length,
+    [factures]
+  );
+
   const tabs = [
-    { id: 'tresorerie', label: 'Trésorerie',          count: null },
-    { id: 'factures',   label: 'Factures',            count: facturesPeriode.filter(f => f.statut !== 'annulee').length },
-    { id: 'paiements',  label: 'Paiements chantiers', count: null },
+    { id: 'tresorerie', label: 'Trésorerie',          count: null,    badgeRouge: false },
+    { id: 'factures',   label: 'Factures',            count: facturesPeriode.filter(f => f.statut !== 'annulee').length, badgeRouge: false },
+    { id: 'relances',   label: 'Relances',            count: nbRelances > 0 ? nbRelances : null, badgeRouge: nbRelances > 0 },
+    { id: 'paiements',  label: 'Paiements chantiers', count: null,    badgeRouge: false },
   ];
+
+  // setFactures pour RelancesTab : met à jour dans le tableau COMPLET (orphelines incluses)
+  const setFacturesRelances = useCallback((updater) => {
+    onSave(typeof updater === 'function' ? updater(factures) : updater);
+  }, [factures, onSave]);
 
   return (
     <div>
@@ -545,7 +559,12 @@ export default function Finances({
           }}>
             {t.label}
             {t.count !== null && (
-              <span style={{ background: 'var(--border-glass-strong)', borderRadius: 20, padding: '1px 8px', fontSize: 11, fontWeight: 600 }}>
+              <span style={{
+                background: t.badgeRouge ? 'rgba(239,68,68,0.15)' : 'var(--border-glass-strong)',
+                color: t.badgeRouge ? '#ef4444' : 'inherit',
+                border: t.badgeRouge ? '1px solid rgba(239,68,68,0.3)' : 'none',
+                borderRadius: 20, padding: '1px 8px', fontSize: 11, fontWeight: 700,
+              }}>
                 {t.count}
               </span>
             )}
@@ -572,6 +591,15 @@ export default function Finances({
           hideHeader
         />
       </div>
+      {onglet === 'relances' && (
+        <RelancesTab
+          factures={factures}
+          clients={clients}
+          chantiers={chantiers}
+          setFactures={setFacturesRelances}
+          afficherNotif={afficherNotif}
+        />
+      )}
       <div style={{ display: onglet === 'paiements' ? 'block' : 'none' }}>
         <Paiements
           chantiers={chantiers}

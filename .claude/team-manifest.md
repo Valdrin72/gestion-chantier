@@ -73,6 +73,31 @@ responsable du domaine touché. L'équipe ne dort jamais.
 4. `/veille-auto` — mensuel + avant chaque mise en production
 5. `/skill-creator` — pour créer de nouveaux skills si besoin
 
+### 💼 DOMAINE BUSINESS & FINANCE PME
+
+> **Équipe Business** — s'active pour piloter l'entreprise, analyser la santé financière et simplifier la gestion administrative.
+
+| Skill | Déclencheur | Rôle |
+|-------|-------------|------|
+| `claude-small-business` (skill) | `/claude-small-business` | Audit PME en 60 sec — état de santé, 3 actions prioritaires, checklist hebdo, rapport exécutif 1 page |
+| `claude-financial-service` (skill) | `/claude-financial-service` | Analyse financière avancée — cashflow J+30/60/90, TVA AFC, EAC/RAD par chantier, benchmarks BTP GE, rapport fiduciaire |
+
+**Protocole Équipe Business :**
+- `/claude-small-business` → chaque lundi matin ou quand le patron veut un point rapide
+- `/claude-small-business --week` → checklist hebdomadaire uniquement
+- `/claude-small-business --report` → rapport exécutif mensuel
+- `/claude-financial-service --cashflow` → avant une décision d'investissement ou d'embauche
+- `/claude-financial-service --tva` → avant chaque décompte AFC
+- `/claude-financial-service --eac` → dès qu'un chantier semble dériver
+- `/claude-financial-service --report` → rapport mensuel complet pour le fiduciaire
+
+**Ordre de lecture recommandé (revue mensuelle) :**
+```
+/claude-small-business --report → /claude-financial-service --report → /mempalace
+```
+
+---
+
 ### 🧠 DOMAINE MÉMOIRE & ORCHESTRATION
 
 > **Équipe Cerveau** — s'active pour organiser, mémoriser et piloter les sprints complexes.
@@ -81,11 +106,15 @@ responsable du domaine touché. L'équipe ne dort jamais.
 |-------|-------------|------|
 | `mempalace` (skill) | `/mempalace` | Palais de la mémoire — ancre dans Memory MCP tous les bugs, patterns et décisions de la session |
 | `claude-task-master` (skill) | `/claude-task-master [feature]` | Chef de projet IA — décompose, délègue et suit les sprints multi-agents |
+| `the-agency` (skill) | `/the-agency` | Orchestrateur de skills — installe, active, audite et met à jour tous les skills CYNA |
+| `ultra-plan` (skill) | `/ultra-plan [feature]` | Planificateur maximal — décomposition atomique XS/S/M/L, agents assignés, sprints parallèles |
 
 **Protocole Équipe Cerveau :**
 - `/mempalace` → fin de chaque session longue ou après un sprint majeur
 - `/mempalace --read` → début de session pour le briefing complet
 - `/claude-task-master` → dès qu'une feature nécessite plus de 3 tâches distinctes
+- `/the-agency list` → vérifier l'état de tous les skills installés
+- `/ultra-plan` → avant tout sprint complexe pour un plan d'exécution parfait
 
 ### 🎨 DOMAINE DESIGN & QUALITÉ VISUELLE
 
@@ -176,3 +205,31 @@ EAC            = coutReel / (avancement / 100)
 RAD            = (coutReel / avancement) × (100 - avancement)
 TTC            = HT × (1 + tva/100)                 // défaut tva=8.1
 ```
+
+---
+
+## 🛠️ Skills installés — Référence complète (41 skills)
+
+| Trigger | Skill | Usage |
+|---------|-------|-------|
+| `/invoice-validator` | invoice-validator | Vérifie facture avant envoi (14 points légaux CH) |
+| `/debug-prod` | debug-prod | Debug Vercel + Supabase en production |
+| `/git-workflow` | git-workflow | Branches, commits conventionnels, semver |
+| `/devis-smart` | devis-smart | Génère postes BTP avec ratios heures/m² |
+| `/a11y` | accessibility-audit | Audit WCAG 2.1 — contraste, aria, clavier |
+| `/prompt` | prompt-engineer | Optimise les prompts Claude IA de l'app |
+| `/claude-small-business` | claude-small-business | Pilotage PME — audit 60s, checklist hebdo |
+| `/claude-financial-service` | claude-financial-service | Cashflow J+30/60/90, TVA, EAC, benchmarks |
+| `/the-agency` | the-agency | Orchestrateur installation/gestion skills |
+| `/ultra-plan` | ultra-plan | Planification atomique d'une feature |
+| `/darwin` | darwin | Évolution du code — sélection naturelle |
+| `/impeccable` | impeccable | Audit de perfection avant release |
+| `/mempalace` | mempalace | Ancrer les apprentissages en mémoire MCP |
+| `/security-scan` | security-scan | Scan sécurité complet + auto-fix |
+| `/playwright-cyna` | playwright-cyna | Tests E2E navigateur automatisés |
+| `/taste-skill` | taste-skill | Audit UI/UX — cohérence visuelle |
+| `/caveman` | caveman | Debug primitif — logs bruts |
+| `/claude-task-master` | claude-task-master | Orchestrateur de sprints |
+| `/skill-creator` | skill-creator | Crée un nouveau skill |
+| `/graph-skill` | graph-skill | Graphe entités chantiers↔devis↔factures |
+

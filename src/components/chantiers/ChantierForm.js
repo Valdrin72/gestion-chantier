@@ -72,14 +72,14 @@ function ChantierForm({ form, setForm, erreurs, setErreurs, modeCompleter, onSau
         <div><label style={labelStyle}>Directeur de travaux</label>
           <select value={form.directeurTravauxId || ''} onChange={e => setForm({ ...form, directeurTravauxId: e.target.value })} style={inputStyle}>
             <option value="">— Sélectionner —</option>
-            {parametres.employes.filter(e => e.actif !== false).map(e => <option key={e.id} value={e.id}>{e.nom} — {e.poste || 'Employé'}</option>)}
+            {(parametres.employes || []).filter(e => e.actif !== false).map(e => <option key={e.id} value={e.id}>{e.nom} — {e.poste || 'Employé'}</option>)}
           </select></div>
         <div>
           <label style={labelStyle}>Localité <span style={{ color: C.danger }}>*</span></label>
           <select value={form.ville || ''} onChange={e => { setForm({ ...form, ville: e.target.value }); if (erreurs.ville) setErreurs(prev => ({ ...prev, ville: null })); }}
             style={{ ...inputStyle, ...(erreurs.ville ? { borderColor: '#ef4444', boxShadow: '0 0 0 1px #ef444440' } : {}) }}>
             <option value="">Sélectionner...</option>
-            {parametres.localites.map(l => <option key={l.id} value={l.nom}>{l.nom} (CHF {l.tarifJour}.-/j)</option>)}
+            {(parametres.localites || []).map(l => <option key={l.id} value={l.nom}>{l.nom} (CHF {l.tarifJour}.-/j)</option>)}
           </select>
           {erreurs.ville && <div style={{ color: '#ef4444', fontSize: 12, marginTop: 5, fontWeight: 600 }}>La localité est obligatoire</div>}
         </div>

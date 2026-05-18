@@ -83,7 +83,7 @@ function RapportsPage({ chantiers, clients, devis, parametres, setParametres, pa
         ))}
       </div>
       {onglet === 'rapport-ia'    && <RapportIA agentData={agentState?.agentData} />}
-      {onglet === 'marges'        && <Marges chantiers={chantiers} clients={clients} devis={devis} parametres={parametres} />}
+      {onglet === 'marges'        && <Marges chantiers={chantiers} clients={clients} devis={devis} parametres={parametres} periodeGlobale={periodeGlobale} />}
       {onglet === 'rapport'       && <Rapport chantiers={chantiers} clients={clients} devis={devis} parametres={parametres} paiementsData={paiementsData} naviguer={naviguer} />}
       {onglet === 'statistiques'  && <Statistiques chantiers={chantiers} clients={clients} devis={devis} parametres={parametres} periodeGlobale={periodeGlobale} />}
       {onglet === 'analyse'       && <Analyse chantiers={chantiers} clients={clients} devis={devis} parametres={parametres} setParametres={setParametres} paiementsData={paiementsData} periodeGlobale={periodeGlobale} />}

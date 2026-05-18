@@ -7,9 +7,12 @@
 // ============================================================
 
 import React, { useState, useMemo } from 'react';
+import { FileDown, Download } from 'lucide-react';
 import { DS } from './ds';
+import { exportCSV } from './utils/exportCSV';
 import { fmtN, getIntervallesPeriode, facturesInPeriode, genererNumeroFacture, calculerStatutFacture } from './donnees';
 import { prochainRappel, niveauInfo, genererTexteRappel, marquerRappelEnvoye } from './relances';
+import { exportFicheChantier } from './ExportPDF';
 
 // ── TVA suisse ───────────────────────────────────────────────
 const TVA_OPTIONS = [
@@ -113,7 +116,7 @@ function KpiCard({ label, value, couleur, icon, sous }) {
 }
 
 // ── COMPOSANT PRINCIPAL ──────────────────────────────────────
-export default function Factures({ profil, clients = [], chantiers = [], devis = [], factures = [], onSave, paiementsData = {}, setPaiementsData, naviguer, hideHeader = false, periodeGlobale = 'mois' }) {
+export default function Factures({ profil, clients = [], chantiers = [], devis = [], factures = [], onSave, paiementsData = {}, setPaiementsData, naviguer, hideHeader = false, periodeGlobale = 'mois', parametres = null }) {
   const [vue, setVue] = useState('liste');   // 'liste' | 'form' | 'detail'
   const [selected, setSelected] = useState(null);
   const [filtreStatut, setFiltreStatut] = useState('');
@@ -126,7 +129,7 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
   const [pageFact, setPageFact] = useState(0);
   const PAGE_SIZE_FACT = 50;
 
-  const canEdit = profil?.id === 'direction' || profil?.id === 'administratif';
+  const canEdit = ['cyna', 'cynatech'].includes(profil?.id);
 
   // ── Enregistrer un paiement depuis la facture ─────────────
   const enregistrerPaiement = () => {
@@ -412,6 +415,28 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
   // ── Vue détail ───────────────────────────────────────────
   const voirDetail = (f) => { setSelected(f); setVue('detail'); };
 
+  const exporterCSV = () => {
+    const entetes = ['Numéro', 'Client', 'Chantier', 'Type', 'Statut', 'Date émission', 'Échéance', 'Montant HT (CHF)', 'TVA (%)', 'Montant TTC (CHF)', 'Payé (CHF)'];
+    const lignes = factures.map(f => {
+      const client = clients.find(c => String(c.id) === String(f.clientId));
+      const chantier = chantiers.find(c => String(c.id) === String(f.chantierId));
+      return [
+        f.numero || '',
+        client ? `${client.prenom} ${client.nom}`.trim() : '',
+        chantier?.nom || '',
+        f.type || '',
+        f.statut || '',
+        f.dateEmission || f.dateFacture || '',
+        f.dateEcheance || '',
+        Math.round(parseFloat(f.montantHT) || 0),
+        parseFloat(f.tva) || 8.1,
+        Math.round(parseFloat(f.montantTTC) || 0),
+        Math.round(parseFloat(f.montantPaye) || 0),
+      ];
+    });
+    exportCSV(`factures_${new Date().toISOString().slice(0,10)}.csv`, entetes, lignes);
+  };
+
   // ============================
   //  LISTE
   // ============================
@@ -423,11 +448,14 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
             <div className="page-title-main">Factures</div>
             <div className="page-title-sub">{factures.length} facture{factures.length !== 1 ? 's' : ''}</div>
           </div>
-          {canEdit && (
-            <div className="page-actions-group">
+          <div className="page-actions-group">
+            {factures.length > 0 && (
+              <button style={S.btnGhost} onClick={exporterCSV}><Download size={14} /> Exporter CSV</button>
+            )}
+            {canEdit && (
               <button style={S.btnPrimary} onClick={() => ouvrirForm()}>+ Nouvelle facture</button>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       )}
       {hideHeader && canEdit && (
@@ -547,6 +575,17 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
                             onMouseLeave={e => e.currentTarget.style.opacity = '0.75'}
                             onClick={() => supprimerFacture(f.id)}>Suppr</button>
                         )}
+                        {(() => {
+                          const chantierF = chantiers.find(c => String(c.id) === String(f.chantierId));
+                          if (!chantierF || !parametres) return null;
+                          return (
+                            <button
+                              style={{ ...DS.iconBtn, padding: '5px 8px' }}
+                              title="Exporter fiche chantier PDF"
+                              onClick={() => exportFicheChantier(chantierF, clients, parametres, devis)}
+                            ><FileDown size={13} /></button>
+                          );
+                        })()}
                       </div>
                     </td>
                   </tr>
@@ -624,6 +663,17 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
             <button style={S.btnGhost} onClick={() => setVue('liste')}>← Retour</button>
             <div className="page-title-main">Facture {f.numero}</div>
             <BadgeStatut statut={f.statut} />
+          {(() => {
+            const chantierDetail = chantiers.find(c => String(c.id) === String(f.chantierId));
+            if (!chantierDetail || !parametres) return null;
+            return (
+              <button
+                style={{ ...S.btnGhost, display: 'flex', alignItems: 'center', gap: 5 }}
+                title="Exporter fiche chantier PDF"
+                onClick={() => exportFicheChantier(chantierDetail, clients, parametres, devis)}
+              ><FileDown size={14} /> PDF</button>
+            );
+          })()}
           {canEdit && (
             <>
               <button style={S.btnGhost} onClick={() => ouvrirForm(f)}>Modifier</button>

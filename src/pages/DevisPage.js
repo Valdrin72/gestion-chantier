@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import {
   Plus, Pencil, Trash2, HardHat, Receipt,
-  DollarSign, Clock, FileText, TrendingUp,
+  DollarSign, Clock, FileText, TrendingUp, FileDown, Download,
 } from 'lucide-react';
 import { fmtN, C, creerFactureDepuisDevis, getIntervallesPeriode } from '../donnees';
+import { exportCSV } from '../utils/exportCSV';
 import { DS } from '../ds';
 import { useApp } from '../context/AppContext';
+import { exportDevis } from '../ExportPDF';
 import AssistantDevisIA from '../AssistantDevisIA';
 
 const inputStyle = DS.input;
@@ -15,10 +17,15 @@ const btnPrimaire = DS.btnPrimary;
 const btnSucces = DS.btnSuccess;
 const btnDanger = DS.btnDanger;
 
+const PAGE_SIZE = 50;
+
 function Devis() {
   const { devis, setDevis, clients, parametres, naviguer, setChantiers, chantiers, factures, setFactures, contexte = {}, afficherNotif, confirmer, periodeGlobale = 'mois' } = useApp();
   const [ajout, setAjout] = useState(false);
   const [filtreDevis, setFiltreDevis] = useState('Tous');
+  const [page, setPage] = useState(0);
+
+  React.useEffect(() => { setPage(0); }, [filtreDevis]);
   const [confirmConversion, setConfirmConversion] = useState(null); // { devis, nomChantier }
   const vide = {
     numero: `DEV-${new Date().getFullYear()}-${String(Math.max(0, ...devis.map(d => parseInt((d.numero || '').split('-').pop()) || 0)) + 1).padStart(3, '0')}`,
@@ -79,6 +86,28 @@ function Devis() {
     setAjout(false); setForm(vide); setErreurs({});
   };
 
+  const caDevisExport = (d) => parseFloat(d.montantHT) || d.lignes?.reduce((s, l) => s + (parseFloat(l.quantite) || 0) * (parseFloat(l.prixUnitaire) || 0), 0) || 0;
+
+  const exporterCSV = () => {
+    const entetes = ['Numéro', 'Client', 'Entreprise', 'Date', 'Statut', 'Montant HT (CHF)', 'TVA (%)', 'Montant TTC (CHF)'];
+    const lignes = devis.map(d => {
+      const client = clients.find(c => String(c.id) === String(d.clientId));
+      const ht = caDevisExport(d);
+      const tva = parseFloat(d.tva) || 8.1;
+      return [
+        d.numero || '',
+        client ? `${client.prenom} ${client.nom}`.trim() : '',
+        client?.entreprise || '',
+        d.dateEmission || d.date || '',
+        d.statut || '',
+        Math.round(ht),
+        tva,
+        Math.round(ht * (1 + tva / 100)),
+      ];
+    });
+    exportCSV(`devis_${new Date().toISOString().slice(0,10)}.csv`, entetes, lignes);
+  };
+
   const ouvrirConfirmConversion = (d) => {
     const client = clients.find(c => String(c.id) === String(d.clientId));
     const nomSuggere = client?.entreprise
@@ -122,6 +151,9 @@ function Devis() {
           <div className="page-title-sub">{devis.length} devis · {(() => { const { debut, fin } = getIntervallesPeriode(periodeGlobale); const ds = debut.toISOString().slice(0,10); const fs = fin.toISOString().slice(0,10); return devis.filter(d => { const dt = (d.dateEmission || d.date || ''); return d.statut?.toLowerCase() === 'accepté' && dt >= ds && dt <= fs; }).length; })()} acceptés ({periodeGlobale === 'semaine' ? 'semaine' : periodeGlobale === 'mois' ? 'ce mois' : "l'année"})</div>
         </div>
         <div className="page-actions-group">
+          {devis.length > 0 && (
+            <button onClick={exporterCSV} style={{ ...DS.btnGhost }}><Download size={14} /> Exporter CSV</button>
+          )}
           <button onClick={() => { setForm(vide); setAjout(!ajout); }} style={btnPrimaire}><Plus size={14} /> Nouveau devis</button>
         </div>
       </div>
@@ -395,6 +427,8 @@ function Devis() {
       {/* ── Liste des devis ── */}
       {(() => {
         const devisFiltres = filtreDevis === 'Tous' ? devis : devis.filter(d => d.statut?.trim().toLowerCase() === filtreDevis.toLowerCase());
+        const totalPages = Math.ceil(devisFiltres.length / PAGE_SIZE);
+        const devisPage = devisFiltres.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
         return (
       <div style={{ ...DS.card, padding: 0, overflow: 'hidden' }}>
         {devisFiltres.length === 0 ? (
@@ -412,7 +446,7 @@ function Devis() {
                 </tr>
               </thead>
               <tbody>
-                {devisFiltres.map(d => {
+                {devisPage.map(d => {
                   const client = clients.find(c => String(c.id) === String(d.clientId));
                   const montant = parseFloat(d.montantHT || d.prixPropose) || 0;
                   const totalRegie = Array.isArray(d.heuresRegie)
@@ -495,6 +529,13 @@ function Devis() {
                               </button>
                             );
                           })()}
+                          {client && (
+                            <button
+                              onClick={() => exportDevis(d, clients, parametres)}
+                              style={DS.iconBtn}
+                              title="Exporter en PDF"
+                            ><FileDown size={14} /></button>
+                          )}
                           <button
                             onClick={() => { setForm({ ...d, montantHT: d.montantHT || d.prixPropose || '' }); setAjout(true); }}
                             style={DS.iconBtn}
@@ -527,6 +568,15 @@ function Devis() {
                 })}
               </tbody>
             </table>
+          </div>
+        )}
+        {totalPages > 1 && (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, marginTop: 12, paddingBottom: 12 }}>
+            <button onClick={() => setPage(p => Math.max(0, p - 1))} disabled={page === 0}
+              style={{ background: 'var(--bg-glass-2)', border: '1px solid var(--border)', borderRadius: 8, padding: '6px 14px', cursor: page === 0 ? 'not-allowed' : 'pointer', opacity: page === 0 ? 0.4 : 1, fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', fontFamily: 'inherit' }}>← Préc.</button>
+            <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>{page + 1} / {totalPages} · {devisFiltres.length} éléments</span>
+            <button onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))} disabled={page === totalPages - 1}
+              style={{ background: 'var(--bg-glass-2)', border: '1px solid var(--border)', borderRadius: 8, padding: '6px 14px', cursor: page === totalPages - 1 ? 'not-allowed' : 'pointer', opacity: page === totalPages - 1 ? 0.4 : 1, fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', fontFamily: 'inherit' }}>Suiv. →</button>
           </div>
         )}
       </div>

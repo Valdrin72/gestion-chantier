@@ -1,27 +1,26 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 
+const TOUTES_PAGES = [
+  'dashboard', 'chantiers', 'clients', 'employes', 'devis', 'heures',
+  'finances', 'planning', 'rapport', 'agents', 'parametres',
+  'factures', 'statistiques', 'paiements', 'analyse', 'importpdf', 'metrage', 'photos',
+];
+
 const ROLE_PAGES = {
-  direction: {
-    id: 'direction',
-    nom: 'Direction',
+  cyna: {
+    id: 'cyna',
+    nom: 'CYNA',
     icone: '◈',
-    couleur: '#3382c2',
-    pages: ['dashboard', 'chantiers', 'devis', 'heures', 'finances', 'planning', 'rapport', 'agents', 'parametres', 'clients'],
+    couleur: '#0d3d6e',
+    pages: TOUTES_PAGES,
   },
-  conducteur: {
-    id: 'conducteur',
-    nom: 'Chef de chantier',
-    icone: '⚒',
-    couleur: '#e67e22',
-    pages: ['dashboard', 'chantiers', 'heures', 'planning'],
-  },
-  administratif: {
-    id: 'administratif',
-    nom: 'Bureau',
-    icone: '📋',
-    couleur: '#27ae60',
-    pages: ['dashboard', 'devis', 'finances', 'rapport'],
+  cynatech: {
+    id: 'cynatech',
+    nom: 'CYNATECH',
+    icone: '◆',
+    couleur: '#1a5c8a',
+    pages: TOUTES_PAGES,
   },
 };
 
@@ -33,11 +32,10 @@ export default function useAuth() {
 
   const resolverProfil = useCallback((user) => {
     if (!user) return null;
-    const ROLES_AUTORISES = ['direction', 'conducteur', 'administratif'];
-    // app_metadata est réservé aux admins (non modifiable par l'utilisateur via l'API publique)
-    // user_metadata NE DOIT PAS être utilisé pour les rôles : modifiable par tout utilisateur authentifié
+    // app_metadata réservé aux admins — non modifiable par l'utilisateur
     const roleRaw = user.app_metadata?.role;
-    const role = ROLES_AUTORISES.includes(roleRaw) ? roleRaw : 'conducteur';
+    // Point d'entrée unique : cyna ou cynatech. Tout autre rôle → cyna par défaut.
+    const role = ROLE_PAGES[roleRaw] ? roleRaw : 'cyna';
     return ROLE_PAGES[role];
   }, []);
 

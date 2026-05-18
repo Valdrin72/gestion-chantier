@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import {
-  Users, FileText, HardHat, DollarSign, Plus, Pencil, Trash2,
+  Users, FileText, HardHat, DollarSign, Plus, Pencil, Trash2, Download,
 } from 'lucide-react';
 import { fmtN, C, calculerCA } from '../donnees';
+import { exportCSV } from '../utils/exportCSV';
 import { DS } from '../ds';
 import { Badge } from '../components/SharedBadges';
 import { useApp } from '../context/AppContext';
@@ -37,6 +38,27 @@ function Clients({ clients, setClients, chantiers, setChantiers, devis = [], set
     setForm({ nom: '', prenom: '', entreprise: '', telephone: '', email: '', adresse: '', ville: '', canton: '', type: 'Entreprise', notes: '' });
     if (afficherNotif) afficherNotif(isEdit ? 'Client mis à jour' : 'Client créé');
   };
+  const exporterCSV = () => {
+    const entetes = ['Nom', 'Prénom', 'Entreprise', 'Type', 'Téléphone', 'Email', 'Ville', 'Canton', 'Nb chantiers', 'CA total (CHF)'];
+    const lignes = clients.map(c => {
+      const chantiersC = chantiers.filter(ch => String(ch.clientId) === String(c.id));
+      const ca = chantiersC.reduce((t, ch) => t + (calculerCA(ch, devis) || 0), 0);
+      return [
+        c.nom || '',
+        c.prenom || '',
+        c.entreprise || '',
+        c.type || '',
+        c.telephone || '',
+        c.email || '',
+        c.ville || '',
+        c.canton || '',
+        chantiersC.length,
+        Math.round(ca),
+      ];
+    });
+    exportCSV(`clients_${new Date().toISOString().slice(0,10)}.csv`, entetes, lignes);
+  };
+
   return (
     <div>
       <div className="page-header-row">
@@ -45,6 +67,9 @@ function Clients({ clients, setClients, chantiers, setChantiers, devis = [], set
           <div className="page-title-sub">{clients.length} client{clients.length !== 1 ? 's' : ''} enregistré{clients.length !== 1 ? 's' : ''}</div>
         </div>
         <div className="page-actions-group">
+          {clients.length > 0 && (
+            <button onClick={exporterCSV} style={{ ...DS.btnGhost }}><Download size={14}/> Exporter CSV</button>
+          )}
           <button onClick={() => { setForm({ nom: '', prenom: '', entreprise: '', telephone: '', email: '', adresse: '', ville: '', canton: '', type: 'Entreprise', notes: '' }); setAjout(true); }} style={btnPrimaire}><Plus size={14}/> Nouveau client</button>
         </div>
       </div>

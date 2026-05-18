@@ -201,7 +201,7 @@ export const exportFicheChantier = async (chantier, clients, parametres, devis =
   y += 12;
 
   // INFORMATIONS GÉNÉRALES
-  y = sectionTitre(doc, y, ''INFORMATIONS GÉNÉRALES');
+  y = sectionTitre(doc, y, 'INFORMATIONS GÉNÉRALES');
   const col1 = [
     ['Nom du chantier', chantier.nom],
     ['Client', client ? `${client.prenom} ${client.nom}` : '-'],
@@ -232,7 +232,7 @@ export const exportFicheChantier = async (chantier, clients, parametres, devis =
   y += 35;
 
   // DURÉE ET PLANNING
-  y = sectionTitre(doc, y, ''PLANNING');
+  y = sectionTitre(doc, y, 'PLANNING');
   autoTable(doc, {
     startY: y,
     head: [['Paramètre', 'Valeur']],
@@ -250,7 +250,7 @@ export const exportFicheChantier = async (chantier, clients, parametres, devis =
 
   // TYPES DE TRAVAUX
   if (chantier.typesTravaux?.length > 0) {
-    y = sectionTitre(doc, y, ''TYPES DE TRAVAUX');
+    y = sectionTitre(doc, y, 'TYPES DE TRAVAUX');
     doc.setFontSize(9);
     chantier.typesTravaux.forEach((t, i) => {
       doc.setFillColor(i % 2 === 0 ? 240 : 250, 244, 248);
@@ -270,7 +270,7 @@ export const exportFicheChantier = async (chantier, clients, parametres, devis =
       startY: y,
       head: [['Employé', 'Poste', 'Rôle', 'Jours prévus', 'Jours réalisés', 'Coût prévu', 'Coût réel']],
       body: chantier.equipe.map(m => {
-        const emp = parametres.employes.find(e => e.id === parseInt(m.employeId));
+        const emp = (parametres.employes || []).find(e => e.id === parseInt(m.employeId));
         return [
           emp?.nom || '-', emp?.poste || '-', m.role || '-',
           `${m.joursPlannifies}j`, `${m.joursRealises || 0}j`,
@@ -287,7 +287,7 @@ export const exportFicheChantier = async (chantier, clients, parametres, devis =
 
   // DONNÉES FINANCIÈRES
   if (y > 220) { doc.addPage(); y = 20; }
-  y = sectionTitre(doc, y, ''DONNÉES FINANCIÈRES', VERT);
+  y = sectionTitre(doc, y, 'DONNÉES FINANCIÈRES', VERT);
   autoTable(doc, {
     startY: y,
     head: [['Poste', 'Prévu', 'Réel', 'Écart']],
@@ -339,7 +339,7 @@ export const exportFicheChantier = async (chantier, clients, parametres, devis =
 
   // NOTES
   if (chantier.notes) {
-    y = sectionTitre(doc, y, ''NOTES ET OBSERVATIONS', GRIS);
+    y = sectionTitre(doc, y, 'NOTES ET OBSERVATIONS', GRIS);
     doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(50, 50, 50);
@@ -393,7 +393,7 @@ export const exportDevis = async (devis, clients, parametres) => {
   y += 48;
 
   // OBJET
-  y = sectionTitre(doc, y, ''OBJET DU DEVIS');
+  y = sectionTitre(doc, y, 'OBJET DU DEVIS');
   autoTable(doc, {
     startY: y,
     body: [
@@ -411,24 +411,25 @@ export const exportDevis = async (devis, clients, parametres) => {
   y = doc.lastAutoTable.finalY + 8;
 
   // DÉTAIL FINANCIER
-  y = sectionTitre(doc, y, ''DÉTAIL FINANCIER', VERT);
+  y = sectionTitre(doc, y, 'DÉTAIL FINANCIER', VERT);
   const prixPropose = parseFloat(devis.prixPropose) || 0;
   const coutMateriel = parseFloat(devis.coutMateriel) || 0;
   const coutTransport = parseFloat(devis.coutTransport) || 0;
   const coutSousTraitance = parseFloat(devis.coutSousTraitance) || 0;
   const totalCouts = coutMateriel + coutTransport + coutSousTraitance;
   const fraisGen = totalCouts * ((parametres.parametres?.tauxFraisGeneraux || 12) / 100);
-  const surface = parseFloat(devis.surface) || 1;
+  const surface = parseFloat(devis.surface) || 0;
+  const fmtM2 = (val) => surface > 0 ? `CHF ${Math.round(val / surface).toLocaleString()}/m²` : '—';
 
   autoTable(doc, {
     startY: y,
     head: [['Description', 'Montant HT', 'CHF/m²']],
     body: [
-      ['Fournitures et matériaux', `CHF ${coutMateriel.toLocaleString()}`, `CHF ${(coutMateriel / surface).toFixed(0)}/m²`],
-      ['Transport et logistique', `CHF ${coutTransport.toLocaleString()}`, `CHF ${(coutTransport / surface).toFixed(0)}/m²`],
-      ['Sous-traitance', `CHF ${coutSousTraitance.toLocaleString()}`, `CHF ${(coutSousTraitance / surface).toFixed(0)}/m²`],
-      ['Frais généraux', `CHF ${Math.round(fraisGen).toLocaleString()}`, `CHF ${(fraisGen / surface).toFixed(0)}/m²`],
-      ['PRIX DE VENTE HT', `CHF ${prixPropose.toLocaleString()}`, `CHF ${(prixPropose / surface).toFixed(0)}/m²`],
+      ['Fournitures et matériaux', `CHF ${coutMateriel.toLocaleString()}`, fmtM2(coutMateriel)],
+      ['Transport et logistique', `CHF ${coutTransport.toLocaleString()}`, fmtM2(coutTransport)],
+      ['Sous-traitance', `CHF ${coutSousTraitance.toLocaleString()}`, fmtM2(coutSousTraitance)],
+      ['Frais généraux', `CHF ${Math.round(fraisGen).toLocaleString()}`, fmtM2(fraisGen)],
+      ['PRIX DE VENTE HT', `CHF ${prixPropose.toLocaleString()}`, fmtM2(prixPropose)],
     ],
     headStyles: { fillColor: VERT, fontSize: 9 },
     bodyStyles: { fontSize: 9 },
@@ -472,7 +473,7 @@ export const exportDevis = async (devis, clients, parametres) => {
 
   // NOTES
   if (devis.notes) {
-    y = sectionTitre(doc, y, ''REMARQUES');
+    y = sectionTitre(doc, y, 'REMARQUES');
     doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(50, 50, 50);
@@ -545,13 +546,13 @@ export const exportRapportMensuel = async (chantiers, clients, parametres, mois,
   y += 25;
 
   // RÉSUMÉ
-  y = sectionTitre(doc, y, ''RÉSUMÉ DU MOIS');
+  y = sectionTitre(doc, y, 'RÉSUMÉ DU MOIS');
   autoTable(doc, {
     startY: y,
     head: [['Indicateur', 'Valeur', 'Statut']],
     body: [
       ['Nombre de chantiers', chantiersMois.length, chantiersMois.length > 0 ? 'Actif' : '—'],
-      ["Chiffre d'affaires", `CHF ${caTotal.toLocaleString()}`, CA],
+      ["Chiffre d'affaires", `CHF ${caTotal.toLocaleString()}`, '💰'],
       ['Total coûts', `CHF ${coutsTotal.toLocaleString()}`, '💸'],
       ['Marge brute', `CHF ${margeTotal.toLocaleString()}`, margeTotal >= 0 ? 'Positif' : 'Négatif'],
       ['Taux de marge', `${margePct}%`, parseFloat(margePct) >= 20 ? 'Excellent' : parseFloat(margePct) >= 15 ? 'Correct' : 'Faible'],
@@ -565,7 +566,7 @@ export const exportRapportMensuel = async (chantiers, clients, parametres, mois,
 
   // DÉTAIL CHANTIERS
   if (chantiersMois.length > 0) {
-    y = sectionTitre(doc, y, ''DÉTAIL DES CHANTIERS');
+    y = sectionTitre(doc, y, 'DÉTAIL DES CHANTIERS');
     autoTable(doc, {
       startY: y,
       head: [['Chantier', 'Client', 'Ville', 'Statut', 'Devis CHF', 'Coûts CHF', 'Marge %', 'Gain CHF']],
@@ -605,7 +606,7 @@ export const exportRapportMensuel = async (chantiers, clients, parametres, mois,
 
   if (parType.length > 0) {
     if (y > 220) { doc.addPage(); y = 20; }
-    y = sectionTitre(doc, y, ''ANALYSE PAR TYPE DE TRAVAUX');
+    y = sectionTitre(doc, y, 'ANALYSE PAR TYPE DE TRAVAUX');
     autoTable(doc, {
       startY: y,
       head: [['Type de travaux', 'Chantiers', 'CA', 'Coûts', 'Marge', 'Taux']],

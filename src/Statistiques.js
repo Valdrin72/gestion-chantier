@@ -75,7 +75,7 @@ export default function Statistiques({ chantiers, clients, devis = [], parametre
   }).filter(c => c.CA > 0).sort((a, b) => b.CA - a.CA), [clients, chantiersFiltres, devis, parametres]);
 
   // ===== DONNÉES EMPLOYÉS (top utilisés + coût moyen) =====
-  const donneesEmployes = useMemo(() => parametres.employes
+  const donneesEmployes = useMemo(() => (parametres.employes || [])
     .filter(emp => emp.actif !== false)
     .map(emp => {
       const chantiersEmp = chantiersFiltres.filter(c =>

@@ -230,7 +230,7 @@ function AppInner({ profil, deconnecter, userId }) {
           setSidebarOuvert={setSidebarOuvert} canGoBack={canGoBack} page={page}
           revenirArriere={revenirArriere} navAutorisees={navAutorisees}
           darkMode={darkMode} toggleDarkMode={toggleDarkMode} profil={profil}
-          deconnecter={deconnecter}
+          deconnecter={deconnecter} naviguer={naviguer}
         />
         {(dataLoading || syncing) && (
           <div style={{

@@ -86,7 +86,7 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
   });
 
   // ===== DONNÉES PAR EMPLOYÉ (filtrés par période) =====
-  const donneesEmployes = parametres.employes.map(emp => {
+  const donneesEmployes = (parametres.employes || []).map(emp => {
     // Source unique : journal (cohérent avec calculerCoutsChantier)
     const joursTotal = chantiersPeriode.reduce((t, c) => {
       const heures = heuresEmploye(c.journal || [], emp.id);

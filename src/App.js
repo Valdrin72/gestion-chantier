@@ -2,6 +2,7 @@ import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react'
 import {
   LayoutDashboard, HardHat, FileText, Calendar,
   ClipboardList, Settings, DollarSign, Clock, Bot,
+  Users, UserCog,
 } from 'lucide-react';
 import { Sidebar, Topbar, MobileNav } from './components/Layout';
 import { migrerDevisId } from './donnees';
@@ -191,6 +192,8 @@ function AppInner({ profil, deconnecter, userId }) {
   const navItems = [
     { id: 'dashboard',  label: 'Dashboard',   Icon: LayoutDashboard, labelCourt: 'Accueil' },
     { id: 'chantiers',  label: 'Chantiers',   Icon: HardHat,         labelCourt: 'Chantiers' },
+    { id: 'clients',    label: 'Clients',     Icon: Users,           labelCourt: 'Clients' },
+    { id: 'employes',   label: 'Employés',    Icon: UserCog,         labelCourt: 'Équipe' },
     { id: 'devis',      label: 'Devis',       Icon: FileText,        labelCourt: 'Devis' },
     { id: 'heures',     label: 'Heures',      Icon: Clock,           labelCourt: 'Heures' },
     { id: 'finances',   label: 'Finances',    Icon: DollarSign,      labelCourt: 'Finances', badge: nbFacturesRetard || null },

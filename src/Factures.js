@@ -7,9 +7,11 @@
 // ============================================================
 
 import React, { useState, useMemo } from 'react';
+import { FileDown } from 'lucide-react';
 import { DS } from './ds';
 import { fmtN, getIntervallesPeriode, facturesInPeriode, genererNumeroFacture, calculerStatutFacture } from './donnees';
 import { prochainRappel, niveauInfo, genererTexteRappel, marquerRappelEnvoye } from './relances';
+import { exportFicheChantier } from './ExportPDF';
 
 // ── TVA suisse ───────────────────────────────────────────────
 const TVA_OPTIONS = [
@@ -113,7 +115,7 @@ function KpiCard({ label, value, couleur, icon, sous }) {
 }
 
 // ── COMPOSANT PRINCIPAL ──────────────────────────────────────
-export default function Factures({ profil, clients = [], chantiers = [], devis = [], factures = [], onSave, paiementsData = {}, setPaiementsData, naviguer, hideHeader = false, periodeGlobale = 'mois' }) {
+export default function Factures({ profil, clients = [], chantiers = [], devis = [], factures = [], onSave, paiementsData = {}, setPaiementsData, naviguer, hideHeader = false, periodeGlobale = 'mois', parametres = null }) {
   const [vue, setVue] = useState('liste');   // 'liste' | 'form' | 'detail'
   const [selected, setSelected] = useState(null);
   const [filtreStatut, setFiltreStatut] = useState('');
@@ -547,6 +549,17 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
                             onMouseLeave={e => e.currentTarget.style.opacity = '0.75'}
                             onClick={() => supprimerFacture(f.id)}>Suppr</button>
                         )}
+                        {(() => {
+                          const chantierF = chantiers.find(c => String(c.id) === String(f.chantierId));
+                          if (!chantierF || !parametres) return null;
+                          return (
+                            <button
+                              style={{ ...DS.iconBtn, padding: '5px 8px' }}
+                              title="Exporter fiche chantier PDF"
+                              onClick={() => exportFicheChantier(chantierF, clients, parametres, devis)}
+                            ><FileDown size={13} /></button>
+                          );
+                        })()}
                       </div>
                     </td>
                   </tr>
@@ -624,6 +637,17 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
             <button style={S.btnGhost} onClick={() => setVue('liste')}>← Retour</button>
             <div className="page-title-main">Facture {f.numero}</div>
             <BadgeStatut statut={f.statut} />
+          {(() => {
+            const chantierDetail = chantiers.find(c => String(c.id) === String(f.chantierId));
+            if (!chantierDetail || !parametres) return null;
+            return (
+              <button
+                style={{ ...S.btnGhost, display: 'flex', alignItems: 'center', gap: 5 }}
+                title="Exporter fiche chantier PDF"
+                onClick={() => exportFicheChantier(chantierDetail, clients, parametres, devis)}
+              ><FileDown size={14} /> PDF</button>
+            );
+          })()}
           {canEdit && (
             <>
               <button style={S.btnGhost} onClick={() => ouvrirForm(f)}>Modifier</button>

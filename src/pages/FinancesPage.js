@@ -588,6 +588,7 @@ export default function Finances({
           naviguer={naviguer}
           profil={profil}
           periodeGlobale={periodeGlobale}
+          parametres={parametres}
           hideHeader
         />
       </div>

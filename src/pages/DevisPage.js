@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import {
   Plus, Pencil, Trash2, HardHat, Receipt,
-  DollarSign, Clock, FileText, TrendingUp,
+  DollarSign, Clock, FileText, TrendingUp, FileDown,
 } from 'lucide-react';
 import { fmtN, C, creerFactureDepuisDevis, getIntervallesPeriode } from '../donnees';
 import { DS } from '../ds';
 import { useApp } from '../context/AppContext';
+import { exportDevis } from '../ExportPDF';
 import AssistantDevisIA from '../AssistantDevisIA';
 
 const inputStyle = DS.input;
@@ -502,6 +503,13 @@ function Devis() {
                               </button>
                             );
                           })()}
+                          {client && (
+                            <button
+                              onClick={() => exportDevis(d, clients, parametres)}
+                              style={DS.iconBtn}
+                              title="Exporter en PDF"
+                            ><FileDown size={14} /></button>
+                          )}
                           <button
                             onClick={() => { setForm({ ...d, montantHT: d.montantHT || d.prixPropose || '' }); setAjout(true); }}
                             style={DS.iconBtn}

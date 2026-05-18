@@ -43,7 +43,7 @@ export function calculerAlertes({ chantiers = [], devis = [], factures = [], pai
           if (joursRetard > 0) {
             push({
               type: 'chantier_retard',
-              niveau: joursRetard > 14 ? 'critique' : 'warning',
+              niveau: joursRetard > 7 ? 'critique' : 'warning',
               message: `Chantier "${c.nom || c.numero}" est en retard de ${joursRetard} jour${joursRetard > 1 ? 's' : ''}`,
               page: 'chantiers',
               entityId: c.id,

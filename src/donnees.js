@@ -1195,6 +1195,10 @@ export const calculerEtatChantier = (chantier, employes = [], devisList = [], pa
     ? Math.round((coutTotalReel / avancementPct) * 100)
     : null;
 
+  const rad = projectionDisponible && coutFinalEstime !== null
+    ? Math.round(coutFinalEstime - coutTotalReel)
+    : null;
+
   const margeEstimee = (projectionDisponible && devisTotal !== null)
     ? Math.round(devisTotal - coutFinalEstime)
     : null;
@@ -1228,6 +1232,7 @@ export const calculerEtatChantier = (chantier, employes = [], devisList = [], pa
     // Projection (null si non disponible)
     projectionDisponible,
     coutFinalEstime,
+    rad,
     margeEstimee,
     margeEstimeePct,
 
@@ -1325,7 +1330,7 @@ export const assertEtatCoherent = (etat) => {
   if (etat.deriveJours !== 0 && etat.totalJoursReels === 0 && etat.totalJoursPrevus === 0)
     critique.push(`deriveJours=${etat.deriveJours} avec totalJoursReels=0`);
   if (etat.totalJoursPrevus === 0 && etat.totalJoursReels > 0)
-    critique.push(`totalJoursPrevus=0 avec activité (totalJoursReels=${etat.totalJoursReels})`);
+    warnings.push(`totalJoursPrevus=0 avec activité (totalJoursReels=${etat.totalJoursReels}) — renseigner nombreJours`);
 
   // ── WARNINGS — incohérences mineures ────────────────────────────
   if (etat.margeEstimee !== null && etat.margeEstimee < 0 && !etat.projectionDisponible)

@@ -135,7 +135,7 @@ function Employes({ parametres, setParametres, chantiers, naviguer }) {
         </div>
       )}
       <div style={{ display: 'grid', gridTemplateColumns: 'var(--g3)', gap: '15px' }}>
-        {parametres.employes.map(e => {
+        {(parametres.employes || []).map(e => {
           const chantiersEmp = chantiers.filter(c => c.equipe?.some(m => String(m.employeId) === String(e.id)));
           const joursTotal = chantiers.reduce((t, c) => {
             const joursReels = (c.journal || []).filter(entry =>

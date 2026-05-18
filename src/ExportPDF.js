@@ -418,17 +418,18 @@ export const exportDevis = async (devis, clients, parametres) => {
   const coutSousTraitance = parseFloat(devis.coutSousTraitance) || 0;
   const totalCouts = coutMateriel + coutTransport + coutSousTraitance;
   const fraisGen = totalCouts * ((parametres.parametres?.tauxFraisGeneraux || 12) / 100);
-  const surface = parseFloat(devis.surface) || 1;
+  const surface = parseFloat(devis.surface) || 0;
+  const fmtM2 = (val) => surface > 0 ? `CHF ${Math.round(val / surface).toLocaleString()}/m²` : '—';
 
   autoTable(doc, {
     startY: y,
     head: [['Description', 'Montant HT', 'CHF/m²']],
     body: [
-      ['Fournitures et matériaux', `CHF ${coutMateriel.toLocaleString()}`, `CHF ${(coutMateriel / surface).toFixed(0)}/m²`],
-      ['Transport et logistique', `CHF ${coutTransport.toLocaleString()}`, `CHF ${(coutTransport / surface).toFixed(0)}/m²`],
-      ['Sous-traitance', `CHF ${coutSousTraitance.toLocaleString()}`, `CHF ${(coutSousTraitance / surface).toFixed(0)}/m²`],
-      ['Frais généraux', `CHF ${Math.round(fraisGen).toLocaleString()}`, `CHF ${(fraisGen / surface).toFixed(0)}/m²`],
-      ['PRIX DE VENTE HT', `CHF ${prixPropose.toLocaleString()}`, `CHF ${(prixPropose / surface).toFixed(0)}/m²`],
+      ['Fournitures et matériaux', `CHF ${coutMateriel.toLocaleString()}`, fmtM2(coutMateriel)],
+      ['Transport et logistique', `CHF ${coutTransport.toLocaleString()}`, fmtM2(coutTransport)],
+      ['Sous-traitance', `CHF ${coutSousTraitance.toLocaleString()}`, fmtM2(coutSousTraitance)],
+      ['Frais généraux', `CHF ${Math.round(fraisGen).toLocaleString()}`, fmtM2(fraisGen)],
+      ['PRIX DE VENTE HT', `CHF ${prixPropose.toLocaleString()}`, fmtM2(prixPropose)],
     ],
     headStyles: { fillColor: VERT, fontSize: 9 },
     bodyStyles: { fontSize: 9 },

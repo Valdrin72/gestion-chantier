@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { DS } from './ds';
-import { calculerCoutsChantier, fmtN, SEUILS } from './donnees';
+import { calculerCoutsChantier, fmtN, SEUILS, getIntervallesPeriode, chantiersInPeriode, getPeriodeLabel } from './donnees';
 import KpiCard from './components/ui/KpiCard';
 
 const seuils = { bon: SEUILS.margeRentable, ok: SEUILS.margeLimite };
@@ -13,9 +13,14 @@ function statutMarge(pct) {
   return { label: `${Math.round(pct * 10) / 10}%`, bg: '#FEE2E2', color: '#991B1B', Icon: TrendingDown };
 }
 
-export default function Marges({ chantiers = [], clients = [], devis = [], parametres = {} }) {
+export default function Marges({ chantiers = [], clients = [], devis = [], parametres = {}, periodeGlobale = 'annee' }) {
+  const chantiersFiltres = useMemo(() => {
+    const { debut, fin } = getIntervallesPeriode(periodeGlobale);
+    return chantiers.filter(c => chantiersInPeriode(c, debut, fin));
+  }, [chantiers, periodeGlobale]);
+
   const rows = useMemo(() => {
-    return chantiers
+    return chantiersFiltres
       .map(c => {
         const couts = calculerCoutsChantier(
           c,
@@ -48,7 +53,7 @@ export default function Marges({ chantiers = [], clients = [], devis = [], param
         if (a.margeReelPct === null && b.margeReelPct === null) return 0;
         return a.margeReelPct - b.margeReelPct;
       });
-  }, [chantiers, clients, devis, parametres]);
+  }, [chantiersFiltres, clients, devis, parametres]);
 
   const kpi = useMemo(() => {
     const avecDonnees = rows.filter(r => r.ca !== null && r.coutsReel !== null);
@@ -74,7 +79,7 @@ export default function Marges({ chantiers = [], clients = [], devis = [], param
         <div className="page-title-block">
           <div className="page-title-main">Marges par chantier</div>
           <div className="page-title-sub">
-            {kpi.nbAvecDonnees} chantier{kpi.nbAvecDonnees !== 1 ? 's' : ''} analysé{kpi.nbAvecDonnees !== 1 ? 's' : ''}
+            {getPeriodeLabel(periodeGlobale)} · {kpi.nbAvecDonnees} chantier{kpi.nbAvecDonnees !== 1 ? 's' : ''} analysé{kpi.nbAvecDonnees !== 1 ? 's' : ''}
             {kpi.nbRouge > 0 && ` · ${kpi.nbRouge} sous le seuil`}
           </div>
         </div>

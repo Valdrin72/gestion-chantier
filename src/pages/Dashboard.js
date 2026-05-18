@@ -18,7 +18,7 @@ import { calculerAlertes } from '../alertes';
 
 function Dashboard() {
   const isMobile = useIsMobile();
-  const { chantiers, clients, factures, devis = [], parametres, naviguer, actionsLog = [], periodeGlobale = 'mois', setPeriodeGlobale = () => {}, agentState } = useApp();
+  const { chantiers, clients, factures, devis = [], parametres, naviguer, actionsLog = [], periodeGlobale = 'mois', agentState } = useApp();
   const agentAlertes = agentState?.alertes || [];
   const nbAgentAlertes = agentState?.nbNonLues || 0;
   const marquerLu = agentState?.marquerLu || (() => {});
@@ -427,21 +427,6 @@ function Dashboard() {
               {new Date().toLocaleDateString('fr-CH', { weekday: 'long', day: 'numeric', month: 'long' })} · {actifs.length} chantier{actifs.length !== 1 ? 's' : ''} actif{actifs.length !== 1 ? 's' : ''}
             </p>
           </div>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <div style={{ display: 'flex', gap: 1, background: 'var(--bg-glass-2)', border: '1px solid var(--border)', borderRadius: 8, padding: '2px' }}>
-              {[{ id: 'semaine', label: 'S' }, { id: 'mois', label: 'M' }, { id: 'annee', label: 'A' }].map(p => (
-                <button key={p.id} onClick={() => setPeriodeGlobale(p.id)}
-                  style={{ background: periodeGlobale === p.id ? '#2563eb' : 'transparent', border: 'none', color: periodeGlobale === p.id ? '#fff' : 'var(--text-muted)', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', fontSize: 11, fontWeight: 600, fontFamily: 'inherit' }}
-                >{p.label}</button>
-              ))}
-            </div>
-            <div style={{ position: 'relative' }}>
-              <button onClick={naviguerAgents} title="Alertes" style={{ background: 'var(--bg-glass-2)', border: '1px solid var(--border)', borderRadius: 8, width: 34, height: 34, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: nbAgentAlertes > 0 ? '#f59e0b' : 'var(--text-secondary)' }}>
-                <Bell size={15} strokeWidth={2} />
-              </button>
-              {nbAgentAlertes > 0 && <span style={{ position: 'absolute', top: -4, right: -4, background: '#ef4444', color: 'white', borderRadius: '50%', width: 16, height: 16, fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{nbAgentAlertes}</span>}
-            </div>
-          </div>
         </div>
 
         {/* KPI STRIP */}
@@ -687,23 +672,6 @@ function Dashboard() {
           <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: '4px 0 0' }}>
             {new Date().toLocaleDateString('fr-CH', { weekday: 'long', day: 'numeric', month: 'long' })} · {actifs.length} chantier{actifs.length !== 1 ? 's' : ''} actif{actifs.length !== 1 ? 's' : ''}
           </p>
-        </div>
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-          <div style={{ display: 'flex', gap: 2, background: 'var(--bg-glass-2)', border: '1px solid var(--border)', borderRadius: 10, padding: '3px' }}>
-            {[{ id: 'semaine', label: 'Semaine' }, { id: 'mois', label: 'Mois' }, { id: 'annee', label: 'Année' }].map(p => (
-              <button key={p.id} onClick={() => setPeriodeGlobale(p.id)}
-                style={{ background: periodeGlobale === p.id ? '#2563eb' : 'transparent', border: 'none', color: periodeGlobale === p.id ? '#fff' : 'var(--text-muted)', borderRadius: 8, padding: '5px 14px', cursor: 'pointer', fontSize: 12, fontWeight: 600, transition: 'all 0.15s', fontFamily: 'inherit' }}
-              >{p.label}</button>
-            ))}
-          </div>
-          <div style={{ position: 'relative' }}>
-            <button onClick={naviguerAgents} title="Alertes Agents IA" style={{ background: 'var(--bg-glass-2)', border: '1px solid var(--border)', borderRadius: 10, width: 38, height: 38, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: nbAgentAlertes > 0 ? '#f59e0b' : 'var(--text-secondary)' }}>
-              <Bell size={16} strokeWidth={2} />
-            </button>
-            {nbAgentAlertes > 0 && (
-              <span style={{ position: 'absolute', top: -5, right: -5, background: '#ef4444', color: 'white', borderRadius: '50%', width: 18, height: 18, fontSize: 12, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>{nbAgentAlertes}</span>
-            )}
-          </div>
         </div>
       </div>
 

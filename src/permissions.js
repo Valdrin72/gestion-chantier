@@ -1,7 +1,7 @@
 // ============================================================
 // CYNA — PERMISSIONS v2
 // Structure : pages autorisées + actions granulaires par profil
-// Point d'entrée unique : sinaap / sinatec (accès total)
+// Point d'entrée unique : cyna / sinatec (accès total)
 // ============================================================
 
 const ACCES_TOTAL = {
@@ -27,7 +27,7 @@ const ACCES_TOTAL = {
 };
 
 export const PERMISSIONS = {
-  sinaap:     ACCES_TOTAL,
+  cyna:     ACCES_TOTAL,
   sinatec:    ACCES_TOTAL,
   direction: {
     pages: ['dashboard', 'chantiers', 'devis', 'factures', 'clients', 'employes', 'planning', 'statistiques', 'paiements', 'parametres', 'rapport', 'analyse', 'importpdf', 'metrage', 'photos'],

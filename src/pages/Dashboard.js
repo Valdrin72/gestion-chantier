@@ -282,7 +282,7 @@ function Dashboard() {
     const existingIds = new Set(list.map(a => a.id));
     calculerAlertes(
       { chantiers, devis, factures, clients, paiements: {} },
-      profil?.id || 'sinaap'
+      profil?.id || 'cyna'
     )
       .filter(a => TYPES_ADDITIFS.has(a.type))
       .forEach(a => {

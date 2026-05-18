@@ -9,6 +9,7 @@ import {
 } from '../../donnees';
 import { DS, couleurStatut as couleurStatutDS } from '../../ds';
 import { useApp } from '../../context/AppContext';
+import useIsMobile from '../../hooks/useIsMobile';
 
 const PAGE_SIZE = 50;
 const STATUTS = ['Tous', 'Planifié', 'En cours', 'Suspendu', 'Terminé', 'Facturé', 'Clôturé'];
@@ -24,6 +25,7 @@ function ChantiersListe({
   formSlot,
 }) {
   const { chantiers, clients, devis = [], parametres, naviguer, contexte, agentState, confirmer, periodeGlobale = 'mois' } = useApp();
+  const isMobile = useIsMobile();
   const [page, setPage] = useState(0);
   useEffect(() => { setPage(0); }, [filtre, periodeGlobale, chantiersFiltres.length]);
 
@@ -192,9 +194,9 @@ function ChantiersListe({
             background: filtre === s ? '#EEF2FF' : 'transparent',
             color: filtre === s ? '#4F46E5' : 'var(--text-muted)',
             border: '1px solid transparent',
-            padding: '5px 14px', borderRadius: '20px', cursor: 'pointer', fontSize: '13px',
+            padding: '8px 14px', borderRadius: '20px', cursor: 'pointer', fontSize: '13px',
             fontWeight: filtre === s ? 600 : 400, fontFamily: 'inherit',
-            transition: 'all 0.18s',
+            transition: 'all 0.18s', minHeight: 36,
           }}>{s}</button>
         ))}
       </div>
@@ -228,6 +230,53 @@ function ChantiersListe({
         {scored.length === 0 ? (
           <div style={{ padding: '40px 24px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 14 }}>
             {contexte?.clientActif || contexte?.employeActif ? 'Aucun chantier ne correspond à ce filtre.' : 'Aucun chantier à afficher.'}
+          </div>
+        ) : isMobile ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+            {scoredPage.map(({ c, etatC, decision }) => {
+              const client = clients.find(cl => String(cl.id) === String(c.clientId));
+              const sc = couleurStatutDS(c.statut);
+              const initiales = (c.nom || '').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+              const avancePct = Math.min(100, Math.max(0, etatC.avancementPct || 0));
+              return (
+                <div
+                  key={c.id}
+                  onClick={() => onSelect(c)}
+                  style={{ padding: '14px 16px', borderBottom: '1px solid var(--border)', cursor: 'pointer', transition: 'background 0.15s' }}
+                  onTouchStart={e => e.currentTarget.style.background = 'var(--bg-hover)'}
+                  onTouchEnd={e => e.currentTarget.style.background = ''}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+                      <div style={{ width: 34, height: 34, borderRadius: 8, flexShrink: 0, background: decision.couleur + '22', border: `1px solid ${decision.couleur}40`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, color: decision.couleur }}>
+                        {initiales}
+                      </div>
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.nom}</div>
+                        <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{c.numero} · {c.ville || '—'}</div>
+                      </div>
+                    </div>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: sc.color, background: sc.bg, borderRadius: 20, padding: '4px 10px', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                      {c.statut}
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+                    <span style={{ fontSize: 12, color: 'var(--text-secondary)', flexShrink: 0 }}>{client?.entreprise || '—'}</span>
+                    <div style={{ flex: 1, height: 4, borderRadius: 2, background: 'var(--border)', overflow: 'hidden' }}>
+                      <div style={{ height: '100%', width: `${avancePct}%`, background: decision.couleur, borderRadius: 2 }} />
+                    </div>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)', flexShrink: 0 }}>{avancePct}%</span>
+                  </div>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }} onClick={e => e.stopPropagation()}>
+                    <button onClick={() => onSelect(c)} style={{ ...DS.iconBtn, flex: 1 }} title="Voir"><Eye size={14} /></button>
+                    <button onClick={() => onModifier(c)} style={{ ...DS.iconBtn, flex: 1 }} title="Modifier"><Pencil size={14} /></button>
+                    {onSupprimer && (
+                      <button onClick={async () => { if (await confirmer(`Supprimer "${c.nom || c.numero}" ?\n\nCette action est irréversible.`, { labelOui: 'Supprimer' })) onSupprimer(c.id); }} style={{ ...DS.iconBtn, flex: 1, color: '#ef4444' }} title="Supprimer"><Trash2 size={14} /></button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         ) : (
           <div style={{ overflowX: 'auto' }}>

@@ -3,6 +3,7 @@ import {
   Plus, Pencil, Trash2, HardHat, Receipt,
   DollarSign, Clock, FileText, TrendingUp, FileDown, Download,
 } from 'lucide-react';
+import useIsMobile from '../hooks/useIsMobile';
 import { fmtN, C, creerFactureDepuisDevis, getIntervallesPeriode } from '../donnees';
 import { exportCSV } from '../utils/exportCSV';
 import { DS } from '../ds';
@@ -21,6 +22,7 @@ const PAGE_SIZE = 50;
 
 function Devis() {
   const { devis, setDevis, clients, parametres, naviguer, setChantiers, chantiers, factures, setFactures, contexte = {}, afficherNotif, confirmer, periodeGlobale = 'mois' } = useApp();
+  const isMobile = useIsMobile();
   const [ajout, setAjout] = useState(false);
   const [filtreDevis, setFiltreDevis] = useState('Tous');
   const [page, setPage] = useState(0);
@@ -207,8 +209,8 @@ function Devis() {
                 background: filtreDevis === s ? DS.brand.soft : 'transparent',
                 color: filtreDevis === s ? DS.brand.secondary : 'var(--text-muted)',
                 border: '1px solid transparent',
-                padding: '5px 14px', borderRadius: '20px', cursor: 'pointer', fontSize: '13px',
-                fontWeight: filtreDevis === s ? 600 : 400, fontFamily: 'inherit',
+                padding: '8px 14px', borderRadius: '20px', cursor: 'pointer', fontSize: '13px',
+                fontWeight: filtreDevis === s ? 600 : 400, fontFamily: 'inherit', minHeight: 36,
                 textTransform: 'capitalize',
               }}>{s}</button>
             ))}
@@ -434,6 +436,78 @@ function Devis() {
         {devisFiltres.length === 0 ? (
           <div style={{ padding: '40px 24px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 14 }}>
             Aucun devis à afficher
+          </div>
+        ) : isMobile ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+            {devisPage.map(d => {
+              const client = clients.find(c => String(c.id) === String(d.clientId));
+              const montant = parseFloat(d.montantHT || d.prixPropose) || 0;
+              const totalRegie = Array.isArray(d.heuresRegie) ? d.heuresRegie.reduce((s, r) => s + (parseFloat(r.heures) || 0) * (parseFloat(r.tarifHeure) || 0), 0) : 0;
+              const totalAvenants = Array.isArray(d.avenants) ? d.avenants.reduce((s, a) => s + (parseFloat(a.montant) || 0), 0) : 0;
+              const chantierLie = chantiers.find(ch => String(ch.devisId) === String(d.id));
+              const isAccepte = d.statut?.toLowerCase() === 'accepté';
+              const statutStyle = DS.statuts[d.statut] || { bg: '#F1F5F9', color: '#475569' };
+              const factureExistante = factures.some(f => String(f.devisId) === String(d.id) && f.statut !== 'annulee');
+              return (
+                <div key={d.id} style={{ padding: '14px 16px', borderBottom: '1px solid var(--border)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                    <div>
+                      <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.4px' }}>{d.numero}</span>
+                      <span style={{ fontSize: 11, color: 'var(--text-muted)', marginLeft: 8 }}>{formatDateCH(d.date)}</span>
+                    </div>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: statutStyle.color, background: statutStyle.bg, borderRadius: 20, padding: '4px 10px' }}>{d.statut}</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                    <div>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>{client?.entreprise || 'Client inconnu'}</div>
+                      {chantierLie && (
+                        <span onClick={() => naviguer('chantiers', { chantierActif: chantierLie.id })} style={{ fontSize: 11, fontWeight: 700, background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.3)', color: '#10b981', padding: '2px 8px', borderRadius: 20, cursor: 'pointer', display: 'inline-block', marginTop: 3 }}>
+                          {chantierLie.numero} →
+                        </span>
+                      )}
+                    </div>
+                    <span style={{ fontSize: 15, fontWeight: 800, color: isAccepte ? '#10b981' : 'var(--text-primary)' }}>
+                      CHF {fmtN(montant + totalRegie + totalAvenants)}
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    {!chantierLie && isAccepte && (
+                      <button onClick={() => ouvrirConfirmConversion(d)} style={{ ...DS.btnSuccess, padding: '8px 12px', fontSize: 12, gap: 4, flex: 1 }}>
+                        <HardHat size={13} /> Créer chantier
+                      </button>
+                    )}
+                    {isAccepte && !factureExistante && (
+                      <button
+                        onClick={async () => {
+                          if (!chantierLie) { if (!await confirmer('Ce devis n\'a pas de chantier lié.\nContinuer quand même ?', { labelOui: 'Continuer', danger: false })) return; }
+                          const nouvelleFacture = creerFactureDepuisDevis(d, chantierLie || null, factures, parseFloat(d.tva) || 8.1);
+                          setFactures([...factures, nouvelleFacture]);
+                          naviguer('finances');
+                        }}
+                        style={{ background: 'rgba(139,92,246,0.12)', color: '#8b5cf6', border: '1px solid rgba(139,92,246,0.3)', borderRadius: 8, padding: '8px 12px', cursor: 'pointer', fontSize: 12, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 4, fontFamily: 'inherit', flex: 1 }}
+                      ><Receipt size={13} /> Facture</button>
+                    )}
+                    {client && <button onClick={() => exportDevis(d, clients, parametres)} style={{ ...DS.iconBtn }} title="PDF"><FileDown size={14} /></button>}
+                    <button onClick={() => { setForm({ ...d, montantHT: d.montantHT || d.prixPropose || '' }); setAjout(true); }} style={DS.iconBtn} title="Modifier"><Pencil size={14} /></button>
+                    <button
+                      onClick={async () => {
+                        const chantiersLies = chantiers.filter(ch => String(ch.devisId) === String(d.id));
+                        const facturesLiees = factures.filter(f => chantiersLies.some(ch => String(ch.id) === String(f.chantierId)) || String(f.devisId) === String(d.id));
+                        const lignes = [`Supprimer le devis "${d.numero}" ?`];
+                        if (chantiersLies.length > 0) lignes.push(`→ ${chantiersLies.length} chantier(s) lié(s) seront aussi supprimé(s)`);
+                        if (facturesLiees.length > 0) lignes.push(`→ ${facturesLiees.length} facture(s) liée(s) seront aussi supprimée(s)`);
+                        lignes.push('Cette action est irréversible.');
+                        if (!await confirmer(lignes.join('\n'), { labelOui: 'Supprimer' })) return;
+                        const idsChantiers = new Set(chantiersLies.map(ch => String(ch.id)));
+                        setDevis(devis.filter(dv => String(dv.id) !== String(d.id)));
+                        if (idsChantiers.size > 0) setChantiers(chantiers.filter(ch => !idsChantiers.has(String(ch.id))));
+                        if (facturesLiees.length > 0) { const idsFactures = new Set(facturesLiees.map(f => String(f.id))); setFactures(factures.filter(f => !idsFactures.has(String(f.id)))); }
+                      }}
+                      style={{ ...DS.iconBtn, color: '#EF4444' }} title="Supprimer"><Trash2 size={14} /></button>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         ) : (
           <div style={{ overflowX: 'auto' }}>

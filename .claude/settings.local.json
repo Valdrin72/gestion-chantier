@@ -25,7 +25,8 @@
       "mcp__memory__add_observations",
       "mcp__memory__search_nodes",
       "mcp__playwright__browser_press_key",
-      "mcp__memory__read_graph"
+      "mcp__memory__read_graph",
+      "Bash(cat >> *)"
     ]
   }
 }

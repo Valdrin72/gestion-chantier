@@ -7,6 +7,7 @@ import { exportCSV } from '../utils/exportCSV';
 import { DS } from '../ds';
 import { Badge } from '../components/SharedBadges';
 import { useApp } from '../context/AppContext';
+import useIsMobile from '../hooks/useIsMobile';
 
 // Supprime les balises HTML des champs texte avant sauvegarde (protection XSS dans PDF)
 const sanitiser = (obj) => {
@@ -23,6 +24,7 @@ const btnDanger = DS.btnDanger;
 
 function Clients({ clients, setClients, chantiers, setChantiers, devis = [], setDevis, factures = [], setFactures, naviguer }) {
   const { confirmer, afficherNotif } = useApp();
+  const isMobile = useIsMobile();
   const [ajout, setAjout] = useState(false);
   const [form, setForm] = useState({ nom: '', prenom: '', entreprise: '', telephone: '', email: '', adresse: '', ville: '', canton: '', type: 'Entreprise', notes: '' });
   const sauvegarder = () => {
@@ -127,7 +129,7 @@ function Clients({ clients, setClients, chantiers, setChantiers, devis = [], set
           </div>
         </div>
       )}
-      <div style={{ display: 'grid', gridTemplateColumns: 'var(--g3)', gap: '15px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'var(--g3)', gap: isMobile ? '10px' : '15px' }}>
         {clients.map(c => {
           const chantiersC = chantiers.filter(ch => String(ch.clientId) === String(c.id));
           const ca = chantiersC.reduce((t, ch) => t + (calculerCA(ch, devis) ?? 0), 0);

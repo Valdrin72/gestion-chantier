@@ -188,7 +188,7 @@ function ChantiersListe({
         ))}
       </div>
 
-      <div style={{ display: 'flex', gap: '6px', marginBottom: '20px', flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', gap: '6px', marginBottom: '16px', overflowX: 'auto', WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none', paddingBottom: 2 }}>
         {STATUTS.map(s => (
           <button key={s} onClick={() => setFiltre(s)} style={{
             background: filtre === s ? '#EEF2FF' : 'transparent',
@@ -196,7 +196,7 @@ function ChantiersListe({
             border: '1px solid transparent',
             padding: '8px 14px', borderRadius: '20px', cursor: 'pointer', fontSize: '13px',
             fontWeight: filtre === s ? 600 : 400, fontFamily: 'inherit',
-            transition: 'all 0.18s', minHeight: 36,
+            transition: 'all 0.18s', minHeight: 36, flexShrink: 0,
           }}>{s}</button>
         ))}
       </div>
@@ -267,11 +267,11 @@ function ChantiersListe({
                     </div>
                     <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)', flexShrink: 0 }}>{avancePct}%</span>
                   </div>
-                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }} onClick={e => e.stopPropagation()}>
-                    <button onClick={() => onSelect(c)} style={{ ...DS.iconBtn, flex: 1 }} title="Voir"><Eye size={14} /></button>
-                    <button onClick={() => onModifier(c)} style={{ ...DS.iconBtn, flex: 1 }} title="Modifier"><Pencil size={14} /></button>
+                  <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }} onClick={e => e.stopPropagation()}>
+                    <button onClick={() => onSelect(c)} style={{ ...DS.iconBtn, width: 44, height: 44 }} title="Voir détail"><Eye size={16} /></button>
+                    <button onClick={() => onModifier(c)} style={{ ...DS.iconBtn, width: 44, height: 44 }} title="Modifier"><Pencil size={16} /></button>
                     {onSupprimer && (
-                      <button onClick={async () => { if (await confirmer(`Supprimer "${c.nom || c.numero}" ?\n\nCette action est irréversible.`, { labelOui: 'Supprimer' })) onSupprimer(c.id); }} style={{ ...DS.iconBtn, flex: 1, color: '#ef4444' }} title="Supprimer"><Trash2 size={14} /></button>
+                      <button onClick={async () => { if (await confirmer(`Supprimer "${c.nom || c.numero}" ?\n\nCette action est irréversible.`, { labelOui: 'Supprimer' })) onSupprimer(c.id); }} style={{ ...DS.iconBtn, width: 44, height: 44, color: '#ef4444' }} title="Supprimer"><Trash2 size={16} /></button>
                     )}
                   </div>
                 </div>

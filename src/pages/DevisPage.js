@@ -203,12 +203,12 @@ function Devis() {
       {(() => {
         const STATUTS_DEVIS = ['Tous', 'brouillon', 'envoyé', 'accepté', 'refusé'];
         return (
-          <div style={{ display: 'flex', gap: '6px', marginBottom: '20px', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: '6px', marginBottom: '16px', overflowX: 'auto', WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none', paddingBottom: 2 }}>
             {STATUTS_DEVIS.map(s => (
               <button key={s} onClick={() => setFiltreDevis(s)} style={{
                 background: filtreDevis === s ? DS.brand.soft : 'transparent',
                 color: filtreDevis === s ? DS.brand.secondary : 'var(--text-muted)',
-                border: '1px solid transparent',
+                border: '1px solid transparent', flexShrink: 0,
                 padding: '8px 14px', borderRadius: '20px', cursor: 'pointer', fontSize: '13px',
                 fontWeight: filtreDevis === s ? 600 : 400, fontFamily: 'inherit', minHeight: 36,
                 textTransform: 'capitalize',

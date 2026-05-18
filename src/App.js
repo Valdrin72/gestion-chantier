@@ -201,11 +201,11 @@ function AppInner({ profil, deconnecter, userId }) {
   const navItems = [
     { id: 'dashboard',  label: 'Dashboard',   Icon: LayoutDashboard, labelCourt: 'Accueil' },
     { id: 'chantiers',  label: 'Chantiers',   Icon: HardHat,         labelCourt: 'Chantiers' },
+    { id: 'devis',      label: 'Devis',       Icon: FileText,        labelCourt: 'Devis' },
+    { id: 'finances',   label: 'Finances',    Icon: DollarSign,      labelCourt: 'Finances', badge: nbFacturesRetard || null },
     { id: 'clients',    label: 'Clients',     Icon: Users,           labelCourt: 'Clients' },
     { id: 'employes',   label: 'Employés',    Icon: UserCog,         labelCourt: 'Équipe' },
-    { id: 'devis',      label: 'Devis',       Icon: FileText,        labelCourt: 'Devis' },
     { id: 'heures',     label: 'Heures',      Icon: Clock,           labelCourt: 'Heures' },
-    { id: 'finances',   label: 'Finances',    Icon: DollarSign,      labelCourt: 'Finances', badge: nbFacturesRetard || null },
     { id: 'planning',   label: 'Planning',    Icon: Calendar,        labelCourt: 'Planning' },
     { id: 'rapport',    label: 'Rapports',    Icon: ClipboardList,   labelCourt: 'Rapports' },
     { id: 'agents',     label: 'Centre IA',   Icon: Bot,             labelCourt: 'Centre IA' },

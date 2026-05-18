@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback } from 'react';
-import { Zap, Calendar } from 'lucide-react';
+import { Zap, Calendar, LayoutList } from 'lucide-react';
 import { calculerDateFinOuvrables, getAlerte } from './donnees';
 import { DS } from './ds';
 import { TOUS_STATUTS } from './constants/statuts';
@@ -8,11 +8,208 @@ const MOIS = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 
 const JOURS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
 const PALETTE = ['#3b82f6','#10b981','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#f97316','#ec4899'];
 
+// ── Helpers Gantt ────────────────────────────────────────────────
+function getLundiDeSemaine(d) {
+  const r = new Date(d);
+  const jour = r.getDay(); // 0=dim, 1=lun, ...
+  const decal = jour === 0 ? -6 : 1 - jour;
+  r.setDate(r.getDate() + decal);
+  r.setHours(0, 0, 0, 0);
+  return r;
+}
+
+function addDays(d, n) {
+  const r = new Date(d);
+  r.setDate(r.getDate() + n);
+  return r;
+}
+
+function formatDateCourt(d) {
+  return d.toLocaleDateString('fr-CH', { day: '2-digit', month: '2-digit' });
+}
+
+// ── Composant GanttView ──────────────────────────────────────────
+function GanttView({ chantiers, chantiersNonPlanifies, offsetSemaines, ouvrirModal }) {
+  const NB_SEMAINES = 12;
+  const today = useMemo(() => { const d = new Date(); d.setHours(0,0,0,0); return d; }, []);
+
+  const timelineStart = useMemo(() => addDays(getLundiDeSemaine(today), offsetSemaines * 7), [today, offsetSemaines]);
+  const timelineEnd   = useMemo(() => addDays(timelineStart, NB_SEMAINES * 7), [timelineStart]);
+  const dureeTotaleMs = NB_SEMAINES * 7 * 86400000;
+
+  // Chantiers avec dateDebut (affichables sur la timeline)
+  const chantiersGantt = useMemo(() => {
+    return chantiers
+      .map((c, idx) => {
+        if (!c.dateDebut) return null;
+        const debut = new Date(c.dateDebut); debut.setHours(0,0,0,0);
+        let fin;
+        if (c.nombreJours) {
+          const finStr = calculerDateFinOuvrables(c.dateDebut, parseInt(c.nombreJours) || 0, c.inclusSamedi);
+          fin = finStr ? new Date(finStr) : new Date(debut);
+          fin.setHours(0,0,0,0);
+        } else {
+          // Chantier "en cours" sans nombre de jours : montrer 1 semaine par défaut
+          fin = addDays(debut, 6);
+        }
+
+        // Vérifier que la barre intersecte la timeline
+        if (fin < timelineStart || debut >= timelineEnd) return null;
+
+        // Positions en %
+        const debutClipped = debut < timelineStart ? timelineStart : debut;
+        const finClipped   = fin   > timelineEnd   ? timelineEnd   : fin;
+
+        const debutPct = Math.max(0, (debutClipped - timelineStart) / dureeTotaleMs * 100);
+        const largeurPct = Math.max(0.5, (finClipped - debutClipped + 86400000) / dureeTotaleMs * 100);
+        const color = PALETTE[idx % PALETTE.length];
+
+        return { c, debut, fin, debutPct, largeurPct, color, idx };
+      })
+      .filter(Boolean);
+  }, [chantiers, timelineStart, timelineEnd, dureeTotaleMs]);
+
+  // Marqueur aujourd'hui
+  const todayPct = useMemo(() => {
+    if (today < timelineStart || today >= timelineEnd) return null;
+    return (today - timelineStart) / dureeTotaleMs * 100;
+  }, [today, timelineStart, timelineEnd, dureeTotaleMs]);
+
+  // Headers semaines
+  const semaines = useMemo(() => {
+    const s = [];
+    for (let i = 0; i < NB_SEMAINES; i++) {
+      const lundi = addDays(timelineStart, i * 7);
+      // Numéro de semaine ISO approximatif
+      const startOfYear = new Date(lundi.getFullYear(), 0, 1);
+      const weekNum = Math.ceil(((lundi - startOfYear) / 86400000 + startOfYear.getDay() + 1) / 7);
+      s.push({ lundi, weekNum });
+    }
+    return s;
+  }, [timelineStart]);
+
+  const COL_NOM = '30%';
+  const COL_TIMELINE = '70%';
+
+  const rowStyle = (isAlt) => ({
+    display: 'flex',
+    height: 44,
+    alignItems: 'center',
+    background: isAlt ? 'var(--bg-card)' : 'transparent',
+    borderBottom: '1px solid var(--border)',
+  });
+
+  return (
+    <div style={{ ...DS.card, padding: 0, overflow: 'hidden' }}>
+      {/* En-tête */}
+      <div style={{ display: 'flex', borderBottom: '2px solid var(--border)', background: 'var(--ds-th-bg)' }}>
+        <div style={{ width: COL_NOM, flexShrink: 0, padding: '10px 16px', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px', color: 'var(--text-muted)', borderRight: '1px solid var(--border)' }}>
+          Chantier
+        </div>
+        <div style={{ width: COL_TIMELINE, overflowX: 'auto', scrollbarWidth: 'none' }}>
+          <div style={{ display: 'flex', minWidth: '100%' }}>
+            {semaines.map(({ lundi, weekNum }, i) => (
+              <div key={i} style={{ flex: `0 0 ${100 / NB_SEMAINES}%`, padding: '10px 4px', textAlign: 'center', fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', borderRight: i < NB_SEMAINES - 1 ? '1px solid var(--border)' : 'none', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+                S{weekNum}<br />
+                <span style={{ fontWeight: 500, letterSpacing: 0 }}>{formatDateCourt(lundi)}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Lignes chantiers */}
+      {chantiersGantt.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '48px 24px', color: 'var(--text-muted)', fontSize: 13 }}>
+          <Calendar size={32} color="var(--text-muted)" style={{ marginBottom: 12 }} />
+          <div style={{ fontWeight: 600, fontSize: 15 }}>Aucun chantier sur cette période</div>
+          <div style={{ fontSize: 13, marginTop: 6 }}>Utilisez les flèches pour naviguer dans le temps</div>
+        </div>
+      ) : (
+        chantiersGantt.map(({ c, debutPct, largeurPct, color }, i) => (
+          <div key={c.id} style={rowStyle(i % 2 === 0)}>
+            {/* Nom chantier */}
+            <div style={{ width: COL_NOM, flexShrink: 0, padding: '0 16px', fontSize: 12, fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', borderRight: '1px solid var(--border)', height: '100%', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={{ width: 10, height: 10, borderRadius: 3, background: color, flexShrink: 0 }} />
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.nom || c.numero}</span>
+            </div>
+            {/* Barre Gantt */}
+            <div style={{ flex: 1, position: 'relative', height: '100%', overflow: 'hidden' }}>
+              {/* Quadrillage semaines */}
+              {semaines.map((_, si) => (
+                <div key={si} style={{ position: 'absolute', top: 0, bottom: 0, left: `${si / NB_SEMAINES * 100}%`, width: 1, background: 'var(--border)', opacity: 0.5 }} />
+              ))}
+              {/* Marqueur aujourd'hui */}
+              {todayPct !== null && (
+                <div style={{ position: 'absolute', top: 0, bottom: 0, left: `${todayPct}%`, width: 2, background: '#ef4444', opacity: 0.8, zIndex: 3, borderLeft: '2px dashed #ef4444' }} />
+              )}
+              {/* Barre chantier */}
+              <div
+                onClick={() => ouvrirModal(c)}
+                title={`${c.nom || c.numero}\nDébut : ${c.dateDebut}\nDurée : ${c.nombreJours || '?'}j`}
+                style={{
+                  position: 'absolute',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  left: `${debutPct}%`,
+                  width: `${largeurPct}%`,
+                  height: 22,
+                  background: color,
+                  opacity: 0.85,
+                  borderRadius: 4,
+                  cursor: 'pointer',
+                  zIndex: 2,
+                  display: 'flex',
+                  alignItems: 'center',
+                  paddingLeft: 6,
+                  overflow: 'hidden',
+                  boxSizing: 'border-box',
+                  transition: 'opacity 0.15s',
+                }}
+                onMouseEnter={e => { e.currentTarget.style.opacity = '1'; }}
+                onMouseLeave={e => { e.currentTarget.style.opacity = '0.85'; }}
+              >
+                {/* Label texte si assez large (≥80px estimé comme ≥7% sur 12 semaines) */}
+                {largeurPct > 7 && (
+                  <span style={{ fontSize: 10, fontWeight: 700, color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {c.nom || c.numero}
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+        ))
+      )}
+
+      {/* Légende */}
+      {chantiersGantt.length > 0 && (
+        <div style={{ padding: '12px 16px', borderTop: '1px solid var(--border)', display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center' }}>
+          <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px', color: 'var(--text-muted)', marginRight: 4 }}>Légende :</span>
+          {chantiersGantt.map(({ c, color }) => (
+            <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <div style={{ width: 12, height: 12, borderRadius: 3, background: color, flexShrink: 0 }} />
+              <span style={{ fontSize: 12, color: 'var(--text-primary)' }}>{c.nom || c.numero}</span>
+            </div>
+          ))}
+          {todayPct !== null && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginLeft: 8 }}>
+              <div style={{ width: 12, height: 2, borderTop: '2px dashed #ef4444' }} />
+              <span style={{ fontSize: 12, color: '#ef4444' }}>Aujourd'hui</span>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function Planning({ chantiers, setChantiers, clients, parametres, naviguer }) {
   const [moisActuel, setMoisActuel] = useState(new Date().getMonth());
   const [anneeActuelle, setAnneeActuelle] = useState(new Date().getFullYear());
   const [modal, setModal] = useState(null); // null ou { chantier, form }
   const [showOptimiseur, setShowOptimiseur] = useState(false);
+  const [vue, setVue] = useState('calendrier'); // 'calendrier' | 'gantt'
+  const [ganttOffset, setGanttOffset] = useState(0); // offset en semaines pour la timeline Gantt
 
   // couleurStatut importé depuis ds.js — source unique DS.statuts
 
@@ -225,6 +422,10 @@ export default function Planning({ chantiers, setChantiers, clients, parametres,
     return { employes, suggestions };
   }, [chantiers, parametres]);
 
+  // ── Style pills toggle ──────────────────────────────────────
+  const pillActive   = { background: 'rgba(59,130,246,0.18)', color: '#3b82f6', border: '1px solid rgba(59,130,246,0.45)', borderRadius: 8, padding: '6px 14px', cursor: 'pointer', fontSize: 13, fontWeight: 700, fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', gap: 6, transition: 'all 0.15s' };
+  const pillInactive = { background: 'var(--ds-btn-ghost-bg)', color: 'var(--text-secondary)', border: '1px solid var(--ds-btn-ghost-border)', borderRadius: 8, padding: '6px 14px', cursor: 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', gap: 6, transition: 'all 0.15s' };
+
   return (
     <div>
       {/* ── HEADER ──────────────────────────────────────────────── */}
@@ -232,14 +433,38 @@ export default function Planning({ chantiers, setChantiers, clients, parametres,
         <div className="page-title-block">
           <div className="page-title-main">Planning</div>
           <div className="page-title-sub">
-            {chantiersDuMois.length} chantier{chantiersDuMois.length !== 1 ? 's' : ''} ce mois
+            {vue === 'calendrier'
+              ? `${chantiersDuMois.length} chantier${chantiersDuMois.length !== 1 ? 's' : ''} ce mois`
+              : `Vue Gantt — 12 semaines`}
             {chantiersNonPlanifies.length > 0 && ` · ${chantiersNonPlanifies.length} sans date`}
           </div>
         </div>
         <div className="page-actions-group">
-          <button onClick={moisPrecedent} style={btnNav} title="Mois précédent">←</button>
-          <button onClick={() => { setMoisActuel(new Date().getMonth()); setAnneeActuelle(new Date().getFullYear()); }} style={btnNav}>Aujourd'hui</button>
-          <button onClick={moisSuivant} style={btnNav} title="Mois suivant">→</button>
+          {/* Toggle Calendrier / Gantt */}
+          <div style={{ display: 'flex', background: 'var(--bg-hover)', borderRadius: 10, padding: 3, gap: 3 }}>
+            <button onClick={() => setVue('calendrier')} style={vue === 'calendrier' ? pillActive : pillInactive} title="Vue calendrier mensuel">
+              <Calendar size={14} />Calendrier
+            </button>
+            <button onClick={() => setVue('gantt')} style={vue === 'gantt' ? pillActive : pillInactive} title="Vue Gantt timeline">
+              <LayoutList size={14} />Gantt
+            </button>
+          </div>
+
+          {/* Navigation contextuelle */}
+          {vue === 'calendrier' ? (
+            <>
+              <button onClick={moisPrecedent} style={btnNav} title="Mois précédent">←</button>
+              <button onClick={() => { setMoisActuel(new Date().getMonth()); setAnneeActuelle(new Date().getFullYear()); }} style={btnNav}>Aujourd'hui</button>
+              <button onClick={moisSuivant} style={btnNav} title="Mois suivant">→</button>
+            </>
+          ) : (
+            <>
+              <button onClick={() => setGanttOffset(v => v - 4)} style={btnNav} title="−4 semaines">←</button>
+              <button onClick={() => setGanttOffset(0)} style={btnNav} title="Centrer sur aujourd'hui">Aujourd'hui</button>
+              <button onClick={() => setGanttOffset(v => v + 4)} style={btnNav} title="+4 semaines">→</button>
+            </>
+          )}
+
           <button
             onClick={() => setShowOptimiseur(v => !v)}
             style={{
@@ -345,7 +570,34 @@ export default function Planning({ chantiers, setChantiers, clients, parametres,
         </div>
       )}
 
-      {/* ── LAYOUT 2 COLONNES ───────────────────────────────────── */}
+      {/* ── VUE GANTT ───────────────────────────────────────────── */}
+      {vue === 'gantt' && (
+        <div>
+          <GanttView
+            chantiers={chantiers}
+            chantiersNonPlanifies={chantiersNonPlanifies}
+            offsetSemaines={ganttOffset}
+            ouvrirModal={ouvrirModal}
+          />
+          {/* Chantiers non planifiés dans la vue Gantt */}
+          {chantiersNonPlanifies.length > 0 && (
+            <div style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.25)', borderRadius: 12, padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+              <span style={{ color: '#f59e0b', fontWeight: 700, fontSize: 13, flexShrink: 0 }}>
+                {chantiersNonPlanifies.length} non planifié{chantiersNonPlanifies.length !== 1 ? 's' : ''} :
+              </span>
+              {chantiersNonPlanifies.map(c => (
+                <button key={c.id} onClick={() => ouvrirModal(c)}
+                  style={{ background: 'rgba(245,158,11,0.15)', color: '#f59e0b', border: '1px solid rgba(245,158,11,0.35)', borderRadius: 8, padding: '4px 12px', cursor: 'pointer', fontSize: 12, fontWeight: 600, fontFamily: 'inherit' }}>
+                  + Planifier {c.nom || c.numero}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── LAYOUT 2 COLONNES (vue calendrier uniquement) ───────── */}
+      {vue === 'calendrier' && (
       <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 20, alignItems: 'start' }}>
 
         {/* ── COLONNE GAUCHE : liste chantiers ── */}
@@ -537,6 +789,7 @@ export default function Planning({ chantiers, setChantiers, clients, parametres,
           </div>
         </div>
       </div>
+      )} {/* fin vue === 'calendrier' */}
 
       {/* ── MODAL ÉDITION ───────────────────────────────────────── */}
       {modal && (

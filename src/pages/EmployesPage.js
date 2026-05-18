@@ -18,7 +18,7 @@ const btnDanger  = DS.btnDanger;
 
 function Employes({ parametres, setParametres, chantiers, naviguer }) {
   const { profil, afficherNotif, periodeGlobale } = useApp();
-  const voirSalaires = profil?.id === 'direction';
+  const voirSalaires = ['direction', 'sinaap', 'sinatec'].includes(profil?.id);
   const [onglet, setOnglet] = useState('equipe');
   const [ajout, setAjout] = useState(false);
   const [form, setForm] = useState({ nom: '', poste: 'Ouvrier qualifié', tarifJour: '', telephone: '', email: '', actif: true });

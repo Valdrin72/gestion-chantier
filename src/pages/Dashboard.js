@@ -18,7 +18,7 @@ import { calculerAlertes } from '../alertes';
 
 function Dashboard() {
   const isMobile = useIsMobile();
-  const { chantiers, clients, factures, devis = [], parametres, naviguer, actionsLog = [], periodeGlobale = 'mois', setPeriodeGlobale = () => {}, agentState } = useApp();
+  const { chantiers, clients, factures, devis = [], parametres, naviguer, actionsLog = [], periodeGlobale = 'mois', setPeriodeGlobale = () => {}, agentState, profil } = useApp();
   const agentAlertes = agentState?.alertes || [];
   const nbAgentAlertes = agentState?.nbNonLues || 0;
   const marquerLu = agentState?.marquerLu || (() => {});
@@ -282,7 +282,7 @@ function Dashboard() {
     const existingIds = new Set(list.map(a => a.id));
     calculerAlertes(
       { chantiers, devis, factures, clients, paiements: {} },
-      'direction'
+      profil?.id || 'sinaap'
     )
       .filter(a => TYPES_ADDITIFS.has(a.type))
       .forEach(a => {

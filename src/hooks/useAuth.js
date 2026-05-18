@@ -1,27 +1,35 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 
+// Pages complètes — accès total SINAAP / SINATEC
+const TOUTES_PAGES = [
+  'dashboard', 'chantiers', 'clients', 'employes', 'devis', 'heures',
+  'finances', 'planning', 'rapport', 'agents', 'parametres',
+  'factures', 'statistiques', 'paiements', 'analyse', 'importpdf', 'metrage', 'photos',
+];
+
 const ROLE_PAGES = {
-  direction: {
-    id: 'direction',
-    nom: 'Direction',
+  sinaap: {
+    id: 'sinaap',
+    nom: 'SINAAP',
     icone: '◈',
-    couleur: '#3382c2',
-    pages: ['dashboard', 'chantiers', 'devis', 'heures', 'finances', 'planning', 'rapport', 'agents', 'parametres', 'clients'],
+    couleur: '#0d3d6e',
+    pages: TOUTES_PAGES,
   },
-  conducteur: {
-    id: 'conducteur',
-    nom: 'Chef de chantier',
-    icone: '⚒',
-    couleur: '#e67e22',
-    pages: ['dashboard', 'chantiers', 'heures', 'planning'],
+  sinatec: {
+    id: 'sinatec',
+    nom: 'SINATEC',
+    icone: '◆',
+    couleur: '#1a5c8a',
+    pages: TOUTES_PAGES,
   },
-  administratif: {
-    id: 'administratif',
-    nom: 'Bureau',
-    icone: '📋',
-    couleur: '#27ae60',
-    pages: ['dashboard', 'devis', 'finances', 'rapport'],
+  // Alias rétrocompatibilité — rôle Supabase existant
+  direction: {
+    id: 'sinaap',
+    nom: 'SINAAP',
+    icone: '◈',
+    couleur: '#0d3d6e',
+    pages: TOUTES_PAGES,
   },
 };
 
@@ -33,11 +41,11 @@ export default function useAuth() {
 
   const resolverProfil = useCallback((user) => {
     if (!user) return null;
-    const ROLES_AUTORISES = ['direction', 'conducteur', 'administratif'];
     // app_metadata est réservé aux admins (non modifiable par l'utilisateur via l'API publique)
     // user_metadata NE DOIT PAS être utilisé pour les rôles : modifiable par tout utilisateur authentifié
     const roleRaw = user.app_metadata?.role;
-    const role = ROLES_AUTORISES.includes(roleRaw) ? roleRaw : 'conducteur';
+    // Un seul point d'entrée : sinaap, sinatec, ou direction (alias)
+    const role = ROLE_PAGES[roleRaw] ? roleRaw : 'sinaap';
     return ROLE_PAGES[role];
   }, []);
 

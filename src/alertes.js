@@ -33,7 +33,7 @@ export function calculerAlertes({ chantiers = [], devis = [], factures = [], pai
   const push = (alerte) => alertes.push({ id: `alert_${idSeq++}`, date: now.toISOString(), ...alerte });
 
   // ── 1. Chantiers en retard ──────────────────────────────────
-  if (['direction', 'conducteur', 'administratif'].includes(profilId)) {
+  if (['direction', 'sinaap', 'sinatec', 'conducteur', 'administratif'].includes(profilId)) {
     chantiers.forEach(c => {
       if (c.statut?.trim().toLowerCase() === 'en cours') {
         const dateFinStr = calculerDateFinOuvrables(c.dateDebut, c.nombreJours, c.inclusSamedi);
@@ -55,7 +55,7 @@ export function calculerAlertes({ chantiers = [], devis = [], factures = [], pai
   }
 
   // ── 2. Devis sans réponse depuis >14 jours ──────────────────
-  if (['direction', 'administratif'].includes(profilId)) {
+  if (['direction', 'sinaap', 'sinatec', 'administratif'].includes(profilId)) {
     devis.forEach(d => {
       if (d.statut?.toLowerCase() === 'envoyé' && !d.chantierId) {
         const dateRef = new Date(d.dateEmission || d.date || now);
@@ -75,7 +75,7 @@ export function calculerAlertes({ chantiers = [], devis = [], factures = [], pai
   }
 
   // ── 3. Factures en retard de paiement + relances à envoyer ───
-  if (['direction', 'administratif'].includes(profilId)) {
+  if (['direction', 'sinaap', 'sinatec', 'administratif'].includes(profilId)) {
     factures.forEach(f => {
       if (f.statut !== 'envoyee' && f.statut !== 'partielle' && f.statut !== 'retard') return;
       const dateEch = f.dateEcheance || (f.dateEmission ? new Date(new Date(f.dateEmission).getTime() + 30 * 86400000).toISOString().slice(0, 10) : null);
@@ -116,7 +116,7 @@ export function calculerAlertes({ chantiers = [], devis = [], factures = [], pai
   }
 
   // ── 4. Factures brouillon non émises ────────────────────────
-  if (['direction', 'administratif'].includes(profilId)) {
+  if (['direction', 'sinaap', 'sinatec', 'administratif'].includes(profilId)) {
     const brouillons = factures.filter(f => f.statut === 'brouillon');
     if (brouillons.length > 0) {
       push({
@@ -130,7 +130,7 @@ export function calculerAlertes({ chantiers = [], devis = [], factures = [], pai
   }
 
   // ── 5. Chantiers sans devis associé ─────────────────────────
-  if (['direction', 'administratif'].includes(profilId)) {
+  if (['direction', 'sinaap', 'sinatec', 'administratif'].includes(profilId)) {
     const sansDev = chantiers.filter(c =>
       c.statut?.toLowerCase() !== 'terminé' && c.statut?.toLowerCase() !== 'annulé' && !c.devisId
     );
@@ -146,7 +146,7 @@ export function calculerAlertes({ chantiers = [], devis = [], factures = [], pai
   }
 
   // ── 6. Chantiers terminés depuis >7 jours sans facture finale ──
-  if (['direction', 'administratif'].includes(profilId)) {
+  if (['direction', 'sinaap', 'sinatec', 'administratif'].includes(profilId)) {
     chantiers.forEach(c => {
       if (c.statut?.toLowerCase() === 'terminé') {
         if (!c.dateFin && !c.dateDebut) return;
@@ -171,7 +171,7 @@ export function calculerAlertes({ chantiers = [], devis = [], factures = [], pai
   }
 
   // ── 7bis. Paiements en attente depuis >30 jours ─────────────
-  if (['direction', 'administratif'].includes(profilId)) {
+  if (['direction', 'sinaap', 'sinatec', 'administratif'].includes(profilId)) {
     Object.values(paiements).forEach(liste => {
       if (!Array.isArray(liste)) return;
       liste.forEach(p => {
@@ -196,7 +196,7 @@ export function calculerAlertes({ chantiers = [], devis = [], factures = [], pai
   }
 
   // ── 7. Paiements sans facture associée ───────────────────────
-  if (['direction', 'administratif'].includes(profilId)) {
+  if (['direction', 'sinaap', 'sinatec', 'administratif'].includes(profilId)) {
     let countSansFacture = 0;
     Object.values(paiements).forEach(liste => {
       if (Array.isArray(liste)) {
@@ -215,7 +215,7 @@ export function calculerAlertes({ chantiers = [], devis = [], factures = [], pai
   }
 
   // ── 8. Chantiers à perte ou dépassement budgétaire ──────────
-  if (['direction', 'administratif'].includes(profilId) && chantiersStats.length > 0) {
+  if (['direction', 'sinaap', 'sinatec', 'administratif'].includes(profilId) && chantiersStats.length > 0) {
     chantiersStats.forEach(stat => {
       if (!stat || !stat.id) return;
       if (typeof stat.margeNettePct === 'number' && stat.margeNettePct < 0) {

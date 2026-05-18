@@ -1,9 +1,34 @@
 // ============================================================
 // CYNA — PERMISSIONS v2
 // Structure : pages autorisées + actions granulaires par profil
+// Point d'entrée unique : sinaap / sinatec (accès total)
 // ============================================================
 
+const ACCES_TOTAL = {
+  pages: [
+    'dashboard', 'chantiers', 'clients', 'employes', 'devis', 'heures',
+    'finances', 'planning', 'rapport', 'agents', 'parametres',
+    'factures', 'statistiques', 'paiements', 'analyse', 'importpdf', 'metrage', 'photos',
+  ],
+  actions: {
+    voirFinances:       true,
+    modifierPrix:       true,
+    supprimerDonnees:   true,
+    validerDevis:       true,
+    emettreFactures:    true,
+    voirSalaires:       true,
+    gererParametres:    true,
+    voirClients:        true,
+    gererEmployes:      true,
+    voirStatistiques:   true,
+    voirRapport:        true,
+    gererPaiements:     true,
+  },
+};
+
 export const PERMISSIONS = {
+  sinaap:     ACCES_TOTAL,
+  sinatec:    ACCES_TOTAL,
   direction: {
     pages: ['dashboard', 'chantiers', 'devis', 'factures', 'clients', 'employes', 'planning', 'statistiques', 'paiements', 'parametres', 'rapport', 'analyse', 'importpdf', 'metrage', 'photos'],
     actions: {

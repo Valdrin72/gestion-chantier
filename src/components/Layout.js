@@ -324,7 +324,7 @@ const PERIODES = [
 ];
 
 // Pages où le filtre période a du sens (données temporelles)
-const PAGES_AVEC_PERIODE = ['dashboard', 'finances', 'rapport', 'chantiers', 'devis', 'heures'];
+const PAGES_AVEC_PERIODE = ['finances', 'rapport', 'chantiers', 'devis', 'heures'];
 
 export function Topbar({ setSidebarOuvert, canGoBack, page, revenirArriere, navAutorisees, darkMode, toggleDarkMode, profil, naviguer }) {
   const { periodeGlobale, setPeriodeGlobale } = useApp();

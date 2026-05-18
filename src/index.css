@@ -972,10 +972,38 @@ label { font-weight: 500; font-size: 12px; color: var(--text-secondary); }
     --g-2a:     1fr auto;
     --g-3a:     1fr 1fr;
     --g-line:   1fr 1fr;
+
+    /* ── Densité mobile : espacements réduits ── */
+    --ds-card-padding:         14px 12px;
+    --ds-card-mb:              12px;
+    --ds-card-compact-padding: 12px;
+    --ds-card-compact-mb:      10px;
+    --ds-card-inset-padding:   10px 12px;
+  }
+
+  /* ── Page header compact ── */
+  .page-header-row {
+    margin-bottom: 14px !important;
+    gap: 8px !important;
+  }
+  .page-title-main {
+    font-size: 18px !important;
+    letter-spacing: -0.3px !important;
+  }
+  .page-title-sub {
+    font-size: 11px !important;
+    margin-top: 2px !important;
+  }
+  .page-actions-group {
+    gap: 6px !important;
+  }
+  .page-actions-group button {
+    padding: 7px 11px !important;
+    font-size: 12px !important;
   }
 
   .app-main {
-    padding: 16px 14px;
+    padding: 12px 12px;
     padding-bottom: calc(68px + env(safe-area-inset-bottom, 8px));
   }
   .topbar {
@@ -1025,6 +1053,14 @@ label { font-weight: 500; font-size: 12px; color: var(--text-secondary); }
 
   /* Modals : plein écran sur mobile */
   .modal-content { max-height: 90vh !important; width: calc(100vw - 20px) !important; margin: 0 10px !important; }
+
+  /* ── Titres de sections réduits ── */
+  h1 { font-size: 18px !important; }
+  h2 { font-size: 14px !important; }
+  h3 { font-size: 13px !important; }
+
+  /* ── KPI label plus petit ── */
+  .kpi-card .kpi-label { font-size: 8px !important; }
 }
 
 /* ============================================================

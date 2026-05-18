@@ -106,11 +106,15 @@ responsable du domaine touché. L'équipe ne dort jamais.
 |-------|-------------|------|
 | `mempalace` (skill) | `/mempalace` | Palais de la mémoire — ancre dans Memory MCP tous les bugs, patterns et décisions de la session |
 | `claude-task-master` (skill) | `/claude-task-master [feature]` | Chef de projet IA — décompose, délègue et suit les sprints multi-agents |
+| `the-agency` (skill) | `/the-agency` | Orchestrateur de skills — installe, active, audite et met à jour tous les skills CYNA |
+| `ultra-plan` (skill) | `/ultra-plan [feature]` | Planificateur maximal — décomposition atomique XS/S/M/L, agents assignés, sprints parallèles |
 
 **Protocole Équipe Cerveau :**
 - `/mempalace` → fin de chaque session longue ou après un sprint majeur
 - `/mempalace --read` → début de session pour le briefing complet
 - `/claude-task-master` → dès qu'une feature nécessite plus de 3 tâches distinctes
+- `/the-agency list` → vérifier l'état de tous les skills installés
+- `/ultra-plan` → avant tout sprint complexe pour un plan d'exécution parfait
 
 ### 🎨 DOMAINE DESIGN & QUALITÉ VISUELLE
 

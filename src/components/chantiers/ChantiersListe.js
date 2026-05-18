@@ -1,7 +1,8 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import {
-  HardHat, X, Pencil, Trash2, AlertTriangle, ChevronRight, DollarSign, Clock, Eye, TrendingUp,
+  HardHat, X, Pencil, Trash2, AlertTriangle, ChevronRight, DollarSign, Clock, Eye, TrendingUp, Download,
 } from 'lucide-react';
+import { exportCSV } from '../../utils/exportCSV';
 import {
   fmtN, calculerCoutsChantier, C, calculerEtatChantier,
   assertEtatCoherent, calculerCA, isChantierActif, getIntervallesPeriode, chantiersInPeriode,
@@ -123,6 +124,27 @@ function ChantiersListe({
   const totalPages = Math.ceil(scored.length / PAGE_SIZE);
   const scoredPage = scored.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
 
+  const exporterCSV = () => {
+    const entetes = ['Nom', 'Client', 'Statut', 'Début', 'Fin prévue', 'Jours planifiés', 'CA HT (CHF)', 'Avancement (%)', 'Marge réelle (%)'];
+    const lignes = chantiersFiltres.map(c => {
+      const clientNom = (clients.find(cl => String(cl.id) === String(c.clientId))?.nom || '') + ' ' + (clients.find(cl => String(cl.id) === String(c.clientId))?.prenom || '');
+      const ca = calculerCA(c, devis);
+      const couts = calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis);
+      return [
+        c.nom || '',
+        clientNom.trim(),
+        c.statut || '',
+        c.dateDebut || '',
+        c.dateFin || '',
+        c.nombreJours || 0,
+        ca !== null ? Math.round(ca) : '',
+        couts.avancementPct !== null ? couts.avancementPct : '',
+        couts.margeReelPct !== null ? couts.margeReelPct : '',
+      ];
+    });
+    exportCSV(`chantiers_${new Date().toISOString().slice(0,10)}.csv`, entetes, lignes);
+  };
+
   return (
     <div>
       <div className="page-header-row">
@@ -141,6 +163,9 @@ function ChantiersListe({
           )}
           {(contexte?.clientActif || contexte?.employeActif) && (
             <button onClick={() => naviguer('chantiers')} style={{ ...DS.btnGhost }}><X size={14} /> Supprimer filtre</button>
+          )}
+          {chantiersFiltres.length > 0 && (
+            <button onClick={exporterCSV} style={{ ...DS.btnGhost }}><Download size={14} /> Exporter CSV</button>
           )}
         </div>
       </div>

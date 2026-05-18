@@ -7,8 +7,9 @@
 // ============================================================
 
 import React, { useState, useMemo } from 'react';
-import { FileDown } from 'lucide-react';
+import { FileDown, Download } from 'lucide-react';
 import { DS } from './ds';
+import { exportCSV } from './utils/exportCSV';
 import { fmtN, getIntervallesPeriode, facturesInPeriode, genererNumeroFacture, calculerStatutFacture } from './donnees';
 import { prochainRappel, niveauInfo, genererTexteRappel, marquerRappelEnvoye } from './relances';
 import { exportFicheChantier } from './ExportPDF';
@@ -414,6 +415,28 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
   // ── Vue détail ───────────────────────────────────────────
   const voirDetail = (f) => { setSelected(f); setVue('detail'); };
 
+  const exporterCSV = () => {
+    const entetes = ['Numéro', 'Client', 'Chantier', 'Type', 'Statut', 'Date émission', 'Échéance', 'Montant HT (CHF)', 'TVA (%)', 'Montant TTC (CHF)', 'Payé (CHF)'];
+    const lignes = factures.map(f => {
+      const client = clients.find(c => String(c.id) === String(f.clientId));
+      const chantier = chantiers.find(c => String(c.id) === String(f.chantierId));
+      return [
+        f.numero || '',
+        client ? `${client.prenom} ${client.nom}`.trim() : '',
+        chantier?.nom || '',
+        f.type || '',
+        f.statut || '',
+        f.dateEmission || f.dateFacture || '',
+        f.dateEcheance || '',
+        Math.round(parseFloat(f.montantHT) || 0),
+        parseFloat(f.tva) || 8.1,
+        Math.round(parseFloat(f.montantTTC) || 0),
+        Math.round(parseFloat(f.montantPaye) || 0),
+      ];
+    });
+    exportCSV(`factures_${new Date().toISOString().slice(0,10)}.csv`, entetes, lignes);
+  };
+
   // ============================
   //  LISTE
   // ============================
@@ -425,11 +448,14 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
             <div className="page-title-main">Factures</div>
             <div className="page-title-sub">{factures.length} facture{factures.length !== 1 ? 's' : ''}</div>
           </div>
-          {canEdit && (
-            <div className="page-actions-group">
+          <div className="page-actions-group">
+            {factures.length > 0 && (
+              <button style={S.btnGhost} onClick={exporterCSV}><Download size={14} /> Exporter CSV</button>
+            )}
+            {canEdit && (
               <button style={S.btnPrimary} onClick={() => ouvrirForm()}>+ Nouvelle facture</button>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       )}
       {hideHeader && canEdit && (

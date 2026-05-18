@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import {
   Plus, Pencil, Trash2, HardHat, Receipt,
-  DollarSign, Clock, FileText, TrendingUp, FileDown,
+  DollarSign, Clock, FileText, TrendingUp, FileDown, Download,
 } from 'lucide-react';
 import { fmtN, C, creerFactureDepuisDevis, getIntervallesPeriode } from '../donnees';
+import { exportCSV } from '../utils/exportCSV';
 import { DS } from '../ds';
 import { useApp } from '../context/AppContext';
 import { exportDevis } from '../ExportPDF';
@@ -85,6 +86,28 @@ function Devis() {
     setAjout(false); setForm(vide); setErreurs({});
   };
 
+  const caDevisExport = (d) => parseFloat(d.montantHT) || d.lignes?.reduce((s, l) => s + (parseFloat(l.quantite) || 0) * (parseFloat(l.prixUnitaire) || 0), 0) || 0;
+
+  const exporterCSV = () => {
+    const entetes = ['Numéro', 'Client', 'Entreprise', 'Date', 'Statut', 'Montant HT (CHF)', 'TVA (%)', 'Montant TTC (CHF)'];
+    const lignes = devis.map(d => {
+      const client = clients.find(c => String(c.id) === String(d.clientId));
+      const ht = caDevisExport(d);
+      const tva = parseFloat(d.tva) || 8.1;
+      return [
+        d.numero || '',
+        client ? `${client.prenom} ${client.nom}`.trim() : '',
+        client?.entreprise || '',
+        d.dateEmission || d.date || '',
+        d.statut || '',
+        Math.round(ht),
+        tva,
+        Math.round(ht * (1 + tva / 100)),
+      ];
+    });
+    exportCSV(`devis_${new Date().toISOString().slice(0,10)}.csv`, entetes, lignes);
+  };
+
   const ouvrirConfirmConversion = (d) => {
     const client = clients.find(c => String(c.id) === String(d.clientId));
     const nomSuggere = client?.entreprise
@@ -128,6 +151,9 @@ function Devis() {
           <div className="page-title-sub">{devis.length} devis · {(() => { const { debut, fin } = getIntervallesPeriode(periodeGlobale); const ds = debut.toISOString().slice(0,10); const fs = fin.toISOString().slice(0,10); return devis.filter(d => { const dt = (d.dateEmission || d.date || ''); return d.statut?.toLowerCase() === 'accepté' && dt >= ds && dt <= fs; }).length; })()} acceptés ({periodeGlobale === 'semaine' ? 'semaine' : periodeGlobale === 'mois' ? 'ce mois' : "l'année"})</div>
         </div>
         <div className="page-actions-group">
+          {devis.length > 0 && (
+            <button onClick={exporterCSV} style={{ ...DS.btnGhost }}><Download size={14} /> Exporter CSV</button>
+          )}
           <button onClick={() => { setForm(vide); setAjout(!ajout); }} style={btnPrimaire}><Plus size={14} /> Nouveau devis</button>
         </div>
       </div>

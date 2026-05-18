@@ -129,7 +129,7 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
   const [pageFact, setPageFact] = useState(0);
   const PAGE_SIZE_FACT = 50;
 
-  const canEdit = ['direction', 'cyna', 'sinatec', 'administratif'].includes(profil?.id);
+  const canEdit = ['cyna', 'cynatech'].includes(profil?.id);
 
   // ── Enregistrer un paiement depuis la facture ─────────────
   const enregistrerPaiement = () => {

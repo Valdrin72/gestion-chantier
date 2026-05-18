@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 
-// Pages complètes — accès total CYNA / SINATEC
 const TOUTES_PAGES = [
   'dashboard', 'chantiers', 'clients', 'employes', 'devis', 'heures',
   'finances', 'planning', 'rapport', 'agents', 'parametres',
@@ -16,19 +15,11 @@ const ROLE_PAGES = {
     couleur: '#0d3d6e',
     pages: TOUTES_PAGES,
   },
-  sinatec: {
-    id: 'sinatec',
-    nom: 'SINATEC',
+  cynatech: {
+    id: 'cynatech',
+    nom: 'CYNATECH',
     icone: '◆',
     couleur: '#1a5c8a',
-    pages: TOUTES_PAGES,
-  },
-  // Alias rétrocompatibilité — rôle Supabase existant
-  direction: {
-    id: 'cyna',
-    nom: 'CYNA',
-    icone: '◈',
-    couleur: '#0d3d6e',
     pages: TOUTES_PAGES,
   },
 };
@@ -41,10 +32,9 @@ export default function useAuth() {
 
   const resolverProfil = useCallback((user) => {
     if (!user) return null;
-    // app_metadata est réservé aux admins (non modifiable par l'utilisateur via l'API publique)
-    // user_metadata NE DOIT PAS être utilisé pour les rôles : modifiable par tout utilisateur authentifié
+    // app_metadata réservé aux admins — non modifiable par l'utilisateur
     const roleRaw = user.app_metadata?.role;
-    // Un seul point d'entrée : cyna, sinatec, ou direction (alias)
+    // Point d'entrée unique : cyna ou cynatech. Tout autre rôle → cyna par défaut.
     const role = ROLE_PAGES[roleRaw] ? roleRaw : 'cyna';
     return ROLE_PAGES[role];
   }, []);

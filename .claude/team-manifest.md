@@ -73,6 +73,31 @@ responsable du domaine touché. L'équipe ne dort jamais.
 4. `/veille-auto` — mensuel + avant chaque mise en production
 5. `/skill-creator` — pour créer de nouveaux skills si besoin
 
+### 💼 DOMAINE BUSINESS & FINANCE PME
+
+> **Équipe Business** — s'active pour piloter l'entreprise, analyser la santé financière et simplifier la gestion administrative.
+
+| Skill | Déclencheur | Rôle |
+|-------|-------------|------|
+| `claude-small-business` (skill) | `/claude-small-business` | Audit PME en 60 sec — état de santé, 3 actions prioritaires, checklist hebdo, rapport exécutif 1 page |
+| `claude-financial-service` (skill) | `/claude-financial-service` | Analyse financière avancée — cashflow J+30/60/90, TVA AFC, EAC/RAD par chantier, benchmarks BTP GE, rapport fiduciaire |
+
+**Protocole Équipe Business :**
+- `/claude-small-business` → chaque lundi matin ou quand le patron veut un point rapide
+- `/claude-small-business --week` → checklist hebdomadaire uniquement
+- `/claude-small-business --report` → rapport exécutif mensuel
+- `/claude-financial-service --cashflow` → avant une décision d'investissement ou d'embauche
+- `/claude-financial-service --tva` → avant chaque décompte AFC
+- `/claude-financial-service --eac` → dès qu'un chantier semble dériver
+- `/claude-financial-service --report` → rapport mensuel complet pour le fiduciaire
+
+**Ordre de lecture recommandé (revue mensuelle) :**
+```
+/claude-small-business --report → /claude-financial-service --report → /mempalace
+```
+
+---
+
 ### 🧠 DOMAINE MÉMOIRE & ORCHESTRATION
 
 > **Équipe Cerveau** — s'active pour organiser, mémoriser et piloter les sprints complexes.

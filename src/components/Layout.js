@@ -255,7 +255,10 @@ function NotificationBell({ naviguer }) {
                   <button
                     key={a.id}
                     onClick={() => {
-                      if (a.page) naviguer(a.page);
+                      if (a.page) {
+                        const ctx = (a.page === 'chantiers' && a.entityId) ? { chantierActif: a.entityId } : undefined;
+                        naviguer(a.page, ctx);
+                      }
                       setOuvert(false);
                       // Marquer cette alerte comme lue
                       const nouvLues = [...new Set([...lues, a.id])];

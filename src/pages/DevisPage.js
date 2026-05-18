@@ -15,10 +15,15 @@ const btnPrimaire = DS.btnPrimary;
 const btnSucces = DS.btnSuccess;
 const btnDanger = DS.btnDanger;
 
+const PAGE_SIZE = 50;
+
 function Devis() {
   const { devis, setDevis, clients, parametres, naviguer, setChantiers, chantiers, factures, setFactures, contexte = {}, afficherNotif, confirmer, periodeGlobale = 'mois' } = useApp();
   const [ajout, setAjout] = useState(false);
   const [filtreDevis, setFiltreDevis] = useState('Tous');
+  const [page, setPage] = useState(0);
+
+  React.useEffect(() => { setPage(0); }, [filtreDevis]);
   const [confirmConversion, setConfirmConversion] = useState(null); // { devis, nomChantier }
   const vide = {
     numero: `DEV-${new Date().getFullYear()}-${String(Math.max(0, ...devis.map(d => parseInt((d.numero || '').split('-').pop()) || 0)) + 1).padStart(3, '0')}`,
@@ -395,6 +400,8 @@ function Devis() {
       {/* ── Liste des devis ── */}
       {(() => {
         const devisFiltres = filtreDevis === 'Tous' ? devis : devis.filter(d => d.statut?.trim().toLowerCase() === filtreDevis.toLowerCase());
+        const totalPages = Math.ceil(devisFiltres.length / PAGE_SIZE);
+        const devisPage = devisFiltres.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
         return (
       <div style={{ ...DS.card, padding: 0, overflow: 'hidden' }}>
         {devisFiltres.length === 0 ? (
@@ -412,7 +419,7 @@ function Devis() {
                 </tr>
               </thead>
               <tbody>
-                {devisFiltres.map(d => {
+                {devisPage.map(d => {
                   const client = clients.find(c => String(c.id) === String(d.clientId));
                   const montant = parseFloat(d.montantHT || d.prixPropose) || 0;
                   const totalRegie = Array.isArray(d.heuresRegie)
@@ -527,6 +534,15 @@ function Devis() {
                 })}
               </tbody>
             </table>
+          </div>
+        )}
+        {totalPages > 1 && (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, marginTop: 12, paddingBottom: 12 }}>
+            <button onClick={() => setPage(p => Math.max(0, p - 1))} disabled={page === 0}
+              style={{ background: 'var(--bg-glass-2)', border: '1px solid var(--border)', borderRadius: 8, padding: '6px 14px', cursor: page === 0 ? 'not-allowed' : 'pointer', opacity: page === 0 ? 0.4 : 1, fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', fontFamily: 'inherit' }}>← Préc.</button>
+            <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>{page + 1} / {totalPages} · {devisFiltres.length} éléments</span>
+            <button onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))} disabled={page === totalPages - 1}
+              style={{ background: 'var(--bg-glass-2)', border: '1px solid var(--border)', borderRadius: 8, padding: '6px 14px', cursor: page === totalPages - 1 ? 'not-allowed' : 'pointer', opacity: page === totalPages - 1 ? 0.4 : 1, fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', fontFamily: 'inherit' }}>Suiv. →</button>
           </div>
         )}
       </div>

@@ -21,13 +21,9 @@ VALDRIN (CEO humain)
           │     ├── lz-analytics
           │     └── lz-legal-watchdog
           ├── Contenu
-          │     ├── lz-art-director           (direction visuelle globale)
-          │     ├── lz-video-director         (storyboard / DOP / vidéo)
-          │     ├── lz-motion-designer        (animation logo / kinetic typo)
-          │     ├── lz-ai-prompt-engineer     (prompts Sora/Runway/Kling/Veo)
-          │     ├── lz-visual-scout           (scraping IG/TikTok/Pinterest)
-          │     ├── lz-content-creator        (posts IG/TikTok/stories)
-          │     ├── lz-copywriter             (descriptions produits, emails)
+          │     ├── lz-art-director
+          │     ├── lz-content-creator
+          │     ├── lz-copywriter
           │     └── lz-photo-video-brief
           └── Opérations
                 ├── lz-shopify-manager
@@ -53,10 +49,6 @@ VALDRIN (CEO humain)
 | Agent | Déclencheur | Output type |
 |-------|-------------|-------------|
 | `lz-art-director` | Brief créatif visuel, palette, layout | Mood board + specs |
-| `lz-video-director` | Direction vidéo, storyboard frame-par-frame, shot list | Storyboard + spec technique |
-| `lz-motion-designer` | Animation logo, kinetic typography, brand reveal | Spec motion frame-par-frame |
-| `lz-ai-prompt-engineer` | Génération vidéo IA (Sora/Runway/Kling/Veo) | Prompts copier-coller optimisés |
-| `lz-visual-scout` | Scraping références IG/TikTok/Pinterest | Moodboard de 5-10 références |
 | `lz-content-creator` | Post IG/TikTok/story à produire | Drafts caption + scénario |
 | `lz-copywriter` | Description produit, email, ads, lookbook | Copy final formaté |
 | `lz-photo-video-brief` | Préparation shoot photo ou vidéo | Brief shot list + lieux |
@@ -99,32 +91,15 @@ VALDRIN (CEO humain)
 ```
 1. lz-marketing-strategist  → plan global du drop
 2. lz-legal-watchdog        → check trademark/légal
-3. lz-art-director          → brief visuel + palette
-4. lz-visual-scout          → moodboard références IG/Pinterest
-5. lz-photo-video-brief     → shot list shoot
-6. lz-copywriter            → descriptions produits
-7. lz-shopify-manager       → création produit en DRAFT
-8. lz-content-creator       → posts teaser (J-7 à J-1)
-9. VALIDATION VALDRIN       → on passe en ACTIVE
-10. lz-community-manager    → modération comments
-11. lz-analytics            → suivi J+1, J+7
-12. memory-keeper (CYNA)    → archive décisions clés
-```
-
-## Workflow type — Production vidéo (Reel / film de marque)
-
-```
-1. lz-visual-scout          → moodboard 5-10 références
-2. lz-video-director        → storyboard frame-par-frame + shot list
-3. lz-art-director          → validation cohérence marque
-4. lz-ai-prompt-engineer    → prompts vidéo IA par plan
-5. HUMAIN (Valdrin/Mathis)  → génère les plans IA (Runway/Kling/Veo)
-6. lz-motion-designer       → spec overlay logo + typo
-7. HUMAIN (Mathis/monteur)  → montage final CapCut/AE
-8. lz-brand-director        → check final cohérence
-9. VALIDATION VALDRIN       → publication
-10. lz-community-manager    → modération + DM
-11. lz-analytics            → engagement J+1, J+7
+3. lz-art-director          → brief visuel
+4. lz-photo-video-brief     → shot list shoot
+5. lz-copywriter            → descriptions produits
+6. lz-shopify-manager       → création produit en DRAFT
+7. lz-content-creator       → posts teaser (J-7 à J-1)
+8. VALIDATION VALDRIN       → on passe en ACTIVE
+9. lz-community-manager     → modération comments
+10. lz-analytics            → suivi J+1, J+7
+11. memory-keeper (CYNA)    → archive décisions clés
 ```
 
 ## Stack outils (commun à tous les agents)

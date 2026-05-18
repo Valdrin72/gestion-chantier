@@ -205,3 +205,31 @@ EAC            = coutReel / (avancement / 100)
 RAD            = (coutReel / avancement) × (100 - avancement)
 TTC            = HT × (1 + tva/100)                 // défaut tva=8.1
 ```
+
+---
+
+## 🛠️ Skills installés — Référence complète (41 skills)
+
+| Trigger | Skill | Usage |
+|---------|-------|-------|
+| `/invoice-validator` | invoice-validator | Vérifie facture avant envoi (14 points légaux CH) |
+| `/debug-prod` | debug-prod | Debug Vercel + Supabase en production |
+| `/git-workflow` | git-workflow | Branches, commits conventionnels, semver |
+| `/devis-smart` | devis-smart | Génère postes BTP avec ratios heures/m² |
+| `/a11y` | accessibility-audit | Audit WCAG 2.1 — contraste, aria, clavier |
+| `/prompt` | prompt-engineer | Optimise les prompts Claude IA de l'app |
+| `/claude-small-business` | claude-small-business | Pilotage PME — audit 60s, checklist hebdo |
+| `/claude-financial-service` | claude-financial-service | Cashflow J+30/60/90, TVA, EAC, benchmarks |
+| `/the-agency` | the-agency | Orchestrateur installation/gestion skills |
+| `/ultra-plan` | ultra-plan | Planification atomique d'une feature |
+| `/darwin` | darwin | Évolution du code — sélection naturelle |
+| `/impeccable` | impeccable | Audit de perfection avant release |
+| `/mempalace` | mempalace | Ancrer les apprentissages en mémoire MCP |
+| `/security-scan` | security-scan | Scan sécurité complet + auto-fix |
+| `/playwright-cyna` | playwright-cyna | Tests E2E navigateur automatisés |
+| `/taste-skill` | taste-skill | Audit UI/UX — cohérence visuelle |
+| `/caveman` | caveman | Debug primitif — logs bruts |
+| `/claude-task-master` | claude-task-master | Orchestrateur de sprints |
+| `/skill-creator` | skill-creator | Crée un nouveau skill |
+| `/graph-skill` | graph-skill | Graphe entités chantiers↔devis↔factures |
+

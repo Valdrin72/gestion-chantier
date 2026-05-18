@@ -214,7 +214,7 @@ export const migrerDevisId = (chantiers, devisList) => {
   });
 };
 
-export const calculerCoutsChantier = (chantier, employes, localites, cfg = {}, devisList = []) => {
+export const calculerCoutsChantier = (chantier, employes = [], localites = [], cfg = {}, devisList = []) => {
   const coefficient = parseFloat(cfg.coefficientMainOeuvre) || 1.35;
   const tauxFG = parseFloat(cfg.tauxFraisGeneraux) || 12;
 

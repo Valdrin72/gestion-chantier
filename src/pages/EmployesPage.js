@@ -28,8 +28,8 @@ function Employes({ parametres, setParametres, chantiers, naviguer }) {
       return;
     }
     const isEdit = !!form.id;
-    if (isEdit) setParametres({ ...parametres, employes: parametres.employes.map(e => String(e.id) === String(form.id) ? { ...form, tarifJour: parseFloat(form.tarifJour) } : e) });
-    else setParametres({ ...parametres, employes: [...parametres.employes, { ...form, id: Date.now(), tarifJour: parseFloat(form.tarifJour) }] });
+    if (isEdit) setParametres({ ...parametres, employes: (parametres.employes || []).map(e => String(e.id) === String(form.id) ? { ...form, tarifJour: parseFloat(form.tarifJour) } : e) });
+    else setParametres({ ...parametres, employes: [...(parametres.employes || []), { ...form, id: Date.now(), tarifJour: parseFloat(form.tarifJour) }] });
     setAjout(false);
     setForm({ nom: '', poste: 'Ouvrier qualifié', tarifJour: '', telephone: '', email: '', actif: true });
     if (afficherNotif) afficherNotif(isEdit ? 'Employé mis à jour' : 'Employé ajouté à l\'équipe');
@@ -185,7 +185,7 @@ function Employes({ parametres, setParametres, chantiers, naviguer }) {
                   const avertissement = heuresEmp > 0
                     ? `\n\n⚠ ATTENTION : ${e.nom} a ${Math.round(heuresEmp)}h travaillées (≈ ${joursEmp} jours) dans le journal. Après suppression, le coût MO de ces entrées sera recalculé à 0 CHF dans tous les chantiers concernés.`
                     : '';
-                  if (window.confirm(`Supprimer ${e.nom} ?${avertissement}`)) setParametres({ ...parametres, employes: parametres.employes.filter(emp => String(emp.id) !== String(e.id)) });
+                  if (window.confirm(`Supprimer ${e.nom} ?${avertissement}`)) setParametres({ ...parametres, employes: (parametres.employes || []).filter(emp => String(emp.id) !== String(e.id)) });
                 }} style={{ ...btnDanger, padding: '6px 10px' }}><Trash2 size={13} /></button>
               </div>
             </div>
@@ -341,7 +341,7 @@ export function EditEmployeRow({ e, parametres, sauv }) {
       <td style={tdStyle}>
         <div style={{ display: 'flex', gap: 4 }}>
           <button onClick={() => setEditing(true)} style={{ ...DS.btnGhost, padding: '4px 10px', fontSize: 12 }}><Pencil size={12} /> Modifier</button>
-          <button onClick={() => { if (window.confirm(`Supprimer ${e.nom} ?\n\n⚠ ATTENTION : si cet employé a des heures dans le journal des chantiers, le coût MO de ces entrées sera recalculé à 0 CHF après suppression.`)) sauv({ ...parametres, employes: parametres.employes.filter(emp => String(emp.id) !== String(e.id)) }); }} style={{ ...btnDanger, padding: '4px 8px' }}>Suppr</button>
+          <button onClick={() => { if (window.confirm(`Supprimer ${e.nom} ?\n\n⚠ ATTENTION : si cet employé a des heures dans le journal des chantiers, le coût MO de ces entrées sera recalculé à 0 CHF après suppression.`)) sauv({ ...parametres, employes: (parametres.employes || []).filter(emp => String(emp.id) !== String(e.id)) }); }} style={{ ...btnDanger, padding: '4px 8px' }}>Suppr</button>
         </div>
       </td>
     </tr>
@@ -363,7 +363,7 @@ export function EditEmployeRow({ e, parametres, sauv }) {
             const tarif = parseFloat(ed.tarifJour);
             if (!ed.nom?.trim()) return alert('Le nom est obligatoire.');
             if (!tarif || tarif <= 0) return alert('Le tarif journalier doit être supérieur à 0.');
-            sauv({ ...parametres, employes: parametres.employes.map(emp => String(emp.id) === String(e.id) ? { ...ed, tarifJour: tarif } : emp) });
+            sauv({ ...parametres, employes: (parametres.employes || []).map(emp => String(emp.id) === String(e.id) ? { ...ed, tarifJour: tarif } : emp) });
             setEditing(false);
           }} style={btnSucces}>OK</button>
           <button onClick={() => setEditing(false)} style={btnDanger}>×</button>

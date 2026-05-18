@@ -33,7 +33,7 @@ function Dashboard() {
   const coutsMap = useMemo(() => {
     const map = new Map();
     chantiers.forEach(c => {
-      map.set(c.id, calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis));
+      map.set(c.id, calculerCoutsChantier(c, parametres.employes || [], parametres.localites || [], parametres.parametres, devis));
     });
     return map;
   }, [chantiers, parametres.employes, parametres.localites, parametres.parametres, devis]);

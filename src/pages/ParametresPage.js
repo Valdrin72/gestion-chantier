@@ -262,7 +262,7 @@ function Parametres({ parametres, setParametres, clients = [], setClients = () =
               {['Nom', 'Rôle', 'CHF/jour', 'Téléphone', 'Email', 'Action'].map(h => <th key={h} style={thStyle}>{h}</th>)}
             </tr></thead>
             <tbody>
-              {parametres.employes.map(e => <EditEmployeRow key={e.id} e={e} parametres={parametres} sauv={sauv} />)}
+              {(parametres.employes || []).map(e => <EditEmployeRow key={e.id} e={e} parametres={parametres} sauv={sauv} />)}
             </tbody>
           </table>
           <div style={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', color: 'var(--text-muted)', marginBottom: '12px', marginTop: '24px' }}>Ajouter un employé</div>
@@ -278,7 +278,7 @@ function Parametres({ parametres, setParametres, clients = [], setClients = () =
               </select></div>
             <button onClick={() => {
               if (nouvelEmploye.nom && nouvelEmploye.tarifJour) {
-                sauv({ ...parametres, employes: [...parametres.employes, { ...nouvelEmploye, id: Date.now(), tarifJour: parseFloat(nouvelEmploye.tarifJour) }] });
+                sauv({ ...parametres, employes: [...(parametres.employes || []), { ...nouvelEmploye, id: Date.now(), tarifJour: parseFloat(nouvelEmploye.tarifJour) }] });
                 setNouvelEmploye({ nom: '', poste: 'Ouvrier qualifié', tarifJour: '', telephone: '', email: '' });
               }
             }} style={btnPrimaire}>+ Ajouter</button>
@@ -294,11 +294,11 @@ function Parametres({ parametres, setParametres, clients = [], setClients = () =
               {['Ville', 'CHF/jour déplacement', 'Action'].map(h => <th key={h} style={thStyle}>{h}</th>)}
             </tr></thead>
             <tbody>
-              {parametres.localites.map(l => (
+              {(parametres.localites || []).map(l => (
                 <tr key={l.id}>
-                  <td style={tdStyle}><input value={l.nom} onChange={e => { const u = parametres.localites.map(loc => loc.id === l.id ? { ...loc, nom: e.target.value } : loc); sauv({ ...parametres, localites: u }); }} style={{ ...inputStyle, padding: '5px 8px' }} /></td>
-                  <td style={tdStyle}><input type="text" inputMode="numeric" value={l.tarifJour ? fmtN(l.tarifJour) : ''} onChange={e => { const raw = e.target.value.replace(/'/g, '').replace(/[^0-9.]/g, ''); const u = parametres.localites.map(loc => loc.id === l.id ? { ...loc, tarifJour: parseFloat(raw) || 0 } : loc); sauv({ ...parametres, localites: u }); }} style={{ ...inputStyle, padding: '5px 8px', width: 100, color: C.primaire, fontWeight: 700 }} /></td>
-                  <td style={tdStyle}><button onClick={() => { if (window.confirm(`Supprimer ${l.nom} ?`)) sauv({ ...parametres, localites: parametres.localites.filter(loc => loc.id !== l.id) }); }} style={btnDanger}>Suppr</button></td>
+                  <td style={tdStyle}><input value={l.nom} onChange={e => { const u = (parametres.localites || []).map(loc => loc.id === l.id ? { ...loc, nom: e.target.value } : loc); sauv({ ...parametres, localites: u }); }} style={{ ...inputStyle, padding: '5px 8px' }} /></td>
+                  <td style={tdStyle}><input type="text" inputMode="numeric" value={l.tarifJour ? fmtN(l.tarifJour) : ''} onChange={e => { const raw = e.target.value.replace(/'/g, '').replace(/[^0-9.]/g, ''); const u = (parametres.localites || []).map(loc => loc.id === l.id ? { ...loc, tarifJour: parseFloat(raw) || 0 } : loc); sauv({ ...parametres, localites: u }); }} style={{ ...inputStyle, padding: '5px 8px', width: 100, color: C.primaire, fontWeight: 700 }} /></td>
+                  <td style={tdStyle}><button onClick={() => { if (window.confirm(`Supprimer ${l.nom} ?`)) sauv({ ...parametres, localites: (parametres.localites || []).filter(loc => loc.id !== l.id) }); }} style={btnDanger}>Suppr</button></td>
                 </tr>
               ))}
             </tbody>
@@ -309,7 +309,7 @@ function Parametres({ parametres, setParametres, clients = [], setClients = () =
             <div><label style={labelStyle}>CHF/jour</label><input type="text" inputMode="numeric" placeholder="45" value={nouvelleLocalite.tarifJour ? fmtN(nouvelleLocalite.tarifJour) : ''} onChange={e => { const raw = e.target.value.replace(/'/g, '').replace(/[^0-9.]/g, ''); setNouvelleLocalite({ ...nouvelleLocalite, tarifJour: raw }); }} style={inputStyle} /></div>
             <button onClick={() => {
               if (nouvelleLocalite.nom && nouvelleLocalite.tarifJour) {
-                sauv({ ...parametres, localites: [...parametres.localites, { ...nouvelleLocalite, id: Date.now(), tarifJour: parseFloat(nouvelleLocalite.tarifJour) }] });
+                sauv({ ...parametres, localites: [...(parametres.localites || []), { ...nouvelleLocalite, id: Date.now(), tarifJour: parseFloat(nouvelleLocalite.tarifJour) }] });
                 setNouvelleLocalite({ nom: '', tarifJour: '' });
               }
             }} style={btnPrimaire}>+ Ajouter</button>

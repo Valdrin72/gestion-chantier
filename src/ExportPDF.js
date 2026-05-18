@@ -270,7 +270,7 @@ export const exportFicheChantier = async (chantier, clients, parametres, devis =
       startY: y,
       head: [['Employé', 'Poste', 'Rôle', 'Jours prévus', 'Jours réalisés', 'Coût prévu', 'Coût réel']],
       body: chantier.equipe.map(m => {
-        const emp = parametres.employes.find(e => e.id === parseInt(m.employeId));
+        const emp = (parametres.employes || []).find(e => e.id === parseInt(m.employeId));
         return [
           emp?.nom || '-', emp?.poste || '-', m.role || '-',
           `${m.joursPlannifies}j`, `${m.joursRealises || 0}j`,

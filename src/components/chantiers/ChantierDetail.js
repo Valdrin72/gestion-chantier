@@ -109,7 +109,7 @@ function ChantierDetail({ chantier, detailOnglet, setDetailOnglet, modeCompleter
       : null;
 
   const client = clients.find(cl => String(cl.id) === String(c.clientId));
-  const directeurTravaux = c.directeurTravauxId ? parametres.employes.find(e => String(e.id) === String(c.directeurTravauxId)) : null;
+  const directeurTravaux = c.directeurTravauxId ? (parametres.employes || []).find(e => String(e.id) === String(c.directeurTravauxId)) : null;
   const fmtK = (n) => fmtN(n);
   const facturesLiees = factures.filter(f => String(f.chantierId) === String(c.id));
   const montantFactureLie = facturesLiees.reduce((s, f) => s + (parseFloat(f.montantTTC) || 0), 0);

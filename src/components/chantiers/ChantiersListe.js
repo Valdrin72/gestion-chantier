@@ -1,6 +1,4 @@
 import React, { useMemo, useState, useEffect } from 'react';
-
-const PAGE_SIZE = 50;
 import {
   HardHat, X, Pencil, Trash2, AlertTriangle, ChevronRight, DollarSign, Clock, Eye, TrendingUp,
 } from 'lucide-react';
@@ -11,6 +9,7 @@ import {
 import { DS, couleurStatut as couleurStatutDS } from '../../ds';
 import { useApp } from '../../context/AppContext';
 
+const PAGE_SIZE = 50;
 const STATUTS = ['Tous', 'Planifié', 'En cours', 'Suspendu', 'Terminé', 'Facturé', 'Clôturé'];
 
 function ChantiersListe({

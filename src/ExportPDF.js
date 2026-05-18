@@ -201,7 +201,7 @@ export const exportFicheChantier = async (chantier, clients, parametres, devis =
   y += 12;
 
   // INFORMATIONS GÉNÉRALES
-  y = sectionTitre(doc, y, ''INFORMATIONS GÉNÉRALES');
+  y = sectionTitre(doc, y, 'INFORMATIONS GÉNÉRALES');
   const col1 = [
     ['Nom du chantier', chantier.nom],
     ['Client', client ? `${client.prenom} ${client.nom}` : '-'],

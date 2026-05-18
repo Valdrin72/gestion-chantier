@@ -24,7 +24,8 @@
       "mcp__memory__create_relations",
       "mcp__memory__add_observations",
       "mcp__memory__search_nodes",
-      "mcp__playwright__browser_press_key"
+      "mcp__playwright__browser_press_key",
+      "mcp__23f73451-0ec4-4c73-9e30-4b7c2fe65f1c__upload-asset-from-url"
     ]
   }
 }

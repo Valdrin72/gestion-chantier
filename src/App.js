@@ -2,7 +2,7 @@ import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react'
 import {
   LayoutDashboard, HardHat, FileText, Calendar,
   ClipboardList, Settings, DollarSign, Clock, Bot,
-  Users, UserCog,
+  Users, UserCog, ChevronRight, Sparkles,
 } from 'lucide-react';
 import { Sidebar, Topbar, MobileNav } from './components/Layout';
 import { migrerDevisId } from './donnees';
@@ -184,6 +184,15 @@ function AppInner({ profil, deconnecter, userId }) {
 
   const agentState = useAgents({ chantiers, devis, factures, clients, parametres });
 
+  const [showOnboarding, setShowOnboarding] = useState(() => {
+    try { return !localStorage.getItem('cyna_onboarding_done'); } catch { return false; }
+  });
+  const fermerOnboarding = useCallback((destination = null) => {
+    try { localStorage.setItem('cyna_onboarding_done', '1'); } catch {}
+    setShowOnboarding(false);
+    if (destination) naviguer(destination);
+  }, [naviguer]);
+
   const nbFacturesRetard = factures.filter(f =>
     f.statut === 'retard' ||
     (f.statut === 'envoyee' && f.dateEcheance && new Date(f.dateEcheance) < new Date())
@@ -323,6 +332,91 @@ function AppInner({ profil, deconnecter, userId }) {
         onOui={confirmState.onOui}
         onNon={confirmState.onNon}
       />
+    )}
+    {showOnboarding && !dataLoading && (
+      <div style={{
+        position: 'fixed', inset: 0, zIndex: 10000,
+        background: 'rgba(10, 20, 40, 0.82)',
+        backdropFilter: 'blur(6px)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: '20px',
+      }}>
+        <div style={{
+          background: 'var(--bg-card, #fff)',
+          borderRadius: 20,
+          padding: '40px 36px',
+          maxWidth: 560,
+          width: '100%',
+          boxShadow: '0 24px 64px rgba(0,0,0,0.3)',
+          border: '1px solid var(--border)',
+        }}>
+          {/* En-tête */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
+            <div style={{ width: 44, height: 44, borderRadius: 12, background: 'linear-gradient(135deg, #0d3d6e, #1e6bb8)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Sparkles size={22} color="#fff" />
+            </div>
+            <div>
+              <div style={{ fontSize: 22, fontWeight: 900, color: 'var(--text-primary)', letterSpacing: '-0.5px' }}>
+                Bienvenue dans CYNA
+              </div>
+              <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 2 }}>
+                Voici comment démarrer en 3 étapes
+              </div>
+            </div>
+          </div>
+
+          {/* Étapes */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, margin: '28px 0' }}>
+            {[
+              { step: 1, icon: Users, label: 'Créer votre premier client', desc: 'Nom, contact, adresse — la base de chaque projet', dest: 'clients', color: '#3b82f6' },
+              { step: 2, icon: FileText, label: 'Établir un devis', desc: 'Postes de travaux, montant HT, TVA 8.1%', dest: 'devis', color: '#8b5cf6' },
+              { step: 3, icon: HardHat, label: 'Ouvrir un chantier', desc: 'Liez le devis signé, suivez l\'avancement et les heures', dest: 'chantiers', color: '#10b981' },
+            ].map(({ step, icon: Icon, label, desc, dest, color }) => (
+              <button
+                key={step}
+                onClick={() => fermerOnboarding(dest)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 16,
+                  padding: '16px 18px', borderRadius: 12, cursor: 'pointer',
+                  background: color + '0d', border: `1px solid ${color}25`,
+                  textAlign: 'left', fontFamily: 'inherit',
+                  transition: 'all 0.15s',
+                }}
+                onMouseEnter={e => { e.currentTarget.style.background = color + '1a'; e.currentTarget.style.borderColor = color + '50'; }}
+                onMouseLeave={e => { e.currentTarget.style.background = color + '0d'; e.currentTarget.style.borderColor = color + '25'; }}
+              >
+                <div style={{ width: 36, height: 36, borderRadius: 10, background: color + '20', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <Icon size={18} color={color} />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 10, fontWeight: 800, color, background: color + '20', borderRadius: 20, padding: '1px 8px' }}>Étape {step}</span>
+                  </div>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', marginTop: 3 }}>{label}</div>
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{desc}</div>
+                </div>
+                <ChevronRight size={16} color={color} style={{ flexShrink: 0, opacity: 0.6 }} />
+              </button>
+            ))}
+          </div>
+
+          {/* Pied */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <button
+              onClick={() => fermerOnboarding(null)}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: 'var(--text-muted)', fontFamily: 'inherit', padding: '6px 0' }}
+            >
+              Explorer d'abord
+            </button>
+            <button
+              onClick={() => fermerOnboarding('clients')}
+              style={{ background: 'linear-gradient(135deg, #0d3d6e, #1e6bb8)', color: '#fff', border: 'none', borderRadius: 10, padding: '10px 24px', fontWeight: 700, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 8 }}
+            >
+              Commencer <ChevronRight size={15} />
+            </button>
+          </div>
+        </div>
+      </div>
     )}
     </AppProvider>
   );

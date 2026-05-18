@@ -420,7 +420,7 @@ function Dashboard() {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
           <div>
             <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 8 }}>
-              Bonjour,
+              Bonjour, {profil?.nom || 'CYNA'}
               <img src={`${process.env.PUBLIC_URL}/logo-cyna-tech.png`} alt="CYNA Tech" className="logo-cyna-tech-inline" style={{ height: 18, width: 'auto', objectFit: 'contain', verticalAlign: 'middle' }} />
             </div>
             <p style={{ color: 'var(--text-muted)', fontSize: 12, margin: '2px 0 0' }}>
@@ -668,7 +668,7 @@ function Dashboard() {
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: isMobile ? 14 : 28, flexWrap: 'wrap', gap: 10 }}>
         <div>
           <div style={{ fontSize: isMobile ? 20 : 26, fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.5px', lineHeight: 1.2, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-            Bonjour,
+            Bonjour, {profil?.nom || 'CYNA'}
             <img
               src={`${process.env.PUBLIC_URL}/logo-cyna-tech.png`}
               alt="CYNA Tech"

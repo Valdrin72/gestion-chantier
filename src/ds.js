@@ -119,13 +119,13 @@ export const DS = {
     fontFamily: 'inherit',
     whiteSpace: 'nowrap',
   },
-  // iconBtn = petits boutons action dans les tableaux (28×28)
+  // iconBtn = petits boutons action dans les tableaux (36×36)
   iconBtn: {
     background: 'var(--bg-hover)',
     border: '1px solid var(--border)',
-    borderRadius: '7px',
-    width: '28px',
-    height: '28px',
+    borderRadius: '8px',
+    width: '36px',
+    height: '36px',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',

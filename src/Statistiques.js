@@ -182,8 +182,8 @@ export default function Statistiques({ chantiers, clients, devis = [], parametre
         <ResponsiveContainer width="100%" height={300}>
           <BarChart data={donneesMensuelles} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="var(--border-glass)" />
-            <XAxis dataKey="mois" tick={{ fill: '#8892a4' }} />
-            <YAxis tickFormatter={v => `${(v/1000).toFixed(0)}k`} tick={{ fill: '#8892a4' }} />
+            <XAxis dataKey="mois" tick={{ fill: 'var(--text-muted)' }} />
+            <YAxis tickFormatter={v => `${(v/1000).toFixed(0)}k`} tick={{ fill: 'var(--text-muted)' }} />
             <Tooltip content={() => null} />
             <Legend wrapperStyle={{ color: 'var(--text-primary)' }} />
             <Bar dataKey="CA"     fill={COL_CA}    name="CA"     radius={[4, 4, 0, 0]} />
@@ -199,8 +199,8 @@ export default function Statistiques({ chantiers, clients, devis = [], parametre
         <ResponsiveContainer width="100%" height={250}>
           <LineChart data={donneesMensuelles.filter(m => m.CA > 0)}>
             <CartesianGrid strokeDasharray="3 3" stroke="var(--border-glass)" />
-            <XAxis dataKey="mois" tick={{ fill: '#8892a4' }} />
-            <YAxis tickFormatter={v => `${v}%`} tick={{ fill: '#8892a4' }} />
+            <XAxis dataKey="mois" tick={{ fill: 'var(--text-muted)' }} />
+            <YAxis tickFormatter={v => `${v}%`} tick={{ fill: 'var(--text-muted)' }} />
             <Tooltip content={() => null} />
             <Legend wrapperStyle={{ color: 'var(--text-primary)' }} />
             <Line type="monotone" dataKey="Marge %" stroke={COL_MARGE} strokeWidth={3} dot={{ fill: COL_MARGE, r: 6 }} name="Marge %" />
@@ -300,8 +300,8 @@ export default function Statistiques({ chantiers, clients, devis = [], parametre
             ...donneesMensuelles.slice(moisActuel + 1).map(m => ({ ...m, CA: Math.round(moyenneMensuelle), type: 'Prévision' }))
           ]}>
             <CartesianGrid strokeDasharray="3 3" stroke="var(--border-glass)" />
-            <XAxis dataKey="mois" tick={{ fill: '#8892a4' }} />
-            <YAxis tickFormatter={v => `${(v / 1000).toFixed(0)}k`} tick={{ fill: '#8892a4' }} />
+            <XAxis dataKey="mois" tick={{ fill: 'var(--text-muted)' }} />
+            <YAxis tickFormatter={v => `${(v / 1000).toFixed(0)}k`} tick={{ fill: 'var(--text-muted)' }} />
             <Tooltip content={() => null} />
             <Legend wrapperStyle={{ color: 'var(--text-primary)' }} />
             <Bar dataKey="CA" name="CA Réalisé / Prévu" radius={[4, 4, 0, 0]} fill={COL_CA} label={false} />
@@ -394,8 +394,8 @@ export default function Statistiques({ chantiers, clients, devis = [], parametre
             <ResponsiveContainer width="100%" height={260}>
               <BarChart data={donneesEcarts} margin={{ top: 5, right: 20, left: 0, bottom: 30 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border-glass)" />
-                <XAxis dataKey="nom" tick={{ fill: '#8892a4', fontSize: 11 }} angle={-30} textAnchor="end" interval={0} />
-                <YAxis tick={{ fill: '#8892a4' }} unit="j" />
+                <XAxis dataKey="nom" tick={{ fill: 'var(--text-muted)', fontSize: 11 }} angle={-30} textAnchor="end" interval={0} />
+                <YAxis tick={{ fill: 'var(--text-muted)' }} unit="j" />
                 <Tooltip content={() => null} />
                 <Legend wrapperStyle={{ color: 'var(--text-primary)', paddingTop: 8 }} />
                 <Bar dataKey="Prévus"   fill="#3b82f6" name="Prévus (devis)"   radius={[4, 4, 0, 0]} />

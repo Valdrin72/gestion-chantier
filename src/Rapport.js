@@ -83,7 +83,7 @@ export default function Rapport({ chantiers, clients, devis = [], parametres, pa
       {/* ALERTES */}
       {alertes.length > 0 && (
         <div className="alert-banner alert-banner-danger" style={{ marginBottom: '20px' }}>
-          <div style={{ fontWeight: 'bold', color: '#ef4444', fontSize: '16px', marginBottom: '10px' }}>{alertes.length} alerte(s) urgente(s) cette semaine !</div>
+          <div style={{ fontWeight: 700, color: '#ef4444', fontSize: '16px', marginBottom: '10px' }}>{alertes.length} alerte(s) urgente(s) cette semaine !</div>
           {alertes.map(c => {
             const r = new Set((c.journal || []).map(e => e.date).filter(Boolean)).size;
             const j = c.nombreJours > 0 ? c.nombreJours - r : null;
@@ -146,13 +146,13 @@ export default function Rapport({ chantiers, clients, devis = [], parametres, pa
                             <div style={{ background: 'var(--border)', borderRadius: '10px', height: '8px', width: '80px', overflow: 'hidden' }}>
                               <div style={{ background: `linear-gradient(90deg, ${color}, ${color}cc)`, width: `${progress}%`, height: '8px', borderRadius: '10px', transition: 'width 0.4s ease', boxShadow: `0 0 8px ${color}` }} />
                             </div>
-                            <span style={{ fontSize: '13px', fontWeight: 'bold' }}>{progress}%</span>
+                            <span style={{ fontSize: '13px', fontWeight: 700 }}>{progress}%</span>
                           </div>
                         );
                       })()}
                     </td>
                     <td style={{ padding: '12px 15px' }}>
-                      <span style={{ color: al ? al.couleur : '#10b981', fontWeight: 'bold' }}>
+                      <span style={{ color: al ? al.couleur : '#10b981', fontWeight: 700 }}>
                         {j !== null ? `${j}j` : '-'}
                       </span>
                       {al && <div style={{ fontSize: '11px', color: al.couleur }}>{al.texte}</div>}
@@ -181,7 +181,7 @@ export default function Rapport({ chantiers, clients, devis = [], parametres, pa
           ].map(s => (
             <div key={s.label} style={{ background: s.bg, border: `2px solid ${s.couleur}`, borderRadius: '10px', padding: '15px', textAlign: 'center' }}>
               <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>{s.label}</div>
-              <div style={{ fontSize: '22px', fontWeight: 'bold', color: s.couleur, marginTop: '5px' }}>{s.val}</div>
+              <div style={{ fontSize: '22px', fontWeight: 700, color: s.couleur, marginTop: '5px' }}>{s.val}</div>
             </div>
           ))}
         </div>
@@ -197,7 +197,7 @@ export default function Rapport({ chantiers, clients, devis = [], parametres, pa
               const client = clients.find(cl => String(cl.id) === String(c.clientId));
               return (
                 <div key={c.id} style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid #ef4444', borderRadius: '8px', padding: '12px', marginBottom: '8px' }}>
-                  <div style={{ fontWeight: 'bold', color: '#ef4444' }}>{c.nom} — {client?.entreprise}</div>
+                  <div style={{ fontWeight: 700, color: '#ef4444' }}>{c.nom} — {client?.entreprise}</div>
                   {retards.map(p => (
                     <div key={p.id} style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '4px' }}>
                       {p.type} — <strong>CHF {fmtN(parseFloat(p.montant))}</strong> — Échéance : {p.dateEcheance}
@@ -231,7 +231,7 @@ export default function Rapport({ chantiers, clients, devis = [], parametres, pa
                     <td style={{ padding: '12px 15px' }}>{client?.entreprise || '-'}</td>
                     <td style={{ padding: '12px 15px' }}>{c.dateDebut}</td>
                     <td style={{ padding: '12px 15px' }}>{calculerDateFinOuvrables(c.dateDebut, c.nombreJours, c.inclusSamedi)}</td>
-                    <td style={{ padding: '12px 15px', fontWeight: 'bold', color: 'var(--text-primary)' }}>
+                    <td style={{ padding: '12px 15px', fontWeight: 700, color: 'var(--text-primary)' }}>
                       {calculerCA(c, devis) !== null ? `CHF ${fmtN(calculerCA(c, devis))}` : '— Aucun devis lié'}
                     </td>
                     <td style={{ padding: '12px 15px' }}>

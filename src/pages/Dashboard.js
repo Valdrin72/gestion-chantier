@@ -670,28 +670,19 @@ function Dashboard() {
     <div>
 
       {/* ── HEADER ──────────────────────────────────────────────── */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: isMobile ? 14 : 28, flexWrap: 'wrap', gap: 10 }}>
-        <div>
-          <div style={{ fontSize: isMobile ? 20 : 26, fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.5px', lineHeight: 1.2, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-            Bonjour,
-            <img
-              src={`${process.env.PUBLIC_URL}/logo-cyna-tech.png`}
-              alt="CYNA Tech"
-              className="logo-cyna-tech-inline"
-              style={{ height: 20, width: 'auto', objectFit: 'contain', verticalAlign: 'middle' }}
-            />
-          </div>
-          <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: '4px 0 0' }}>
-            {new Date().toLocaleDateString('fr-CH', { weekday: 'long', day: 'numeric', month: 'long' })} · {actifs.length} chantier{actifs.length !== 1 ? 's' : ''} actif{actifs.length !== 1 ? 's' : ''}
-          </p>
+      <div style={{ marginBottom: isMobile ? 14 : 28 }}>
+        <div style={{ fontSize: isMobile ? 20 : 26, fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.5px', lineHeight: 1.2, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          Bonjour,
+          <img
+            src={`${process.env.PUBLIC_URL}/logo-cyna-tech.png`}
+            alt="CYNA Tech"
+            className="logo-cyna-tech-inline"
+            style={{ height: 20, width: 'auto', objectFit: 'contain', verticalAlign: 'middle' }}
+          />
         </div>
-        <div style={{ display: 'flex', gap: 2, background: 'var(--bg-glass-2)', border: '1px solid var(--border)', borderRadius: 10, padding: '3px' }}>
-          {[{ id: 'semaine', label: 'Semaine' }, { id: 'mois', label: 'Mois' }, { id: 'annee', label: 'Année' }].map(p => (
-            <button key={p.id} onClick={() => setPeriodeGlobale(p.id)}
-              style={{ background: periodeGlobale === p.id ? '#0d3d6e' : 'transparent', border: 'none', color: periodeGlobale === p.id ? '#fff' : 'var(--text-muted)', borderRadius: 8, padding: '5px 14px', cursor: 'pointer', fontSize: 12, fontWeight: 600, transition: 'all 0.15s', fontFamily: 'inherit' }}
-            >{p.label}</button>
-          ))}
-        </div>
+        <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: '4px 0 0' }}>
+          {new Date().toLocaleDateString('fr-CH', { weekday: 'long', day: 'numeric', month: 'long' })} · {actifs.length} chantier{actifs.length !== 1 ? 's' : ''} actif{actifs.length !== 1 ? 's' : ''}
+        </p>
       </div>
 
       {/* ── KPI CARDS ────────────────────────────────────────── */}

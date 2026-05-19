@@ -449,6 +449,10 @@ function Dashboard() {
               style={{ background: gradient, borderRadius: 14, padding: '14px 12px', cursor: 'pointer', boxShadow: `0 4px 16px ${glow}`, border: '1px solid rgba(255,255,255,0.15)', flex: '0 0 130px', position: 'relative', overflow: 'hidden' }}
             >
               <div style={{ position: 'absolute', right: -10, top: -10, width: 60, height: 60, borderRadius: '50%', background: 'rgba(255,255,255,0.08)' }} />
+              <div style={{ position: 'absolute', top: 7, right: 7, background: 'rgba(255,255,255,0.15)', borderRadius: 4, padding: '1px 4px', display: 'flex', alignItems: 'center', gap: 1 }}>
+                <span style={{ fontSize: 8, color: 'rgba(255,255,255,0.7)', fontWeight: 600 }}>VOIR</span>
+                <ChevronRight size={8} color="rgba(255,255,255,0.7)" strokeWidth={3} />
+              </div>
               <div style={{ background: 'rgba(255,255,255,0.18)', borderRadius: 8, width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 10 }}>
                 <Icon size={14} strokeWidth={2} style={{ color: '#fff' }} />
               </div>
@@ -722,6 +726,10 @@ function Dashboard() {
           >
             <div style={{ position: 'absolute', right: -18, top: -18, width: 80, height: 80, borderRadius: '50%', background: 'rgba(255,255,255,0.1)' }} />
             <div style={{ position: 'absolute', right: -32, bottom: -32, width: 100, height: 100, borderRadius: '50%', background: 'rgba(255,255,255,0.06)' }} />
+            <div style={{ position: 'absolute', top: 10, right: 10, background: 'rgba(255,255,255,0.15)', borderRadius: 6, padding: '2px 5px', display: 'flex', alignItems: 'center', gap: 2 }}>
+              <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.7)', fontWeight: 600, letterSpacing: '0.3px' }}>VOIR</span>
+              <ChevronRight size={9} color="rgba(255,255,255,0.7)" strokeWidth={3} />
+            </div>
             <div style={{ background: 'rgba(255,255,255,0.18)', borderRadius: 12, width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 18, position: 'relative' }}>
               <Icon size={22} strokeWidth={2} style={{ color: '#ffffff' }} />
             </div>

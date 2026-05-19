@@ -690,7 +690,7 @@ function Dashboard() {
       </div>
 
       {/* ── KPI CARDS ────────────────────────────────────────── */}
-      <div className="kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'var(--g4)', gap: 16, marginBottom: 24 }}>
+      <div className="kpi-grid" style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'var(--g4)', gap: isMobile ? 10 : 16, marginBottom: 24 }}>
         {[
           { label: "CA actif", Icon: DollarSign, page: 'devis',
             valeur: `CHF ${fmtN(kpi.caEnCours)}`,

@@ -419,6 +419,7 @@ body {
 .sidebar-item:hover {
   background: var(--bg-hover);
   color: var(--text-primary);
+  transform: translateX(2px);
 }
 .sidebar-item:hover svg { color: var(--brand-mid); }
 
@@ -426,13 +427,14 @@ body {
   background: var(--brand-soft);
   color: var(--brand);
   font-weight: 600;
+  box-shadow: inset 3px 0 0 var(--brand);
 }
 .sidebar-item.active svg { color: var(--brand); }
 
 [data-theme="dark"] .sidebar-item { color: #64748b; }
 [data-theme="dark"] .sidebar-item:hover { background: rgba(255,255,255,0.05); color: #e2e8f0; }
-[data-theme="dark"] .sidebar-item.active { background: rgba(21,87,160,0.18); color: #60a5fa; }
-[data-theme="dark"] .sidebar-item.active svg { color: #60a5fa; }
+[data-theme="dark"] .sidebar-item.active { background: rgba(13,61,110,0.28); color: #93c5fd; box-shadow: inset 3px 0 0 #0d3d6e; }
+[data-theme="dark"] .sidebar-item.active svg { color: #93c5fd; }
 
 .sidebar-badge {
   margin-left: auto;
@@ -452,11 +454,11 @@ body {
 .sidebar-cta {
   margin: 10px 10px;
   padding: 10px 14px;
-  background: var(--brand);
+  background: var(--brand-gradient);
   color: #fff;
   border-radius: 10px;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -464,12 +466,14 @@ body {
   border: none;
   font-family: inherit;
   width: calc(100% - 20px);
-  transition: background 0.14s ease, box-shadow 0.14s ease;
-  box-shadow: 0 2px 8px rgba(13,61,110,0.22);
+  transition: opacity 0.14s ease, box-shadow 0.14s ease, transform 0.14s ease;
+  box-shadow: 0 2px 10px rgba(13,61,110,0.30);
+  letter-spacing: -0.1px;
 }
 .sidebar-cta:hover {
-  background: var(--brand-mid);
-  box-shadow: 0 4px 14px rgba(13,61,110,0.32);
+  opacity: 0.9;
+  box-shadow: 0 4px 18px rgba(13,61,110,0.40);
+  transform: translateY(-1px);
 }
 
 .sidebar-profile {
@@ -937,10 +941,10 @@ tr:last-child td { border-bottom: none; }
 [data-theme="dark"] .sidebar-logo-name { color: #f1f5f9; }
 [data-theme="dark"] .sidebar-logo-sub  { color: #64748b; }
 [data-theme="dark"] .sidebar-cta {
-  background: #1557a0;
+  background: linear-gradient(135deg, #1557a0 0%, #1e73cc 100%);
   box-shadow: 0 2px 12px rgba(21,87,160,0.4);
 }
-[data-theme="dark"] .sidebar-cta:hover { background: #1a6bc7; }
+[data-theme="dark"] .sidebar-cta:hover { opacity: 0.9; transform: translateY(-1px); }
 [data-theme="dark"] .sidebar-profile { border-top-color: rgba(255,255,255,0.06); }
 [data-theme="dark"] .sidebar-profile-name { color: #e2e8f0; }
 [data-theme="dark"] .sidebar-profile-role { color: #64748b; }

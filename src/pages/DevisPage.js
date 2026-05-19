@@ -66,7 +66,6 @@ function Devis() {
   const sauvegarder = () => {
     const nouvellesErreurs = {};
     if (!form.clientId) nouvellesErreurs.clientId = 'Sélectionner un client';
-    if (!form.typesTravaux?.length) nouvellesErreurs.typesTravaux = 'Sélectionner au moins un type de travaux';
     if (Object.keys(nouvellesErreurs).length > 0) {
       setErreurs(nouvellesErreurs);
       return;

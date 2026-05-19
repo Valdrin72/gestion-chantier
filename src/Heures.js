@@ -196,7 +196,7 @@ export default function Heures({ chantiers = [], parametres = {}, setChantiers }
     if (dayIndex === 5) return { background: '#ede9fe', color: '#4c1d95' }; // Sam
     if (dayIndex === 6) return { background: '#ede9fe', color: '#4c1d95' }; // Dim
     if (hours > 8) return { background: '#fef3c7', color: '#92400e' }; // Supp
-    return { background: '#dbeafe', color: '#1e40af' }; // Normal
+    return { background: '#e8f0f9', color: '#0d3d6e' }; // Normal
   };
 
   return (

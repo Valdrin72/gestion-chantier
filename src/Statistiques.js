@@ -8,10 +8,10 @@ import { calculerCoutsChantier, calculerCA, C, fmtN, getIntervallesPeriode, getP
 import { DS } from './ds';
 
 const carteStyle = DS.card;
-const COULEURS_GRAPHIQUE = ['#3b82f6', '#10b981', '#f97316', '#8b5cf6', '#06b6d4', '#f59e0b'];
+const COULEURS_GRAPHIQUE = ['#0d3d6e', '#10b981', '#f97316', '#8b5cf6', '#06b6d4', '#f59e0b'];
 
 // Palette sémantique : CA = bleu, Coûts = violet, Marge = vert
-const COL_CA    = '#3b82f6';
+const COL_CA    = '#0d3d6e';
 const COL_COUT  = '#8b5cf6';
 const COL_MARGE = '#10b981';
 
@@ -398,7 +398,7 @@ export default function Statistiques({ chantiers, clients, devis = [], parametre
                 <YAxis tick={{ fill: '#8892a4' }} unit="j" />
                 <Tooltip content={() => null} />
                 <Legend wrapperStyle={{ color: 'var(--text-primary)', paddingTop: 8 }} />
-                <Bar dataKey="Prévus"   fill="#3b82f6" name="Prévus (devis)"   radius={[4, 4, 0, 0]} />
+                <Bar dataKey="Prévus"   fill="#0d3d6e" name="Prévus (devis)"   radius={[4, 4, 0, 0]} />
                 <Bar dataKey="Réalisés" name="Réalisés (réel)" radius={[4, 4, 0, 0]}>
                   {donneesEcarts.map((d, i) => (
                     <Cell key={`cell-${i}`} fill={d.statut === 'en_retard' ? '#ef4444' : d.statut === 'en_avance' ? '#10b981' : '#78909c'} />

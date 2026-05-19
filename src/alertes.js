@@ -276,5 +276,5 @@ export const ALERTE_LABELS = {
 export const ALERTE_COULEURS = {
   critique: { bg: 'rgba(239,68,68,0.12)',   text: '#ef4444', border: 'rgba(239,68,68,0.3)' },
   warning:  { bg: 'rgba(245,158,11,0.12)',  text: '#f59e0b', border: 'rgba(245,158,11,0.3)' },
-  info:     { bg: 'rgba(59,130,246,0.12)',  text: '#3b82f6', border: 'rgba(59,130,246,0.3)' },
+  info:     { bg: 'rgba(13,61,110,0.10)',  text: '#0d3d6e', border: 'rgba(13,61,110,0.25)' },
 };

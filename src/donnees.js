@@ -497,11 +497,11 @@ export const calculerDevisClient = (devis, coutMO = 0) => {
 
 // ===== C =====
 export const C = {
-  primaire:   '#2563eb',  // blue-600
+  primaire:   '#0d3d6e',  // CYNA brand blue
   secondaire: '#10b981',  // emerald-500
   danger:     '#ef4444',  // red-500
   warning:    '#f59e0b',  // amber-500
-  info:       '#2563eb',  // same as primaire
+  info:       '#0d3d6e',  // same as primaire
   violet:     '#6366f1',  // indigo-500
   orange:     '#f97316',  // orange-500
   cyan:       '#06b6d4',  // cyan-500 (Technicien)

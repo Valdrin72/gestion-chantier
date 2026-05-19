@@ -368,7 +368,7 @@ function AppInner({ profil, deconnecter, userId }) {
           {/* Étapes */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10, margin: '28px 0' }}>
             {[
-              { step: 1, icon: Users, label: 'Créer votre premier client', desc: 'Nom, contact, adresse — la base de chaque projet', dest: 'clients', color: '#3b82f6' },
+              { step: 1, icon: Users, label: 'Créer votre premier client', desc: 'Nom, contact, adresse — la base de chaque projet', dest: 'clients', color: '#0d3d6e' },
               { step: 2, icon: FileText, label: 'Établir un devis', desc: 'Postes de travaux, montant HT, TVA 8.1%', dest: 'devis', color: '#8b5cf6' },
               { step: 3, icon: HardHat, label: 'Ouvrir un chantier', desc: 'Liez le devis signé, suivez l\'avancement et les heures', dest: 'chantiers', color: '#10b981' },
             ].map(({ step, icon: Icon, label, desc, dest, color }) => (

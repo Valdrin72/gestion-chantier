@@ -6,7 +6,7 @@ import { TOUS_STATUTS } from './constants/statuts';
 
 const MOIS = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
 const JOURS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
-const PALETTE = ['#3b82f6','#10b981','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#f97316','#ec4899'];
+const PALETTE = ['#0d3d6e','#10b981','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#f97316','#ec4899'];
 
 // ── Helpers Gantt ────────────────────────────────────────────────
 function getLundiDeSemaine(d) {
@@ -318,7 +318,7 @@ export default function Planning({ chantiers, setChantiers, clients, parametres,
     moisActuel === aujourdhui.getMonth() && jour === aujourdhui.getDate();
 
   const btnEdit = {
-    background: 'rgba(59,130,246,0.14)', color: '#60a5fa',
+    background: 'rgba(13,61,110,0.14)', color: '#0d3d6e',
     border: '1px solid rgba(59,130,246,0.3)', borderRadius: 8,
     padding: '5px 12px', cursor: 'pointer', fontSize: 12, fontWeight: 600,
     fontFamily: 'inherit', transition: 'all 0.15s',
@@ -423,7 +423,7 @@ export default function Planning({ chantiers, setChantiers, clients, parametres,
   }, [chantiers, parametres]);
 
   // ── Style pills toggle ──────────────────────────────────────
-  const pillActive   = { background: 'rgba(59,130,246,0.18)', color: '#3b82f6', border: '1px solid rgba(59,130,246,0.45)', borderRadius: 8, padding: '6px 14px', cursor: 'pointer', fontSize: 13, fontWeight: 700, fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', gap: 6, transition: 'all 0.15s' };
+  const pillActive   = { background: 'rgba(13,61,110,0.12)', color: '#0d3d6e', border: '1px solid rgba(13,61,110,0.35)', borderRadius: 8, padding: '6px 14px', cursor: 'pointer', fontSize: 13, fontWeight: 700, fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', gap: 6, transition: 'all 0.15s' };
   const pillInactive = { background: 'var(--ds-btn-ghost-bg)', color: 'var(--text-secondary)', border: '1px solid var(--ds-btn-ghost-border)', borderRadius: 8, padding: '6px 14px', cursor: 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', gap: 6, transition: 'all 0.15s' };
 
   return (
@@ -724,7 +724,7 @@ export default function Planning({ chantiers, setChantiers, clients, parametres,
                   <div key={i} style={{
                     aspectRatio: '1', display: 'flex', flexDirection: 'column', alignItems: 'center',
                     justifyContent: 'center', gap: 2, borderRadius: 6, padding: '2px 1px',
-                    background: isToday ? '#3b82f6' : 'transparent',
+                    background: isToday ? '#0d3d6e' : 'transparent',
                   }}>
                     <span style={{
                       fontSize: 11, fontWeight: isToday ? 700 : 400, lineHeight: 1,
@@ -733,7 +733,7 @@ export default function Planning({ chantiers, setChantiers, clients, parametres,
                     {busyChantiers.length > 0 && !isToday && (
                       <div style={{ display: 'flex', gap: 2, flexWrap: 'wrap', justifyContent: 'center' }}>
                         {busyChantiers.slice(0, 3).map(c => (
-                          <div key={c.id} style={{ width: 6, height: 6, borderRadius: 2, background: chantierColors[c.id] || '#3b82f6', flexShrink: 0 }} />
+                          <div key={c.id} style={{ width: 6, height: 6, borderRadius: 2, background: chantierColors[c.id] || '#0d3d6e', flexShrink: 0 }} />
                         ))}
                         {busyChantiers.length > 3 && (
                           <span style={{ fontSize: 7, fontWeight: 700, color: 'var(--text-muted)', lineHeight: '6px' }}>+{busyChantiers.length - 3}</span>
@@ -751,7 +751,7 @@ export default function Planning({ chantiers, setChantiers, clients, parametres,
                 <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-muted)', marginBottom: 2 }}>Légende</div>
                 {chantiersDuMois.map(c => (
                   <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <div style={{ width: 10, height: 10, borderRadius: 3, background: chantierColors[c.id] || '#3b82f6', flexShrink: 0 }} />
+                    <div style={{ width: 10, height: 10, borderRadius: 3, background: chantierColors[c.id] || '#0d3d6e', flexShrink: 0 }} />
                     <span style={{ fontSize: 12, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.nom || c.numero}</span>
                   </div>
                 ))}

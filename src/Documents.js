@@ -121,8 +121,8 @@ export default function Documents({ chantiers = [], devis = [], factures = [], c
                     >
                       <td style={DS.td}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <div style={{ width: 30, height: 30, borderRadius: 8, background: onglet === 'devis' ? '#dbeafe' : '#d1fae5', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                            <FileText size={14} strokeWidth={2} style={{ color: onglet === 'devis' ? '#1e40af' : '#065f46' }} />
+                          <div style={{ width: 30, height: 30, borderRadius: 8, background: onglet === 'devis' ? '#e8f0f9' : '#d1fae5', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                            <FileText size={14} strokeWidth={2} style={{ color: onglet === 'devis' ? '#0d3d6e' : '#065f46' }} />
                           </div>
                           <span style={{ fontWeight: 600, fontSize: 13 }}>{doc.nom}</span>
                         </div>

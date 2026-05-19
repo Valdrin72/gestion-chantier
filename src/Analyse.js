@@ -217,9 +217,9 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
         {onglets.map(o => (
           <button key={o.id} onClick={() => setOnglet(o.id)} style={{
             background: 'transparent',
-            color: onglet === o.id ? '#3b82f6' : 'var(--text-secondary)',
+            color: onglet === o.id ? '#0d3d6e' : 'var(--text-secondary)',
             border: 'none',
-            borderBottom: onglet === o.id ? '2px solid rgba(59,130,246,0.8)' : '2px solid transparent',
+            borderBottom: onglet === o.id ? '2px solid rgba(13,61,110,0.8)' : '2px solid transparent',
             padding: '10px 18px',
             marginBottom: '-1px',
             borderRadius: '0', cursor: 'pointer', fontSize: '14px', fontWeight: onglet === o.id ? '600' : 'normal'
@@ -242,7 +242,7 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
                 <div key={s.label}>
                   <label style={{ fontSize: '13px', color: 'var(--text-secondary)', display: 'block', marginBottom: '5px' }}>{s.label}</label>
                   <input type="number" value={s.val} onChange={e => { s.set(parseFloat(e.target.value) || 0); setTaxSaved(false); }}
-                    style={{ padding: '10px', borderRadius: '8px', border: '2px solid #3b82f6', fontSize: '16px', fontWeight: 'bold', width: '100%', color: '#3b82f6', background: 'var(--bg-input)' }} />
+                    style={{ padding: '10px', borderRadius: '8px', border: '2px solid #0d3d6e', fontSize: '16px', fontWeight: 'bold', width: '100%', color: '#0d3d6e', background: 'var(--bg-input)' }} />
                 </div>
               ))}
             </div>
@@ -331,7 +331,7 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
                 return (
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 14, marginBottom: 24 }}>
                     {[
-                      { label: 'Types analysés', val: donneesDerive.length, couleur: '#3b82f6', sub: `${donneesDerive.reduce((s,d) => s + d.count, 0)} chantiers` },
+                      { label: 'Types analysés', val: donneesDerive.length, couleur: '#0d3d6e', sub: `${donneesDerive.reduce((s,d) => s + d.count, 0)} chantiers` },
                       { label: 'Sous-estimés', val: sousEstimes.length, couleur: '#ef4444', sub: sousEstimes.length > 0 ? sousEstimes.map(d => d.nom).join(', ') : 'Aucun' },
                       { label: 'Plus grande dérive', val: pireType.nom, couleur: '#f59e0b', sub: Number.isFinite(pireType.ecartCoutMoyen) ? `+${Math.round(pireType.ecartCoutMoyen)}% coût réel` : '—' },
                       { label: 'Perte de marge moy.', val: Number.isFinite(pireType.perteMarge) ? `${Math.round(pireType.perteMarge * 10) / 10}%` : '—', couleur: Number.isFinite(pireType.perteMarge) && pireType.perteMarge < -3 ? '#ef4444' : '#10b981', sub: 'sur le type le + déviant' },
@@ -374,7 +374,7 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
                       {[
                         { label: 'Dérive durée',   val: fmtJours(d.ecartJoursMoyen),  couleur: d.ecartJoursMoyen !== null && d.ecartJoursMoyen > 15 ? '#ef4444' : d.ecartJoursMoyen !== null && d.ecartJoursMoyen > 5 ? '#f59e0b' : '#10b981', sub: 'jours réels vs prévus' },
                         { label: 'Dérive coût',    val: fmtPct(d.ecartCoutMoyen),     couleur: d.ecartCoutMoyen !== null && d.ecartCoutMoyen > 15 ? '#ef4444' : d.ecartCoutMoyen !== null && d.ecartCoutMoyen > 5 ? '#f59e0b' : '#10b981',    sub: 'coût réel vs prévu' },
-                        { label: 'Marge devisée',  val: fmtPct(d.margePrevuMoyenne, false), couleur: '#3b82f6', sub: 'marge prévue moyenne' },
+                        { label: 'Marge devisée',  val: fmtPct(d.margePrevuMoyenne, false), couleur: '#0d3d6e', sub: 'marge prévue moyenne' },
                         { label: 'Marge réelle',   val: fmtPct(d.margeReelMoyenne, false),  couleur: d.margeReelMoyenne !== null && d.margeReelMoyenne < 10 ? '#ef4444' : d.margeReelMoyenne !== null && d.margeReelMoyenne < 20 ? '#f59e0b' : '#10b981', sub: 'marge réelle moyenne' },
                       ].map(m => (
                         <div key={m.label} style={{ ...DS.cardInset, padding: '12px 14px' }}>
@@ -543,7 +543,7 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
                       <td style={{ padding: '10px 12px', fontSize: '13px', color: '#f59e0b' }}>CHF {fmtN(Math.round(e.chargesSoc))}</td>
                       <td style={{ padding: '10px 12px', fontWeight: 'bold', color: '#ef4444' }}>CHF {fmtN(Math.round(e.coutReel))}</td>
                       <td style={{ padding: '10px 12px' }}>
-                        <span style={{ background: '#3b82f618', color: '#3b82f6', fontWeight: 600, padding: '3px 10px', borderRadius: '12px', fontSize: '12px' }}>
+                        <span style={{ background: '#0d3d6e18', color: '#0d3d6e', fontWeight: 600, padding: '3px 10px', borderRadius: '12px', fontSize: '12px' }}>
                           CHF {e.coutHoraire}/h
                         </span>
                       </td>
@@ -708,7 +708,7 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
               {/* KPIs clients */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px,1fr))', gap: 14, marginBottom: 24 }}>
                 {[
-                  { label: 'Clients actifs', val: donneesClients.length, couleur: '#3b82f6' },
+                  { label: 'Clients actifs', val: donneesClients.length, couleur: '#0d3d6e' },
                   { label: 'Meilleur CA', val: `CHF ${fmtN(Math.round(donneesClients[0]?.ca || 0))}`, couleur: '#10b981' },
                   { label: 'Marge moy.', val: `${Math.round((donneesClients.reduce((t,c)=>t+parseFloat(c.margePct||0),0)/donneesClients.length) * 10) / 10}%`, couleur: '#8b5cf6' },
                   { label: 'Chantiers total', val: donneesClients.reduce((t,c)=>t+c.nbChantiers,0), couleur: '#f59e0b' },

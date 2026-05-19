@@ -37,7 +37,7 @@ const CoutBadge = React.memo(function CoutBadge({ label, valeur, couleur }) {
 
 const BarreAvancement = React.memo(function BarreAvancement({ valeur, couleur }) {
   const progress = Math.max(0, Math.min(100, Number(valeur ?? 0)));
-  const c = couleur || 'linear-gradient(90deg, #3b82f6, #10b981)';
+  const c = couleur || 'linear-gradient(90deg, #0d3d6e, #10b981)';
   return (
     <div style={{ background: 'var(--bg-hover)', borderRadius: '10px', height: '6px', width: '100%', overflow: 'hidden' }}>
       <div style={{ background: c, width: `${progress}%`, height: '6px', borderRadius: '10px', transition: 'width 0.4s ease' }} />

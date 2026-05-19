@@ -382,7 +382,7 @@ function Dashboard() {
     const total = mo + mat + st + dep + autres;
     if (total === 0) return { total: 0, segments: [] };
     return { total, segments: [
-      { name: "Main d'œuvre", value: (mo / total) * 100, couleur: '#3b82f6' },
+      { name: "Main d'œuvre", value: (mo / total) * 100, couleur: '#0d3d6e' },
       { name: 'Matériaux',    value: (mat / total) * 100, couleur: '#8b5cf6' },
       { name: 'Sous-traitance', value: (st / total) * 100, couleur: '#10b981' },
       { name: 'Déplacement',  value: (dep / total) * 100, couleur: '#f59e0b' },
@@ -430,7 +430,7 @@ function Dashboard() {
           <div style={{ display: 'flex', gap: 1, background: 'var(--bg-glass-2)', border: '1px solid var(--border)', borderRadius: 8, padding: '2px' }}>
             {[{ id: 'semaine', label: 'S' }, { id: 'mois', label: 'M' }, { id: 'annee', label: 'A' }].map(p => (
               <button key={p.id} onClick={() => setPeriodeGlobale(p.id)}
-                style={{ background: periodeGlobale === p.id ? '#2563eb' : 'transparent', border: 'none', color: periodeGlobale === p.id ? '#fff' : 'var(--text-muted)', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', fontSize: 11, fontWeight: 600, fontFamily: 'inherit' }}
+                style={{ background: periodeGlobale === p.id ? '#0d3d6e' : 'transparent', border: 'none', color: periodeGlobale === p.id ? '#fff' : 'var(--text-muted)', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', fontSize: 11, fontWeight: 600, fontFamily: 'inherit' }}
               >{p.label}</button>
             ))}
           </div>
@@ -481,7 +481,7 @@ function Dashboard() {
         <div style={{ ...CARD, marginBottom: 12 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
             <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-primary)' }}>Mes chantiers</div>
-            <button onClick={() => naviguer('chantiers')} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: '#2563eb', fontWeight: 600, fontFamily: 'inherit', padding: 0 }}>Voir tous →</button>
+            <button onClick={() => naviguer('chantiers')} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: '#0d3d6e', fontWeight: 600, fontFamily: 'inherit', padding: 0 }}>Voir tous →</button>
           </div>
           {actifs.length === 0
             ? <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: 0, textAlign: 'center', padding: '16px 0' }}>Aucun chantier actif</p>
@@ -538,7 +538,7 @@ function Dashboard() {
           {/* Trésorerie 30j */}
           <div style={{ ...CARD, cursor: 'pointer' }} onClick={() => naviguer('finances')}>
             <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 8 }}>Tréso. 30j</div>
-            <div style={{ fontSize: 20, fontWeight: 900, color: previsionTreso30j.interpretation?.couleur || '#3b82f6', letterSpacing: '-0.5px', marginBottom: 6, lineHeight: 1 }}>
+            <div style={{ fontSize: 20, fontWeight: 900, color: previsionTreso30j.interpretation?.couleur || '#0d3d6e', letterSpacing: '-0.5px', marginBottom: 6, lineHeight: 1 }}>
               CHF {fmtN(previsionTreso30j.total)}
             </div>
             {previsionTreso30j.interpretation && (
@@ -581,7 +581,7 @@ function Dashboard() {
           <div style={{ ...CARD, cursor: 'pointer' }} onClick={() => naviguer('chantiers')}>
             <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 8 }}>Avancement</div>
             <div style={{ display: 'flex', alignItems: 'flex-end', gap: 4, marginBottom: 8 }}>
-              <div style={{ fontSize: 28, fontWeight: 900, color: '#3b82f6', letterSpacing: '-1px', lineHeight: 1 }}>{Math.round(avancementMoyen)}%</div>
+              <div style={{ fontSize: 28, fontWeight: 900, color: '#0d3d6e', letterSpacing: '-1px', lineHeight: 1 }}>{Math.round(avancementMoyen)}%</div>
               <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 2 }}>moy.</div>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -683,7 +683,7 @@ function Dashboard() {
         <div style={{ display: 'flex', gap: 2, background: 'var(--bg-glass-2)', border: '1px solid var(--border)', borderRadius: 10, padding: '3px' }}>
           {[{ id: 'semaine', label: 'Semaine' }, { id: 'mois', label: 'Mois' }, { id: 'annee', label: 'Année' }].map(p => (
             <button key={p.id} onClick={() => setPeriodeGlobale(p.id)}
-              style={{ background: periodeGlobale === p.id ? '#2563eb' : 'transparent', border: 'none', color: periodeGlobale === p.id ? '#fff' : 'var(--text-muted)', borderRadius: 8, padding: '5px 14px', cursor: 'pointer', fontSize: 12, fontWeight: 600, transition: 'all 0.15s', fontFamily: 'inherit' }}
+              style={{ background: periodeGlobale === p.id ? '#0d3d6e' : 'transparent', border: 'none', color: periodeGlobale === p.id ? '#fff' : 'var(--text-muted)', borderRadius: 8, padding: '5px 14px', cursor: 'pointer', fontSize: 12, fontWeight: 600, transition: 'all 0.15s', fontFamily: 'inherit' }}
             >{p.label}</button>
           ))}
         </div>

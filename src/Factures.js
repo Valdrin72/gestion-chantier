@@ -523,7 +523,7 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
                     style={{ cursor: 'pointer', animationDelay: `${idx * 35}ms` }}
                     onClick={() => voirDetail(f)}>
                     <td style={S.td}>
-                      <span style={{ fontWeight: 700, color: '#60a5fa', letterSpacing: '-0.2px' }}>{f.numero}</span>
+                      <span style={{ fontWeight: 700, color: '#0d3d6e', letterSpacing: '-0.2px' }}>{f.numero}</span>
                     </td>
                     <td style={S.td}>
                       {client?.nom

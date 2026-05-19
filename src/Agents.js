@@ -18,7 +18,7 @@ const AGENTS_META = [
     frequence: 'Toutes les heures', apprentissage: false,
   },
   {
-    id: 'SuiviDevis', tier: 1, nom: 'Suivi Devis', Icon: FileText, couleur: '#3b82f6',
+    id: 'SuiviDevis', tier: 1, nom: 'Suivi Devis', Icon: FileText, couleur: '#0d3d6e',
     description: 'Détecte les devis acceptés sans facture liée après 3 jours',
     details: ['INFO < 7j sans facture', 'ATTENTION > 7j sans facture', 'Calcule le CA potentiel en attente'],
     frequence: 'Toutes les heures', apprentissage: false,
@@ -167,7 +167,7 @@ const AGENTS_META = [
 ];
 
 const TIER_META = {
-  1: { label: 'Tier 1 — Analyse pure', couleur: '#3b82f6', bg: '#eff6ff' },
+  1: { label: 'Tier 1 — Analyse pure', couleur: '#0d3d6e', bg: '#e8f0f9' },
   2: { label: 'Tier 2 — Intelligence croisée', couleur: '#8b5cf6', bg: '#f5f3ff' },
   3: { label: 'Tier 3 — Synthèse & Anticipation', couleur: '#10b981', bg: '#f0fdf4' },
 };
@@ -209,7 +209,7 @@ export default function Agents({
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
         <div>
           <div className="page-title-main" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <Bot size={24} strokeWidth={1.8} style={{ color: '#3b82f6' }} />
+            <Bot size={24} strokeWidth={1.8} style={{ color: '#0d3d6e' }} />
             Agents IA — Système Multi-Agents
           </div>
           <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: '4px 0 0' }}>
@@ -251,7 +251,7 @@ export default function Agents({
           ['rapports', 'Rapports'],
         ].map(([id, label]) => (
           <button key={id} onClick={() => setOnglet(id)}
-            style={{ background: onglet === id ? '#2563eb' : 'transparent', border: 'none', color: onglet === id ? '#fff' : 'var(--text-muted)', borderRadius: 8, padding: '6px 14px', cursor: 'pointer', fontSize: 12, fontWeight: 600, fontFamily: 'inherit' }}>
+            style={{ background: onglet === id ? '#0d3d6e' : 'transparent', border: 'none', color: onglet === id ? '#fff' : 'var(--text-muted)', borderRadius: 8, padding: '6px 14px', cursor: 'pointer', fontSize: 12, fontWeight: 600, fontFamily: 'inherit' }}>
             {label}
           </button>
         ))}
@@ -295,7 +295,7 @@ export default function Agents({
                 {priorites.map((p, i) => (
                   <div key={i} style={{ ...DS.card, padding: '16px 20px', display: 'flex', gap: 16, alignItems: 'flex-start', borderLeft: `4px solid ${i === 0 ? '#ef4444' : i === 1 ? '#f59e0b' : '#3b82f6'}` }}>
                     <div style={{ width: 32, height: 32, borderRadius: '50%', background: i === 0 ? '#fee2e2' : i === 1 ? '#fef3c7' : '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                      {i === 0 ? <AlertTriangle size={15} color="#ef4444" /> : i === 1 ? <AlertCircle size={15} color="#f59e0b" /> : <Target size={15} color="#3b82f6" />}
+                      {i === 0 ? <AlertTriangle size={15} color="#ef4444" /> : i === 1 ? <AlertCircle size={15} color="#f59e0b" /> : <Target size={15} color="#0d3d6e" />}
                     </div>
                     <div style={{ flex: 1 }}>
                       <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 5, flexWrap: 'wrap' }}>

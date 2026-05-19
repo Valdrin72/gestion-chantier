@@ -498,10 +498,10 @@ export default function ImportPDF({ parametres, onCreerDevis, onCreerChantier, o
           { id: 'calculs', label: '4. Calculs' },
         ].map((e, i) => (
           <div key={e.id} style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-            <div style={{ background: etape === e.id ? '#3b82f6' : ['upload', 'metres', 'montants', 'calculs'].indexOf(etape) > i ? C.secondaire : 'var(--border)', color: 'white', width: '28px', height: '28px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', fontWeight: 'bold' }}>
+            <div style={{ background: etape === e.id ? '#0d3d6e' : ['upload', 'metres', 'montants', 'calculs'].indexOf(etape) > i ? C.secondaire : 'var(--border)', color: 'white', width: '28px', height: '28px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', fontWeight: 'bold' }}>
               {['upload', 'metres', 'montants', 'calculs'].indexOf(etape) > i ? '✓' : i + 1}
             </div>
-            <span style={{ fontSize: '13px', color: etape === e.id ? '#3b82f6' : 'var(--text-secondary)', fontWeight: etape === e.id ? 'bold' : 'normal' }}>{e.label}</span>
+            <span style={{ fontSize: '13px', color: etape === e.id ? '#0d3d6e' : 'var(--text-secondary)', fontWeight: etape === e.id ? 'bold' : 'normal' }}>{e.label}</span>
             {i < 3 && <div style={{ width: '30px', height: '2px', background: 'var(--border)' }} />}
           </div>
         ))}
@@ -530,7 +530,7 @@ export default function ImportPDF({ parametres, onCreerDevis, onCreerChantier, o
           </div>
 
           <div onClick={() => fileRef.current?.click()}
-            style={{ border: '3px dashed #3b82f6', borderRadius: '16px', padding: '50px', textAlign: 'center', cursor: 'pointer', background: 'var(--bg-hover)', transition: 'all 0.2s' }}>
+            style={{ border: '3px dashed #0d3d6e', borderRadius: '16px', padding: '50px', textAlign: 'center', cursor: 'pointer', background: 'var(--bg-hover)', transition: 'all 0.2s' }}>
             <div style={{ fontSize: '40px', marginBottom: '15px', color: 'var(--text-muted)' }}>↑</div>
             <div style={{ fontSize: '18px', fontWeight: 'bold', color: 'var(--text-primary)', marginBottom: '8px' }}>Cliquez pour sélectionner un PDF</div>
             <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Ou glissez-déposez votre fichier ici</div>
@@ -560,7 +560,7 @@ export default function ImportPDF({ parametres, onCreerDevis, onCreerChantier, o
           <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', alignItems: 'center' }}>
             <button onClick={() => setEtape('upload')} style={{ background: 'var(--bg-hover)', color: 'var(--text-primary)', border: 'none', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer' }}>← Retour</button>
             <div style={{ flex: 1 }}>
-              <strong style={{ color: '#3b82f6' }}>{nomFichier}</strong>
+              <strong style={{ color: '#0d3d6e' }}>{nomFichier}</strong>
               <span style={{ color: 'var(--text-secondary)', fontSize: '13px', marginLeft: '10px' }}>{metres.length} métrés détectés</span>
             </div>
             <button onClick={ajouterMetre} style={{ background: '#10b981', color: 'white', border: 'none', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer' }}>+ Ajouter</button>
@@ -680,7 +680,7 @@ export default function ImportPDF({ parametres, onCreerDevis, onCreerChantier, o
           <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', alignItems: 'center' }}>
             <button onClick={() => setEtape(typePDF === 'les_deux' ? 'metres' : 'upload')} style={{ background: 'var(--bg-hover)', color: 'var(--text-primary)', border: 'none', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer' }}>← Retour</button>
             <div style={{ flex: 1 }}>
-              <strong style={{ color: '#3b82f6' }}>{nomFichier}</strong>
+              <strong style={{ color: '#0d3d6e' }}>{nomFichier}</strong>
               <span style={{ color: 'var(--text-secondary)', fontSize: '13px', marginLeft: '10px' }}>{montants.length} montants détectés</span>
             </div>
             <button onClick={ajouterMontant} style={{ background: '#10b981', color: 'white', border: 'none', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer' }}>+ Ajouter</button>
@@ -783,7 +783,7 @@ export default function ImportPDF({ parametres, onCreerDevis, onCreerChantier, o
           </div>
 
           {/* RÉSULTAT PRINCIPAL */}
-          <div style={{ ...carteStyle, borderTop: '5px solid #3b82f6' }}>
+          <div style={{ ...carteStyle, borderTop: '5px solid #0d3d6e' }}>
             <div className="ds-card-title">Résultats de l'analyse</div>
             <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '20px' }}>Fichier : {nomFichier}</div>
 
@@ -801,7 +801,7 @@ export default function ImportPDF({ parametres, onCreerDevis, onCreerChantier, o
                   {[
                     { label: 'Client', val: analyse.client || '—', color: analyse.client ? 'var(--text-primary)' : 'var(--text-muted)' },
                     { label: 'Montant', val: analyse.montant > 0 ? `CHF ${analyse.montant.toLocaleString('fr-CH')}` : '—', color: analyse.montant > 0 ? '#10b981' : 'var(--text-muted)' },
-                    { label: 'Surface', val: analyse.surface > 0 ? `${analyse.surface} m²` : '—', color: analyse.surface > 0 ? '#3b82f6' : 'var(--text-muted)' },
+                    { label: 'Surface', val: analyse.surface > 0 ? `${analyse.surface} m²` : '—', color: analyse.surface > 0 ? '#0d3d6e' : 'var(--text-muted)' },
                     { label: 'Postes', val: analyse.lignes.length > 0 ? `${analyse.lignes.length} poste${analyse.lignes.length > 1 ? 's' : ''}` : '—', color: analyse.lignes.length > 0 ? '#8b5cf6' : 'var(--text-muted)' },
                   ].map(item => (
                     <div key={item.label} style={{ background: 'var(--bg-card)', padding: '12px 16px' }}>

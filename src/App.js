@@ -237,7 +237,7 @@ function AppInner({ profil, deconnecter, userId }) {
         darkMode={darkMode} toggleDarkMode={toggleDarkMode}
         profil={profil} deconnecter={deconnecter}
       />
-      <div className="main-area">
+      <div className="main-area" style={{ marginLeft: 'var(--sidebar-width)', flex: 1, minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
         <Topbar
           setSidebarOuvert={setSidebarOuvert} canGoBack={canGoBack} page={page}
           revenirArriere={revenirArriere} navAutorisees={navAutorisees}

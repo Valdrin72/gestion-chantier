@@ -306,7 +306,8 @@ body {
   transition: transform 0.22s cubic-bezier(0.4,0,0.2,1);
 }
 
-.app-content {
+.app-content,
+.main-area {
   margin-left: var(--sidebar-width);
   flex: 1;
   min-height: 100vh;
@@ -882,7 +883,7 @@ tr:last-child td { border-bottom: none; }
 @media (max-width: 767px) {
   /* Layout */
   .app-sidebar { display: none; }
-  .app-content { margin-left: 0; }
+  .app-content, .main-area { margin-left: 0; }
   .app-main    { padding: 12px 12px 80px; }
 
   .bottom-nav { display: flex; }

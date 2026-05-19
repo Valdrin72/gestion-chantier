@@ -815,18 +815,18 @@ function Dashboard() {
                           : { label: '—', couleur: 'var(--text-muted)' };
                   return (
                     <div key={c.id} onClick={() => naviguer('chantiers', { chantierActif: c.id })}
-                      style={{ display: 'flex', alignItems: 'center', gap: 0, borderRadius: 14, border: '1px solid var(--dash-border)', cursor: 'pointer', background: 'var(--ds-card-bg)', overflow: 'hidden', transition: 'all 0.15s' }}
+                      style={{ display: 'flex', alignItems: 'center', gap: 0, borderRadius: 14, border: '1px solid var(--dash-border)', cursor: 'pointer', background: 'var(--ds-card-bg)', overflow: 'hidden', transition: 'all 0.15s', position: 'relative' }}
                       onMouseEnter={e => { e.currentTarget.style.borderColor = '#0d3d6e'; e.currentTarget.style.boxShadow = '0 2px 12px rgba(13,61,110,0.1)'; }}
                       onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--dash-border)'; e.currentTarget.style.boxShadow = 'none'; }}
                     >
+                      {/* Badge statut — coin haut droite */}
+                      <span style={{ position: 'absolute', top: 10, right: 12, background: statBadge.bg, color: statBadge.color, borderRadius: 20, padding: '2px 9px', fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap', zIndex: 1 }}>{statBadge.label}</span>
+
                       {/* Contenu */}
                       <div className="dash-chantier-row" style={{ flex: 1, padding: '14px 16px', minWidth: 0, display: 'flex', alignItems: 'center', gap: 16 }}>
-                        {/* Nom + badge */}
-                        <div style={{ flex: '0 1 180px', minWidth: 0 }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, flexWrap: 'wrap' }}>
-                            <span style={{ fontWeight: 700, fontSize: 13, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.nom || c.numero}</span>
-                            <span style={{ background: statBadge.bg, color: statBadge.color, borderRadius: 20, padding: '2px 8px', fontSize: 12, fontWeight: 700, flexShrink: 0, whiteSpace: 'nowrap' }}>{statBadge.label}</span>
-                          </div>
+                        {/* Nom + CA + Coût */}
+                        <div style={{ flex: '1 1 220px', minWidth: 0, paddingRight: 70 }}>
+                          <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-primary)', marginBottom: 6, lineHeight: 1.3 }}>{c.nom || c.numero}</div>
                           <div style={{ display: 'flex', gap: 16 }}>
                             <div>
                               <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>CA</div>

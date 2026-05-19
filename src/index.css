@@ -882,6 +882,16 @@ tr:last-child td { border-bottom: none; }
 .pulse { animation: pulse-soft 1.6s ease-in-out infinite; }
 
 /* ============================================================
+   RESPONSIVE — TABLETTE ≤ 1100px
+   ============================================================ */
+@media (max-width: 1100px) {
+  :root {
+    --g-dash : 1fr 1fr;
+    --g3     : 1fr 1fr;
+  }
+}
+
+/* ============================================================
    RESPONSIVE — MOBILE ≤ 767px
    ============================================================ */
 @media (max-width: 767px) {

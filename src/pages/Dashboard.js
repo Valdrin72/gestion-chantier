@@ -20,9 +20,6 @@ function Dashboard() {
   const isMobile = useIsMobile();
   const { chantiers, clients, factures, devis = [], parametres, naviguer, actionsLog = [], periodeGlobale = 'mois', setPeriodeGlobale = () => {}, agentState, profil } = useApp();
   const agentAlertes = agentState?.alertes || [];
-  const nbAgentAlertes = agentState?.nbNonLues || 0;
-  const marquerLu = agentState?.marquerLu || (() => {});
-  const naviguerAgents = () => naviguer('agents');
   const facturesSafe = useMemo(() => factures || [], [factures]);
   const [insightsFerme, setInsightsFerme] = useState(false);
 
@@ -64,7 +61,7 @@ function Dashboard() {
 
     // 2. CASH EN ATTENTE — factures non encaissées
     const cashEnAttente = facturesPeriode
-      .filter(f => ['envoyee', 'partielle', 'retard'].includes(f.statut))
+      .filter(f => ['envoyee', 'partielle', 'retard'].includes((f.statut || '').toLowerCase()))
       .reduce((t, f) => t + Math.max(0, (parseFloat(f.montantTTC) || 0) - (parseFloat(f.montantPaye) || 0)), 0);
 
     // 3. RENTABILITÉ MOYENNE — même moteur que la fiche chantier (coefficient + FG inclus)
@@ -86,10 +83,11 @@ function Dashboard() {
       , 0)
     , 0);
 
-    const nbFacturesEnAttente = facturesPeriode.filter(f => ['envoyee', 'partielle', 'retard'].includes(f.statut)).length;
-    const nbFacturesRetard    = facturesPeriode.filter(f =>
-      f.statut === 'retard' || (f.statut === 'envoyee' && f.dateEcheance && new Date(f.dateEcheance) < new Date())
-    ).length;
+    const nbFacturesEnAttente = facturesPeriode.filter(f => ['envoyee', 'partielle', 'retard'].includes((f.statut || '').toLowerCase())).length;
+    const nbFacturesRetard    = facturesPeriode.filter(f => {
+      const s = (f.statut || '').toLowerCase();
+      return s === 'retard' || (s === 'envoyee' && f.dateEcheance && new Date(f.dateEcheance) < new Date());
+    }).length;
     const nbEmployes = actifs.reduce((set, c) => {
       (c.equipe || []).forEach(m => { if (m.employeId) set.add(String(m.employeId)); });
       return set;
@@ -223,10 +221,10 @@ function Dashboard() {
     });
 
     // Factures en retard
-    const fRetard = facturesSafe.filter(f =>
-      f.statut === 'retard' ||
-      (f.statut === 'envoyee' && f.dateEcheance && new Date(f.dateEcheance) < new Date())
-    );
+    const fRetard = facturesSafe.filter(f => {
+      const s = (f.statut || '').toLowerCase();
+      return s === 'retard' || (s === 'envoyee' && f.dateEcheance && new Date(f.dateEcheance) < new Date());
+    });
     if (fRetard.length > 0) {
       const montant = fRetard.reduce((t, f) =>
         t + Math.max(0, (parseFloat(f.montantTTC) || 0) - (parseFloat(f.montantPaye) || 0)), 0);
@@ -350,11 +348,7 @@ function Dashboard() {
   // ── Chart data : aperçu financier (4 dernières semaines) ──
   const donneesMensuelles = useMemo(() => {
     const now = new Date();
-    const totalCoutsActifs = actifs.reduce((sum, c) => {
-      const r = calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis);
-      return sum + (r.totalCoutsReel || 0);
-    }, 0);
-    const coutsParSemaine = Math.round(totalCoutsActifs / 4);
+    const employes = parametres.employes || [];
     return Array.from({ length: 4 }, (_, i) => {
       const w = 4 - i;
       const deb = new Date(now); deb.setDate(now.getDate() - w * 7);
@@ -364,9 +358,24 @@ function Dashboard() {
       const enc = (factures || []).flatMap(f => f.paiementsHistorique || [])
         .filter(p => { const d = p.date ? new Date(p.date) : null; return d && d >= deb && d < fin; })
         .reduce((s, p) => s + (parseFloat(p.montant) || 0), 0);
-      return { semaine: deb.toLocaleDateString('fr-CH', { day: '2-digit', month: '2-digit' }), CA: Math.round(ca), Couts: coutsParSemaine, Encaissements: Math.round(enc) };
+      let couts = 0;
+      actifs.forEach(c => {
+        (c.journal || []).forEach(entry => {
+          if (!entry.date) return;
+          const d = new Date(entry.date);
+          if (d >= deb && d < fin) {
+            (entry.employes || []).forEach(e => {
+              const emp = employes.find(em => String(em.id) === String(e.employeId));
+              const tarif = emp ? (parseFloat(emp.tarifJour) || 0) : 0;
+              const heures = parseFloat(e.heuresTravaillees) || 0;
+              couts += (heures / 8) * tarif;
+            });
+          }
+        });
+      });
+      return { semaine: deb.toLocaleDateString('fr-CH', { day: '2-digit', month: '2-digit' }), CA: Math.round(ca), Couts: Math.round(couts), Encaissements: Math.round(enc) };
     });
-  }, [factures, actifs, parametres, devis]);
+  }, [factures, actifs, parametres.employes]);
 
   // ── Répartition des coûts (donut) ──────────────────────────
   const repartitionCouts = useMemo(() => {
@@ -693,13 +702,13 @@ function Dashboard() {
       <div className="kpi-grid" style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'var(--g4)', gap: isMobile ? 10 : 16, marginBottom: 24 }}>
         {[
           { label: "CA actif", Icon: DollarSign, page: 'devis',
-            valeur: `CHF ${fmtN(kpi.caEnCours)}`,
+            valeur: `CHF ${fmtN(kpi.caEnCours)} HT`,
             sous: kpi.nbChantiersActifs > 0 ? `${kpi.nbChantiersActifs} chantier${kpi.nbChantiersActifs !== 1 ? 's' : ''} · En cours + Planifiés` : 'Aucun chantier en cours',
             ...DS.kpi.blue },
           { label: 'Marge moyenne', Icon: TrendingUp, page: 'analyse',
-            valeur: kpi.rentaMoyenne !== null ? `${Math.round(kpi.rentaMoyenne)}%` : '—',
-            sous: kpi.nbChantiersRenta > 0 ? `${kpi.nbChantiersRenta} chantier${kpi.nbChantiersRenta > 1 ? 's' : ''} analysé${kpi.nbChantiersRenta > 1 ? 's' : ''}` : 'Aucun coût saisi',
-            ...(kpi.rentaMoyenne === null || kpi.rentaMoyenne >= 15 ? DS.kpi.green : kpi.rentaMoyenne >= 0 ? DS.kpi.amber : DS.kpi.red) },
+            valeur: kpiReel.margeReellePct !== null ? `${kpiReel.margeReellePct}%` : '—',
+            sous: kpiReel.nbActives > 0 ? `${kpiReel.nbActives} chantier${kpiReel.nbActives > 1 ? 's' : ''} analysé${kpiReel.nbActives > 1 ? 's' : ''}` : 'Aucun coût saisi',
+            ...(kpiReel.margeReellePct === null || kpiReel.margeReellePct >= 15 ? DS.kpi.green : kpiReel.margeReellePct >= 0 ? DS.kpi.amber : DS.kpi.red) },
           { label: 'Chantiers actifs', Icon: HardHat, page: 'chantiers',
             valeur: `${kpi.nbChantiersActifs}`,
             sous: kpiReel.nbDepassement > 0 ? `${kpiReel.nbDepassement} en retard` : 'Tous dans les temps',
@@ -781,8 +790,14 @@ function Dashboard() {
           </div>
           {actifs.length === 0
             ? <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: 0, textAlign: 'center', padding: '24px 0' }}>Aucun chantier actif</p>
-            : <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                {[...actifs].sort((a, b) => (prioriteMap.get(b.id) || { score: 0 }).score - (prioriteMap.get(a.id) || { score: 0 }).score).slice(0, isMobile ? 2 : 3).map(c => {
+            : (() => {
+                const sorted = [...actifs].sort((a, b) => (prioriteMap.get(b.id) || { score: 0 }).score - (prioriteMap.get(a.id) || { score: 0 }).score);
+                const max = isMobile ? 2 : 3;
+                const enDifficulte = sorted.filter(c => (prioriteMap.get(c.id) || { niveau: 'ok' }).niveau !== 'ok');
+                const autresCount = Math.max(0, enDifficulte.length - max);
+                return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                {sorted.slice(0, max).map(c => {
                   const priorite = prioriteMap.get(c.id) || { niveau: 'ok', score: 0 };
                   const montantCA = calculerCA(c, devis);
                   const couts = coutsMap.get(c.id) || {};
@@ -871,7 +886,14 @@ function Dashboard() {
                     </div>
                   );
                 })}
+                {autresCount > 0 && (
+                  <div onClick={() => naviguer('chantiers')} style={{ textAlign: 'center', fontSize: 12, color: '#ef4444', fontWeight: 600, cursor: 'pointer', padding: '4px 0' }}>
+                    +{autresCount} autre{autresCount > 1 ? 's' : ''} chantier{autresCount > 1 ? 's' : ''} en difficulté →
+                  </div>
+                )}
               </div>
+              );
+            })()
           }
         </div>
 
@@ -1008,7 +1030,7 @@ function Dashboard() {
                   <Pie data={repartitionCouts.segments} cx={isMobile ? 65 : 95} cy={isMobile ? 65 : 95} innerRadius={isMobile ? 38 : 58} outerRadius={isMobile ? 58 : 85} dataKey="value" paddingAngle={3}>
                     {repartitionCouts.segments.map((entry, i) => <Cell key={i} fill={entry.couleur} />)}
                   </Pie>
-                  <Tooltip contentStyle={{ background: 'var(--dash-card)', border: '1px solid var(--dash-border)', borderRadius: 8, fontSize: 11 }} formatter={v => [`${v.toFixed(0)}%`, '']} />
+                  <Tooltip contentStyle={{ background: 'var(--dash-card)', border: '1px solid var(--dash-border)', borderRadius: 8, fontSize: 11 }} formatter={v => [`${Math.round(v)}%`, '']} />
                 </PieChart>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -1022,7 +1044,7 @@ function Dashboard() {
                           <span style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 500 }}>{s.name}</span>
                         </div>
                         <div style={{ textAlign: 'right' }}>
-                          <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>{s.value.toFixed(0)}%</span>
+                          <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>{Math.round(s.value)}%</span>
                           <span style={{ fontSize: 11, color: 'var(--text-muted)', marginLeft: 6 }}>CHF {fmtN(montantCHF)}</span>
                         </div>
                       </div>

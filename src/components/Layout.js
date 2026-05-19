@@ -391,6 +391,7 @@ export function Topbar({ setSidebarOuvert, canGoBack, page, revenirArriere, navA
             alignItems: 'center',
             justifyContent: 'center',
             color: 'var(--text-secondary)',
+            transition: 'all 0.15s',
           }}
         >
           {darkMode ? <Sun size={16} strokeWidth={2} /> : <Moon size={16} strokeWidth={2} />}

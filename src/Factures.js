@@ -165,7 +165,7 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
     const entreeHistorique = { id: `pay_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`, montant, date: paiementForm.date, mode: 'Virement', note: paiementForm.note };
     const nouveauPaiements = [...(f.paiementsHistorique || []), entreeHistorique];
     const nouveauMontantPaye = nouveauPaiements.reduce((s, p) => s + (parseFloat(p.montant) || 0), 0);
-    const restant = (f.montantTTC ?? 0) - nouveauMontantPaye;
+    const restant = (parseFloat(f.montantTTC) || 0) - nouveauMontantPaye;
     const nouveauStatut = restant <= 0.01 ? 'payee' : 'partielle';
     const factureMAJ = {
       ...f,

@@ -131,6 +131,15 @@ function Clients({ clients, setClients, chantiers, setChantiers, devis = [], set
         {clients.map(c => {
           const chantiersC = chantiers.filter(ch => String(ch.clientId) === String(c.id));
           const ca = chantiersC.reduce((t, ch) => t + (calculerCA(ch, devis) ?? 0), 0);
+          const idsCh = new Set(chantiersC.map(ch => String(ch.id)));
+          const facturesC = factures.filter(f => idsCh.has(String(f.chantierId)));
+          const impayees = facturesC.filter(f => {
+            const s = (f.statut || '').toLowerCase();
+            if (!['envoyee', 'partielle', 'retard'].includes(s)) return false;
+            const echeance = f.dateEcheance ? new Date(f.dateEcheance) : null;
+            return echeance ? echeance < new Date() : false;
+          });
+          const montantImpaye = impayees.reduce((t, f) => t + Math.max(0, (parseFloat(f.montantTTC) || 0) - (parseFloat(f.montantPaye) || 0)), 0);
           return (
             <div key={c.id} className="ds-card ds-animate-in" style={{ marginBottom: 0 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -144,7 +153,14 @@ function Clients({ clients, setClients, chantiers, setChantiers, devis = [], set
                 }}>
                   {c.prenom?.charAt(0)}{c.nom?.charAt(0)}
                 </div>
-                <Badge texte={c.type} couleur={C.info} />
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
+                  <Badge texte={c.type} couleur={C.info} />
+                  {impayees.length > 0 && (
+                    <span style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)', borderRadius: 20, padding: '2px 8px', fontSize: 10, fontWeight: 700, color: '#dc2626' }}>
+                      {impayees.length} impayée{impayees.length > 1 ? 's' : ''} · CHF {fmtN(Math.round(montantImpaye))}
+                    </span>
+                  )}
+                </div>
               </div>
               <div style={{ marginTop: '12px' }}>
                 <div style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)' }}>{c.prenom} {c.nom}</div>

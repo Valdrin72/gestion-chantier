@@ -42,13 +42,6 @@ export function Sidebar({ sidebarOuvert, setSidebarOuvert, navAutorisees, page, 
         <button className="sidebar-cta" onClick={() => { naviguer('devis', { ouvrirNouveau: true }); setSidebarOuvert(false); }}>
           <Plus size={16} strokeWidth={2.6} /> Nouveau devis
         </button>
-        <button className="sidebar-theme-toggle" onClick={toggleDarkMode} title={darkMode ? 'Mode clair' : 'Mode sombre'}>
-          <div className={`sidebar-toggle-track${darkMode ? ' on' : ''}`}>
-            <div className="sidebar-toggle-thumb" />
-          </div>
-          {darkMode ? <Sun size={14} strokeWidth={2} /> : <Moon size={14} strokeWidth={2} />}
-          <span>{darkMode ? 'Mode clair' : 'Mode sombre'}</span>
-        </button>
         <div className="sidebar-profile" style={{ cursor: 'default' }}>
           <div style={{
             width: 36, height: 36, borderRadius: '50%', flexShrink: 0,
@@ -336,9 +329,6 @@ export function Topbar({ setSidebarOuvert, canGoBack, page, revenirArriere, navA
   return (
     <header className="topbar">
       <div className="topbar-left">
-        <button className="burger-btn" onClick={() => setSidebarOuvert(v => !v)}>
-          <Menu size={20} strokeWidth={1.8} />
-        </button>
         {canGoBack && page !== 'dashboard' && (
           <button
             onClick={revenirArriere}
@@ -358,7 +348,6 @@ export function Topbar({ setSidebarOuvert, canGoBack, page, revenirArriere, navA
             Retour
           </button>
         )}
-        <span className="topbar-title">{navAutorisees.find(n => n.id === page)?.label || 'Dashboard'}</span>
       </div>
       <div className="topbar-right" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         {/* Sélecteur de période — visible sur toutes les pages financières */}

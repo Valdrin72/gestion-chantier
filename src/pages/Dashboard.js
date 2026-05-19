@@ -335,15 +335,6 @@ function Dashboard() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [actifs, joursParChantier, rentaParChantier, rentaReelleParChantier]);
 
-  // Calculé une seule fois, partagé par les deux sections pour garantir l'exclusivité
-  // Mémoïsé pour éviter un sort O(n log n) + new Set à chaque render
-  const { top3, top3Ids } = useMemo(() => {
-    const sorted = [...actifs]
-      .sort((a, b) => (prioriteMap.get(b.id) || { score: 0 }).score - (prioriteMap.get(a.id) || { score: 0 }).score)
-      .filter(c => (prioriteMap.get(c.id) || { niveau: 'ok' }).niveau !== 'ok')
-      .slice(0, 3);
-    return { top3: sorted, top3Ids: new Set(sorted.map(c => c.id)) };
-  }, [actifs, prioriteMap]);
 
   // ── Chart data : aperçu financier (4 dernières semaines) ──
   const donneesMensuelles = useMemo(() => {

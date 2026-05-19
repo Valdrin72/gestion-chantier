@@ -993,72 +993,114 @@ function Dashboard() {
 
         {/* Répartition des coûts (donut) */}
         <div style={CARD}>
-          <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--text-primary)', marginBottom: 16 }}>Répartition des coûts</div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+            <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--text-primary)' }}>Répartition des coûts</div>
+            {repartitionCouts.total > 0 && (
+              <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', background: 'var(--bg-glass-2)', border: '1px solid var(--border)', borderRadius: 8, padding: '3px 10px' }}>
+                CHF {fmtN(Math.round(repartitionCouts.total))}
+              </div>
+            )}
+          </div>
           {repartitionCouts.total > 0 ? (
             <>
-              <div style={{ display: 'flex', justifyContent: 'center' }}>
-                <PieChart width={isMobile ? 110 : 156} height={isMobile ? 110 : 156}>
-                  <Pie data={repartitionCouts.segments} cx={isMobile ? 55 : 78} cy={isMobile ? 55 : 78} innerRadius={isMobile ? 32 : 48} outerRadius={isMobile ? 48 : 70} dataKey="value" paddingAngle={3}>
+              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 4 }}>
+                <PieChart width={isMobile ? 130 : 190} height={isMobile ? 130 : 190}>
+                  <Pie data={repartitionCouts.segments} cx={isMobile ? 65 : 95} cy={isMobile ? 65 : 95} innerRadius={isMobile ? 38 : 58} outerRadius={isMobile ? 58 : 85} dataKey="value" paddingAngle={3}>
                     {repartitionCouts.segments.map((entry, i) => <Cell key={i} fill={entry.couleur} />)}
                   </Pie>
                   <Tooltip contentStyle={{ background: 'var(--dash-card)', border: '1px solid var(--dash-border)', borderRadius: 8, fontSize: 11 }} formatter={v => [`${v.toFixed(0)}%`, '']} />
                 </PieChart>
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 7, marginTop: 8 }}>
-                {repartitionCouts.segments.map(s => (
-                  <div key={s.name} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <span style={{ width: 8, height: 8, borderRadius: '50%', background: s.couleur, flexShrink: 0, display: 'inline-block' }} />
-                      <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{s.name}</span>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {repartitionCouts.segments.map(s => {
+                  const montantCHF = Math.round(repartitionCouts.total * s.value / 100);
+                  return (
+                    <div key={s.name}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <span style={{ width: 10, height: 10, borderRadius: 3, background: s.couleur, flexShrink: 0, display: 'inline-block' }} />
+                          <span style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 500 }}>{s.name}</span>
+                        </div>
+                        <div style={{ textAlign: 'right' }}>
+                          <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>{s.value.toFixed(0)}%</span>
+                          <span style={{ fontSize: 11, color: 'var(--text-muted)', marginLeft: 6 }}>CHF {fmtN(montantCHF)}</span>
+                        </div>
+                      </div>
+                      <div style={{ height: 4, background: 'var(--border)', borderRadius: 2 }}>
+                        <div style={{ height: '100%', width: `${s.value}%`, background: s.couleur, borderRadius: 2 }} />
+                      </div>
                     </div>
-                    <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)' }}>{s.value.toFixed(0)}%</span>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </>
           ) : (
-            <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-muted)', fontSize: 13 }}>Aucun coût saisi</div>
+            <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--text-muted)', fontSize: 13 }}>Aucun coût saisi</div>
           )}
         </div>
 
         {/* Avancement global (circle progress) */}
-        <div style={{ ...CARD, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-          <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--text-primary)', marginBottom: 20, width: '100%' }}>Avancement global</div>
+        <div style={{ ...CARD, display: 'flex', flexDirection: 'column' }}>
+          <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--text-primary)', marginBottom: 16 }}>Avancement global</div>
           {actifs.length > 0 ? (
             <>
-              <div style={{ position: 'relative', width: isMobile ? 100 : 140, height: isMobile ? 100 : 140, marginBottom: 12 }}>
-                <svg width={isMobile ? 100 : 140} height={isMobile ? 100 : 140} viewBox="0 0 140 140">
-                  <circle cx="70" cy="70" r="58" fill="none" stroke="var(--border)" strokeWidth="10" />
-                  <circle cx="70" cy="70" r="58" fill="none" stroke="#0d3d6e" strokeWidth="10"
-                    strokeDasharray={`${2 * Math.PI * 58}`}
-                    strokeDashoffset={`${2 * Math.PI * 58 * (1 - avancementMoyen / 100)}`}
-                    strokeLinecap="round" transform="rotate(-90 70 70)"
-                    style={{ transition: 'stroke-dashoffset 0.6s ease' }}
-                  />
-                </svg>
-                <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', textAlign: 'center' }}>
-                  <div style={{ fontSize: 28, fontWeight: 900, color: 'var(--text-primary)', lineHeight: 1 }}>{Math.round(avancementMoyen)}%</div>
-                  <div style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600, marginTop: 2, textTransform: 'uppercase' }}>moy.</div>
+              {/* Cercle + stats côte à côte */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 20, marginBottom: 20 }}>
+                <div style={{ position: 'relative', flexShrink: 0, width: isMobile ? 110 : 150, height: isMobile ? 110 : 150 }}>
+                  <svg width={isMobile ? 110 : 150} height={isMobile ? 110 : 150} viewBox="0 0 150 150">
+                    <circle cx="75" cy="75" r="62" fill="none" stroke="var(--border)" strokeWidth="12" />
+                    <circle cx="75" cy="75" r="62" fill="none" stroke="#0d3d6e" strokeWidth="12"
+                      strokeDasharray={`${2 * Math.PI * 62}`}
+                      strokeDashoffset={`${2 * Math.PI * 62 * (1 - avancementMoyen / 100)}`}
+                      strokeLinecap="round" transform="rotate(-90 75 75)"
+                      style={{ transition: 'stroke-dashoffset 0.6s ease' }}
+                    />
+                  </svg>
+                  <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', textAlign: 'center' }}>
+                    <div style={{ fontSize: 32, fontWeight: 900, color: 'var(--text-primary)', lineHeight: 1, letterSpacing: '-1px' }}>{Math.round(avancementMoyen)}%</div>
+                    <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600, marginTop: 2, textTransform: 'uppercase', letterSpacing: '0.5px' }}>moy.</div>
+                  </div>
+                </div>
+                {/* KPIs rapides à droite du cercle */}
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  {[
+                    { label: 'Rentables', val: kpiReel.nbRentables, total: actifs.length, dot: '#10b981' },
+                    { label: 'Dans les temps', val: Math.max(0, actifs.length - kpiReel.nbDepassement - kpiReel.nbSansSaisie), total: actifs.length, dot: '#0d3d6e' },
+                    { label: 'En retard', val: kpiReel.nbDepassement, total: actifs.length, dot: '#ef4444' },
+                  ].map(l => (
+                    <div key={l.label}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <span style={{ width: 8, height: 8, borderRadius: '50%', background: l.dot, display: 'inline-block', flexShrink: 0 }} />
+                          <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{l.label}</span>
+                        </div>
+                        <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>{l.val} / {l.total}</span>
+                      </div>
+                      <div style={{ height: 3, background: 'var(--border)', borderRadius: 2 }}>
+                        <div style={{ height: '100%', width: l.total > 0 ? `${Math.round(l.val / l.total * 100)}%` : '0%', background: l.dot, borderRadius: 2 }} />
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, width: '100%' }}>
-                {[
-                  { label: 'En avance', count: kpiReel.nbRentables, dot: '#10b981' },
-                  { label: 'Dans les temps', count: Math.max(0, actifs.length - kpiReel.nbDepassement - kpiReel.nbSansSaisie), dot: '#0d3d6e' },
-                  { label: 'En retard', count: kpiReel.nbDepassement, dot: '#ef4444' },
-                ].map(l => (
-                  <div key={l.label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <span style={{ width: 8, height: 8, borderRadius: '50%', background: l.dot, display: 'inline-block' }} />
-                      <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{l.label}</span>
-                    </div>
-                    <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>{l.count}</span>
+              {/* Ligne stats supplémentaires */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, borderTop: '1px solid var(--border)', paddingTop: 14 }}>
+                <div style={{ background: 'var(--bg-glass-2)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 14px' }}>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>Marge réelle moy.</div>
+                  <div style={{ fontSize: 20, fontWeight: 800, color: kpiReel.margeReellePct !== null && kpiReel.margeReellePct >= 15 ? '#10b981' : kpiReel.margeReellePct !== null && kpiReel.margeReellePct >= 0 ? '#f59e0b' : '#ef4444', letterSpacing: '-0.5px' }}>
+                    {kpiReel.margeReellePct !== null ? `${kpiReel.margeReellePct}%` : '—'}
                   </div>
-                ))}
+                </div>
+                <div style={{ background: 'var(--bg-glass-2)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 14px' }}>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>Écart jours moy.</div>
+                  <div style={{ fontSize: 20, fontWeight: 800, letterSpacing: '-0.5px', color: kpiReel.moyenneEcartJours === null ? 'var(--text-muted)' : kpiReel.moyenneEcartJours > 0 ? '#ef4444' : '#10b981' }}>
+                    {kpiReel.moyenneEcartJours !== null ? `${kpiReel.moyenneEcartJours > 0 ? '+' : ''}${kpiReel.moyenneEcartJours}j` : '—'}
+                  </div>
+                </div>
               </div>
             </>
           ) : (
-            <div style={{ padding: '40px 0', color: 'var(--text-muted)', fontSize: 13, textAlign: 'center' }}>Aucun chantier actif</div>
+            <div style={{ padding: '60px 0', color: 'var(--text-muted)', fontSize: 13, textAlign: 'center' }}>Aucun chantier actif</div>
           )}
         </div>
 

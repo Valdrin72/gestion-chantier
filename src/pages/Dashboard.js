@@ -74,11 +74,12 @@ function Dashboard() {
       : null;
     const nbChantiersRenta = chantiersRenta.length;
 
-    // 4. HEURES ENGAGÉES — depuis journal, filtrées sur le mois en cours
-    const maintenant = new Date();
-    const moisCourant = `${maintenant.getFullYear()}-${String(maintenant.getMonth() + 1).padStart(2, '0')}`;
+    // 4. HEURES ENGAGÉES — depuis journal, filtrées par periodeGlobale
+    const { debut: hDebut, fin: hFin } = getIntervallesPeriode(periodeGlobale);
+    const hDebutStr = `${hDebut.getFullYear()}-${String(hDebut.getMonth()+1).padStart(2,'0')}-${String(hDebut.getDate()).padStart(2,'0')}`;
+    const hFinStr   = `${hFin.getFullYear()}-${String(hFin.getMonth()+1).padStart(2,'0')}-${String(hFin.getDate()).padStart(2,'0')}`;
     const heuresEngagees = actifs.reduce((t, c) =>
-      t + (c.journal || []).filter(entry => (entry.date || '').startsWith(moisCourant)).reduce((s, entry) =>
+      t + (c.journal || []).filter(entry => { const d = entry.date || ''; return d >= hDebutStr && d <= hFinStr; }).reduce((s, entry) =>
         s + (entry.employes || []).reduce((es, e) => es + (parseFloat(e.heuresTravaillees) || 0), 0)
       , 0)
     , 0);
@@ -95,7 +96,7 @@ function Dashboard() {
 
     return { caEnCours, cashEnAttente, rentaMoyenne, nbChantiersRenta, heuresEngagees, nbFacturesEnAttente, nbFacturesRetard, nbEmployes, nbChantiersActifs, nbActifsSansDevis };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [actifs, facturesPeriode, devis, chantiers, parametres.employes, parametres.localites, coutsMap]);
+  }, [actifs, facturesPeriode, devis, chantiers, parametres.employes, parametres.localites, coutsMap, periodeGlobale]);
 
   // ── Prévision trésorerie 30 jours ───────────────────────────
   const previsionTreso30j = useMemo(() => {
@@ -708,7 +709,7 @@ function Dashboard() {
             desc: 'Statut "En cours" — chantiers avec heures en cours',
             ...DS.kpi.amber,
             badge: kpiReel.nbDepassement > 0 ? `${kpiReel.nbDepassement} en retard` : null },
-          { label: 'Heures ce mois', Icon: Clock, page: 'heures',
+          { label: periodeGlobale === 'semaine' ? 'Heures semaine' : periodeGlobale === 'annee' ? 'Heures année' : 'Heures ce mois', Icon: Clock, page: 'heures',
             valeur: kpi.heuresEngagees > 0 ? `${fmtN(kpi.heuresEngagees)}h` : '—',
             sous: kpi.nbEmployes > 0 ? `${kpi.nbEmployes} employé${kpi.nbEmployes > 1 ? 's' : ''} mobilisé${kpi.nbEmployes > 1 ? 's' : ''}` : 'Équipes non renseignées',
             desc: 'Σ heures saisies dans le journal (mois courant)',

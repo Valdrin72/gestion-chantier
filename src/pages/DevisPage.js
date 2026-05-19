@@ -25,7 +25,7 @@ function Devis() {
   const [filtreDevis, setFiltreDevis] = useState('Tous');
   const [page, setPage] = useState(0);
 
-  React.useEffect(() => { setPage(0); }, [filtreDevis]);
+  React.useEffect(() => { setPage(0); }, [filtreDevis, periodeGlobale]);
   const [confirmConversion, setConfirmConversion] = useState(null); // { devis, nomChantier }
   const vide = {
     numero: `DEV-${new Date().getFullYear()}-${String(Math.max(0, ...devis.map(d => parseInt((d.numero || '').split('-').pop()) || 0)) + 1).padStart(3, '0')}`,
@@ -427,7 +427,15 @@ function Devis() {
 
       {/* ── Liste des devis ── */}
       {(() => {
-        const devisFiltres = filtreDevis === 'Tous' ? devis : devis.filter(d => d.statut?.trim().toLowerCase() === filtreDevis.toLowerCase());
+        const { debut: dvDebut, fin: dvFin } = getIntervallesPeriode(periodeGlobale);
+        const dvDebutStr = `${dvDebut.getFullYear()}-${String(dvDebut.getMonth()+1).padStart(2,'0')}-${String(dvDebut.getDate()).padStart(2,'0')}`;
+        const dvFinStr   = `${dvFin.getFullYear()}-${String(dvFin.getMonth()+1).padStart(2,'0')}-${String(dvFin.getDate()).padStart(2,'0')}`;
+        const devisBase = devis.filter(d => {
+          const dateD = d.dateEmission || d.date;
+          if (!dateD) return true; // brouillons sans date → toujours visibles
+          return dateD >= dvDebutStr && dateD <= dvFinStr;
+        });
+        const devisFiltres = filtreDevis === 'Tous' ? devisBase : devisBase.filter(d => d.statut?.trim().toLowerCase() === filtreDevis.toLowerCase());
         const totalPages = Math.ceil(devisFiltres.length / PAGE_SIZE);
         const devisPage = devisFiltres.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
         return (

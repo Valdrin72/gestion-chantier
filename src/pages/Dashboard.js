@@ -976,7 +976,7 @@ function Dashboard() {
               <Bot size={15} strokeWidth={2} style={{ color: '#8b5cf6' }} />
               Alertes intelligentes
             </div>
-            <button onClick={naviguerAgents} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 11, color: '#0d3d6e', fontWeight: 600, padding: 0, fontFamily: 'inherit' }}>Tout voir →</button>
+            <button onClick={() => naviguer('agents')} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 11, color: '#0d3d6e', fontWeight: 600, padding: 0, fontFamily: 'inherit' }}>Tout voir →</button>
           </div>
           {agentAlertes.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '28px 16px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
@@ -989,7 +989,7 @@ function Dashboard() {
               {agentAlertes.slice(0, 7).map((a) => {
                 const DOTS = { DANGER: '#EF4444', CRITIQUE: '#ef4444', ATTENTION: '#F59E0B', INFO: '#3B82F6' };
                 const dot = DOTS[a.niveau] || '#3B82F6';
-                const handleClick = () => { marquerLu(a.id); if (a.action?.page) naviguer(a.action.page, a.action.ctx); else naviguerAgents(); };
+                const handleClick = () => { if (a.action?.page) naviguer(a.action.page, a.action.ctx); else naviguer('agents'); };
                 return (
                   <div key={a.id} onClick={handleClick}
                     style={{ padding: '9px 11px', borderRadius: 10, border: `1px solid ${a.lu ? 'var(--dash-border)' : dot + '40'}`, cursor: 'pointer', background: a.lu ? 'var(--bg-glass)' : dot + '08', transition: 'all 0.15s', display: 'flex', alignItems: 'flex-start', gap: 9 }}

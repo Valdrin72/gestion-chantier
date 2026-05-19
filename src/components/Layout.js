@@ -166,7 +166,7 @@ function NotificationBell({ naviguer }) {
           transition: 'all 0.15s',
           flexShrink: 0,
         }}
-        onMouseEnter={e => { if (!ouvert) { e.currentTarget.style.background = 'rgba(59,130,246,0.08)'; e.currentTarget.style.borderColor = 'rgba(59,130,246,0.2)'; } }}
+        onMouseEnter={e => { if (!ouvert) { e.currentTarget.style.background = 'rgba(13,61,110,0.10)'; e.currentTarget.style.borderColor = 'rgba(13,61,110,0.25)'; } }}
         onMouseLeave={e => { if (!ouvert) { e.currentTarget.style.background = 'var(--bg-glass-2)'; e.currentTarget.style.borderColor = 'var(--border)'; } }}
       >
         <Bell size={16} strokeWidth={2} />
@@ -296,7 +296,7 @@ function NotificationBell({ naviguer }) {
                     {!estLue && (
                       <span style={{
                         width: 7, height: 7, borderRadius: '50%',
-                        background: '#3b82f6', flexShrink: 0, marginTop: 4,
+                        background: '#0d3d6e', flexShrink: 0, marginTop: 4,
                       }} />
                     )}
                   </button>
@@ -351,7 +351,7 @@ export function Topbar({ setSidebarOuvert, canGoBack, page, revenirArriere, navA
               fontSize: 13, fontWeight: 600, fontFamily: 'inherit',
               transition: 'all 0.15s',
             }}
-            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(59,130,246,0.12)'; e.currentTarget.style.color = '#60a5fa'; e.currentTarget.style.borderColor = 'rgba(59,130,246,0.3)'; }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(13,61,110,0.10)'; e.currentTarget.style.color = '#0d3d6e'; e.currentTarget.style.borderColor = 'rgba(13,61,110,0.25)'; }}
             onMouseLeave={e => { e.currentTarget.style.background = 'var(--bg-glass-2)'; e.currentTarget.style.color = 'var(--text-secondary)'; e.currentTarget.style.borderColor = 'var(--border-hover)'; }}
           >
             <ChevronRight size={14} style={{ transform: 'rotate(180deg)' }} />

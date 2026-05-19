@@ -551,7 +551,7 @@ export default function Finances({
           <button key={t.id} onClick={() => setOnglet(t.id)} style={{
             background: 'transparent', border: 'none',
             borderBottom: `2px solid ${onglet === t.id ? 'rgba(59,130,246,0.8)' : 'transparent'}`,
-            color: onglet === t.id ? '#60a5fa' : 'var(--text-secondary)',
+            color: onglet === t.id ? '#0d3d6e' : 'var(--text-secondary)',
             padding: '10px 22px', fontSize: 14,
             fontWeight: onglet === t.id ? 700 : 500,
             cursor: 'pointer', transition: 'all 0.18s',

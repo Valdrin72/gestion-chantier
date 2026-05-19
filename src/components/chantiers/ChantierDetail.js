@@ -216,10 +216,10 @@ function ChantierDetail({ chantier, detailOnglet, setDetailOnglet, modeCompleter
   })();
 
   const tiles = [
-    { id: 'renta', icone: 'renta', titre: 'RENTABILITÉ', ...margeTile },
-    { id: 'av',    icone: 'av', titre: 'AVANCEMENT',  ...avTile },
-    { id: 'plan',  icone: 'plan', titre: 'PLANNING',    ...planTile },
-    { id: 'act',   icone: actionTile.icone, titre: 'ACTION', val: actionTile.val, label: actionTile.label, couleur: actionTile.couleur },
+    { id: 'renta', icone: 'renta', titre: 'RENTABILITÉ', ...margeTile, desc: '(CA − coûts réels) / CA × 100' },
+    { id: 'av',    icone: 'av', titre: 'AVANCEMENT',  ...avTile,    desc: 'Dates uniques du journal / jours prévus' },
+    { id: 'plan',  icone: 'plan', titre: 'PLANNING',    ...planTile,  desc: 'Jours prévus − jours réalisés (journal)' },
+    { id: 'act',   icone: actionTile.icone, titre: 'ACTION', val: actionTile.val, label: actionTile.label, couleur: actionTile.couleur, desc: 'Recommandation basée sur retard et rentabilité' },
   ];
 
   return (<React.Fragment key="detail">
@@ -323,6 +323,11 @@ function ChantierDetail({ chantier, detailOnglet, setDetailOnglet, modeCompleter
             <div style={{ fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.35 }}>
               {t.label}
             </div>
+            {t.desc && (
+              <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 5, fontStyle: 'italic', opacity: 0.8, lineHeight: 1.3 }}>
+                {t.desc}
+              </div>
+            )}
           </div>
         ))}
       </div>

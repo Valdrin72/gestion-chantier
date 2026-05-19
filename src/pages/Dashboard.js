@@ -695,21 +695,25 @@ function Dashboard() {
           { label: "CA actif", Icon: DollarSign, page: 'devis',
             valeur: `CHF ${fmtN(kpi.caEnCours)} HT`,
             sous: kpi.nbChantiersActifs > 0 ? `${kpi.nbChantiersActifs} chantier${kpi.nbChantiersActifs !== 1 ? 's' : ''} · En cours + Planifiés` : 'Aucun chantier en cours',
+            desc: 'Σ montantHT des devis liés aux chantiers actifs',
             ...DS.kpi.blue },
           { label: 'Marge moyenne', Icon: TrendingUp, page: 'analyse',
             valeur: kpiReel.margeReellePct !== null ? `${kpiReel.margeReellePct}%` : '—',
             sous: kpiReel.nbActives > 0 ? `${kpiReel.nbActives} chantier${kpiReel.nbActives > 1 ? 's' : ''} analysé${kpiReel.nbActives > 1 ? 's' : ''}` : 'Aucun coût saisi',
+            desc: 'Σ marge réelle / Σ CA (pondérée, hors chantiers sans saisie)',
             ...(kpiReel.margeReellePct === null || kpiReel.margeReellePct >= 15 ? DS.kpi.green : kpiReel.margeReellePct >= 0 ? DS.kpi.amber : DS.kpi.red) },
           { label: 'Chantiers actifs', Icon: HardHat, page: 'chantiers',
             valeur: `${kpi.nbChantiersActifs}`,
             sous: kpiReel.nbDepassement > 0 ? `${kpiReel.nbDepassement} en retard` : 'Tous dans les temps',
+            desc: 'Statut "En cours" — chantiers avec heures en cours',
             ...DS.kpi.amber,
             badge: kpiReel.nbDepassement > 0 ? `${kpiReel.nbDepassement} en retard` : null },
           { label: 'Heures ce mois', Icon: Clock, page: 'heures',
             valeur: kpi.heuresEngagees > 0 ? `${fmtN(kpi.heuresEngagees)}h` : '—',
             sous: kpi.nbEmployes > 0 ? `${kpi.nbEmployes} employé${kpi.nbEmployes > 1 ? 's' : ''} mobilisé${kpi.nbEmployes > 1 ? 's' : ''}` : 'Équipes non renseignées',
+            desc: 'Σ heures saisies dans le journal (mois courant)',
             ...DS.kpi.purple },
-        ].map(({ label, Icon, page: dest, valeur, sous, gradient, glow, badge }) => (
+        ].map(({ label, Icon, page: dest, valeur, sous, desc, gradient, glow, badge }) => (
           <div key={label} onClick={() => naviguer(dest)} className="kpi-card"
             style={{ background: gradient, borderRadius: 16, padding: '22px 20px', minHeight: 130, cursor: 'pointer', boxShadow: `0 4px 20px ${glow}, 0 1px 4px rgba(0,0,0,0.12)`, border: '1px solid rgba(255,255,255,0.15)', transition: 'transform 0.18s, box-shadow 0.18s', position: 'relative', overflow: 'hidden' }}
             onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = `0 10px 30px ${glow}, 0 2px 8px rgba(0,0,0,0.18)`; }}
@@ -726,6 +730,7 @@ function Dashboard() {
               <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.62)', fontWeight: 500 }}>{sous}</span>
               {badge && <span style={{ background: 'rgba(239,68,68,0.85)', color: 'white', borderRadius: 20, padding: '1px 7px', fontSize: 12, fontWeight: 700 }}>{badge}</span>}
             </div>
+            {desc && <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.4)', marginTop: 5, fontStyle: 'italic' }}>{desc}</div>}
           </div>
         ))}
       </div>

@@ -174,10 +174,10 @@ function Devis() {
           ? Math.round(enAttente.reduce((s, d) => { const dt = d.dateEmission || d.date; return dt ? s + Math.floor((now - new Date(dt)) / 86400000) : s; }, 0) / enAttente.length)
           : null;
         const kpiItems = [
-          { label: 'CA SIGNÉ',            val: `CHF ${fmtN(caSigné)}`, sous: `${devisAcceptes.length} accepté${devisAcceptes.length !== 1 ? 's' : ''} / ${devisPeriode.length} ce ${periodeGlobale === 'semaine' ? 'sem.' : periodeGlobale === 'mois' ? 'mois' : 'an'}`, Icon: DollarSign, ...DS.kpi.green },
-          { label: "TAUX D'ACCEPTATION",  val: `${tauxAcceptation}%`, sous: `sur ${devisPeriode.length} devis (période)`, Icon: TrendingUp, ...DS.kpi.blue },
-          { label: 'EN ATTENTE RÉPONSE',  val: enAttente.length, sous: montantAttente > 0 ? `CHF ${fmtN(montantAttente)} en jeu` : 'Aucun en cours', Icon: Clock, ...DS.kpi.amber },
-          { label: 'DÉLAI MOYEN',         val: delaisMoyen !== null ? `${delaisMoyen}j` : '—', sous: 'depuis envoi', Icon: FileText, ...DS.kpi.purple },
+          { label: 'CA SIGNÉ',            val: `CHF ${fmtN(caSigné)}`, sous: `${devisAcceptes.length} accepté${devisAcceptes.length !== 1 ? 's' : ''} / ${devisPeriode.length} ce ${periodeGlobale === 'semaine' ? 'sem.' : periodeGlobale === 'mois' ? 'mois' : 'an'}`, desc: 'Σ montantHT des devis acceptés sur la période', Icon: DollarSign, ...DS.kpi.green },
+          { label: "TAUX D'ACCEPTATION",  val: `${tauxAcceptation}%`, sous: `sur ${devisPeriode.length} devis (période)`, desc: 'Devis acceptés / total envoyés × 100', Icon: TrendingUp, ...DS.kpi.blue },
+          { label: 'EN ATTENTE RÉPONSE',  val: enAttente.length, sous: montantAttente > 0 ? `CHF ${fmtN(montantAttente)} en jeu` : 'Aucun en cours', desc: 'Devis envoyés sans réponse client', Icon: Clock, ...DS.kpi.amber },
+          { label: 'DÉLAI MOYEN',         val: delaisMoyen !== null ? `${delaisMoyen}j` : '—', sous: 'depuis envoi', desc: 'Moy. jours depuis date d\'envoi (en attente)', Icon: FileText, ...DS.kpi.purple },
         ];
         return (
           <div className="kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'var(--g4)', gap: 16, marginBottom: 20 }}>
@@ -191,6 +191,7 @@ function Devis() {
                 <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.7)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 5, position: 'relative' }}>{k.label}</div>
                 <div className="kpi-val" style={{ fontSize: 26, fontWeight: 900, color: '#fff', letterSpacing: '-0.8px', lineHeight: 1, position: 'relative' }}>{k.val}</div>
                 {k.sous && <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.62)', marginTop: 5, position: 'relative' }}>{k.sous}</div>}
+                {k.desc && <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.45)', marginTop: 3, fontStyle: 'italic', position: 'relative' }}>{k.desc}</div>}
               </div>
             ))}
           </div>

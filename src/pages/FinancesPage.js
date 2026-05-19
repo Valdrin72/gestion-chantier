@@ -306,10 +306,10 @@ function Tresorerie({ factures = [], chantiers = [], clients = [], devis = [], p
           {/* KPIs cumulés */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 14, marginBottom: 20 }}>
             {[
-              { label: 'CA facturé total',    val: `CHF ${fmt(data.caTotalFacture)}`,  couleur: '#0d3d6e', Icon: FileText,   sub: `${data.nbFactures} facture${data.nbFactures !== 1 ? 's' : ''}` },
-              { label: 'Encaissé total',      val: `CHF ${fmt(data.encaisseTotal)}`,    couleur: '#10b981', Icon: DollarSign, sub: `Taux ${data.tauxEncaissement}%` },
-              { label: 'Ticket moyen',        val: `CHF ${fmt(data.ticketMoyen)}`,      couleur: '#8b5cf6', Icon: TrendingUp, sub: 'par facture' },
-              { label: 'Délai paiement moyen', val: data.delaiMoyen !== null ? `${data.delaiMoyen} j` : '—', couleur: '#f59e0b', Icon: Clock, sub: data.delaiMoyen !== null ? 'sur factures payées' : 'pas encore de données' },
+              { label: 'CA facturé total',    val: `CHF ${fmt(data.caTotalFacture)}`,  couleur: '#0d3d6e', Icon: FileText,   sub: `${data.nbFactures} facture${data.nbFactures !== 1 ? 's' : ''}`, desc: 'Σ montantTTC de toutes les factures émises' },
+              { label: 'Encaissé total',      val: `CHF ${fmt(data.encaisseTotal)}`,    couleur: '#10b981', Icon: DollarSign, sub: `Taux ${data.tauxEncaissement}%`, desc: 'Σ paiements reçus / CA facturé × 100' },
+              { label: 'Ticket moyen',        val: `CHF ${fmt(data.ticketMoyen)}`,      couleur: '#8b5cf6', Icon: TrendingUp, sub: 'par facture', desc: 'CA total ÷ nombre de factures émises' },
+              { label: 'Délai paiement moyen', val: data.delaiMoyen !== null ? `${data.delaiMoyen} j` : '—', couleur: '#f59e0b', Icon: Clock, sub: data.delaiMoyen !== null ? 'sur factures payées' : 'pas encore de données', desc: 'Moy. jours entre émission et encaissement' },
             ].map(k => (
               <div key={k.label} style={{ background: 'var(--ds-card-bg)', border: '1px solid var(--ds-card-border)', borderRadius: 14, padding: '18px 20px', boxShadow: 'var(--ds-card-shadow)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
@@ -320,6 +320,7 @@ function Tresorerie({ factures = [], chantiers = [], clients = [], devis = [], p
                 </div>
                 <div style={{ fontSize: 22, fontWeight: 900, color: 'var(--text-primary)', letterSpacing: '-0.5px', lineHeight: 1.1 }}>{k.val}</div>
                 <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 5 }}>{k.sub}</div>
+                {k.desc && <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 3, fontStyle: 'italic', opacity: 0.75 }}>{k.desc}</div>}
               </div>
             ))}
           </div>
@@ -508,10 +509,10 @@ export default function Finances({
       {/* ── KPIs résumé — gradients saturés (identiques Dashboard) ── */}
       <div className="kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'var(--g4)', gap: 14, marginBottom: 28 }}>
         {[
-          { label: 'Total facturé',  val: `CHF ${fmt(kpis.totalFacture)}`,  sub: 'Toutes factures émises', gradient: 'linear-gradient(135deg, #1E40AF 0%, #3B82F6 100%)', glow: 'rgba(59,130,246,0.32)',   Icon: FileText },
-          { label: 'Total encaissé', val: `CHF ${fmt(kpis.totalPaye)}`,     sub: 'Paiements reçus des clients',  gradient: 'linear-gradient(135deg, #065F46 0%, #10B981 100%)', glow: 'rgba(16,185,129,0.32)',  Icon: DollarSign },
-          { label: 'En attente',     val: `CHF ${fmt(kpis.enAttente)}`,     sub: 'Pas encore échu',              gradient: 'linear-gradient(135deg, #92400E 0%, #F59E0B 100%)', glow: 'rgba(245,158,11,0.32)', Icon: Clock },
-          { label: 'En retard',      val: `CHF ${fmt(kpis.enRetard)}`,      sub: 'Échéance dépassée — à relancer', gradient: 'linear-gradient(135deg, #991B1B 0%, #EF4444 100%)', glow: 'rgba(239,68,68,0.32)',   Icon: AlertTriangle },
+          { label: 'Total facturé',  val: `CHF ${fmt(kpis.totalFacture)}`,  sub: 'Toutes factures émises', desc: 'Σ montantTTC hors annulées', gradient: 'linear-gradient(135deg, #1E40AF 0%, #3B82F6 100%)', glow: 'rgba(59,130,246,0.32)',   Icon: FileText },
+          { label: 'Total encaissé', val: `CHF ${fmt(kpis.totalPaye)}`,     sub: 'Paiements reçus des clients', desc: 'Σ montantPaye sur toutes les factures', gradient: 'linear-gradient(135deg, #065F46 0%, #10B981 100%)', glow: 'rgba(16,185,129,0.32)',  Icon: DollarSign },
+          { label: 'En attente',     val: `CHF ${fmt(kpis.enAttente)}`,     sub: 'Pas encore échu', desc: 'Factures envoyées/partielles — échéance future', gradient: 'linear-gradient(135deg, #92400E 0%, #F59E0B 100%)', glow: 'rgba(245,158,11,0.32)', Icon: Clock },
+          { label: 'En retard',      val: `CHF ${fmt(kpis.enRetard)}`,      sub: 'Échéance dépassée — à relancer', desc: 'Factures impayées dont l\'échéance est passée', gradient: 'linear-gradient(135deg, #991B1B 0%, #EF4444 100%)', glow: 'rgba(239,68,68,0.32)',   Icon: AlertTriangle },
         ].map(k => (
           <div key={k.label} className="kpi-card" style={{
             background: k.gradient, borderRadius: 16, padding: '22px 20px', minHeight: 130,
@@ -527,6 +528,7 @@ export default function Finances({
             <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.72)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 6 }}>{k.label}</div>
             <div className="kpi-val" style={{ fontSize: 26, fontWeight: 900, color: '#ffffff', letterSpacing: '-0.8px', lineHeight: 1, position: 'relative' }}>{k.val}</div>
             <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.6)', marginTop: 8, position: 'relative' }}>{k.sub}</div>
+            {k.desc && <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.42)', marginTop: 3, fontStyle: 'italic', position: 'relative' }}>{k.desc}</div>}
           </div>
         ))}
       </div>

@@ -519,7 +519,8 @@ function Devis() {
                                   if (!chantierLie) {
                                     if (!await confirmer('Ce devis n\'a pas de chantier lié.\nLa facture sera créée sans chantierId — elle n\'apparaîtra pas dans le suivi de facturation des chantiers.\n\nContinuer quand même ?', { labelOui: 'Continuer', danger: false })) return;
                                   }
-                                  const nouvelleFacture = creerFactureDepuisDevis(d, chantierLie || null, factures, parseFloat(d.tva) || 8.1);
+                                  const tauxTVA = parseFloat(d.tva) || parseFloat(parametres?.parametres?.tauxTVA) || 8.1;
+                                  const nouvelleFacture = creerFactureDepuisDevis(d, chantierLie || null, factures, tauxTVA);
                                   setFactures([...factures, nouvelleFacture]);
                                   naviguer('finances');
                                 }}

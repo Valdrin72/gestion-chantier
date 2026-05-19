@@ -242,14 +242,30 @@ function Parametres({ parametres, setParametres, clients = [], setClients = () =
         <div style={carteStyle}>
           <div className="ds-card-title" style={{ marginBottom: '20px' }}>Paramètres des Devis</div>
           <div style={{ display: 'grid', gridTemplateColumns: 'var(--g6)', gap: '15px' }}>
-            {[['Marge cible (%)', 'margeCible'], ['Seuil min. (%)', 'seuilRentabiliteMin'], ['Plafond crédibilité (%)', 'plafondCredi'], ['Frais généraux (%)', 'tauxFraisGeneraux'], ['Coeff. MO', 'coefficientMainOeuvre'], ['TVA (%)', 'tauxTVA']].map(([label, key]) => (
-              <div key={key} style={{ background: 'var(--bg-glass-2)', border: '1px solid var(--border)', borderRadius: '12px', padding: '15px' }}>
-                <label style={labelStyle}>{label}</label>
-                <input type="number" value={parametres.parametres?.[key] || ''}
-                  onChange={e => sauv({ ...parametres, parametres: { ...parametres.parametres, [key]: parseFloat(e.target.value) } })}
-                  style={{ ...inputStyle, fontWeight: 'bold', fontSize: '18px', color: C.primaire, borderColor: C.primaire, borderWidth: '2px' }} />
-              </div>
-            ))}
+            {[['Marge cible (%)', 'margeCible'], ['Seuil min. (%)', 'seuilRentabiliteMin'], ['Plafond crédibilité (%)', 'plafondCredi'], ['Frais généraux (%)', 'tauxFraisGeneraux'], ['Coeff. MO', 'coefficientMainOeuvre'], ['TVA (%)', 'tauxTVA']].map(([label, key]) => {
+              const isTVA = key === 'tauxTVA';
+              const val = parametres.parametres?.[key];
+              return (
+                <div key={key} style={{ background: isTVA ? 'rgba(16,185,129,0.05)' : 'var(--bg-glass-2)', border: `1px solid ${isTVA ? 'rgba(16,185,129,0.3)' : 'var(--border)'}`, borderRadius: '12px', padding: '15px' }}>
+                  <label style={labelStyle}>{label}</label>
+                  <input type="number"
+                    value={val ?? ''}
+                    placeholder={isTVA ? '8.1' : ''}
+                    onChange={e => sauv({ ...parametres, parametres: { ...parametres.parametres, [key]: parseFloat(e.target.value) } })}
+                    style={{ ...inputStyle, fontWeight: 'bold', fontSize: '18px', color: isTVA ? '#10b981' : C.primaire, borderColor: isTVA ? '#10b981' : C.primaire, borderWidth: '2px' }} />
+                  {isTVA && (
+                    <div style={{ marginTop: 8, fontSize: 11, color: 'var(--text-muted)', lineHeight: 1.5 }}>
+                      {(val == null || isNaN(val))
+                        ? <span style={{ color: '#10b981', fontWeight: 600 }}>✓ 8.1% appliqué automatiquement (taux légal CH 2024)</span>
+                        : <span>Taux actif : <strong style={{ color: '#10b981' }}>{val}%</strong> — TTC = HT × {(1 + val / 100).toFixed(3)}</span>
+                      }
+                      <br />
+                      <span style={{ color: 'var(--text-muted)', fontSize: 10 }}>Standard BTP Suisse : 8.1% · Pas de double comptage — appliqué une seule fois</span>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
       )}

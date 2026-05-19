@@ -294,7 +294,7 @@ export default function Agents({
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                 {priorites.map((p, i) => (
                   <div key={i} style={{ ...DS.card, padding: '16px 20px', display: 'flex', gap: 16, alignItems: 'flex-start', borderLeft: `4px solid ${i === 0 ? '#ef4444' : i === 1 ? '#f59e0b' : '#0d3d6e'}` }}>
-                    <div style={{ width: 32, height: 32, borderRadius: '50%', background: i === 0 ? '#fee2e2' : i === 1 ? '#fef3c7' : '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <div style={{ width: 32, height: 32, borderRadius: '50%', background: i === 0 ? '#fee2e2' : i === 1 ? '#fef3c7' : '#e8f0f9', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                       {i === 0 ? <AlertTriangle size={15} color="#ef4444" /> : i === 1 ? <AlertCircle size={15} color="#f59e0b" /> : <Target size={15} color="#0d3d6e" />}
                     </div>
                     <div style={{ flex: 1 }}>
@@ -314,7 +314,7 @@ export default function Agents({
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginTop: 20 }}>
                 {[
                   { label: 'Trésorerie J+30', val: agentData?.TresoreriePredictor?.solde30 !== undefined ? `CHF ${fmtN(agentData.TresoreriePredictor.solde30)}` : '—', couleur: (agentData?.TresoreriePredictor?.solde30 || 0) >= 0 ? '#10b981' : '#ef4444', sub: 'Solde net prévu' },
-                  { label: 'CA Projeté Année', val: agentData?.ProjectionAnnuelle?.caProjecte ? `CHF ${fmtN(agentData.ProjectionAnnuelle.caProjecte)}` : '—', couleur: '#3b82f6', sub: `${agentData?.ProjectionAnnuelle?.txAtteinte || '—'}% de l'objectif` },
+                  { label: 'CA Projeté Année', val: agentData?.ProjectionAnnuelle?.caProjecte ? `CHF ${fmtN(agentData.ProjectionAnnuelle.caProjecte)}` : '—', couleur: '#0d3d6e', sub: `${agentData?.ProjectionAnnuelle?.txAtteinte || '—'}% de l'objectif` },
                   { label: 'À Facturer Maintenant', val: agentData?.OptimisationFacturation?.totalFacturable ? `CHF ${fmtN(agentData.OptimisationFacturation.totalFacturable)}` : '—', couleur: '#10b981', sub: `${agentData?.OptimisationFacturation?.opportunites?.length || 0} chantier(s)` },
                   { label: 'DSO Moyen', val: agentData?.DSOAnalyse?.dsoMoyen !== undefined ? `${agentData.DSOAnalyse.dsoMoyen} jours` : '—', couleur: (agentData?.DSOAnalyse?.dsoMoyen || 0) <= 30 ? '#10b981' : '#ef4444', sub: 'Standard BTP : 30j' },
                   { label: 'Qualité Données', val: agentData?.AnomaliesDonnees?.score !== undefined ? `${agentData.AnomaliesDonnees.score}/100` : '—', couleur: (agentData?.AnomaliesDonnees?.score || 0) >= 80 ? '#10b981' : '#f59e0b', sub: `${agentData?.AnomaliesDonnees?.nbAnomalies || 0} anomalie(s)` },
@@ -517,7 +517,7 @@ export default function Agents({
               <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 12 }}>Projection Annuelle</div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
                 {[
-                  { label: 'CA Réalisé YTD', val: `CHF ${fmtN(agentData.ProjectionAnnuelle.caRealise || 0)}`, couleur: '#3b82f6', sub: `Marge : ${Number.isFinite(agentData.ProjectionAnnuelle.margeYTD) ? `${Math.round(agentData.ProjectionAnnuelle.margeYTD * 10) / 10}` : '—'}%` },
+                  { label: 'CA Réalisé YTD', val: `CHF ${fmtN(agentData.ProjectionAnnuelle.caRealise || 0)}`, couleur: '#0d3d6e', sub: `Marge : ${Number.isFinite(agentData.ProjectionAnnuelle.margeYTD) ? `${Math.round(agentData.ProjectionAnnuelle.margeYTD * 10) / 10}` : '—'}%` },
                   { label: 'CA Projeté Fin Année', val: `CHF ${fmtN(agentData.ProjectionAnnuelle.caProjecte || 0)}`, couleur: '#10b981', sub: `Moyenne mensuelle CHF ${fmtN(agentData.ProjectionAnnuelle.moyenneMensuelle || 0)}` },
                   { label: 'Atteinte Objectif', val: agentData.ProjectionAnnuelle.txAtteinte !== null ? `${agentData.ProjectionAnnuelle.txAtteinte}%` : 'N/A', couleur: (agentData.ProjectionAnnuelle.txAtteinte || 0) >= 100 ? '#10b981' : '#f59e0b', sub: agentData.ProjectionAnnuelle.objectifCA ? `Objectif CHF ${fmtN(agentData.ProjectionAnnuelle.objectifCA)}` : 'Définir dans Analyse' },
                 ].map(item => (
@@ -724,9 +724,9 @@ export default function Agents({
                 </div>
                 {agentData.RapportNaturel.actionPrincipale && (
                   <div style={{ marginTop: 20, padding: '12px 16px', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 10 }}>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: '#1d4ed8', textTransform: 'uppercase', marginBottom: 4 }}>Action prioritaire recommandée</div>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: '#1e40af' }}>{agentData.RapportNaturel.actionPrincipale.icone} {agentData.RapportNaturel.actionPrincipale.action}</div>
-                    <div style={{ fontSize: 12, color: '#3b82f6', marginTop: 2 }}>{agentData.RapportNaturel.actionPrincipale.detail}</div>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: '#0d3d6e', textTransform: 'uppercase', marginBottom: 4 }}>Action prioritaire recommandée</div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: '#0d3d6e' }}>{agentData.RapportNaturel.actionPrincipale.icone} {agentData.RapportNaturel.actionPrincipale.action}</div>
+                    <div style={{ fontSize: 12, color: '#0d3d6e', marginTop: 2 }}>{agentData.RapportNaturel.actionPrincipale.detail}</div>
                   </div>
                 )}
               </div>

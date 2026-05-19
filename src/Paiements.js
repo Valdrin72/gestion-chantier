@@ -41,7 +41,7 @@ export default function Paiements({ chantiers, clients, devis = [], paiementsDat
     if (enRetard) return '#ef4444';
     if (isPaye({ statut })) return '#10b981';
     if (isAttente({ statut })) return '#f59e0b';
-    return '#3b82f6';
+    return '#0d3d6e';
   };
 
   const ajouterPaiement = (chantierId) => {
@@ -224,7 +224,7 @@ export default function Paiements({ chantiers, clients, devis = [], paiementsDat
                     </div>
                     {/* Type */}
                     <div style={{ width: 110, flexShrink: 0 }}>
-                      <span style={{ background: '#3b82f622', color: '#3b82f6', padding: '3px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: 700, letterSpacing: '0.3px' }}>{p.type}</span>
+                      <span style={{ background: '#0d3d6e18', color: '#0d3d6e', padding: '3px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: 700, letterSpacing: '0.3px' }}>{p.type}</span>
                     </div>
                     {/* Montant */}
                     <div style={{ flex: 1 }}>
@@ -342,7 +342,7 @@ export default function Paiements({ chantiers, clients, devis = [], paiementsDat
                 WebkitBackdropFilter: 'blur(14px) saturate(1.6)',
                 borderRadius: '14px', boxShadow: 'var(--shadow-card)',
                 border: '1px solid rgba(255,255,255,0.08)',
-                borderLeft: `4px solid ${montantRetard > 0 ? '#ef4444' : montantPaye >= montantTotal && montantTotal > 0 ? '#10b981' : '#3b82f6'}`,
+                borderLeft: `4px solid ${montantRetard > 0 ? '#ef4444' : montantPaye >= montantTotal && montantTotal > 0 ? '#10b981' : '#0d3d6e'}`,
                 padding: '20px', cursor: 'pointer',
               }}
               onClick={() => setChantierSelectionne(c)}>

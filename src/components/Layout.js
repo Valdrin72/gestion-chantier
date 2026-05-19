@@ -102,7 +102,7 @@ function dateRelative(dateStr) {
 function IconeNiveau({ niveau }) {
   if (niveau === 'critique') return <AlertTriangle size={15} style={{ color: '#ef4444', flexShrink: 0 }} />;
   if (niveau === 'warning')  return <AlertTriangle size={15} style={{ color: '#f59e0b', flexShrink: 0 }} />;
-  return <Info size={15} style={{ color: '#3b82f6', flexShrink: 0 }} />;
+  return <Info size={15} style={{ color: '#0d3d6e', flexShrink: 0 }} />;
 }
 
 // ── Centre de notifications ──────────────────────────────────────────────────
@@ -161,7 +161,7 @@ function NotificationBell({ naviguer }) {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          color: ouvert ? '#60a5fa' : 'var(--text-secondary)',
+          color: ouvert ? '#0d3d6e' : 'var(--text-secondary)',
           position: 'relative',
           transition: 'all 0.15s',
           flexShrink: 0,
@@ -229,7 +229,7 @@ function NotificationBell({ naviguer }) {
                   fontFamily: 'inherit', padding: '2px 6px', borderRadius: 6,
                   transition: 'color 0.15s',
                 }}
-                onMouseEnter={e => e.currentTarget.style.color = '#3b82f6'}
+                onMouseEnter={e => e.currentTarget.style.color = '#0d3d6e'}
                 onMouseLeave={e => e.currentTarget.style.color = 'var(--text-secondary)'}
               >
                 Tout marquer lu

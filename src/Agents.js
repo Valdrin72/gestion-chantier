@@ -755,7 +755,7 @@ export default function Agents({
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10 }}>
                     {[
-                      { label: 'Heures saisies', val: `${r.heuresSaisies}h`, couleur: '#3b82f6' },
+                      { label: 'Heures saisies', val: `${r.heuresSaisies}h`, couleur: '#0d3d6e' },
                       { label: 'CA facturé', val: `CHF ${fmtN(r.caFacture)}`, couleur: '#10b981' },
                       { label: 'Chantiers actifs', val: r.nbActifs, couleur: '#f59e0b' },
                       { label: 'En retard', val: r.nbEnRetard, couleur: r.nbEnRetard > 0 ? '#ef4444' : '#10b981' },

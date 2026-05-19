@@ -293,13 +293,13 @@ export default function Agents({
               <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', color: 'var(--text-muted)', marginBottom: 12 }}>Vos {priorites.length} priorités d'action</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                 {priorites.map((p, i) => (
-                  <div key={i} style={{ ...DS.card, padding: '16px 20px', display: 'flex', gap: 16, alignItems: 'flex-start', borderLeft: `4px solid ${i === 0 ? '#ef4444' : i === 1 ? '#f59e0b' : '#3b82f6'}` }}>
+                  <div key={i} style={{ ...DS.card, padding: '16px 20px', display: 'flex', gap: 16, alignItems: 'flex-start', borderLeft: `4px solid ${i === 0 ? '#ef4444' : i === 1 ? '#f59e0b' : '#0d3d6e'}` }}>
                     <div style={{ width: 32, height: 32, borderRadius: '50%', background: i === 0 ? '#fee2e2' : i === 1 ? '#fef3c7' : '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                       {i === 0 ? <AlertTriangle size={15} color="#ef4444" /> : i === 1 ? <AlertCircle size={15} color="#f59e0b" /> : <Target size={15} color="#0d3d6e" />}
                     </div>
                     <div style={{ flex: 1 }}>
                       <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 5, flexWrap: 'wrap' }}>
-                        <span style={{ background: i === 0 ? '#fee2e2' : i === 1 ? '#fef3c7' : '#eff6ff', color: i === 0 ? '#991b1b' : i === 1 ? '#92400e' : '#1e40af', borderRadius: 20, padding: '2px 10px', fontSize: 10, fontWeight: 700 }}>{p.categorie}</span>
+                        <span style={{ background: i === 0 ? '#fee2e2' : i === 1 ? '#fef3c7' : '#e8f0f9', color: i === 0 ? '#991b1b' : i === 1 ? '#92400e' : '#0d3d6e', borderRadius: 20, padding: '2px 10px', fontSize: 10, fontWeight: 700 }}>{p.categorie}</span>
                         <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Impact : {p.impact}</span>
                       </div>
                       <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-primary)', marginBottom: 4 }}>{p.action}</div>

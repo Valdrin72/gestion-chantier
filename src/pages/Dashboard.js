@@ -816,7 +816,7 @@ function Dashboard() {
                   return (
                     <div key={c.id} onClick={() => naviguer('chantiers', { chantierActif: c.id })}
                       style={{ display: 'flex', alignItems: 'center', gap: 0, borderRadius: 14, border: '1px solid var(--dash-border)', cursor: 'pointer', background: 'var(--ds-card-bg)', overflow: 'hidden', transition: 'all 0.15s' }}
-                      onMouseEnter={e => { e.currentTarget.style.borderColor = '#3b82f6'; e.currentTarget.style.boxShadow = '0 2px 12px rgba(59,130,246,0.1)'; }}
+                      onMouseEnter={e => { e.currentTarget.style.borderColor = '#0d3d6e'; e.currentTarget.style.boxShadow = '0 2px 12px rgba(13,61,110,0.1)'; }}
                       onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--dash-border)'; e.currentTarget.style.boxShadow = 'none'; }}
                     >
                       {/* Contenu */}
@@ -905,7 +905,7 @@ function Dashboard() {
           </div>
           {(() => {
             const { total, top3, interpretation, dateLimite, couverture } = previsionTreso30j; // alerteFaible unused
-            const couleurTotal = interpretation?.couleur || '#3b82f6';
+            const couleurTotal = interpretation?.couleur || '#0d3d6e';
             return (
               <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px solid var(--border)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
@@ -1044,7 +1044,7 @@ function Dashboard() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8, width: '100%' }}>
                 {[
                   { label: 'En avance', count: kpiReel.nbRentables, dot: '#10b981' },
-                  { label: 'Dans les temps', count: Math.max(0, actifs.length - kpiReel.nbDepassement - kpiReel.nbSansSaisie), dot: '#3b82f6' },
+                  { label: 'Dans les temps', count: Math.max(0, actifs.length - kpiReel.nbDepassement - kpiReel.nbSansSaisie), dot: '#0d3d6e' },
                   { label: 'En retard', count: kpiReel.nbDepassement, dot: '#ef4444' },
                 ].map(l => (
                   <div key={l.label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -1070,7 +1070,7 @@ function Dashboard() {
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               {actionsLog.slice(0, 5).map((a) => {
-                const typeConf = { urgence: { I: AlertTriangle, c: '#ef4444' }, ressource: { I: Users, c: '#f59e0b' }, relance: { I: Bell, c: '#8b5cf6' }, analyse: { I: TrendingUp, c: '#3b82f6' } };
+                const typeConf = { urgence: { I: AlertTriangle, c: '#ef4444' }, ressource: { I: Users, c: '#f59e0b' }, relance: { I: Bell, c: '#8b5cf6' }, analyse: { I: TrendingUp, c: '#0d3d6e' } };
                 const tc = typeConf[a.type] || { I: CheckCircle, c: '#10b981' };
                 const AIcon = tc.I;
                 const joursDiff = Math.floor((Date.now() - a.date) / 86400000);

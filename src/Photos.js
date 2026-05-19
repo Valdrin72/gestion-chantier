@@ -197,7 +197,7 @@ export default function Photos({ chantiers, photosData, setPhotosData }) {
               <img src={photoSelectionnee.base64} alt={photoSelectionnee.description}
                 style={{ maxWidth: '90vw', maxHeight: '80vh', objectFit: 'contain', borderRadius: '8px' }} />
               <div style={{ background: 'rgba(22,27,34,0.95)', padding: '12px 20px', borderRadius: '0 0 8px 8px', textAlign: 'center' }}>
-                <div style={{ fontWeight: 'bold', color: '#3b82f6' }}>{photoSelectionnee.description || 'Sans description'}</div>
+                <div style={{ fontWeight: 'bold', color: '#0d3d6e' }}>{photoSelectionnee.description || 'Sans description'}</div>
                 <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>{photoSelectionnee.date} à {photoSelectionnee.heure} · {photoSelectionnee.taille}</div>
                 <button onClick={(e) => { e.stopPropagation(); supprimerPhoto(c.id, photoSelectionnee.id); }}
                   style={{ ...DS.btnDanger, marginTop: '8px' }}>
@@ -221,9 +221,9 @@ export default function Photos({ chantiers, photosData, setPhotosData }) {
       {/* KPIs */}
       <div style={{ display: 'flex', gap: '15px', marginBottom: '25px', flexWrap: 'wrap' }}>
         {[
-          { label: 'Chantiers avec photos', val: Object.keys(photosData).filter(id => photosData[id]?.length > 0).length, couleur: '#3b82f6' },
+          { label: 'Chantiers avec photos', val: Object.keys(photosData).filter(id => photosData[id]?.length > 0).length, couleur: '#0d3d6e' },
           { label: 'Photos totales', val: Object.values(photosData).reduce((t, p) => t + (p?.length || 0), 0), couleur: '#10b981' },
-          { label: 'Avant travaux', val: Object.values(photosData).reduce((t, p) => t + (p?.filter(ph => ph.categorie === 'avant').length || 0), 0), couleur: '#3b82f6' },
+          { label: 'Avant travaux', val: Object.values(photosData).reduce((t, p) => t + (p?.filter(ph => ph.categorie === 'avant').length || 0), 0), couleur: '#0d3d6e' },
           { label: 'Après travaux', val: Object.values(photosData).reduce((t, p) => t + (p?.filter(ph => ph.categorie === 'apres').length || 0), 0), couleur: '#10b981' },
         ].map(s => (
           <div key={s.label} style={{ background: `linear-gradient(145deg, ${s.couleur}0a 0%, rgba(255,255,255,0.025) 100%)`, border: `1px solid ${s.couleur}28`, borderRadius: '16px', padding: '20px', flex: 1, minWidth: '150px', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
@@ -277,9 +277,9 @@ export default function Photos({ chantiers, photosData, setPhotosData }) {
 
                 {/* TOTAL */}
                 <div style={{ padding: '15px 20px', textAlign: 'center', display: 'flex', flexDirection: 'column', justifyContent: 'center', borderLeft: '1px solid var(--border)' }}>
-                  <div style={{ fontSize: '24px', fontWeight: 800, letterSpacing: '-0.5px', color: total > 0 ? '#3b82f6' : 'var(--text-muted)' }}>{total}</div>
+                  <div style={{ fontSize: '24px', fontWeight: 800, letterSpacing: '-0.5px', color: total > 0 ? '#0d3d6e' : 'var(--text-muted)' }}>{total}</div>
                   <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>photo{total > 1 ? 's' : ''}</div>
-                  <div style={{ fontSize: '12px', color: '#3b82f6', marginTop: '5px' }}>Voir →</div>
+                  <div style={{ fontSize: '12px', color: '#0d3d6e', marginTop: '5px' }}>Voir →</div>
                 </div>
               </div>
             </div>

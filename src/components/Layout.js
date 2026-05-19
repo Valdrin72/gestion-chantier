@@ -328,7 +328,7 @@ export function Topbar({ setSidebarOuvert, canGoBack, page, revenirArriere, navA
 
   return (
     <header className="topbar">
-      <div className="topbar-left">
+      <div className="topbar-left" style={{ flex: 1 }}>
         {canGoBack && page !== 'dashboard' && (
           <button
             onClick={revenirArriere}

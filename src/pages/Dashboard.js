@@ -717,11 +717,11 @@ function Dashboard() {
           >
             <div style={{ position: 'absolute', right: -18, top: -18, width: 80, height: 80, borderRadius: '50%', background: 'rgba(255,255,255,0.1)' }} />
             <div style={{ position: 'absolute', right: -32, bottom: -32, width: 100, height: 100, borderRadius: '50%', background: 'rgba(255,255,255,0.06)' }} />
-            <div style={{ background: 'rgba(255,255,255,0.18)', borderRadius: 10, width: 38, height: 38, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16, position: 'relative' }}>
-              <Icon size={18} strokeWidth={2} style={{ color: '#ffffff' }} />
+            <div style={{ background: 'rgba(255,255,255,0.18)', borderRadius: 12, width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 18, position: 'relative' }}>
+              <Icon size={22} strokeWidth={2} style={{ color: '#ffffff' }} />
             </div>
-            <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.72)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 6 }}>{label}</div>
-            <div className="kpi-val" style={{ fontSize: 30, fontWeight: 900, color: '#ffffff', letterSpacing: '-1px', lineHeight: 1, marginBottom: 8 }}>{valeur}</div>
+            <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.65)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: 8 }}>{label}</div>
+            <div className="kpi-val" style={{ fontSize: 34, fontWeight: 900, color: '#ffffff', letterSpacing: '-1.5px', lineHeight: 1, marginBottom: 10 }}>{valeur}</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
               <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.62)', fontWeight: 500 }}>{sous}</span>
               {badge && <span style={{ background: 'rgba(239,68,68,0.85)', color: 'white', borderRadius: 20, padding: '1px 7px', fontSize: 12, fontWeight: 700 }}>{badge}</span>}
@@ -777,11 +777,11 @@ function Dashboard() {
         <div style={CARD}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
             <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--text-primary)' }}>Mes chantiers</div>
-            <button onClick={() => naviguer('chantiers')} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: '#2563eb', fontWeight: 600, fontFamily: 'inherit', padding: 0 }}>Voir tous →</button>
+            <button onClick={() => naviguer('chantiers')} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: '#0d3d6e', fontWeight: 600, fontFamily: 'inherit', padding: 0 }}>Voir tous →</button>
           </div>
           {actifs.length === 0
             ? <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: 0, textAlign: 'center', padding: '24px 0' }}>Aucun chantier actif</p>
-            : <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            : <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 {[...actifs].sort((a, b) => (prioriteMap.get(b.id) || { score: 0 }).score - (prioriteMap.get(a.id) || { score: 0 }).score).slice(0, isMobile ? 2 : 3).map(c => {
                   const priorite = prioriteMap.get(c.id) || { niveau: 'ok', score: 0 };
                   const montantCA = calculerCA(c, devis);
@@ -888,7 +888,7 @@ function Dashboard() {
                 <XAxis dataKey="semaine" tick={{ fill: 'var(--text-muted)', fontSize: 12 }} />
                 <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 12 }} tickFormatter={v => v >= 1000 ? `${(v/1000).toFixed(0)}k` : v} />
                 <Tooltip contentStyle={{ background: 'var(--dash-card)', border: '1px solid var(--dash-border)', borderRadius: 10, fontSize: 12 }} labelStyle={{ color: 'var(--text-primary)', fontWeight: 700 }} formatter={(val, name) => [`CHF ${fmtN(val)}`, name]} />
-                <Line type="monotone" dataKey="CA" stroke="#3b82f6" strokeWidth={2.5} dot={{ r: 3, fill: '#3b82f6' }} name="Chiffre d'affaires" />
+                <Line type="monotone" dataKey="CA" stroke="#0d3d6e" strokeWidth={2.5} dot={{ r: 3, fill: '#0d3d6e' }} name="Chiffre d'affaires" />
                 <Line type="monotone" dataKey="Couts" stroke="#94a3b8" strokeWidth={2} dot={{ r: 3, fill: '#94a3b8' }} strokeDasharray="5 3" name="Coûts estimés" />
                 <Line type="monotone" dataKey="Encaissements" stroke="#10b981" strokeWidth={2} dot={{ r: 3, fill: '#10b981' }} name="Encaissements" />
               </LineChart>
@@ -897,7 +897,7 @@ function Dashboard() {
             <div style={{ height: isMobile ? 140 : 210, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: 13 }}>Aucune donnée disponible</div>
           )}
           <div style={{ display: 'flex', gap: 20, marginTop: 12, justifyContent: 'center' }}>
-            {[['#3b82f6', "Chiffre d'affaires"], ['#94a3b8', 'Coûts estimés'], ['#10b981', 'Encaissements']].map(([col, lbl]) => (
+            {[['#0d3d6e', "Chiffre d'affaires"], ['#94a3b8', 'Coûts estimés'], ['#10b981', 'Encaissements']].map(([col, lbl]) => (
               <div key={lbl} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--text-secondary)' }}>
                 <span style={{ width: 20, height: 2.5, background: col, borderRadius: 2, display: 'inline-block' }} />{lbl}
               </div>
@@ -934,7 +934,7 @@ function Dashboard() {
                     {top3.map(x => (
                       <div key={x.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-glass-2)', border: '1px solid var(--border)', borderRadius: 8, padding: '6px 10px' }}>
                         <span style={{ fontSize: 12, color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, marginRight: 8 }}>{x.nom}</span>
-                        <span style={{ fontSize: 12, fontWeight: 700, color: '#3b82f6', whiteSpace: 'nowrap' }}>CHF {fmtN(x.encaissementPrevu)}</span>
+                        <span style={{ fontSize: 12, fontWeight: 700, color: '#0d3d6e', whiteSpace: 'nowrap' }}>CHF {fmtN(x.encaissementPrevu)}</span>
                       </div>
                     ))}
                   </div>
@@ -954,7 +954,7 @@ function Dashboard() {
               <Bot size={15} strokeWidth={2} style={{ color: '#8b5cf6' }} />
               Alertes intelligentes
             </div>
-            <button onClick={naviguerAgents} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 11, color: '#2563eb', fontWeight: 600, padding: 0, fontFamily: 'inherit' }}>Tout voir →</button>
+            <button onClick={naviguerAgents} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 11, color: '#0d3d6e', fontWeight: 600, padding: 0, fontFamily: 'inherit' }}>Tout voir →</button>
           </div>
           {agentAlertes.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '28px 16px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
@@ -1029,7 +1029,7 @@ function Dashboard() {
               <div style={{ position: 'relative', width: isMobile ? 100 : 140, height: isMobile ? 100 : 140, marginBottom: 12 }}>
                 <svg width={isMobile ? 100 : 140} height={isMobile ? 100 : 140} viewBox="0 0 140 140">
                   <circle cx="70" cy="70" r="58" fill="none" stroke="var(--border)" strokeWidth="10" />
-                  <circle cx="70" cy="70" r="58" fill="none" stroke="#3b82f6" strokeWidth="10"
+                  <circle cx="70" cy="70" r="58" fill="none" stroke="#0d3d6e" strokeWidth="10"
                     strokeDasharray={`${2 * Math.PI * 58}`}
                     strokeDashoffset={`${2 * Math.PI * 58 * (1 - avancementMoyen / 100)}`}
                     strokeLinecap="round" transform="rotate(-90 70 70)"

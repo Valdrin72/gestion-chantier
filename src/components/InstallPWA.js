@@ -6,12 +6,10 @@ export default function InstallPWA() {
   const [installed, setInstalled] = useState(false);
 
   useEffect(() => {
-    // Déjà installée ?
     if (window.matchMedia('(display-mode: standalone)').matches) {
       setInstalled(true);
       return;
     }
-    // Prompt disponible
     if (window.__pwaInstallPrompt) setShow(true);
     const handler = () => setShow(true);
     window.addEventListener('pwa-installable', handler);
@@ -31,23 +29,40 @@ export default function InstallPWA() {
 
   return (
     <div style={{
-      position: 'fixed', bottom: 20, left: '50%', transform: 'translateX(-50%)',
-      background: '#1e40af', color: '#fff', borderRadius: 14, padding: '12px 20px',
-      display: 'flex', alignItems: 'center', gap: 12, zIndex: 9999,
-      boxShadow: '0 8px 32px rgba(30,64,175,0.45)', maxWidth: 340, width: 'calc(100% - 40px)',
+      position: 'fixed',
+      bottom: 12,
+      right: 20,
+      background: '#ffffff',
+      border: '1px solid #dce4ef',
+      borderRadius: 12,
+      padding: '10px 14px',
+      display: 'flex',
+      alignItems: 'center',
+      gap: 10,
+      zIndex: 999,
+      boxShadow: '0 4px 16px rgba(13,27,46,0.12)',
+      maxWidth: 300,
     }}>
-      <Download size={20} style={{ flexShrink: 0 }} />
-      <div style={{ flex: 1 }}>
-        <div style={{ fontWeight: 700, fontSize: 14 }}>Installer CYNA sur ce téléphone</div>
-        <div style={{ fontSize: 12, opacity: 0.85, marginTop: 2 }}>Accès rapide depuis l'écran d'accueil</div>
+      <div style={{
+        width: 32, height: 32, borderRadius: 8,
+        background: '#e8f0f9',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+      }}>
+        <Download size={15} style={{ color: '#0d3d6e' }} />
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontWeight: 700, fontSize: 12, color: '#0d1b2e' }}>Installer l'app</div>
+        <div style={{ fontSize: 11, color: '#7c8fa1', marginTop: 1 }}>Accès rapide depuis l'écran d'accueil</div>
       </div>
       <button onClick={installer} style={{
-        background: '#fff', color: '#1e40af', border: 'none', borderRadius: 8,
-        padding: '6px 12px', fontWeight: 700, fontSize: 13, cursor: 'pointer', flexShrink: 0,
+        background: '#0d3d6e', color: '#fff', border: 'none', borderRadius: 7,
+        padding: '5px 10px', fontWeight: 700, fontSize: 11, cursor: 'pointer',
+        flexShrink: 0, fontFamily: 'inherit',
       }}>Installer</button>
       <button onClick={() => setShow(false)} style={{
-        background: 'none', border: 'none', color: 'rgba(255,255,255,0.7)', cursor: 'pointer', padding: 4,
-      }}><X size={16} /></button>
+        background: 'none', border: 'none', color: '#a8b8c8', cursor: 'pointer', padding: 2,
+        flexShrink: 0,
+      }}><X size={14} /></button>
     </div>
   );
 }

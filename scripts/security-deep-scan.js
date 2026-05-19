@@ -197,11 +197,19 @@ function scannerPerformance(fichiers) {
           ; // Vérification trop complexe sans AST — laissé au code-reviewer
       });
     }
-    // JSON.parse dans render
+    // JSON.parse dans render (hors useState lazy init, useEffect, handlers async)
     const lignesRendu = contenu.split('\n');
     lignesRendu.forEach((l, i) => {
-      if (/JSON\.parse\(/.test(l) && !/useEffect|useMemo|useCallback|useState/.test(l) && !l.trim().startsWith('//'))
-        signaler('INFO', f, i+1, 'JSON.parse() potentiellement dans le render — déplacer dans useMemo');
+      if (!(/JSON\.parse\(/.test(l))) return;
+      if (l.trim().startsWith('//')) return;
+      // Autorisé : même ligne que useState/useEffect/useMemo/useCallback
+      if (/useEffect|useMemo|useCallback|useState/.test(l)) return;
+      // Autorisé : return JSON.parse dans un initialiseur (ligne précédente contient useState)
+      if (i > 0 && /useState/.test(lignesRendu[i - 1])) return;
+      // Autorisé : dans un handler async (await/async sur la ligne ou les 3 précédentes)
+      const context = lignesRendu.slice(Math.max(0, i - 3), i + 1).join(' ');
+      if (/async|await|\.text\(\)|\.json\(\)/.test(context)) return;
+      signaler('INFO', f, i+1, 'JSON.parse() potentiellement dans le render — déplacer dans useMemo');
     });
   }
 }

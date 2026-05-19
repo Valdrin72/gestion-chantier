@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { fmtN, calculerCoutsChantier, calculerCA, getAlerte, calculerDateFinOuvrables, isChantierActif } from './donnees';
 import { DS } from './ds';
+import useIsMobile from './hooks/useIsMobile';
 
 const carteStyle = DS.card;
 
@@ -32,6 +33,7 @@ const getSemaineSuivante = () => {
 
 export default function Rapport({ chantiers, clients, devis = [], parametres, paiementsData }) {
   const [semaine] = useState(getSemaine());
+  const isMobile = useIsMobile();
   const semaineSuivante = getSemaineSuivante();
 
   // ===== CALCULS =====
@@ -94,7 +96,7 @@ export default function Rapport({ chantiers, clients, devis = [], parametres, pa
       )}
 
       {/* KPIs — gradients saturés */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24 }}>
+      <div className="kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'var(--g4)', gap: 16, marginBottom: 24 }}>
         {[
           { label: 'EN COURS',      val: chantiersEnCours.length,      gradient: 'linear-gradient(135deg, #1E40AF 0%, #3B82F6 100%)', glow: 'rgba(59,130,246,0.32)', badge: `${chantiersPlanifies.length} planifiés` },
           { label: 'CA TOUS CHANTIERS', val: `CHF ${fmtN(caTotal)}`,        gradient: 'linear-gradient(135deg, #065F46 0%, #10B981 100%)', glow: 'rgba(16,185,129,0.32)', badge: `CHF ${fmtN(totalPaiementsRecus)} reçus` },
@@ -115,7 +117,7 @@ export default function Rapport({ chantiers, clients, devis = [], parametres, pa
       <div style={carteStyle}>
         <div className="ds-card-title">Chantiers en cours</div>
         {chantiersEnCours.length === 0 ? <p style={{ color: 'var(--text-secondary)' }}>Aucun chantier en cours</p> : (
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}><table style={{ width: '100%', borderCollapse: 'collapse', minWidth: isMobile ? 480 : 'unset' }}>
             <thead><tr>
               {['Chantier', 'Client', 'Avancement', 'Jours restants', 'Marge'].map(h => (
                 <th key={h} style={DS.th}>{h}</th>
@@ -166,14 +168,14 @@ export default function Rapport({ chantiers, clients, devis = [], parametres, pa
                 );
               })}
             </tbody>
-          </table>
+          </table></div>
         )}
       </div>
 
       {/* PAIEMENTS */}
       <div style={carteStyle}>
         <div className="ds-card-title">Paiements de la semaine</div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '15px', marginBottom: '20px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'var(--g3)', gap: '12px', marginBottom: '20px' }}>
           {[
             { label: 'Reçus', val: `CHF ${fmtN(totalPaiementsRecus)}`, couleur: '#10b981', bg: 'rgba(16,185,129,0.12)' },
             { label: 'En attente', val: `CHF ${fmtN(totalPaiementsAttente)}`, couleur: '#f59e0b', bg: 'rgba(245,158,11,0.12)' },
@@ -216,7 +218,7 @@ export default function Rapport({ chantiers, clients, devis = [], parametres, pa
         {chantiersSemaineProchaine.length === 0 ? (
           <p style={{ color: 'var(--text-secondary)' }}>Aucun chantier planifié pour la semaine prochaine</p>
         ) : (
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}><table style={{ width: '100%', borderCollapse: 'collapse', minWidth: isMobile ? 480 : 'unset' }}>
             <thead><tr>
               {['Chantier', 'Client', 'Début', 'Fin prévue', 'Budget', 'Statut'].map(h => (
                 <th key={h} style={DS.th}>{h}</th>
@@ -243,7 +245,7 @@ export default function Rapport({ chantiers, clients, devis = [], parametres, pa
                 );
               })}
             </tbody>
-          </table>
+          </table></div>
         )}
       </div>
     </div>

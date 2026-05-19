@@ -235,7 +235,7 @@ export default function Rapport({ chantiers, clients, devis = [], parametres, pa
                       {calculerCA(c, devis) !== null ? `CHF ${fmtN(calculerCA(c, devis))}` : '— Aucun devis lié'}
                     </td>
                     <td style={{ padding: '12px 15px' }}>
-                      <span style={{ background: (isChantierActif(c) ? '#f59e0b' : '#3b82f6') + '18', color: isChantierActif(c) ? '#f59e0b' : '#3b82f6', fontWeight: 600, padding: '3px 10px', borderRadius: '12px', fontSize: '12px' }}>
+                      <span style={{ background: (isChantierActif(c) ? '#f59e0b' : '#0d3d6e') + '18', color: isChantierActif(c) ? '#f59e0b' : '#0d3d6e', fontWeight: 600, padding: '3px 10px', borderRadius: '12px', fontSize: '12px' }}>
                         {c.statut}
                       </span>
                     </td>

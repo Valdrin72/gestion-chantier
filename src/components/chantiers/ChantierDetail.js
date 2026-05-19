@@ -282,8 +282,8 @@ function ChantierDetail({ chantier, detailOnglet, setDetailOnglet, modeCompleter
         ].map(o => (
           <button key={o.id} onClick={() => setDetailOnglet(o.id)} style={{
             background: 'transparent', border: 'none',
-            borderBottom: detailOnglet === o.id ? '2px solid #3b82f6' : '2px solid transparent',
-            color: detailOnglet === o.id ? '#3b82f6' : 'var(--text-secondary)',
+            borderBottom: detailOnglet === o.id ? '2px solid #0d3d6e' : '2px solid transparent',
+            color: detailOnglet === o.id ? '#0d3d6e' : 'var(--text-secondary)',
             padding: '10px 18px', marginBottom: '-1px',
             cursor: 'pointer', fontSize: 14, fontWeight: detailOnglet === o.id ? 700 : 400,
           }}>{o.label}</button>
@@ -443,7 +443,7 @@ function ChantierDetail({ chantier, detailOnglet, setDetailOnglet, modeCompleter
               <div style={{ color: 'var(--text-secondary)', marginTop: '8px', cursor: 'pointer', fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}
                 onClick={() => naviguer('clients', { clientActif: c.clientId })}>
                 {client.prenom} {client.nom} — {client.entreprise} · {client.telephone}
-                <span style={{ color: C.primaire, textDecoration: 'none', fontSize: '12px', fontWeight: 600, background: 'rgba(59,130,246,0.1)', padding: '2px 8px', borderRadius: 6 }}>Voir →</span>
+                <span style={{ color: C.primaire, textDecoration: 'none', fontSize: '12px', fontWeight: 600, background: 'rgba(13,61,110,0.1)', padding: '2px 8px', borderRadius: 6 }}>Voir →</span>
               </div>
             )}
           </div>

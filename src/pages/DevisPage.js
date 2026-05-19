@@ -271,13 +271,13 @@ function Devis() {
           <div style={{ background: 'rgba(59,130,246,0.04)', border: '1px solid rgba(59,130,246,0.15)', borderRadius: 12, padding: '16px 20px', marginBottom: 20 }}>
             <div style={{ display: 'flex', alignItems: 'flex-end', gap: 24, flexWrap: 'wrap' }}>
               <div>
-                <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: '#3b82f6', marginBottom: 6 }}>Durée estimée (jours ouvrables)</div>
+                <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: '#0d3d6e', marginBottom: 6 }}>Durée estimée (jours ouvrables)</div>
                 <input
                   type="number" min="1" step="1"
                   placeholder="Ex : 15"
                   value={form.dureeEstimee}
                   onChange={e => setForm({ ...form, dureeEstimee: e.target.value })}
-                  style={{ ...inputStyle, width: 120, fontSize: 18, fontWeight: 700, borderColor: '#3b82f660' }}
+                  style={{ ...inputStyle, width: 120, fontSize: 18, fontWeight: 700, borderColor: '#0d3d6e60' }}
                 />
               </div>
               <div>
@@ -292,7 +292,7 @@ function Devis() {
               </div>
               {form.dureeEstimee && parseInt(form.dureeEstimee) > 0 && (
                 <div style={{ fontSize: 13, color: 'var(--text-muted)', paddingBottom: 6 }}>
-                  ≈ <strong style={{ color: '#3b82f6' }}>{Math.ceil(parseInt(form.dureeEstimee) / 5)} semaine{Math.ceil(parseInt(form.dureeEstimee) / 5) > 1 ? 's' : ''}</strong> de travail
+                  ≈ <strong style={{ color: '#0d3d6e' }}>{Math.ceil(parseInt(form.dureeEstimee) / 5)} semaine{Math.ceil(parseInt(form.dureeEstimee) / 5) > 1 ? 's' : ''}</strong> de travail
                   {parseInt(form.nombrePersonnes) > 0 && (
                     <span style={{ marginLeft: 12, color: '#f59e0b', fontWeight: 700 }}>
                       · {parseInt(form.dureeEstimee) * parseInt(form.nombrePersonnes)} jours-homme
@@ -617,7 +617,7 @@ function Devis() {
                 </div>
                 <div>
                   <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 3 }}>Durée estimée</div>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: d.dureeEstimee ? '#3b82f6' : 'var(--text-muted)' }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: d.dureeEstimee ? '#0d3d6e' : 'var(--text-muted)' }}>
                     {d.dureeEstimee ? `${d.dureeEstimee}j ouvrables` : 'Non renseignée'}
                   </div>
                   {d.nombrePersonnes && parseInt(d.nombrePersonnes) > 0 && (

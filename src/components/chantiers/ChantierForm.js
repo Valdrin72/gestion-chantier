@@ -99,7 +99,7 @@ function ChantierForm({ form, setForm, erreurs, setErreurs, modeCompleter, onSau
           Inclure le samedi</label>
       </div>
       {form.dateDebut && form.nombreJours && (
-        <div style={{ background: 'rgba(59,130,246,0.07)', border: '1px solid rgba(59,130,246,0.18)', padding: '14px 18px', borderRadius: '12px', marginBottom: '15px' }}>
+        <div style={{ background: 'rgba(13,61,110,0.07)', border: '1px solid rgba(13,61,110,0.18)', padding: '14px 18px', borderRadius: '12px', marginBottom: '15px' }}>
           <div style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px', color: 'var(--text-muted)', marginBottom: '4px' }}>Date de fin prévue</div>
           <div style={{ fontWeight: 700, color: C.primaire, fontSize: '15px' }}>{calculerDateFinOuvrables(form.dateDebut, form.nombreJours, form.inclusSamedi)}</div>
         </div>
@@ -110,9 +110,9 @@ function ChantierForm({ form, setForm, erreurs, setErreurs, modeCompleter, onSau
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
           {parametres.typesTravaux.map(t => (
             <button key={t.id} onClick={() => toggleTravaux(t.nom)} style={{
-              background: (form.typesTravaux || []).includes(t.nom) ? 'rgba(59,130,246,0.18)' : 'var(--bg-glass-2)',
+              background: (form.typesTravaux || []).includes(t.nom) ? 'rgba(13,61,110,0.18)' : 'var(--bg-glass-2)',
               color: (form.typesTravaux || []).includes(t.nom) ? C.primaire : 'var(--text-secondary)',
-              border: (form.typesTravaux || []).includes(t.nom) ? '1px solid rgba(59,130,246,0.4)' : '1px solid var(--border)',
+              border: (form.typesTravaux || []).includes(t.nom) ? '1px solid rgba(13,61,110,0.4)' : '1px solid var(--border)',
               padding: '5px 14px', borderRadius: '20px', cursor: 'pointer', fontSize: '13px',
               fontWeight: (form.typesTravaux || []).includes(t.nom) ? 700 : 500,
               fontFamily: 'inherit', transition: 'all 0.15s',

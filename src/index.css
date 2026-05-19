@@ -201,7 +201,7 @@
   --card-shadow   : 0 4px 24px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.07);
   --border        : rgba(255,255,255,0.07);
   --border-hover  : rgba(255,255,255,0.14);
-  --border-focus  : #3b82f6;
+  --border-focus  : #0d3d6e;
   --text-primary  : #f1f5f9;
   --text-secondary: #94a3b8;
   --text-muted    : #64748b;
@@ -653,8 +653,8 @@ input::placeholder, textarea::placeholder {
 [data-theme="dark"] input:focus,
 [data-theme="dark"] select:focus,
 [data-theme="dark"] textarea:focus {
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59,130,246,0.14);
+  border-color: #0d3d6e;
+  box-shadow: 0 0 0 3px rgba(13,61,110,0.14);
 }
 
 /* ============================================================

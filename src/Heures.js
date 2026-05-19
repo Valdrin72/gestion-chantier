@@ -227,7 +227,7 @@ export default function Heures({ chantiers = [], parametres = {}, setChantiers }
           <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--text-primary)' }}>Saisie hebdomadaire</div>
           <div style={{ display: 'flex', gap: 8 }}>
             <button onClick={prevWeek} style={btnStyle}>← Sem. préc.</button>
-            <button onClick={thisWeek} style={{ ...btnStyle, background: isCurrentWeek ? 'rgba(59,130,246,0.1)' : undefined, color: isCurrentWeek ? '#3b82f6' : undefined }}>Cette semaine</button>
+            <button onClick={thisWeek} style={{ ...btnStyle, background: isCurrentWeek ? 'rgba(13,61,110,0.1)' : undefined, color: isCurrentWeek ? '#0d3d6e' : undefined }}>Cette semaine</button>
             <button onClick={nextWeek} style={btnStyle}>Sem. suiv. →</button>
           </div>
         </div>
@@ -248,7 +248,7 @@ export default function Heures({ chantiers = [], parametres = {}, setChantiers }
                     const isWe = i >= 5;
                     const isDToday = isoDate(d) === isoDate(today);
                     return (
-                      <th key={i} style={{ ...DS.th, textAlign: 'center', minWidth: 72, background: isDToday ? 'rgba(59,130,246,0.08)' : isWe ? 'var(--bg-glass)' : 'var(--ds-th-bg)', color: isDToday ? '#3b82f6' : isWe ? 'var(--text-muted)' : 'var(--text-muted)' }}>
+                      <th key={i} style={{ ...DS.th, textAlign: 'center', minWidth: 72, background: isDToday ? 'rgba(13,61,110,0.08)' : isWe ? 'var(--bg-glass)' : 'var(--ds-th-bg)', color: isDToday ? '#0d3d6e' : isWe ? 'var(--text-muted)' : 'var(--text-muted)' }}>
                         <div>{DAY_LABELS_SHORT[i]}</div>
                         <div style={{ fontWeight: 400, fontSize: 10 }}>{d.getDate()}/{d.getMonth() + 1}</div>
                       </th>
@@ -266,7 +266,7 @@ export default function Heures({ chantiers = [], parametres = {}, setChantiers }
                     <tr key={emp.id}>
                       <td style={{ ...DS.td, fontWeight: 600 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                          <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: '#fff', flexShrink: 0 }}>
+                          <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#0d3d6e', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: '#fff', flexShrink: 0 }}>
                             {((emp.nom || 'NN').trim().split(' ').filter(Boolean).map(w => w[0]).join('').substring(0, 2) || 'NN').toUpperCase()}
                           </div>
                           <div>
@@ -314,7 +314,7 @@ export default function Heures({ chantiers = [], parametres = {}, setChantiers }
                       </td>
                     );
                   })}
-                  <td style={{ ...DS.td, textAlign: 'center', fontWeight: 900, fontSize: 14, color: '#3b82f6' }}>
+                  <td style={{ ...DS.td, textAlign: 'center', fontWeight: 900, fontSize: 14, color: '#0d3d6e' }}>
                     {Math.round(totalHeures * 10) / 10}h
                   </td>
                 </tr>

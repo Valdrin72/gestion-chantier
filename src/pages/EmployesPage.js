@@ -59,9 +59,9 @@ function Employes({ parametres, setParametres, chantiers, naviguer }) {
               display: 'inline-flex', alignItems: 'center', gap: 6,
               padding: '7px 16px', borderRadius: 20, fontSize: 13, fontWeight: 600,
               cursor: 'pointer', border: 'none', fontFamily: 'inherit',
-              background: onglet === key ? 'linear-gradient(135deg, #3B82F6 0%, #4F46E5 100%)' : 'var(--ds-btn-ghost-bg)',
+              background: onglet === key ? 'linear-gradient(135deg, #0d3d6e 0%, #082d52 100%)' : 'var(--ds-btn-ghost-bg)',
               color: onglet === key ? '#fff' : 'var(--text-secondary)',
-              boxShadow: onglet === key ? '0 2px 10px rgba(59,130,246,0.30)' : 'none',
+              boxShadow: onglet === key ? '0 2px 10px rgba(13,61,110,0.30)' : 'none',
               border: onglet === key ? 'none' : '1px solid var(--ds-btn-ghost-border)',
             }}
           >
@@ -291,7 +291,7 @@ function Employes({ parametres, setParametres, chantiers, naviguer }) {
                       <tr key={e.id} style={{ opacity: heures === 0 ? 0.5 : 1 }}>
                         <td style={DS.td}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                            <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'linear-gradient(135deg, #3B82F620 0%, #4F46E520 100%)', border: '1px solid #3B82F630', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 12, color: '#3B82F6', flexShrink: 0 }}>
+                            <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'linear-gradient(135deg, #0d3d6e20 0%, #082d5220 100%)', border: '1px solid #0d3d6e30', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 12, color: '#0d3d6e', flexShrink: 0 }}>
                               {e.nom.charAt(0)}
                             </div>
                             <span style={{ fontWeight: 600 }}>{e.nom}</span>
@@ -303,7 +303,7 @@ function Employes({ parametres, setParametres, chantiers, naviguer }) {
                           </div>
                         </td>
                         <td style={DS.td}><span style={{ color: 'var(--text-secondary)', fontSize: 12 }}>{e.poste || '—'}</span></td>
-                        <td style={DS.td}><strong style={{ color: '#3B82F6' }}>{fmtN(Math.round(heures * 10) / 10)}h</strong></td>
+                        <td style={DS.td}><strong style={{ color: '#0d3d6e' }}>{fmtN(Math.round(heures * 10) / 10)}h</strong></td>
                         <td style={DS.td}>{jours > 0 ? <strong>{jours}j</strong> : <span style={{ color: 'var(--text-muted)' }}>—</span>}</td>
                         {voirSalaires && (
                           <td style={DS.td}><strong style={{ color: coutReel > 0 ? '#065F46' : 'var(--text-muted)' }}>{coutReel > 0 ? `CHF ${fmtN(Math.round(coutReel))}` : '—'}</strong></td>
@@ -347,7 +347,7 @@ export function EditEmployeRow({ e, parametres, sauv }) {
     </tr>
   );
   return (
-    <tr key={e.id} style={{ background: 'rgba(59,130,246,0.06)' }}>
+    <tr key={e.id} style={{ background: 'rgba(13,61,110,0.06)' }}>
       <td style={tdStyle}><input value={ed.nom} onChange={ev => setEd({ ...ed, nom: ev.target.value })} style={{ ...inputStyle, padding: '5px 8px' }} /></td>
       <td style={tdStyle}>
         <select value={ed.poste || ''} onChange={ev => setEd({ ...ed, poste: ev.target.value })} style={{ ...inputStyle, padding: '5px 8px' }}>

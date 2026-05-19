@@ -136,11 +136,11 @@ function Clients({ clients, setClients, chantiers, setChantiers, devis = [], set
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <div style={{
                   width: '42px', height: '42px',
-                  background: 'linear-gradient(135deg, rgba(59,130,246,0.35) 0%, rgba(99,102,241,0.25) 100%)',
-                  border: '1px solid rgba(59,130,246,0.3)',
+                  background: 'linear-gradient(135deg, rgba(13,61,110,0.35) 0%, rgba(8,45,82,0.25) 100%)',
+                  border: '1px solid rgba(13,61,110,0.3)',
                   borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
                   color: C.primaire, fontWeight: 800, fontSize: '15px',
-                  boxShadow: '0 0 14px rgba(59,130,246,0.2)',
+                  boxShadow: '0 0 14px rgba(13,61,110,0.2)',
                 }}>
                   {c.prenom?.charAt(0)}{c.nom?.charAt(0)}
                 </div>
@@ -153,7 +153,7 @@ function Clients({ clients, setClients, chantiers, setChantiers, devis = [], set
                 <div style={{ color: 'var(--text-muted)', fontSize: '12px' }}>{c.telephone} · {c.email}</div>
               </div>
               <div style={{ marginTop: '14px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                <div style={{ background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.18)', borderRadius: '10px', padding: '10px', textAlign: 'center' }}>
+                <div style={{ background: 'rgba(13,61,110,0.08)', border: '1px solid rgba(13,61,110,0.18)', borderRadius: '10px', padding: '10px', textAlign: 'center' }}>
                   <div style={{ fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-muted)', marginBottom: '3px' }}>Chantiers</div>
                   <div style={{ fontWeight: 800, color: C.primaire, fontSize: '20px' }}>{chantiersC.length}</div>
                 </div>

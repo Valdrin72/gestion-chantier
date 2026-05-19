@@ -349,7 +349,7 @@ export function Topbar({ setSidebarOuvert, canGoBack, page, revenirArriere, navA
           </button>
         )}
       </div>
-      <div className="topbar-right" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+      <div className="topbar-right" style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
         {/* Sélecteur de période — visible sur toutes les pages financières */}
         {montrerPeriode && (
           <div style={{ display: 'flex', background: 'var(--bg-glass-2)', border: '1px solid var(--border)', borderRadius: 8, padding: 3, gap: 2 }}>
@@ -362,12 +362,13 @@ export function Topbar({ setSidebarOuvert, canGoBack, page, revenirArriere, navA
                   color: periodeGlobale === p.id ? '#fff' : 'var(--text-muted)',
                   border: 'none',
                   borderRadius: 6,
-                  padding: '4px 12px',
+                  padding: '4px 9px',
                   cursor: 'pointer',
                   fontSize: 12,
                   fontWeight: 600,
                   fontFamily: 'inherit',
                   transition: 'all 0.15s',
+                  whiteSpace: 'nowrap',
                 }}
               >
                 {p.label}

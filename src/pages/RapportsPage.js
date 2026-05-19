@@ -58,8 +58,8 @@ function RapportIA({ agentData }) {
 }
 
 function RapportsPage({ chantiers, clients, devis, parametres, setParametres, paiementsData, periodeGlobale, naviguer, factures }) {
-  const { agentState } = useApp();
-  const [onglet, setOnglet] = useState('rapport-ia');
+  const { agentState, contexte } = useApp();
+  const [onglet, setOnglet] = useState(contexte?.onglet || 'rapport-ia');
   const tabs = [
     { id: 'rapport-ia',    label: 'Rapport IA',   Icon: Bot },
     { id: 'marges',        label: 'Marges',        Icon: null },

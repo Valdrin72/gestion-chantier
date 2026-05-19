@@ -310,7 +310,7 @@ function Employes({ parametres, setParametres, chantiers, naviguer }) {
                         )}
                         <td style={DS.td}>
                           {chantiersActifs > 0
-                            ? <span style={{ background: '#DBEAFE', color: '#1E40AF', borderRadius: 20, padding: '2px 9px', fontSize: 11, fontWeight: 700 }}>{chantiersActifs}</span>
+                            ? <span style={{ background: '#e8f0f9', color: '#0d3d6e', borderRadius: 20, padding: '2px 9px', fontSize: 11, fontWeight: 700 }}>{chantiersActifs}</span>
                             : <span style={{ color: 'var(--text-muted)' }}>—</span>}
                         </td>
                         <td style={DS.td}>{moyHParJour > 0 ? <span style={{ color: moyHParJour > 9 ? '#92400E' : 'var(--text-secondary)' }}>{moyHParJour}h</span> : <span style={{ color: 'var(--text-muted)' }}>—</span>}</td>

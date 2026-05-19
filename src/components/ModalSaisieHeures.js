@@ -3,6 +3,13 @@ import { X } from 'lucide-react';
 import { C, heuresJour } from '../donnees';
 import { DS } from '../ds';
 
+function localISODate(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
 const inputStyle = DS.input;
 const labelStyle = DS.label;
 const btnSucces  = DS.btnSuccess;
@@ -26,8 +33,8 @@ function ModalSaisieHeures({ chantierSaisie, initialDate, onFermer, onSave, para
   }, [parametres.employes, equipeIds]);
 
   const hierDate = useMemo(() => {
-    const d = new Date(date); d.setDate(d.getDate() - 1);
-    return d.toISOString().split('T')[0];
+    const d = new Date(date + 'T12:00:00'); d.setDate(d.getDate() - 1);
+    return localISODate(d);
   }, [date]);
   const hierHeures = useMemo(() => heuresJour(chantierSaisie.journal || [], hierDate), [chantierSaisie.journal, hierDate]);
 
@@ -37,7 +44,7 @@ function ModalSaisieHeures({ chantierSaisie, initialDate, onFermer, onSave, para
   // Validation date : bloquer si avant le début du chantier ou dans le futur.
   // Exception CYNA : samedi de la semaine courante autorisé si chantier.inclusSamedi=true.
   const dateDebut = chantierSaisie.dateDebut || null;
-  const today = new Date().toISOString().split('T')[0];
+  const today = localISODate(new Date());
   const samSemaineCourante = useMemo(() => {
     const t = new Date();
     const day = t.getDay(); // 0=dim, 1=lun, ..., 6=sam
@@ -45,7 +52,7 @@ function ModalSaisieHeures({ chantierSaisie, initialDate, onFermer, onSave, para
     const monday = new Date(t);
     monday.setDate(t.getDate() - diffToMonday);
     monday.setDate(monday.getDate() + 5);
-    return monday.toISOString().split('T')[0];
+    return localISODate(monday);
   }, []);
   const isSamedi = date ? new Date(date + 'T00:00:00').getDay() === 6 : false;
   const samediFuturAutorise = isSamedi && date === samSemaineCourante && chantierSaisie.inclusSamedi;

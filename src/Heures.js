@@ -23,7 +23,11 @@ function addDays(date, n) {
 }
 
 function isoDate(d) {
-  return d.toISOString().slice(0, 10);
+  // Utilise les composantes locales (pas UTC) pour éviter le décalage UTC+2 (Genève)
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
 }
 
 const DAY_LABELS_SHORT = ['LUN', 'MAR', 'MER', 'JEU', 'VEN', 'SAM', 'DIM'];
@@ -68,7 +72,7 @@ export default function Heures({ chantiers = [], parametres = {}, setChantiers }
     if (h > 16) { alert('Maximum 16h par jour.'); return; }
     // Règle CYNA stricte : pas de saisie dans le futur.
     // Exception : samedi de la semaine courante uniquement si chantier.inclusSamedi=true.
-    const todayStr = new Date().toISOString().split('T')[0];
+    const todayStr = isoDate(new Date());
     const samSemaineCourante = isoDate(addDays(getWeekStart(new Date()), 5));
     const isSam = new Date(date + 'T00:00:00').getDay() === 6;
     const chantierCible = chantiers.find(c => String(c.id) === String(chantierId));
@@ -369,7 +373,7 @@ export default function Heures({ chantiers = [], parametres = {}, setChantiers }
               <div>
                 <label style={DS.label}>Date</label>
                 {(() => {
-                  const todayStr = new Date().toISOString().split('T')[0];
+                  const todayStr = isoDate(new Date());
                   const samSemaine = isoDate(addDays(getWeekStart(new Date()), 5));
                   const maxDate = samSemaine > todayStr ? samSemaine : todayStr;
                   const futur = modal.form.date && modal.form.date > maxDate;
@@ -388,7 +392,7 @@ export default function Heures({ chantiers = [], parametres = {}, setChantiers }
 
             {/* Alerte date vraiment future (au-delà du samedi courant) */}
             {(() => {
-              const todayStr = new Date().toISOString().split('T')[0];
+              const todayStr = isoDate(new Date());
               const samSemaine = isoDate(addDays(getWeekStart(new Date()), 5));
               const vraimantFutur = modal.form.date && modal.form.date > todayStr && modal.form.date > samSemaine;
               if (!vraimantFutur) return null;
@@ -447,7 +451,7 @@ export default function Heures({ chantiers = [], parametres = {}, setChantiers }
               <div style={{ display: 'flex', gap: 10, marginLeft: 'auto' }}>
               <button onClick={() => setModal(null)} style={DS.btnGhost}>Annuler</button>
               {(() => {
-                const todayStr = new Date().toISOString().split('T')[0];
+                const todayStr = isoDate(new Date());
                 const samSemaine = isoDate(addDays(getWeekStart(new Date()), 5));
                 const futur = modal.form.date && modal.form.date > todayStr && modal.form.date > samSemaine;
                 const manque = !modal.form.employeId || !modal.form.chantierId || !modal.form.date || !modal.form.heures;

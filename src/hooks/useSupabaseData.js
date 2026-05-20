@@ -23,7 +23,7 @@ import { donneesInitiales, migrerJournal } from '../donnees';
 const STORAGE_MARKER = '__cyna_storage__';
 const STORAGE_TABLE  = 'devis';
 // Incrémenter quand les données démo changent — force le rechargement depuis donneesInitiales
-const DEMO_VERSION   = 2;
+const DEMO_VERSION   = 3;
 
 const LEGACY_STATUTS = { 'Validé': 'accepté', 'Signé': 'accepté', 'Envoyé': 'envoyé', 'Refusé': 'refusé', 'Brouillon': 'brouillon', 'Annulé': 'refusé' };
 

@@ -79,7 +79,7 @@ function AppInner({ profil, deconnecter, userId }) {
       setDevis(donneesInitiales.devis);
       setFactures(donneesInitiales.factures || []);
       setClients(donneesInitiales.clients);
-      setParametres({ ...donneesInitiales, demoVersion: 2 });
+      setParametres({ ...donneesInitiales, demoVersion: 3 });
     }
   }, [dataLoading, chantiers.length, devis.length, setChantiers, setDevis, setFactures, setClients, setParametres]);
 

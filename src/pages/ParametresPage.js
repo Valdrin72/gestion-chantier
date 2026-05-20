@@ -117,7 +117,17 @@ function Parametres({ parametres, setParametres, clients = [], setClients = () =
       'Toutes vos données existantes seront effacées.'
     );
     if (!ok) return;
-    setParametres(donneesDemo.parametres);
+    // setParametres attend la structure complète (= donneesInitiales-like)
+    // qui contient employes, typesTravaux, localites, zones, agentsConfig + parametres interne
+    setParametres({
+      parametres:   donneesDemo.parametres,
+      agentsConfig: donneesDemo.agentsConfig,
+      zones:        donneesDemo.zones,
+      typesTravaux: donneesDemo.typesTravaux,
+      localites:    donneesDemo.localites,
+      employes:     donneesDemo.employes,
+      profils:      donneesDemo.profils,
+    });
     setClients(donneesDemo.clients);
     setDevis(donneesDemo.devis);
     setChantiers(donneesDemo.chantiers);

@@ -952,9 +952,10 @@ export function runRadarPrecoce({ chantiers, devis, parametres, agentContext }) 
     if (Number.isFinite(pred?.margePredictive) && pred.margePredictive < SEUILS.margeLimite) { score += 15; facteurs.push(`prédiction historique : ${Math.round(pred.margePredictive * 10) / 10}%`); }
 
     if (score >= 30) {
-      risques.push({ chantierId: c.id, nom: c.nom || c.numero, score, facteurs, niveau: score >= 60 ? 'CRITIQUE' : score >= 40 ? 'DANGER' : 'ATTENTION' });
-      alertes.push({ id: uid('rp-radar'), agent: 'RadarPrecoce', type: 'radar', niveau: score >= 60 ? 'CRITIQUE' : score >= 40 ? 'DANGER' : 'ATTENTION',
-        message: `${c.nom || c.numero} — score de risque : ${score}/100`,
+      const scoreCapped = Math.min(100, score);
+      risques.push({ chantierId: c.id, nom: c.nom || c.numero, score: scoreCapped, facteurs, niveau: scoreCapped >= 60 ? 'CRITIQUE' : scoreCapped >= 40 ? 'DANGER' : 'ATTENTION' });
+      alertes.push({ id: uid('rp-radar'), agent: 'RadarPrecoce', type: 'radar', niveau: scoreCapped >= 60 ? 'CRITIQUE' : scoreCapped >= 40 ? 'DANGER' : 'ATTENTION',
+        message: `${c.nom || c.numero} — score de risque : ${scoreCapped}/100`,
         detail: `Facteurs : ${facteurs.join(' · ')}`,
         chantier_id: c.id, timestamp: Date.now(), lu: false, action: { page: 'chantiers', ctx: { chantierActif: c.id } } });
     }
@@ -1274,7 +1275,7 @@ export function runOptimisationEquipe({ chantiers, parametres, agentContext }) {
 
     const sousUtilises = employes.filter(emp => {
       const stat = statsEmployes[String(emp.id)];
-      return stat && stat.heuresMoyParJour < 4 && stat.joursActifs > 3;
+      return stat && stat.moyenneHeuresJour < 4 && stat.joursActifs > 3;
     });
 
     const chantiersActifs = chantiers.filter(isChantierActif);

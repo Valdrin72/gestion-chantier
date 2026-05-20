@@ -200,7 +200,7 @@ export default function Agents({
     return `il y a ${Math.floor(diff / 1440)}j`;
   };
 
-  const nbActifs = AGENTS_META.filter(m => (agentsActifs || {})[m.id]).length;
+  const nbActifs = AGENTS_META.filter(m => (agentsActifs || {})[m.id] !== false).length;
   const alertesNonLues = alertes.filter(a => !a.lu);
 
   return (
@@ -245,7 +245,7 @@ export default function Agents({
         {[
           ['coach', `Coach Directeur${priorites.length > 0 ? ` (${priorites.length})` : ''}`],
           ['alertes', `Alertes ${alertesNonLues.length > 0 ? `(${alertesNonLues.length})` : ''}`],
-          ['agents', 'Agents (20)'],
+          ['agents', `Agents (${AGENTS_META.length})`],
           ['predictions', 'Prédictions'],
           ['memoire', 'Mémoire'],
           ['rapports', 'Rapports'],

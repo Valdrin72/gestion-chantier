@@ -62,7 +62,9 @@ function saveMemoire(memoire) {
 export default function useAgents({ chantiers, devis, factures, clients, parametres }) {
   const persisted = loadState();
 
-  const [agentsActifs, setAgentsActifs] = useState(persisted?.agentsActifs || AGENTS_PAR_DEFAUT);
+  const [agentsActifs, setAgentsActifs] = useState(
+    { ...AGENTS_PAR_DEFAUT, ...(persisted?.agentsActifs || {}) }
+  );
   const [alertes, setAlertes] = useState(persisted?.alertes || []);
   const [predictions, setPredictions] = useState(persisted?.predictions || {});
   const [patterns, setPatterns] = useState(persisted?.patterns || {});

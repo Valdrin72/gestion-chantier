@@ -413,7 +413,7 @@ export default function Agents({
                               <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 3 }}>
                                 <span style={{ fontWeight: 700, fontSize: 14 }}>{agent.nom}</span>
                                 {agent.apprentissage && <span style={{ background: '#f0fdf4', color: '#15803d', border: '1px solid #bbf7d0', borderRadius: 20, padding: '1px 8px', fontSize: 10, fontWeight: 700 }}>APPREND</span>}
-                                {!actif && <span style={{ background: 'var(--bg-glass-2)', color: 'var(--text-muted)', borderRadius: 20, padding: '1px 8px', fontSize: 10, fontWeight: 700 }}>DÉSACTIVÉ</span>}
+                                {!actif && <span style={{ background: '#fef3c7', color: '#92400e', border: '1px solid #fde68a', borderRadius: 20, padding: '1px 8px', fontSize: 10, fontWeight: 700 }}>⚡ RÉACTIVATION AUTO</span>}
                                 {statut.erreur && <span style={{ background: '#fee2e2', color: '#991b1b', borderRadius: 20, padding: '1px 8px', fontSize: 10, fontWeight: 700 }}>ERREUR</span>}
                                 {nbRes > 0 && <span style={{ background: agent.couleur + '18', color: agent.couleur, borderRadius: 20, padding: '1px 8px', fontSize: 10, fontWeight: 700 }}>{nbRes} alerte{nbRes > 1 ? 's' : ''}</span>}
                               </div>
@@ -425,7 +425,7 @@ export default function Agents({
                               </div>
                             </div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-                              <button onClick={() => toggleAgent(agent.id)} title={actif ? 'Désactiver' : 'Activer'}
+                              <button onClick={() => toggleAgent(agent.id)} title={actif ? 'Pause temporaire (réactivation auto dans 2 min)' : 'Réactiver maintenant'}
                                 style={{ background: 'none', border: 'none', cursor: 'pointer', color: actif ? agent.couleur : 'var(--text-muted)', padding: 0, display: 'flex', alignItems: 'center' }}>
                                 {actif ? <ToggleRight size={28} strokeWidth={1.5} /> : <ToggleLeft size={28} strokeWidth={1.5} />}
                               </button>

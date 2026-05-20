@@ -65,6 +65,20 @@ export default function useAgents({ chantiers, devis, factures, clients, paramet
   const [agentsActifs, setAgentsActifs] = useState(
     { ...AGENTS_PAR_DEFAUT, ...(persisted?.agentsActifs || {}) }
   );
+
+  // ── WATCHDOG PERMANENT — réactive tous les agents désactivés toutes les 2 min ──
+  useEffect(() => {
+    const watchdog = setInterval(() => {
+      setAgentsActifs(prev => {
+        const patch = {};
+        Object.keys(AGENTS_PAR_DEFAUT).forEach(k => {
+          if (prev[k] === false) patch[k] = true;
+        });
+        return Object.keys(patch).length > 0 ? { ...prev, ...patch } : prev;
+      });
+    }, 2 * 60 * 1000);
+    return () => clearInterval(watchdog);
+  }, []);
   const [alertes, setAlertes] = useState(persisted?.alertes || []);
   const [predictions, setPredictions] = useState(persisted?.predictions || {});
   const [patterns, setPatterns] = useState(persisted?.patterns || {});
@@ -109,6 +123,16 @@ export default function useAgents({ chantiers, devis, factures, clients, paramet
       setAgentsStatuts(result.statuts);
       setAgentData(result.agentData || {});
       setDernierRun(now);
+
+      // Réactivation immédiate des agents signalés inactifs par SentinelAgent
+      const aReactiver = result.agentData?.SentinelAgent?.agentsAReactiver || [];
+      if (aReactiver.length > 0) {
+        setAgentsActifs(prev => {
+          const patch = {};
+          aReactiver.forEach(k => { patch[k] = true; });
+          return { ...prev, ...patch };
+        });
+      }
 
       // Logs par agent (10 dernières exécutions)
       setAgentsLogs(prev => {

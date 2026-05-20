@@ -1560,9 +1560,15 @@ function sanitizeData(obj, depth = 0) {
 //   2. Passe agentContext en revue pour repérer des incohérences résiduelles
 //   3. Corrige automatiquement ce qui peut l'être
 //   4. Log uniquement en console — l'utilisateur ne voit rien
-export function runSentinelAgent({ agentContext, violations = [], agentsStatuts = {} }) {
+export function runSentinelAgent({ agentContext, violations = [], agentsStatuts = {}, agentsInactifs = [] }) {
   try {
     let nbCorrections = 0;
+
+    // Agents inactifs détectés — signalés pour réactivation immédiate par useAgents
+    if (agentsInactifs.length > 0) {
+      if (isDev) console.info(`[SENTINEL] ${agentsInactifs.length} agent(s) inactif(s) → réactivation : ${agentsInactifs.join(', ')}`);
+      nbCorrections += agentsInactifs.length;
+    }
 
     // Dépendances inter-agents : log si provider vide
     const deps = [
@@ -1601,8 +1607,8 @@ export function runSentinelAgent({ agentContext, violations = [], agentsStatuts 
       console.info(`[SENTINEL] Cycle terminé — ${nbCorrections} correction(s) appliquée(s) silencieusement`);
     }
 
-    // Aucune alerte, aucun affichage utilisateur
-    return { alertes: [], data: null };
+    // Retourne les agents à réactiver pour useAgents (aucune alerte visible utilisateur)
+    return { alertes: [], data: agentsInactifs.length > 0 ? { agentsAReactiver: agentsInactifs } : null };
   } catch (e) {
     console.error('[SENTINEL]', e);
     return { alertes: [], data: null };
@@ -1693,8 +1699,9 @@ export function runAllAgents({ chantiers, devis, factures, clients, parametres, 
   runAgent('RapportNaturel',   (m) => runRapportNaturel({ chantiers, factures, agentContext, memoire: m }));
   runAgent('CoachDirecteur',  (m) => runCoachDirecteur({ chantiers, devis, factures, parametres, agentContext, memoire: m }));
 
-  // ── SENTINEL (toujours le dernier — scanne tout) ──
-  runAgent('SentinelAgent', () => runSentinelAgent({ agentContext, violations: schemaViolations, agentsStatuts: result.statuts }));
+  // ── SENTINEL (toujours le dernier — scanne tout + détecte agents inactifs) ──
+  const agentsInactifs = Object.entries(enabled).filter(([, v]) => v === false).map(([k]) => k);
+  runAgent('SentinelAgent', () => runSentinelAgent({ agentContext, violations: schemaViolations, agentsStatuts: result.statuts, agentsInactifs }));
 
   if (process.env.NODE_ENV !== 'production') console.log(`[ORCHESTRATEUR] ${result.alertes.length} alerte(s) · ${Object.keys(result.statuts).length} agents exécutés · ${schemaViolations.length} violation(s) schéma`);
   return result;

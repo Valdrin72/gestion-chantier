@@ -8,7 +8,7 @@ import {
 import { fmtN } from './donnees';
 import { DS } from './ds';
 
-// ── Métadonnées des 20 agents (3 tiers) ──────────────────────
+// ── Métadonnées des agents (3 tiers) ─────────────────────────
 const AGENTS_META = [
   // ── TIER 1 — ANALYSE PURE ──────────────────────────────────
   {
@@ -294,7 +294,7 @@ export default function Agents({
                       {scoreGlobal >= 80 ? 'Bonne santé d\'entreprise' : scoreGlobal >= 60 ? 'Situation à surveiller' : 'Intervention requise'}
                     </div>
                     <div style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-                      Basé sur l'analyse de 20 agents · {alertes.filter(a => !a.lu).length} alertes non traitées · Synthèse en temps réel
+                      Basé sur l'analyse de {AGENTS_META.length} agents · {alertes.filter(a => !a.lu).length} alertes non traitées · Synthèse en temps réel
                     </div>
                   </div>
                 </div>
@@ -387,7 +387,7 @@ export default function Agents({
       )}
 
       {/* ══════════════════════════════════════════════════════
-          ONGLET AGENTS (20 agents organisés par tiers)
+          ONGLET AGENTS ({AGENTS_META.length} agents organisés par tiers)
       ══════════════════════════════════════════════════════ */}
       {onglet === 'agents' && (
         <div>

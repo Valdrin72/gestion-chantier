@@ -1,6 +1,6 @@
 /**
  * CYNA — useAgents hook v2
- * Orchestre les 20 agents, gère state + mémoire long-terme + timers.
+ * Orchestre les agents IA, gère state + mémoire long-terme + timers.
  *
  * Mémoire : chaque agent peut accumuler des données entre les runs.
  * Stockage : localStorage "cyna_agents_state" (alertes, prédictions, statuts)

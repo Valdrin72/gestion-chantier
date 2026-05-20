@@ -1,6 +1,6 @@
 /**
  * CYNA — Agent Engine v2
- * 20 agents autonomes en 3 tiers :
+ * Agents autonomes en 3 tiers :
  *   Tier 1 (9) — analyse pure, pas de dépendance inter-agents
  *   Tier 2 (6) — intelligence croisée, lit les résultats Tier 1
  *   Tier 3 (5) — synthèse, lit tout + accumule la mémoire long-terme

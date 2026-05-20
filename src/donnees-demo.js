@@ -47,7 +47,7 @@ const _dates_ch3 = [
   '2026-01-02','2026-01-05','2026-01-06','2026-01-07','2026-01-08',
 ];
 
-// Chantier 4 — 25 jours saisis (sur 40 prévus) 2026-02-02 → 2026-03-06
+// Chantier 4 — 25 jours saisis (sur 90 prévus) 2026-02-02 → 2026-07-07
 // 02,03,04,05,06/02 | 09,10,11,12,13/02 | 16,17,18,19,20/02
 // 23,24,25,26,27/02 | 02,03,04,05,06/03
 const _dates_ch4 = [
@@ -58,14 +58,14 @@ const _dates_ch4 = [
   '2026-03-02','2026-03-03','2026-03-04','2026-03-05','2026-03-06',
 ];
 
-// Chantier 5 — 6 jours saisis (sur 10 prévus) 2026-04-14 → 2026-04-23
+// Chantier 5 — 6 jours saisis (sur 35 prévus) 2026-04-14 → 2026-06-02
 // 14,15,16,17/04 — pause Pâques 18-21 avr — 22,23/04
 const _dates_ch5 = [
   '2026-04-14','2026-04-15','2026-04-16','2026-04-17',
   '2026-04-22','2026-04-23',
 ];
 
-// Chantier 6 — 8 jours saisis (sur 18 prévus) 2026-04-07 → 2026-04-17
+// Chantier 6 — 8 jours saisis (sur 45 prévus) 2026-04-07 → 2026-06-09
 // 07,08,09,10/04 | 14,15,16,17/04 (17 avr = jeudi, avant Vendredi saint 18)
 const _dates_ch6 = [
   '2026-04-07','2026-04-08','2026-04-09','2026-04-10',
@@ -762,7 +762,7 @@ export const donneesDemo = {
       ville: 'Genève',
       canton: 'GE',
       dateDebut: '2026-02-02',
-      nombreJours: 40,
+      nombreJours: 90,
       inclusSamedi: false,
       statut: 'En cours',
       priorite: 'Haute',
@@ -807,7 +807,7 @@ export const donneesDemo = {
       ville: 'Genève',
       canton: 'GE',
       dateDebut: '2026-04-14',
-      nombreJours: 10,
+      nombreJours: 35,
       inclusSamedi: false,
       statut: 'En cours',
       priorite: 'Normale',
@@ -846,7 +846,7 @@ export const donneesDemo = {
       ville: 'Morges',
       canton: 'VD',
       dateDebut: '2026-04-07',
-      nombreJours: 18,
+      nombreJours: 45,
       inclusSamedi: false,
       statut: 'En cours',
       priorite: 'Normale',

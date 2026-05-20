@@ -183,11 +183,22 @@ export default function Agents({
   agentsActifs, agentsStatuts, agentsLogs, alertes, predictions,
   patterns, rapports, dernierRun, running, nbNonLues, agentData = {},
   scoreGlobal, priorites = [], memoire = {},
-  toggleAgent, forcerExecution, marquerLu, marquerTousLus,
+  toggleAgent, forcerExecution, marquerLu, marquerTousLus, simulerRapport,
 }) {
   const [onglet, setOnglet] = useState('coach');
   const [expanded, setExpanded] = useState({});
   const [tierVisible, setTierVisible] = useState({ 1: true, 2: true, 3: true });
+  const [simRapport, setSimRapport] = useState(null);
+  const [simRunning, setSimRunning] = useState(false);
+
+  const lancerSimulation = () => {
+    if (!simulerRapport) return;
+    setSimRunning(true);
+    setTimeout(() => {
+      setSimRapport(simulerRapport());
+      setSimRunning(false);
+    }, 600);
+  };
 
   const toggleExpand = (id) => setExpanded(prev => ({ ...prev, [id]: !prev[id] }));
   const fmtDate = (ts) => ts ? new Date(ts).toLocaleString('fr-CH', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—';
@@ -736,6 +747,65 @@ export default function Agents({
               Rapport IA non encore généré — forcez une exécution des agents pour obtenir votre résumé exécutif
             </div>
           )}
+
+          {/* ── Simulation rapport lundi matin ── */}
+          <div style={{ ...DS.card, padding: '20px 24px', borderLeft: '4px solid #8b5cf6' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: simRapport ? 20 : 0 }}>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <FileBarChart2 size={18} color="#8b5cf6" />
+                  <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-primary)' }}>Simulation — Rapport lundi matin</span>
+                  <span style={{ background: '#f3e8ff', color: '#7c3aed', border: '1px solid #ddd6fe', borderRadius: 20, padding: '1px 8px', fontSize: 10, fontWeight: 700 }}>SIMULATION</span>
+                </div>
+                <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--text-muted)' }}>
+                  Prévisualise le rapport qui sera généré automatiquement au prochain lundi matin
+                </p>
+              </div>
+              <button onClick={lancerSimulation} disabled={simRunning}
+                style={{ ...DS.btnPrimary, display: 'flex', alignItems: 'center', gap: 7, opacity: simRunning ? 0.7 : 1, fontSize: 13 }}>
+                <RefreshCw size={13} style={{ animation: simRunning ? 'spin 1s linear infinite' : 'none' }} />
+                {simRunning ? 'Simulation...' : simRapport ? 'Actualiser' : 'Lancer la simulation'}
+              </button>
+            </div>
+
+            {simRapport && (
+              <div>
+                <div style={{ padding: '10px 14px', background: '#f3e8ff', border: '1px solid #ddd6fe', borderRadius: 8, marginBottom: 16, fontSize: 12 }}>
+                  <span style={{ fontWeight: 700, color: '#7c3aed' }}>Généré automatiquement le : </span>
+                  <span style={{ color: '#5b21b6' }}>{simRapport.dateLundi} à 7h30</span>
+                  {simRapport.joursRestants > 0 && (
+                    <span style={{ marginLeft: 10, color: 'var(--text-muted)' }}>— dans {simRapport.joursRestants} jour{simRapport.joursRestants > 1 ? 's' : ''}</span>
+                  )}
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 10, marginBottom: 14 }}>
+                  {[
+                    { label: 'Heures saisies', val: `${simRapport.heuresSaisies}h`, couleur: '#0d3d6e', note: `Proj. ${simRapport.projectionHeures}h` },
+                    { label: 'CA facturé', val: `CHF ${fmtN(simRapport.caFacture)}`, couleur: '#10b981', note: `Proj. CHF ${fmtN(simRapport.projectionCA)}` },
+                    { label: 'Chantiers actifs', val: simRapport.nbActifs, couleur: '#f59e0b', note: null },
+                    { label: 'En retard', val: simRapport.nbEnRetard, couleur: simRapport.nbEnRetard > 0 ? '#ef4444' : '#10b981', note: null },
+                  ].map(m => (
+                    <div key={m.label} style={{ background: 'var(--bg-glass)', border: '1px solid var(--border)', borderRadius: 10, padding: '12px 14px', textAlign: 'center' }}>
+                      <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', marginBottom: 4 }}>{m.label}</div>
+                      <div style={{ fontSize: 20, fontWeight: 800, color: m.couleur, lineHeight: 1 }}>{m.val}</div>
+                      {m.note && <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 4 }}>{m.note}</div>}
+                    </div>
+                  ))}
+                </div>
+
+                {simRapport.chantierRetard?.length > 0 && (
+                  <div style={{ padding: '8px 12px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, fontSize: 12, color: '#991b1b', marginBottom: 10 }}>
+                    <strong>Chantiers en retard :</strong> {simRapport.chantierRetard.join(', ')}
+                  </div>
+                )}
+
+                <div style={{ padding: '8px 14px', background: 'rgba(139,92,246,0.04)', border: '1px solid rgba(139,92,246,0.15)', borderRadius: 8, fontSize: 11, color: 'var(--text-muted)' }}>
+                  Les projections (Proj.) sont calculées en extrapolant le rythme actuel sur les {simRapport.joursRestants} jour{simRapport.joursRestants > 1 ? 's' : ''} restants jusqu'à lundi.
+                  Le rapport réel sera généré automatiquement dès votre première connexion lundi après 7h.
+                </div>
+              </div>
+            )}
+          </div>
 
           {/* ── Rapports hebdomadaires RapportAuto ── */}
           <div>

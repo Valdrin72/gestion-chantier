@@ -239,6 +239,75 @@ export function runRapportAuto({ chantiers, factures, devis, parametres, dernier
   } catch (e) { return { alertes: [], data: null }; }
 }
 
+// ─── SIMULATION : Rapport lundi matin ────────────────────────
+// Même logique que runRapportAuto mais sans contrainte jour/heure.
+// Projette le rapport tel qu'il sera généré au prochain lundi matin.
+export function simulerRapportLundi({ chantiers, factures, devis, parametres }) {
+  try {
+    const now = new Date();
+
+    // Date du prochain lundi (ou lundi prochain si on est déjà lundi)
+    const prochainLundi = new Date(now);
+    const jourActuel = now.getDay(); // 0=dim, 1=lun, ...6=sam
+    const joursJusquaLundi = jourActuel === 0 ? 1 : jourActuel === 1 ? 7 : 8 - jourActuel;
+    prochainLundi.setDate(now.getDate() + joursJusquaLundi);
+    prochainLundi.setHours(7, 30, 0, 0);
+
+    // Période de référence : 7 derniers jours (ce que l'agent verra lundi)
+    const debutSemaine = new Date(now);
+    debutSemaine.setDate(now.getDate() - 7);
+
+    const actifs = chantiers.filter(isChantierActif);
+    const enRetard = actifs.filter(c => {
+      const r = new Set((c.journal || []).map(e => e.date).filter(Boolean)).size;
+      return c.nombreJours > 0 && c.nombreJours - r < 0;
+    });
+
+    let heuresSemaine = 0;
+    actifs.forEach(c => {
+      (c.journal || []).forEach(entry => {
+        if (!entry.date || new Date(entry.date) < debutSemaine) return;
+        (entry.employes || []).forEach(e => { heuresSemaine += parseFloat(e.heuresTravaillees) || 0; });
+      });
+    });
+
+    const caFactureSemaine = (factures || [])
+      .filter(f => f.dateEmission && new Date(f.dateEmission) >= debutSemaine)
+      .reduce((s, f) => s + (parseFloat(f.montantTTC) || 0), 0);
+
+    const nbTermines = chantiers.filter(c =>
+      ['terminé', 'facturé', 'clôturé'].includes((c.statut || '').toLowerCase()) &&
+      c.dateFin && new Date(c.dateFin) >= debutSemaine
+    ).length;
+
+    // Projections : si la semaine continue au même rythme
+    const joursEcoules = Math.max(1, jourActuel === 0 ? 7 : jourActuel);
+    const joursRestants = joursJusquaLundi;
+    const tauxQuotidienHeures = heuresSemaine / joursEcoules;
+    const tauxQuotidienCA = caFactureSemaine / joursEcoules;
+    const projectionHeures = Math.round(heuresSemaine + tauxQuotidienHeures * joursRestants);
+    const projectionCA = Math.round(caFactureSemaine + tauxQuotidienCA * joursRestants);
+
+    return {
+      simulation: true,
+      dateLundi: prochainLundi.toLocaleDateString('fr-CH', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' }),
+      timestampLundi: prochainLundi.getTime(),
+      semaine: `Simulation — Semaine du ${debutSemaine.toLocaleDateString('fr-CH', { day: '2-digit', month: '2-digit' })} au ${now.toLocaleDateString('fr-CH', { day: '2-digit', month: '2-digit' })}`,
+      heuresSaisies: Math.round(heuresSemaine),
+      caFacture: Math.round(caFactureSemaine),
+      nbActifs: actifs.length,
+      nbTermines,
+      nbEnRetard: enRetard.length,
+      chantierRetard: enRetard.map(c => c.nom || c.numero),
+      projectionHeures,
+      projectionCA,
+      joursRestants,
+    };
+  } catch (e) {
+    return null;
+  }
+}
+
 // ─── T1-A5 : MémoireChantier ─────────────────────────────────
 export function runMemoireChantier({ chantiers, devis, parametres }) {
   try {

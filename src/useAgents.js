@@ -8,7 +8,7 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { runAllAgents } from './AgentEngine';
+import { runAllAgents, simulerRapportLundi } from './AgentEngine';
 
 const STORAGE_KEY   = 'cyna_agents_state';
 const MEMOIRE_KEY   = 'cyna_agents_memoire';
@@ -228,6 +228,9 @@ export default function useAgents({ chantiers, devis, factures, clients, paramet
   const marquerTousLus = useCallback(() => setAlertes(prev => prev.map(a => ({ ...a, lu: true }))), []);
   const toggleAgent = useCallback((name) => setAgentsActifs(prev => ({ ...prev, [name]: !prev[name] })), []);
   const forcerExecution = useCallback(() => executer(true), [executer]);
+  const simulerRapport = useCallback(() =>
+    simulerRapportLundi({ chantiers: chantiers || [], factures: factures || [], devis: devis || [], parametres: parametres || {} }),
+  [chantiers, factures, devis, parametres]);
 
   const nbNonLues = alertes.filter(a => !a.lu).length;
   const hasNouveauRapport = rapports.some(r => r.nouveau);
@@ -239,6 +242,6 @@ export default function useAgents({ chantiers, devis, factures, clients, paramet
     agentsActifs, agentsStatuts, agentsLogs, agentData,
     dernierRun, running, nbNonLues, hasNouveauRapport,
     scoreGlobal, priorites, memoire: memoireRef.current,
-    marquerLu, marquerTousLus, toggleAgent, forcerExecution,
+    marquerLu, marquerTousLus, toggleAgent, forcerExecution, simulerRapport,
   };
 }

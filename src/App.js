@@ -5,7 +5,7 @@ import {
   Users, UserCog, ChevronRight, Sparkles,
 } from 'lucide-react';
 import { Sidebar, Topbar, MobileNav } from './components/Layout';
-import { migrerDevisId } from './donnees';
+import { migrerDevisId, donneesInitiales, migrerJournal } from './donnees';
 import Finances from './pages/FinancesPage';
 import Login from './Login';
 import useAuth from './hooks/useAuth';
@@ -68,6 +68,20 @@ function AppInner({ profil, deconnecter, userId }) {
     loading: dataLoading,
     syncing,
   } = useSupabaseData(userId);
+
+  // Filet de sécurité : si après chargement tout est vide, injecter les données initiales
+  const injectedRef = useRef(false);
+  useEffect(() => {
+    if (dataLoading || injectedRef.current) return;
+    if (chantiers.length === 0 && devis.length === 0) {
+      injectedRef.current = true;
+      setChantiers(donneesInitiales.chantiers.map(ch => ({ ...ch, journal: migrerJournal(ch.journal || []) })));
+      setDevis(donneesInitiales.devis);
+      setFactures(donneesInitiales.factures || []);
+      setClients(donneesInitiales.clients);
+      setParametres({ ...donneesInitiales, demoVersion: 2 });
+    }
+  }, [dataLoading, chantiers.length, devis.length, setChantiers, setDevis, setFactures, setClients, setParametres]);
 
   const [page, setPage] = useState('dashboard');
   const [contexte, setContexte] = useState({});

@@ -426,7 +426,7 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
         chantier?.nom || '',
         f.type || '',
         f.statut || '',
-        f.dateEmission || f.dateFacture || '',
+        f.dateEmission || '',
         f.dateEcheance || '',
         Math.round(parseFloat(f.montantHT) || 0),
         parseFloat(f.tva) || 8.1,

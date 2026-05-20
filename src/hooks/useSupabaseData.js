@@ -22,6 +22,8 @@ import { donneesInitiales, migrerJournal } from '../donnees';
 
 const STORAGE_MARKER = '__cyna_storage__';
 const STORAGE_TABLE  = 'devis';
+// Incrémenter quand les données démo changent — force le rechargement depuis donneesInitiales
+const DEMO_VERSION   = 2;
 
 const LEGACY_STATUTS = { 'Validé': 'accepté', 'Signé': 'accepté', 'Envoyé': 'envoyé', 'Refusé': 'refusé', 'Brouillon': 'brouillon', 'Annulé': 'refusé' };
 
@@ -89,21 +91,25 @@ export default function useSupabaseData(userId) {
     const facturesPropres = (d.factures || []).filter(f => !FACTURES_TEST.has(f.numero));
     const nettoyage = facturesPropres.length < (d.factures || []).length;
 
-    // Auto-population : si les données stockées sont vides/creuses, injecter donneesInitiales
     const storedParams = d.parametres || {};
-    const params = {
+    // Détecter si les données stockées sont obsolètes (version antérieure à DEMO_VERSION)
+    const outdated = (storedParams.demoVersion || 0) < DEMO_VERSION;
+
+    // Auto-population : données vides ou version périmée → injecter donneesInitiales
+    const params = outdated ? { ...donneesInitiales, demoVersion: DEMO_VERSION } : {
       ...donneesInitiales,
       ...storedParams,
+      demoVersion:  DEMO_VERSION,
       employes:     (storedParams.employes?.length     > 0) ? storedParams.employes     : donneesInitiales.employes,
       typesTravaux: (storedParams.typesTravaux?.length  > 0) ? storedParams.typesTravaux : donneesInitiales.typesTravaux,
       localites:    (storedParams.localites?.length    > 0) ? storedParams.localites    : donneesInitiales.localites,
       zones:        (storedParams.zones?.length        > 0) ? storedParams.zones        : donneesInitiales.zones,
     };
-    const chantiersFinaux = c.length > 0 ? c
+    const chantiersFinaux = (!outdated && c.length > 0) ? c
       : donneesInitiales.chantiers.map(ch => ({ ...ch, journal: migrerJournal(ch.journal || []) }));
-    const devisFinaux     = dv.length > 0 ? dv : donneesInitiales.devis;
-    const clientsFinaux   = (d.clients || []).length > 0 ? (d.clients || []) : donneesInitiales.clients;
-    const facturesFinales = facturesPropres.length > 0 ? facturesPropres : (donneesInitiales.factures || []);
+    const devisFinaux   = (!outdated && dv.length > 0) ? dv : donneesInitiales.devis;
+    const clientsFinaux = (!outdated && (d.clients || []).length > 0) ? (d.clients || []) : donneesInitiales.clients;
+    const facturesFinales = (!outdated && facturesPropres.length > 0) ? facturesPropres : (donneesInitiales.factures || []);
 
     setChantiersState(chantiersFinaux);
     setDevisState(devisFinaux);
@@ -112,8 +118,8 @@ export default function useSupabaseData(userId) {
     setParametresState(params);
     dataRef.current = { chantiers: chantiersFinaux, devis: devisFinaux, factures: facturesFinales, clients: clientsFinaux, parametres: params };
 
-    // Resync vers Supabase si les données étaient vides (première connexion ou compte vierge)
-    const needsSync = nettoyage || c.length === 0 || dv.length === 0 || !storedParams.employes?.length;
+    // Resync vers Supabase si données vides, obsolètes ou factures test nettoyées
+    const needsSync = nettoyage || outdated || c.length === 0 || dv.length === 0 || !storedParams.employes?.length;
     if (needsSync) scheduleSync({ chantiers: chantiersFinaux, devis: devisFinaux, factures: facturesFinales, clients: clientsFinaux, parametres: params });
   }
 

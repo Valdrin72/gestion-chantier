@@ -65,9 +65,9 @@ const _dates_ch5 = ['2026-04-14','2026-04-15','2026-04-16','2026-04-17','2026-04
 const _dates_ch6 = ['2026-04-07','2026-04-08','2026-04-09','2026-04-10','2026-04-14','2026-04-15','2026-04-16','2026-04-17'];
 
 const DEVIS = [
-  { id:1, numero:'DEV-2025-001', clientId:1, statut:'accepté', montantHT:52400, coutMateriel:16000, coutTransport:600, coutSousTraitance:0,    margeCible:25, dureeEstimee:20, surface:280, typeTravaux:'Cloisons vitrées',   zone:'Genève' },
-  { id:2, numero:'DEV-2025-002', clientId:2, statut:'accepté', montantHT:38900, coutMateriel:12000, coutTransport:400, coutSousTraitance:2000,  margeCible:25, dureeEstimee:14, surface:220, typeTravaux:'Plafonds suspendus', zone:'Genève' },
-  { id:3, numero:'DEV-2025-003', clientId:3, statut:'accepté', montantHT:87500, coutMateriel:28000, coutTransport:1200,coutSousTraitance:5000,  margeCible:25, dureeEstimee:30, surface:520, typeTravaux:'Cloisons vitrées',   zone:'Lausanne' },
+  { id:1, numero:'DEV-2025-001', clientId:1, statut:'accepté', montantHT:73000,  coutMateriel:16000, coutTransport:600, coutSousTraitance:0,    margeCible:25, dureeEstimee:20, surface:280, typeTravaux:'Cloisons vitrées',   zone:'Genève' },
+  { id:2, numero:'DEV-2025-002', clientId:2, statut:'accepté', montantHT:54500,  coutMateriel:12000, coutTransport:400, coutSousTraitance:2000,  margeCible:25, dureeEstimee:14, surface:220, typeTravaux:'Plafonds suspendus', zone:'Genève' },
+  { id:3, numero:'DEV-2025-003', clientId:3, statut:'accepté', montantHT:115000, coutMateriel:28000, coutTransport:1200,coutSousTraitance:5000,  margeCible:25, dureeEstimee:30, surface:520, typeTravaux:'Cloisons vitrées',   zone:'Lausanne' },
   { id:4, numero:'DEV-2026-001', clientId:4, statut:'accepté', montantHT:124000,coutMateriel:42000, coutTransport:1800,coutSousTraitance:8000,  margeCible:25, dureeEstimee:40, surface:750, typeTravaux:'Faux plancher',      zone:'Genève' },
   { id:5, numero:'DEV-2026-002', clientId:1, statut:'accepté', montantHT:29800, coutMateriel:9000,  coutTransport:400, coutSousTraitance:0,    margeCible:25, dureeEstimee:10, surface:180, typeTravaux:'Cloisons amovibles', zone:'Genève' },
   { id:6, numero:'DEV-2026-003', clientId:5, statut:'envoyé',  montantHT:68000, coutMateriel:22000, coutTransport:1500,coutSousTraitance:4000,  margeCible:22, dureeEstimee:25, surface:410, typeTravaux:'Faux plancher',      zone:'Berne' },
@@ -129,10 +129,10 @@ const CHANTIERS = [
 ];
 
 const FACTURES = [
-  { id:1, numero:'F-2025-001', clientId:2, chantierId:2, devisId:2, type:'finale',   statut:'payee',   dateEmission:'2025-11-15', dateEcheance:'2025-12-15', montantHT:38900, tva:8.1, montantTTC:42050.9, montantPaye:42050.9  },
-  { id:2, numero:'F-2025-002', clientId:1, chantierId:1, devisId:1, type:'finale',   statut:'payee',   dateEmission:'2025-10-20', dateEcheance:'2025-11-19', montantHT:52400, tva:8.1, montantTTC:56644.4, montantPaye:56644.4  },
-  { id:3, numero:'F-2025-003', clientId:3, chantierId:3, devisId:3, type:'acompte',  statut:'payee',   dateEmission:'2025-11-20', dateEcheance:'2025-12-20', montantHT:44000, tva:8.1, montantTTC:47564,   montantPaye:47564    },
-  { id:4, numero:'F-2026-001', clientId:3, chantierId:3, devisId:3, type:'finale',   statut:'payee',   dateEmission:'2026-01-15', dateEcheance:'2026-02-14', montantHT:43500, tva:8.1, montantTTC:47023.5, montantPaye:47023.5  },
+  { id:1, numero:'F-2025-001', clientId:2, chantierId:2, devisId:2, type:'finale',   statut:'payee',   dateEmission:'2025-11-15', dateEcheance:'2025-12-15', montantHT:54500,  tva:8.1, montantTTC:58914.5, montantPaye:58914.5  },
+  { id:2, numero:'F-2025-002', clientId:1, chantierId:1, devisId:1, type:'finale',   statut:'payee',   dateEmission:'2025-10-20', dateEcheance:'2025-11-19', montantHT:73000,  tva:8.1, montantTTC:78913,   montantPaye:78913    },
+  { id:3, numero:'F-2025-003', clientId:3, chantierId:3, devisId:3, type:'acompte',  statut:'payee',   dateEmission:'2025-11-20', dateEcheance:'2025-12-20', montantHT:57500,  tva:8.1, montantTTC:62157.5, montantPaye:62157.5  },
+  { id:4, numero:'F-2026-001', clientId:3, chantierId:3, devisId:3, type:'finale',   statut:'payee',   dateEmission:'2026-01-15', dateEcheance:'2026-02-14', montantHT:57500,  tva:8.1, montantTTC:62157.5, montantPaye:62157.5  },
   { id:5, numero:'F-2026-002', clientId:4, chantierId:4, devisId:4, type:'acompte',  statut:'payee',   dateEmission:'2026-02-05', dateEcheance:'2026-03-07', montantHT:62000, tva:8.1, montantTTC:67022,   montantPaye:67022    },
   { id:6, numero:'F-2026-003', clientId:4, chantierId:4, devisId:4, type:'situation',statut:'envoyee', dateEmission:'2026-03-10', dateEcheance:'2026-04-09', montantHT:37000, tva:8.1, montantTTC:39997,   montantPaye:0        },
   { id:7, numero:'F-2026-004', clientId:1, chantierId:5, devisId:5, type:'acompte',  statut:'envoyee', dateEmission:'2026-04-14', dateEcheance:'2026-05-14', montantHT:15000, tva:8.1, montantTTC:16215,   montantPaye:0        },

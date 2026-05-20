@@ -405,8 +405,8 @@ export const donneesDemo = {
       coutTransport: 600,
       coutSousTraitance: 0,
       margeCible: 25,
-      montantHT: 52400,
-      prixPropose: 52400,
+      montantHT: 73000,
+      prixPropose: 73000,
       heuresRegie: [],
       avenants: [],
       notes: 'Bureaux Dupont Rive Gauche — cloisons aluminium + faux plancher technique',
@@ -429,8 +429,8 @@ export const donneesDemo = {
       coutTransport: 400,
       coutSousTraitance: 2000,
       margeCible: 25,
-      montantHT: 38900,
-      prixPropose: 38900,
+      montantHT: 54500,
+      prixPropose: 54500,
       heuresRegie: [],
       avenants: [],
       notes: 'Centre Lacroix — plafonds acoustiques dalles minérales',
@@ -453,11 +453,11 @@ export const donneesDemo = {
       coutTransport: 1200,
       coutSousTraitance: 5000,
       margeCible: 25,
-      montantHT: 87500,
-      prixPropose: 87500,
+      montantHT: 115000,
+      prixPropose: 115000,
       heuresRegie: [],
       avenants: [],
-      notes: 'Helvetia Properties — plateaux open space, dalle béton irrégulière découverte en cours',
+      notes: 'Helvetia Properties — plateaux open space, avenant dalle béton +27 500 CHF accepté',
     },
     // ── Chantiers en cours ───────────────────────────────────────────────────
     {
@@ -924,7 +924,7 @@ export const donneesDemo = {
   // ══════════════════════════════════════════════════════════════════════════
   factures: [
     // ── F1 — Lacroix / CH2 — payée ──────────────────────────────────────────
-    // montantTTC = Math.round(38900 * 1.081 * 100) / 100 = 42050.9
+    // montantTTC = Math.round(54500 * 1.081 * 100) / 100 = 58914.5
     {
       id: 1,
       numero: 'F-2025-001',
@@ -936,19 +936,19 @@ export const donneesDemo = {
       dateEmission: '2025-11-15',
       dateEcheance: '2025-12-15',
       datePaiement: '2025-12-08',
-      montantHT: 38900,
+      montantHT: 54500,
       tva: 8.1,
-      montantTTC: 42050.9,
-      montantPaye: 42050.9,
+      montantTTC: 58914.5,
+      montantPaye: 58914.5,
       paiementsHistorique: [
-        { date: '2025-12-08', montant: 42050.9, mode: 'virement', reference: 'VIR-2025-1115' },
+        { date: '2025-12-08', montant: 58914.5, mode: 'virement', reference: 'VIR-2025-1115' },
       ],
       objet: 'Travaux plafonds suspendus – Centre Lacroix',
       notes: 'Solde total payé avant échéance',
     },
 
     // ── F2 — Dupont / CH1 — payée ────────────────────────────────────────────
-    // montantTTC = Math.round(52400 * 1.081 * 100) / 100 = 56644.4
+    // montantTTC = Math.round(73000 * 1.081 * 100) / 100 = 78913
     {
       id: 2,
       numero: 'F-2025-002',
@@ -960,19 +960,19 @@ export const donneesDemo = {
       dateEmission: '2025-10-20',
       dateEcheance: '2025-11-19',
       datePaiement: '2025-11-18',
-      montantHT: 52400,
+      montantHT: 73000,
       tva: 8.1,
-      montantTTC: 56644.4,
-      montantPaye: 56644.4,
+      montantTTC: 78913,
+      montantPaye: 78913,
       paiementsHistorique: [
-        { date: '2025-11-18', montant: 56644.4, mode: 'virement', reference: 'VIR-2025-1020' },
+        { date: '2025-11-18', montant: 78913, mode: 'virement', reference: 'VIR-2025-1020' },
       ],
       objet: 'Travaux cloisons & faux-plancher – Bureaux Dupont',
       notes: '',
     },
 
     // ── F3 — Helvetia / CH3 — acompte 50%, payée ────────────────────────────
-    // montantTTC = Math.round(44000 * 1.081 * 100) / 100 = 47564
+    // montantTTC = Math.round(57500 * 1.081 * 100) / 100 = 62157.5
     {
       id: 3,
       numero: 'F-2025-003',
@@ -984,19 +984,19 @@ export const donneesDemo = {
       dateEmission: '2025-11-20',
       dateEcheance: '2025-12-20',
       datePaiement: '2025-12-15',
-      montantHT: 44000,
+      montantHT: 57500,
       tva: 8.1,
-      montantTTC: 47564,
-      montantPaye: 47564,
+      montantTTC: 62157.5,
+      montantPaye: 62157.5,
       paiementsHistorique: [
-        { date: '2025-12-15', montant: 47564, mode: 'virement', reference: 'VIR-2025-1120' },
+        { date: '2025-12-15', montant: 62157.5, mode: 'virement', reference: 'VIR-2025-1120' },
       ],
       objet: 'Acompte 50% – Plateaux Open Space Helvetia',
       notes: 'Acompte à la signature, solde après réception',
     },
 
     // ── F4 — Helvetia / CH3 — solde, payée ──────────────────────────────────
-    // montantTTC = Math.round(43500 * 1.081 * 100) / 100 = 47023.5
+    // montantTTC = Math.round(57500 * 1.081 * 100) / 100 = 62157.5
     {
       id: 4,
       numero: 'F-2026-001',
@@ -1008,15 +1008,15 @@ export const donneesDemo = {
       dateEmission: '2026-01-15',
       dateEcheance: '2026-02-14',
       datePaiement: '2026-02-10',
-      montantHT: 43500,
+      montantHT: 57500,
       tva: 8.1,
-      montantTTC: 47023.5,
-      montantPaye: 47023.5,
+      montantTTC: 62157.5,
+      montantPaye: 62157.5,
       paiementsHistorique: [
-        { date: '2026-02-10', montant: 47023.5, mode: 'virement', reference: 'VIR-2026-0115' },
+        { date: '2026-02-10', montant: 62157.5, mode: 'virement', reference: 'VIR-2026-0115' },
       ],
       objet: 'Solde – Plateaux Open Space Helvetia',
-      notes: 'F3 + F4 = 87500 CHF HT = devis DEV-2025-003 soldé',
+      notes: 'F3 + F4 = 115 000 CHF HT = devis DEV-2025-003 soldé (avenant dalle inclus)',
     },
 
     // ── F5 — BPG / CH4 — acompte 50%, payée ─────────────────────────────────
@@ -1111,11 +1111,12 @@ export const donneesDemo = {
 //                      | double-fallback materielReel/coutMaterielReel
 //
 // FORMULES VÉRIFIABLES :
-//   CH1  CA=52400 | coût MO réel = 650×20 + 486×20 + 459×17.5 = 31082.5 CHF
-//        totalCoûts = 31082.5 + 17200 + 0 + 950 + 680 = 49912.5
-//        marge brute = 52400 − 49912.5 = 2487.5 → ~4.7% (chantier limite)
-//        (les frais généraux 12% viendraient encore réduire la marge nette)
-//   CH3  CA=87500 | imprevus=4000 | materielReel=31500 → dépassement vs prévu 28000
+//   CH1  CA=73000 | coût MO = 650×20 + 360×1.35×20 + 340×1.35×17.5 = 30752.5 CHF
+//        totalCoûts = 30752.5 + 17200 + 0 + 950 + 680 = 49582.5
+//        marge brute = 73000 − 49582.5 = 23417.5 → 32.1%
+//        marge nette = 23417.5 − 8760 (FG12%) = 14657.5 → 20.1% ✅
+//   CH2  CA=54500 | totalCoûts=37035 | marge nette ≈ 20% ✅
+//   CH3  CA=115000 | imprevus=4000 | materielReel=31500 → marge nette ≈ -4% (alerte ⚠️)
 //   CH4  25/40j = 62.5% avancement → projection EAC disponible (>=20%)
 //   CH7  journal=[] → avancement=0%, projection impossible, RAD=null, EAC=null
 //

@@ -1,8 +1,5 @@
 import React, { useState } from 'react';
-import Statistiques from '../Statistiques';
-import Rapport from '../Rapport';
 import Analyse from '../Analyse';
-import Marges from '../Marges';
 import SimulateurCroissance from '../SimulateurCroissance';
 import BenchmarkMarche from '../BenchmarkMarche';
 import { useApp } from '../context/AppContext';
@@ -61,13 +58,10 @@ function RapportsPage({ chantiers, clients, devis, parametres, setParametres, pa
   const { agentState, contexte } = useApp();
   const [onglet, setOnglet] = useState(contexte?.onglet || 'rapport-ia');
   const tabs = [
-    { id: 'rapport-ia',    label: 'Rapport IA',   Icon: Bot },
-    { id: 'marges',        label: 'Marges',        Icon: null },
-    { id: 'rapport',       label: 'Rapport',       Icon: null },
-    { id: 'statistiques',  label: 'Statistiques',  Icon: null },
-    { id: 'analyse',       label: 'Analyse',       Icon: null },
-    { id: 'simulateur',    label: 'Simulateur',    Icon: TrendingUp },
-    { id: 'benchmark',     label: 'Benchmark',     Icon: Award },
+    { id: 'rapport-ia',  label: 'Rapport IA',  Icon: Bot },
+    { id: 'analyse',     label: 'Analyse',     Icon: null },
+    { id: 'simulateur',  label: 'Simulateur',  Icon: TrendingUp },
+    { id: 'benchmark',   label: 'Benchmark',   Icon: Award },
   ];
   const pillActive   = { background: DS.brand.soft, color: DS.brand.secondary, border: '1px solid transparent' };
   const pillInactive = { background: 'transparent', color: 'var(--text-muted)', border: '1px solid var(--border)' };
@@ -82,13 +76,10 @@ function RapportsPage({ chantiers, clients, devis, parametres, setParametres, pa
           </button>
         ))}
       </div>
-      {onglet === 'rapport-ia'    && <RapportIA agentData={agentState?.agentData} />}
-      {onglet === 'marges'        && <Marges chantiers={chantiers} clients={clients} devis={devis} parametres={parametres} periodeGlobale={periodeGlobale} />}
-      {onglet === 'rapport'       && <Rapport chantiers={chantiers} clients={clients} devis={devis} parametres={parametres} paiementsData={paiementsData} naviguer={naviguer} />}
-      {onglet === 'statistiques'  && <Statistiques chantiers={chantiers} clients={clients} devis={devis} parametres={parametres} periodeGlobale={periodeGlobale} />}
-      {onglet === 'analyse'       && <Analyse chantiers={chantiers} clients={clients} devis={devis} parametres={parametres} setParametres={setParametres} paiementsData={paiementsData} periodeGlobale={periodeGlobale} />}
-      {onglet === 'simulateur'    && <SimulateurCroissance chantiers={chantiers} devis={devis} factures={factures || []} parametres={parametres} />}
-      {onglet === 'benchmark'     && <BenchmarkMarche chantiers={chantiers} devis={devis} parametres={parametres} />}
+      {onglet === 'rapport-ia'  && <RapportIA agentData={agentState?.agentData} />}
+      {onglet === 'analyse'     && <Analyse chantiers={chantiers} clients={clients} devis={devis} parametres={parametres} setParametres={setParametres} paiementsData={paiementsData} periodeGlobale={periodeGlobale} />}
+      {onglet === 'simulateur'  && <SimulateurCroissance chantiers={chantiers} devis={devis} factures={factures || []} parametres={parametres} />}
+      {onglet === 'benchmark'   && <BenchmarkMarche chantiers={chantiers} devis={devis} parametres={parametres} />}
     </div>
   );
 }

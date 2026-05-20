@@ -3,6 +3,7 @@ import { fmtN, calculerCoutsChantier, calculerCA, statutRentabilite, isChantierA
 import { DS } from './ds';
 import Statistiques from './Statistiques';
 import Rapport from './Rapport';
+import Marges from './Marges';
 
 const carteStyle = DS.card;
 
@@ -196,16 +197,17 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
   }).filter(Boolean).sort((a, b) => (b.ecartCoutMoyen ?? 0) - (a.ecartCoutMoyen ?? 0)), [chantiersPeriode, devis, parametres]);
 
   const onglets = [
-    { id: 'rentabilite', label: 'Rentabilité nette' },
-    { id: 'derive',      label: 'Dérive devis' },
-    { id: 'chantiers',   label: 'Prévu vs Réel' },
-    { id: 'clients',     label: 'Clients' },
-    { id: 'employes',    label: 'Coût horaire' },
-    { id: 'corps',       label: 'Corps de métier' },
-    { id: 'projection',  label: 'Projections' },
-    { id: 'objectifs',   label: 'Objectifs' },
-    { id: 'statistiques',label: 'Statistiques' },
-    { id: 'rapport',     label: 'Rapport hebdo' },
+    { id: 'marges',       label: 'Marges' },
+    { id: 'rentabilite',  label: 'Rentabilité nette' },
+    { id: 'derive',       label: 'Dérive devis' },
+    { id: 'chantiers',    label: 'Prévu vs Réel' },
+    { id: 'clients',      label: 'Clients' },
+    { id: 'employes',     label: 'Coût horaire' },
+    { id: 'corps',        label: 'Corps de métier' },
+    { id: 'projection',   label: 'Projections' },
+    { id: 'objectifs',    label: 'Objectifs' },
+    { id: 'statistiques', label: 'Statistiques' },
+    { id: 'rapport',      label: 'Rapport hebdo' },
   ];
 
   return (
@@ -881,6 +883,10 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
             )}
           </div>
         </div>
+      )}
+
+      {onglet === 'marges' && (
+        <Marges chantiers={chantiers} clients={clients} devis={devis} parametres={parametres} periodeGlobale={periodeGlobale} />
       )}
 
       {onglet === 'statistiques' && (

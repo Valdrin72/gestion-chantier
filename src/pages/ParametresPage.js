@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
-import { ChevronRight, Pencil, FlaskConical } from 'lucide-react';
+import { ChevronRight, Pencil } from 'lucide-react';
 import { fmtN, C } from '../donnees';
-import { donneesDemo } from '../donnees-demo';
 import { DS } from '../ds';
 import { EditEmployeRow } from './EmployesPage';
 
@@ -105,36 +104,6 @@ function Parametres({ parametres, setParametres, clients = [], setClients = () =
     }
   };
 
-  const chargerDemoData = () => {
-    const ok = window.confirm(
-      'Charger les données de démonstration CYNA ?\n\n' +
-      'Cette action remplace TOUTES vos données actuelles par :\n' +
-      '• 10 employés (3 équipes A/B/C)\n' +
-      '• 6 clients genevois\n' +
-      '• 9 devis (acceptés, envoyés, brouillon)\n' +
-      '• 7 chantiers (terminés, en cours, planifié)\n' +
-      '• 7 factures (payées, impayées, en retard)\n\n' +
-      'Toutes vos données existantes seront effacées.'
-    );
-    if (!ok) return;
-    // setParametres attend la structure complète (= donneesInitiales-like)
-    // qui contient employes, typesTravaux, localites, zones, agentsConfig + parametres interne
-    setParametres({
-      parametres:   donneesDemo.parametres,
-      agentsConfig: donneesDemo.agentsConfig,
-      zones:        donneesDemo.zones,
-      typesTravaux: donneesDemo.typesTravaux,
-      localites:    donneesDemo.localites,
-      employes:     donneesDemo.employes,
-      profils:      donneesDemo.profils,
-    });
-    setClients(donneesDemo.clients);
-    setDevis(donneesDemo.devis);
-    setChantiers(donneesDemo.chantiers);
-    setFactures(donneesDemo.factures);
-    alert('Données de démonstration chargées. Les agents IA démarrent leur analyse automatiquement.');
-  };
-
   const sauv = (data) => {
     setParametres(data);
     if (timerSaved.current) clearTimeout(timerSaved.current);
@@ -196,14 +165,6 @@ function Parametres({ parametres, setParametres, clients = [], setClients = () =
         </div>
         <div className="page-actions-group">
           <input ref={importRef} type="file" accept=".json" style={{ display: 'none' }} onChange={importerDonnees} />
-          <button
-            onClick={chargerDemoData}
-            style={{ ...btnPrimaire, background: 'linear-gradient(135deg, #7c3aed, #a855f7)', display: 'flex', alignItems: 'center', gap: 6 }}
-            title="Charger un jeu de données de démonstration complet (10 employés, 7 chantiers, 9 devis, 7 factures)"
-          >
-            <FlaskConical size={14} />
-            Données démo
-          </button>
           <button onClick={() => importRef.current?.click()} style={btnPrimaire} title="Restaurer depuis un fichier backup CYNA (.json)">
             Restaurer backup
           </button>

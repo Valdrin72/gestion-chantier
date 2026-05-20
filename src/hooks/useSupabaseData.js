@@ -88,14 +88,33 @@ export default function useSupabaseData(userId) {
     const dv = (d.devis || []).map(x => ({ ...x, statut: LEGACY_STATUTS[x.statut] || x.statut }));
     const facturesPropres = (d.factures || []).filter(f => !FACTURES_TEST.has(f.numero));
     const nettoyage = facturesPropres.length < (d.factures || []).length;
-    setChantiersState(c);
-    setDevisState(dv);
-    setFacturesState(facturesPropres);
-    setClientsState(d.clients || []);
-    setParametresState(d.parametres || donneesInitiales);
-    dataRef.current = { chantiers: c, devis: dv, factures: facturesPropres, clients: d.clients || [], parametres: d.parametres || donneesInitiales };
-    // Si des factures test ont été supprimées, resync immédiatement vers Supabase
-    if (nettoyage) scheduleSync({ factures: facturesPropres });
+
+    // Auto-population : si les données stockées sont vides/creuses, injecter donneesInitiales
+    const storedParams = d.parametres || {};
+    const params = {
+      ...donneesInitiales,
+      ...storedParams,
+      employes:     (storedParams.employes?.length     > 0) ? storedParams.employes     : donneesInitiales.employes,
+      typesTravaux: (storedParams.typesTravaux?.length  > 0) ? storedParams.typesTravaux : donneesInitiales.typesTravaux,
+      localites:    (storedParams.localites?.length    > 0) ? storedParams.localites    : donneesInitiales.localites,
+      zones:        (storedParams.zones?.length        > 0) ? storedParams.zones        : donneesInitiales.zones,
+    };
+    const chantiersFinaux = c.length > 0 ? c
+      : donneesInitiales.chantiers.map(ch => ({ ...ch, journal: migrerJournal(ch.journal || []) }));
+    const devisFinaux     = dv.length > 0 ? dv : donneesInitiales.devis;
+    const clientsFinaux   = (d.clients || []).length > 0 ? (d.clients || []) : donneesInitiales.clients;
+    const facturesFinales = facturesPropres.length > 0 ? facturesPropres : (donneesInitiales.factures || []);
+
+    setChantiersState(chantiersFinaux);
+    setDevisState(devisFinaux);
+    setFacturesState(facturesFinales);
+    setClientsState(clientsFinaux);
+    setParametresState(params);
+    dataRef.current = { chantiers: chantiersFinaux, devis: devisFinaux, factures: facturesFinales, clients: clientsFinaux, parametres: params };
+
+    // Resync vers Supabase si les données étaient vides (première connexion ou compte vierge)
+    const needsSync = nettoyage || c.length === 0 || dv.length === 0 || !storedParams.employes?.length;
+    if (needsSync) scheduleSync({ chantiers: chantiersFinaux, devis: devisFinaux, factures: facturesFinales, clients: clientsFinaux, parametres: params });
   }
 
   // ── Chargement initial ───────────────────────────────────────────────────

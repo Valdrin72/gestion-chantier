@@ -27,9 +27,6 @@ const DEMO_VERSION   = 3;
 
 const LEGACY_STATUTS = { 'Validé': 'accepté', 'Signé': 'accepté', 'Envoyé': 'envoyé', 'Refusé': 'refusé', 'Brouillon': 'brouillon', 'Annulé': 'refusé' };
 
-function chargerLocal(cle, defaut) {
-  try { const r = localStorage.getItem(cle); return r ? JSON.parse(r) : defaut; } catch { return defaut; }
-}
 function sauvegarderLocal(cle, data) {
   try { localStorage.setItem(cle, JSON.stringify(data)); } catch {}
 }
@@ -63,11 +60,18 @@ async function ecrireRowUser(userId, rowId, payload) {
   }
 }
 
+// Données initiales précalculées une seule fois (hors du composant — stable)
+const _initChantiers = donneesInitiales.chantiers.map(c => ({ ...c, journal: migrerJournal(c.journal || []) }));
+const _initDevis     = donneesInitiales.devis;
+const _initFactures  = donneesInitiales.factures || [];
+const _initClients   = donneesInitiales.clients;
+
 export default function useSupabaseData(userId) {
-  const [chantiers,   setChantiersState]  = useState([]);
-  const [devis,       setDevisState]      = useState([]);
-  const [factures,    setFacturesState]   = useState([]);
-  const [clients,     setClientsState]    = useState([]);
+  // Initialiser avec donneesInitiales — visible immédiatement, Supabase écrase ensuite
+  const [chantiers,   setChantiersState]  = useState(_initChantiers);
+  const [devis,       setDevisState]      = useState(_initDevis);
+  const [factures,    setFacturesState]   = useState(_initFactures);
+  const [clients,     setClientsState]    = useState(_initClients);
   const [parametres,  setParametresState] = useState(donneesInitiales);
   const [loading,     setLoading]         = useState(true);
   const [syncing,     setSyncing]         = useState(false);
@@ -75,7 +79,7 @@ export default function useSupabaseData(userId) {
   const rowIdRef    = useRef(null);
   const syncTimer   = useRef(null);
   const pendingRef  = useRef(null);
-  const dataRef     = useRef({});
+  const dataRef     = useRef({ chantiers: _initChantiers, devis: _initDevis, factures: _initFactures, clients: _initClients, parametres: donneesInitiales });
 
   // Numéros de factures de test créées par les agents — supprimées une fois lors du chargement
   const FACTURES_TEST = new Set([

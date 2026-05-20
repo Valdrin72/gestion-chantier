@@ -94,7 +94,8 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
       return t + heures / 8;
     }, 0);
     const heuresTotal = joursTotal * 8;
-    const coutTotal = joursTotal * emp.tarifJour;
+    const coeff = emp.tarifDejaCharge ? 1 : (parseFloat(parametres.parametres?.coefficientMainOeuvre) || 1.35);
+    const coutTotal = joursTotal * (parseFloat(emp.tarifJour) || 0) * coeff;
     const caGenere = chantiersPeriode.reduce((t, c) => {
       const heures = heuresEmploye(c.journal || [], emp.id);
       if (heures === 0) return t;
@@ -104,7 +105,7 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
     }, 0);
     const coutHoraire = heuresTotal > 0 ? Math.round(coutTotal / heuresTotal) : 0;
     const productivite = coutTotal > 0 ? Math.round((caGenere / coutTotal) * 100) : 0;
-    const chargesSoc = coutTotal * (tauxChargesSociales / 100);
+    const chargesSoc = emp.tarifDejaCharge ? 0 : coutTotal * (tauxChargesSociales / 100);
     const coutReel = coutTotal + chargesSoc;
 
     return { ...emp, joursTotal, heuresTotal, coutTotal, caGenere, coutHoraire, productivite, chargesSoc, coutReel };
@@ -401,7 +402,7 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
                           {d.lignes.map(l => (
                             <div key={l.c.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: 'var(--ds-card-inset-bg)', borderRadius: 8, border: '1px solid var(--ds-card-inset-border)', flexWrap: 'wrap' }}>
                               <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)', flex: 1, minWidth: 120 }}>{l.c.nom || l.c.numero}</span>
-                              <span style={{ fontSize: 11, color: 'var(--text-muted)', minWidth: 80 }}>{l.joursPrevu}j → {l.joursReel}j{l.ecartJours !== null ? <span style={{ color: l.ecartJours > 15 ? '#ef4444' : 'var(--text-muted)', fontWeight: 700 }}> ({l.ecartJours > 0 ? '+' : ''}{l.ecartJours?.toFixed(0)}%)</span> : ''}</span>
+                              <span style={{ fontSize: 11, color: 'var(--text-muted)', minWidth: 80 }}>{l.joursPrevu}j → {l.joursReel}j{l.ecartJours !== null ? <span style={{ color: l.ecartJours > 15 ? '#ef4444' : 'var(--text-muted)', fontWeight: 700 }}> ({l.ecartJours > 0 ? '+' : ''}{Math.round(l.ecartJours)}%)</span> : ''}</span>
                               {l.margeReelPct !== null && (
                                 <span style={{ fontSize: 11, fontWeight: 700, color: l.margeReelPct < 10 ? '#ef4444' : l.margeReelPct < 20 ? '#f59e0b' : '#10b981' }}>
                                   Marge {Math.round(l.margeReelPct * 10) / 10}%
@@ -466,7 +467,7 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
                       </span>
                     </td>
                     <td style={{ padding: '10px 12px', fontSize: '13px', color: 'var(--text-primary)' }}>{c.joursPrevu}j</td>
-                    <td style={{ padding: '10px 12px', fontSize: '13px', color: 'var(--text-primary)' }}>{c.joursReel.toFixed(1)}j</td>
+                    <td style={{ padding: '10px 12px', fontSize: '13px', color: 'var(--text-primary)' }}>{Math.round(c.joursReel * 10) / 10}j</td>
                     <td style={{ padding: '10px 12px' }}>
                       <span style={{ background: couleurEcart(Math.abs(c.ecartJours)) + '18', color: couleurEcart(Math.abs(c.ecartJours)), fontWeight: 600, padding: '3px 10px', borderRadius: '12px', fontSize: '12px' }}>
                         {parseFloat(c.ecartJours) > 0 ? '+' : ''}{c.ecartJours}%
@@ -491,7 +492,7 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
               </thead>
               <tbody>
                 {donneesChantiers.filter(c => c.heuresPrevu > 0 || c.heuresRealise > 0).map((c, i) => {
-                  const margeParHeure = c.heuresRealise > 0 ? Math.round(c.couts.margeReel / c.heuresRealise) : 0;
+                  const margeParHeure = c.heuresRealise > 0 && c.couts.margeReel != null ? Math.round(c.couts.margeReel / c.heuresRealise) : null;
                   return (
                     <tr key={c.id} style={{ borderBottom: '1px solid var(--ds-td-border)' }}>
                       <td style={{ padding: '10px 12px' }}><strong style={{ color: 'var(--text-primary)' }}>{c.nom}</strong></td>
@@ -504,7 +505,7 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
                       </td>
                       <td style={{ padding: '10px 12px', color: 'var(--text-primary)' }}>CHF {c.coutParHeure}/h</td>
                       <td style={{ padding: '10px 12px', color: 'var(--text-primary)', fontWeight: 'bold' }}>CHF {c.caParHeure}/h</td>
-                      <td style={{ padding: '10px 12px', color: parseFloat(margeParHeure) >= 0 ? '#10b981' : '#ef4444', fontWeight: 'bold' }}>CHF {margeParHeure}/h</td>
+                      <td style={{ padding: '10px 12px', color: margeParHeure === null ? 'var(--text-muted)' : margeParHeure >= 0 ? '#10b981' : '#ef4444', fontWeight: 'bold' }}>{margeParHeure === null ? '—' : `CHF ${margeParHeure}/h`}</td>
                     </tr>
                   );
                 })}
@@ -857,7 +858,7 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {donneesChantiers
                     .filter(c => statutRentabilite(c.couts.margeReelPct).label !== 'Rentable')
-                    .sort((a, b) => parseFloat(a.couts.margeReelPct) - parseFloat(b.couts.margeReelPct))
+                    .sort((a, b) => (a.couts.margeReelPct ?? -999) - (b.couts.margeReelPct ?? -999))
                     .map(c => {
                       const r = statutRentabilite(c.couts.margeReelPct);
                       return (
@@ -928,8 +929,7 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
         const margeM2Moyenne = surfaceTotale > 0 ? Math.round(margeTotaleM2 / surfaceTotale) : null;
         const margePctMoyenne = caTotalM2 > 0 ? Math.round((margeTotaleM2 / caTotalM2) * 1000) / 10 : null;
 
-        // Seuil de rentabilité global (15% marge nette)
-        const seuilM2Global = coutM2Moyen !== null ? Math.round(coutM2Moyen / (1 - 0.15)) : null;
+        const seuilM2Global = coutM2Moyen !== null ? Math.round(coutM2Moyen / (1 - SEUILS.margeLimite / 100)) : null;
 
         // Par type de travaux
         const typesAvecM2 = (parametres.typesTravaux || []).map(t => {
@@ -943,9 +943,9 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
           const coutM2T = surf > 0 ? Math.round(coutT / surf) : null;
           const margeM2T = surf > 0 ? Math.round(margeT / surf) : null;
           const margePctT = caT > 0 ? Math.round((margeT / caT) * 1000) / 10 : null;
-          const seuilM2T = coutM2T !== null ? Math.round(coutM2T / (1 - 0.15)) : null;
-          const rentable = margePctT !== null && margePctT >= 15;
-          const limite = margePctT !== null && margePctT >= 10 && margePctT < 15;
+          const seuilM2T = coutM2T !== null ? Math.round(coutM2T / (1 - SEUILS.margeLimite / 100)) : null;
+          const rentable = margePctT !== null && margePctT >= SEUILS.margeRentable;
+          const limite = margePctT !== null && margePctT >= SEUILS.margeLimite && margePctT < SEUILS.margeRentable;
           return { nom: t.nom, count: chantiersDuType.length, surf, caM2: caM2T, coutM2: coutM2T, margeM2: margeM2T, margePct: margePctT, seuilM2: seuilM2T, rentable, limite };
         }).filter(Boolean);
 

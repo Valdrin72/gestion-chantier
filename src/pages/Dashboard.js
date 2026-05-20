@@ -8,7 +8,7 @@ import {
   fmtN, calculerDateFinOuvrables, estRetardJustifie,
   calculerCoutsChantier, statutRentabilite, C, getIntervallesPeriode,
   facturesInPeriode, calculerRentabiliteReelle, calculerEtatChantier,
-  calculerCA, isChantierActif, isChantierComptable,
+  calculerCA, isChantierActif, isChantierComptable, SEUILS,
 } from '../donnees';
 import { DS } from '../ds';
 import { STATUTS_CLOS } from '../constants/statuts';
@@ -168,7 +168,7 @@ function Dashboard() {
     const caActifTotal = activesAvecDevis.reduce((s, r) => s + r.montantDevis, 0);
     const margeReellePct = caActifTotal > 0 ? Math.round((margeReelleTotale / caActifTotal) * 100) : null;
     return {
-      nbRentables:       actives.filter(r => r.rentabilitePct !== null && r.rentabilitePct >= 15).length,
+      nbRentables:       actives.filter(r => r.rentabilitePct !== null && r.rentabilitePct >= SEUILS.margeRentable).length,
       nbDepassement:     nbEnRetard,
       nbSansSaisie:      vals.filter(r => r.aucuneSaisie).length,
       margeReelleTotale,
@@ -321,8 +321,8 @@ function Dashboard() {
     const joursRealisesC = new Set((c.journal || []).map(e => e.date).filter(Boolean)).size;
     const joursPlannedC = c.nombreJours || 0;
     const avancementRetard = joursPlannedC > 0 && joursRealisesC > joursPlannedC * 0.5 && avancement < 30;
-    if (retardJ >= 1 || (r !== null && r < 10) || avancementRetard ||
-        (reel && reel.enDepassement) || (reel && !reel.aucuneSaisie && Number.isFinite(reel.rentabilitePct) && reel.rentabilitePct < 15))
+    if (retardJ >= 1 || (r !== null && r < SEUILS.margeLimite) || avancementRetard ||
+        (reel && reel.enDepassement) || (reel && !reel.aucuneSaisie && Number.isFinite(reel.rentabilitePct) && reel.rentabilitePct < SEUILS.margeLimite))
       return { niveau: 'attention', score: 1 };
 
     return { niveau: 'ok', score: 0 };
@@ -358,9 +358,10 @@ function Dashboard() {
           if (d >= deb && d < fin) {
             (entry.employes || []).forEach(e => {
               const emp = employes.find(em => String(em.id) === String(e.employeId));
-              const tarif = emp ? (parseFloat(emp.tarifJour) || 0) : 0;
+              const tarifBrut = emp ? (parseFloat(emp.tarifJour) || 0) : 0;
+              const coeff = emp?.tarifDejaCharge ? 1 : (parseFloat(parametres.parametres?.coefficientMainOeuvre) || 1.35);
               const heures = parseFloat(e.heuresTravaillees) || 0;
-              couts += (heures / 8) * tarif;
+              couts += (heures / 8) * tarifBrut * coeff;
             });
           }
         });
@@ -499,7 +500,7 @@ function Dashboard() {
                   const avancementVal = joursTotal === 0 ? 0 : Math.min(Math.round((joursRealises / joursTotal) * 100), 100);
                   const mPct = couts.montantTotal > 0 && couts.totalCoutsReel > 0 && couts.margeReelPct !== null ? Math.round(couts.margeReelPct) : null;
                   const statBadge = joursRealises === 0 ? BADGE_STATUT_DASH.neutre : BADGE_STATUT_DASH[priorite.niveau];
-                  const couleurBarre = !mPct ? '#CBD5E1' : mPct > 20 ? '#10B981' : mPct > 10 ? '#F59E0B' : '#EF4444';
+                  const couleurBarre = !mPct ? '#CBD5E1' : mPct >= SEUILS.margeRentable ? '#10B981' : mPct >= SEUILS.margeLimite ? '#F59E0B' : '#EF4444';
                   return (
                     <div key={c.id} onClick={() => naviguer('chantiers', { chantierActif: c.id })}
                       style={{ display: 'flex', flexDirection: 'column', gap: 6, borderRadius: 12, border: '1px solid var(--dash-border)', padding: '10px 12px', cursor: 'pointer', background: 'var(--ds-card-bg)' }}
@@ -810,8 +811,8 @@ function Dashboard() {
                   const avancementVal = joursTotal === 0 ? 0 : Math.min(Math.round((joursRealises / joursTotal) * 100), 100);
                   const couleurBarre = joursRealises === 0 ? '#CBD5E1'
                     : sansCouts ? '#CBD5E1'
-                    : margeVal > 20 ? '#10B981'
-                    : margeVal > 10 ? '#F59E0B'
+                    : margeVal >= SEUILS.margeRentable ? '#10B981'
+                    : margeVal >= SEUILS.margeLimite ? '#F59E0B'
                     : '#EF4444';
                   const depasse = joursTotal > 0 && joursRealises > joursTotal;
                   const statutJours = depasse

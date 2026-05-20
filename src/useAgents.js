@@ -60,11 +60,10 @@ function saveMemoire(memoire) {
 }
 
 export default function useAgents({ chantiers, devis, factures, clients, parametres }) {
-  const persisted = loadState();
-
-  const [agentsActifs, setAgentsActifs] = useState(
-    { ...AGENTS_PAR_DEFAUT, ...(persisted?.agentsActifs || {}) }
-  );
+  const [agentsActifs, setAgentsActifs] = useState(() => {
+    const persisted = loadState();
+    return { ...AGENTS_PAR_DEFAUT, ...(persisted?.agentsActifs || {}) };
+  });
 
   // ── WATCHDOG PERMANENT — réactive tous les agents désactivés toutes les 2 min ──
   useEffect(() => {
@@ -79,14 +78,14 @@ export default function useAgents({ chantiers, devis, factures, clients, paramet
     }, 2 * 60 * 1000);
     return () => clearInterval(watchdog);
   }, []);
-  const [alertes, setAlertes] = useState(persisted?.alertes || []);
-  const [predictions, setPredictions] = useState(persisted?.predictions || {});
-  const [patterns, setPatterns] = useState(persisted?.patterns || {});
-  const [rapports, setRapports] = useState(persisted?.rapports || []);
-  const [agentsStatuts, setAgentsStatuts] = useState(persisted?.agentsStatuts || {});
-  const [agentsLogs, setAgentsLogs] = useState(persisted?.agentsLogs || {});
-  const [agentData, setAgentData] = useState(persisted?.agentData || {});
-  const [dernierRun, setDernierRun] = useState(persisted?.dernierRun || null);
+  const [alertes, setAlertes] = useState(() => loadState()?.alertes || []);
+  const [predictions, setPredictions] = useState(() => loadState()?.predictions || {});
+  const [patterns, setPatterns] = useState(() => loadState()?.patterns || {});
+  const [rapports, setRapports] = useState(() => loadState()?.rapports || []);
+  const [agentsStatuts, setAgentsStatuts] = useState(() => loadState()?.agentsStatuts || {});
+  const [agentsLogs, setAgentsLogs] = useState(() => loadState()?.agentsLogs || {});
+  const [agentData, setAgentData] = useState(() => loadState()?.agentData || {});
+  const [dernierRun, setDernierRun] = useState(() => loadState()?.dernierRun || null);
   const [running, setRunning] = useState(false);
   const memoireRef = useRef(loadMemoire());
 
@@ -161,7 +160,7 @@ export default function useAgents({ chantiers, devis, factures, clients, paramet
     } finally {
       setRunning(false);
     }
-  }, [chantiers, devis, factures, clients, parametres, agentsActifs, dernierRapport, running]);
+  }, [chantiers, devis, factures, clients, parametres, agentsActifs, dernierRapport]);
 
   // Référence à executer toujours à jour (évite le stale-closure dans setInterval)
   const executerRef = useRef(executer);
@@ -216,6 +215,7 @@ export default function useAgents({ chantiers, devis, factures, clients, paramet
     // Re-run des agents (avec debounce de 600 ms si plusieurs suppressions en rafale)
     if (rerunTimerRef.current) clearTimeout(rerunTimerRef.current);
     rerunTimerRef.current = setTimeout(() => executerRef.current(true), 600);
+    return () => { if (rerunTimerRef.current) clearTimeout(rerunTimerRef.current); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chantiers, devis, factures]);
 

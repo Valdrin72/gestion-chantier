@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Bot, AlertTriangle, FileText, TrendingUp, TrendingDown, FileBarChart2, Brain,
   ToggleLeft, ToggleRight, CheckCircle, Clock, RefreshCw,
@@ -164,6 +164,31 @@ const AGENTS_META = [
     details: ['Durée moyenne réelle par type', 'Ratio durée réelle / prévue', 'Alerte si dépassement systématique > 15%'],
     frequence: 'Toutes les heures', apprentissage: true,
   },
+  // ── AGENTS SYSTÈME (invisibles dans les tiers — exécutés en interne) ────
+  {
+    id: 'PlanningCoherence', tier: 2, nom: 'Cohérence Planning', Icon: CheckCircle, couleur: '#0d9488',
+    description: 'Vérifie la cohérence des plannings : dates manquantes, durées incohérentes, équipes non affectées',
+    details: ['Chantiers "En cours" sans date de début', 'Durée 0 jour sur chantier actif', 'Équipe vide sur chantier planifié'],
+    frequence: 'Toutes les heures', apprentissage: false,
+  },
+  {
+    id: 'DerivePredictor', tier: 2, nom: 'Dérive Predictor', Icon: TrendingUp, couleur: '#7c3aed',
+    description: 'Prédit la dérive budgétaire et temporelle de chaque chantier actif grâce à l\'EAC et au RAD',
+    details: ['EAC = coût actuel / (avancement/100) × calibration historique', 'Alerte si dépassement budget projeté > 20%', 'Délai restant estimé par vitesse réelle'],
+    frequence: 'Toutes les heures', apprentissage: true,
+  },
+  {
+    id: 'RapportNaturel', tier: 3, nom: 'Rapport Naturel', Icon: FileText, couleur: '#8b5cf6',
+    description: 'Génère un résumé exécutif en langage naturel en synthétisant tous les agents Tier 1+2+3',
+    details: ['3 à 5 paragraphes automatiques', 'Action prioritaire recommandée', 'Score entreprise /100'],
+    frequence: 'Toutes les heures', apprentissage: true,
+  },
+  {
+    id: 'SentinelAgent', tier: 3, nom: 'Sentinel', Icon: Shield, couleur: '#64748b',
+    description: 'Surveillant système — vérifie les dépendances inter-agents, les violations de schéma, réactive les agents inactifs',
+    details: ['Détecte les agents inactifs → réactivation immédiate', 'Vérifie les schémas de sortie de chaque agent', 'Log silencieux — aucune alerte visible'],
+    frequence: 'Chaque cycle (dernier)', apprentissage: false,
+  },
 ];
 
 const TIER_META = {
@@ -190,11 +215,14 @@ export default function Agents({
   const [tierVisible, setTierVisible] = useState({ 1: true, 2: true, 3: true });
   const [simRapport, setSimRapport] = useState(null);
   const [simRunning, setSimRunning] = useState(false);
+  const simTimerRef = useRef(null);
+
+  useEffect(() => () => { if (simTimerRef.current) clearTimeout(simTimerRef.current); }, []);
 
   const lancerSimulation = () => {
     if (!simulerRapport) return;
     setSimRunning(true);
-    setTimeout(() => {
+    simTimerRef.current = setTimeout(() => {
       setSimRapport(simulerRapport());
       setSimRunning(false);
     }, 600);
@@ -469,8 +497,8 @@ export default function Agents({
                                   <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', color: 'var(--text-muted)', marginBottom: 8 }}>10 dernières exécutions</div>
                                   {logs.length === 0 ? (
                                     <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0 }}>Aucune exécution</p>
-                                  ) : logs.map((log, i) => (
-                                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0', borderBottom: '1px solid var(--border)', fontSize: 11 }}>
+                                  ) : logs.map((log) => (
+                                    <div key={log.timestamp} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0', borderBottom: '1px solid var(--border)', fontSize: 11 }}>
                                       {log.erreur ? <AlertTriangle size={10} style={{ color: '#ef4444' }} /> : <CheckCircle size={10} style={{ color: '#10b981' }} />}
                                       <span style={{ color: 'var(--text-secondary)', flex: 1 }}>{fmtDate(log.timestamp)}</span>
                                       <span style={{ color: 'var(--text-muted)' }}>{log.dureeMs}ms</span>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Plus, Pencil, Trash2, HardHat, Receipt,
   DollarSign, Clock, FileText, TrendingUp, FileDown, Download,
@@ -36,6 +36,19 @@ function Devis() {
   const [erreurs, setErreurs] = useState({});
 
   // Helper unifié : CA signé d'un devis (montant HT + avenants + heures régie)
+  const prixMoyenM2Historique = useMemo(() => {
+    const prix = chantiers
+      .filter(ch => parseFloat(ch.surface) > 0)
+      .map(ch => {
+        const dv = devis.find(d => String(d.id) === String(ch.devisId));
+        const ca = parseFloat(dv?.montantHT) || 0;
+        const s = parseFloat(ch.surface) || 0;
+        return ca > 0 && s > 0 ? ca / s : null;
+      })
+      .filter(Boolean);
+    return prix.length > 0 ? { moyenne: prix.reduce((a, b) => a + b, 0) / prix.length, count: prix.length } : null;
+  }, [chantiers, devis]);
+
   const caDevis = (d) => {
     const base = parseFloat(d.montantHT || d.prixPropose) || 0;
     const av = Array.isArray(d.avenants) ? d.avenants.reduce((x, a) => x + (parseFloat(a.montant) || 0), 0) : 0;
@@ -73,12 +86,6 @@ function Devis() {
     if (Number.isFinite(montant) && montant < 0) { alert('Le montant HT ne peut pas être négatif.'); return; }
     if (form.id) {
       setDevis(devis.map(d => d.id === form.id ? form : d));
-      // Sync CA sur les chantiers liés si montantHT a changé
-      if (form.montantHT) {
-        setChantiers(chantiers.map(ch =>
-          String(ch.devisId) === String(form.id) ? { ...ch, montantDevis: parseFloat(form.montantHT) || ch.montantDevis } : ch
-        ));
-      }
     } else {
       setDevis([...devis, { ...form, id: Date.now() }]);
     }
@@ -126,7 +133,6 @@ function Devis() {
       nom: nomChantier.trim() || `Chantier ${d.numero}`,
       numero: `CH-${new Date().getFullYear()}-${String(Math.max(0, ...prev.map(c => parseInt((c.numero || '').split('-').pop()) || 0)) + 1).padStart(3, '0')}`,
       clientId: d.clientId,
-      montantDevis: parseFloat(d.montantHT || d.prixPropose) || 0,
       surface: parseFloat(d.surface) || 0,
       statut: 'Planifié', priorite: 'Normale', avancement: 0,
       dateDebut: '', nombreJours: d.dureeEstimee || '', nombrePersonnes: d.nombrePersonnes || '',
@@ -320,18 +326,8 @@ function Devis() {
                 const surf = parseFloat(form.surface) || 0;
                 if (montant <= 0 || surf <= 0) return null;
                 const prixActuel = montant / surf;
-                const historique = chantiers
-                  .filter(ch => parseFloat(ch.surface) > 0)
-                  .map(ch => {
-                    const dv = devis.find(d => String(d.id) === String(ch.devisId));
-                    const ca = parseFloat(dv?.montantHT) || 0;
-                    const s = parseFloat(ch.surface) || 0;
-                    return ca > 0 && s > 0 ? ca / s : null;
-                  })
-                  .filter(Boolean);
-                const prixMoyen = historique.length > 0
-                  ? historique.reduce((a, b) => a + b, 0) / historique.length
-                  : null;
+                const prixMoyen = prixMoyenM2Historique?.moyenne ?? null;
+                const count = prixMoyenM2Historique?.count ?? 0;
                 const isOk = prixMoyen !== null ? prixActuel >= prixMoyen * 0.95 : null;
                 const couleur = isOk === null ? '#8b5cf6' : isOk ? '#10b981' : '#f59e0b';
                 return (
@@ -346,7 +342,7 @@ function Devis() {
                     ) : null}
                     {prixMoyen !== null ? (
                       <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-                        · Moyenne : {fmtN(Math.round(prixMoyen))} CHF/m² ({historique.length} chantier{historique.length > 1 ? 's' : ''})
+                        · Moyenne : {fmtN(Math.round(prixMoyen))} CHF/m² ({count} chantier{count > 1 ? 's' : ''})
                       </span>
                     ) : (
                       <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>· Aucun historique m² — premier chantier de référence</span>

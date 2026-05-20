@@ -494,7 +494,7 @@ export function simulerRapportLundi({ chantiers, factures, devis, parametres, cl
 // ─── T1-A5 : MémoireChantier ─────────────────────────────────
 export function runMemoireChantier({ chantiers, devis, parametres }) {
   try {
-    const STATUTS_TERMINES = ['terminé', 'facturé', 'clôturé'];
+    const STATUTS_TERMINES = ['terminé', 'termine', 'terminée', 'terminee', 'facturé', 'facture', 'clôturé', 'cloture'];
     const termines = chantiers.filter(c => STATUTS_TERMINES.includes((c.statut || '').toLowerCase()));
     const patterns = {};
 
@@ -1637,7 +1637,8 @@ export function runScoreOffre({ devis, chantiers, parametres, agentContext }) {
 // ─── T3-A26 : AnalyseCycles ───────────────────────────────────
 export function runAnalyseCycles({ chantiers, devis, agentContext, memoire = {} }) {
   try {
-    const termines = chantiers.filter(c => ['terminé', 'termine', 'terminée', 'terminee'].includes((c.statut || '').toLowerCase()));
+    const STATUTS_TERMINES_CYCLES = ['terminé', 'termine', 'terminée', 'terminee', 'facturé', 'facture', 'clôturé', 'cloture'];
+    const termines = chantiers.filter(c => STATUTS_TERMINES_CYCLES.includes((c.statut || '').toLowerCase()));
     const cyclesParType = {};
 
     termines.forEach(c => {
@@ -1676,7 +1677,7 @@ export function runAnalyseCycles({ chantiers, devis, agentContext, memoire = {} 
 }
 
 // ─── T3-A20 : CoachDirecteur ──────────────────────────────────
-export function runCoachDirecteur({ chantiers, devis, factures, parametres, agentContext, memoire = {} }) {
+export function runCoachDirecteur({ chantiers, devis, factures, parametres, agentContext, memoire = {}, alertes = [] }) {
   try {
     const priorites = [];
 
@@ -1737,7 +1738,7 @@ export function runCoachDirecteur({ chantiers, devis, factures, parametres, agen
     }
 
     // Résumé global
-    const nbAlertesTotal = Object.values(agentContext || {}).reduce((s, d) => s + (d?.alertes?.length || 0), 0);
+    const nbAlertesTotal = alertes.length;
     const scoreGlobal = Math.max(0, 100 - critiqueRisque.length * 20 - (relances?.nb90 || 0) * 10 - (anomalies?.nbAnomalies || 0) * 5);
 
     const hist = memoire.coachHistorique || [];
@@ -1799,7 +1800,7 @@ function sanitizeData(obj, depth = 0) {
   if (Array.isArray(obj)) return obj.map(v => sanitizeData(v, depth + 1));
   return Object.fromEntries(
     Object.entries(obj).map(([k, v]) => {
-      if (typeof v === 'number' && isNaN(v)) return [k, null];
+      if (typeof v === 'number' && !isFinite(v)) return [k, null];
       if (v && typeof v === 'object') return [k, sanitizeData(v, depth + 1)];
       return [k, v];
     })
@@ -1830,6 +1831,8 @@ export function runSentinelAgent({ agentContext, violations = [], agentsStatuts 
       { consumer: 'DSOAnalyse',         needs: 'RelancePaiements' },
       { consumer: 'AlerteRisqueClient', needs: 'SanteClient' },
       { consumer: 'OptimisationEquipe', needs: 'ProductiviteEquipe' },
+      { consumer: 'OptimisationEquipe', needs: 'ConflitsPlanning' },
+      { consumer: 'ScoreOffre',         needs: 'BenchmarkTypeTravaux' },
     ];
     deps.forEach(({ consumer, needs }) => {
       if (agentsStatuts[consumer]?.actif && (!agentContext[needs] || Object.keys(agentContext[needs]).length === 0)) {
@@ -1948,8 +1951,8 @@ export function runAllAgents({ chantiers, devis, factures, clients, parametres, 
   runAgent('Saisonnierte',    (m) => runSaisonnierte({ chantiers, devis, memoire: m }));
   runAgent('CoutMOAnalyse',   (m) => runCoutMOAnalyse({ chantiers, devis, parametres, agentContext }));
   runAgent('AnalyseCycles',   (m) => runAnalyseCycles({ chantiers, devis, agentContext, memoire: m }));
-  runAgent('RapportNaturel',   (m) => runRapportNaturel({ chantiers, factures, agentContext, memoire: m }));
-  runAgent('CoachDirecteur',  (m) => runCoachDirecteur({ chantiers, devis, factures, parametres, agentContext, memoire: m }));
+  runAgent('CoachDirecteur',  (m) => runCoachDirecteur({ chantiers, devis, factures, parametres, agentContext, memoire: m, alertes: result.alertes }));
+  runAgent('RapportNaturel',  (m) => runRapportNaturel({ chantiers, factures, agentContext, memoire: m }));
 
   // ── SENTINEL (toujours le dernier — scanne tout + détecte agents inactifs) ──
   const agentsInactifs = Object.entries(enabled).filter(([, v]) => v === false).map(([k]) => k);

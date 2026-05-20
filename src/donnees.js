@@ -244,7 +244,7 @@ export const calculerCoutsChantier = (chantier, employes = [], localites = [], c
   const journalCouts = chantier.journal || [];
 
   const coutEquipePrevu = chantier.equipe?.reduce((total, membre) => {
-    const emp = employes.find(e => e.id === parseInt(membre.employeId));
+    const emp = employes.find(e => String(e.id) === String(membre.employeId));
     return total + getTarifJour(emp) * parseFloat(membre.joursPlannifies || 0);
   }, 0) || 0;
 
@@ -618,7 +618,7 @@ export const calculerRentabiliteReelle = (chantier, parametres, devisList = []) 
 
   // Coût MO prévisionnel (somme tarifJour × joursPrévus par membre, chargé du coefficient)
   const coutMOPrevu = (chantier.equipe || []).reduce((total, membre) => {
-    const emp = employes.find(e => e.id === parseInt(membre.employeId));
+    const emp = employes.find(e => String(e.id) === String(membre.employeId));
     const coeff = emp?.tarifDejaCharge ? 1 : (parseFloat(parametres?.parametres?.coefficientMainOeuvre) || parseFloat(parametres?.coefficientMainOeuvre) || 1.35);
     return total + (parseFloat(emp?.tarifJour) || 0) * coeff * (parseFloat(membre.joursPlannifies) || 0);
   }, 0);

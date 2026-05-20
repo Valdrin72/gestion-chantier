@@ -92,10 +92,14 @@ export default function useSupabaseData(userId) {
     const nettoyage = facturesPropres.length < (d.factures || []).length;
 
     const storedParams = d.parametres || {};
-    // Détecter si les données stockées sont obsolètes (version antérieure à DEMO_VERSION)
     const outdated = (storedParams.demoVersion || 0) < DEMO_VERSION;
 
-    // Auto-population : données vides ou version périmée → injecter donneesInitiales
+    // Données actives : si vides ou périmées → injecter donneesInitiales
+    const chantiersFinaux = (!outdated && c.length > 0) ? c
+      : donneesInitiales.chantiers.map(ch => ({ ...ch, journal: migrerJournal(ch.journal || []) }));
+    const devisFinaux     = (!outdated && dv.length > 0) ? dv : donneesInitiales.devis;
+    const clientsFinaux   = (!outdated && (d.clients || []).length > 0) ? (d.clients || []) : donneesInitiales.clients;
+    const facturesFinales = (!outdated && facturesPropres.length > 0) ? facturesPropres : (donneesInitiales.factures || []);
     const params = outdated ? { ...donneesInitiales, demoVersion: DEMO_VERSION } : {
       ...donneesInitiales,
       ...storedParams,
@@ -105,11 +109,6 @@ export default function useSupabaseData(userId) {
       localites:    (storedParams.localites?.length    > 0) ? storedParams.localites    : donneesInitiales.localites,
       zones:        (storedParams.zones?.length        > 0) ? storedParams.zones        : donneesInitiales.zones,
     };
-    const chantiersFinaux = (!outdated && c.length > 0) ? c
-      : donneesInitiales.chantiers.map(ch => ({ ...ch, journal: migrerJournal(ch.journal || []) }));
-    const devisFinaux   = (!outdated && dv.length > 0) ? dv : donneesInitiales.devis;
-    const clientsFinaux = (!outdated && (d.clients || []).length > 0) ? (d.clients || []) : donneesInitiales.clients;
-    const facturesFinales = (!outdated && facturesPropres.length > 0) ? facturesPropres : (donneesInitiales.factures || []);
 
     setChantiersState(chantiersFinaux);
     setDevisState(devisFinaux);
@@ -118,9 +117,16 @@ export default function useSupabaseData(userId) {
     setParametresState(params);
     dataRef.current = { chantiers: chantiersFinaux, devis: devisFinaux, factures: facturesFinales, clients: clientsFinaux, parametres: params };
 
-    // Resync vers Supabase si données vides, obsolètes ou factures test nettoyées
     const needsSync = nettoyage || outdated || c.length === 0 || dv.length === 0 || !storedParams.employes?.length;
-    if (needsSync) scheduleSync({ chantiers: chantiersFinaux, devis: devisFinaux, factures: facturesFinales, clients: clientsFinaux, parametres: params });
+    if (needsSync) {
+      // Mettre à jour aussi le localStorage pour que le fallback offline soit correct
+      sauvegarderLocal('cyna_chantiers',  chantiersFinaux);
+      sauvegarderLocal('cyna_devis',      devisFinaux);
+      sauvegarderLocal('cyna_factures',   facturesFinales);
+      sauvegarderLocal('cyna_clients',    clientsFinaux);
+      sauvegarderLocal('cyna_parametres', params);
+      scheduleSync({ chantiers: chantiersFinaux, devis: devisFinaux, factures: facturesFinales, clients: clientsFinaux, parametres: params });
+    }
   }
 
   // ── Chargement initial ───────────────────────────────────────────────────
@@ -138,26 +144,26 @@ export default function useSupabaseData(userId) {
           rowIdRef.current = row.id;
           appliquerData(row.data);
         } else {
-          // Migration depuis localStorage
+          // Pas de données Supabase → charger directement donneesInitiales
           const localData = {
-            chantiers:  (chargerLocal('cyna_chantiers', donneesInitiales.chantiers)).map(c => ({ ...c, journal: migrerJournal(c.journal || []) })),
-            devis:      (chargerLocal('cyna_devis', donneesInitiales.devis)).map(d => ({ ...d, statut: LEGACY_STATUTS[d.statut] || d.statut })),
-            factures:   chargerLocal('cyna_factures', []),
-            clients:    chargerLocal('cyna_clients', donneesInitiales.clients),
-            parametres: chargerLocal('cyna_parametres', donneesInitiales),
+            chantiers:  donneesInitiales.chantiers.map(c => ({ ...c, journal: migrerJournal(c.journal || []) })),
+            devis:      donneesInitiales.devis,
+            factures:   donneesInitiales.factures || [],
+            clients:    donneesInitiales.clients,
+            parametres: { ...donneesInitiales, demoVersion: DEMO_VERSION },
           };
           if (!cancelled) appliquerData(localData);
           const id = await ecrireRowUser(userId, row?.id ?? null, localData);
           rowIdRef.current = id;
         }
       } catch (e) {
-        if (process.env.NODE_ENV !== 'production') console.warn('[Sync] Chargement Supabase échoué, fallback localStorage:', e.message);
+        if (process.env.NODE_ENV !== 'production') console.warn('[Sync] Chargement Supabase échoué, fallback donneesInitiales:', e.message);
         if (!cancelled) appliquerData({
-          chantiers:  chargerLocal('cyna_chantiers', donneesInitiales.chantiers),
-          devis:      chargerLocal('cyna_devis', donneesInitiales.devis),
-          factures:   chargerLocal('cyna_factures', []),
-          clients:    chargerLocal('cyna_clients', donneesInitiales.clients),
-          parametres: chargerLocal('cyna_parametres', donneesInitiales),
+          chantiers:  donneesInitiales.chantiers,
+          devis:      donneesInitiales.devis,
+          factures:   donneesInitiales.factures || [],
+          clients:    donneesInitiales.clients,
+          parametres: { ...donneesInitiales, demoVersion: DEMO_VERSION },
         });
       } finally {
         if (!cancelled) setLoading(false);

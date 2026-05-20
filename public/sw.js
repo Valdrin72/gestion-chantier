@@ -1,4 +1,4 @@
-const CACHE = 'cyna-v1';
+const CACHE = 'cyna-v2';
 const ASSETS = [
   '/',
   '/index.html',

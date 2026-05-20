@@ -137,7 +137,13 @@ function AppInner({ profil, deconnecter, userId }) {
     setContexte(precedent.contexte);
   }, []);
 
-  const [periodeGlobale, setPeriodeGlobale] = useState('mois');
+  const [periodeGlobale, setPeriodeGlobaleState] = useState(() => {
+    try { return localStorage.getItem('cyna_periode') || 'annee'; } catch { return 'annee'; }
+  });
+  const setPeriodeGlobale = useCallback((v) => {
+    try { localStorage.setItem('cyna_periode', v); } catch {}
+    setPeriodeGlobaleState(v);
+  }, []);
   const [paiementsData, setPaiementsDataState] = useState(() => {
     try { const r = localStorage.getItem('cyna_paiements'); return r ? JSON.parse(r) : {}; } catch { return {}; }
   });

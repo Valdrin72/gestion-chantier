@@ -900,6 +900,7 @@ tr:last-child td { border-bottom: none; }
   /* Layout */
   .app-sidebar { display: none; }
   .app-content, .main-area { margin-left: 0; }
+  .topbar { max-width: 100vw; }
   .app-main    { padding: 12px 12px 80px; }
 
   .bottom-nav { display: flex; }

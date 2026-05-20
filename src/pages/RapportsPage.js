@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Analyse from '../Analyse';
 import SimulateurCroissance from '../SimulateurCroissance';
 import BenchmarkMarche from '../BenchmarkMarche';
@@ -57,6 +57,7 @@ function RapportIA({ agentData }) {
 function RapportsPage({ chantiers, clients, devis, parametres, setParametres, paiementsData, periodeGlobale, naviguer, factures }) {
   const { agentState, contexte } = useApp();
   const [onglet, setOnglet] = useState(contexte?.onglet || 'rapport-ia');
+  useEffect(() => { if (contexte?.onglet) setOnglet(contexte.onglet); }, [contexte?.onglet]); // eslint-disable-line react-hooks/exhaustive-deps
   const tabs = [
     { id: 'rapport-ia',  label: 'Rapport IA',  Icon: Bot },
     { id: 'analyse',     label: 'Analyse',     Icon: null },

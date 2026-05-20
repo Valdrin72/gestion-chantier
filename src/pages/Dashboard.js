@@ -401,8 +401,7 @@ function Dashboard() {
       return s + pct;
     }, 0);
     return sum / actifs.length;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [actifs, parametres.employes, devis]);
+  }, [actifs, parametres.employes, parametres.parametres, devis]);
 
   const BADGE_STATUT_DASH = {
     ok:        { label: 'En cours',  bg: '#D1FAE5', color: '#065F46' },
@@ -617,7 +616,7 @@ function Dashboard() {
                       <span style={{ width: 6, height: 6, borderRadius: '50%', background: s.couleur, display: 'inline-block' }} />
                       <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{s.name.split(' ')[0]}</span>
                     </div>
-                    <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-primary)' }}>{s.value.toFixed(0)}%</span>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-primary)' }}>{Math.round(s.value)}%</span>
                   </div>
                 ))}
               </div>
@@ -807,7 +806,7 @@ function Dashboard() {
                     : BADGE_STATUT_DASH[priorite.niveau];
                   const joursRestants = joursTotal > 0 ? Math.max(0, joursTotal - joursRealises) : null;
                   const margeVal = parseFloat(couts?.margeReelPct) || 0;
-                  const sansCouts = !couts?.margeReelPct;
+                  const sansCouts = couts?.margeReelPct == null;
                   const avancementVal = joursTotal === 0 ? 0 : Math.min(Math.round((joursRealises / joursTotal) * 100), 100);
                   const couleurBarre = joursRealises === 0 ? '#CBD5E1'
                     : sansCouts ? '#CBD5E1'

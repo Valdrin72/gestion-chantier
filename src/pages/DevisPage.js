@@ -139,6 +139,7 @@ function Devis() {
       notes: `Créé depuis devis ${d.numero}`,
       journal: [],
     }]);
+    setDevis(prev => prev.map(dv => String(dv.id) === String(d.id) ? { ...dv, statut: 'accepté' } : dv));
     setConfirmConversion(null);
     naviguer('chantiers', { chantierActif: newId, modeCompleter: true });
   };

@@ -909,7 +909,7 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
           const surface = parseFloat(c.surface);
           const ca = calculerCA(c, devis);
           const couts = calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis);
-          const cout = couts.totalCoutsReel;
+          const cout = couts.totalCoutsReel || 0;
           const marge = couts.margeReel !== null ? couts.margeReel : (ca - cout);
           const caM2 = surface > 0 ? Math.round(ca / surface) : null;
           const coutM2 = surface > 0 ? Math.round(cout / surface) : null;
@@ -952,17 +952,16 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
         // Couleur statut marge
         const couleurStatut = (pct) => {
           if (pct === null || !Number.isFinite(pct)) return '#6b7280';
-          if (pct >= 20) return '#10b981';
-          if (pct >= 15) return '#10b981';
-          if (pct >= 10) return '#f59e0b';
+          if (pct >= SEUILS.margeRentable) return '#10b981';
+          if (pct >= SEUILS.margeLimite)   return '#f59e0b';
           return '#ef4444';
         };
         const labelStatut = (pct) => {
           if (pct === null || !Number.isFinite(pct)) return '—';
-          if (pct >= 20) return 'Excellent';
-          if (pct >= 15) return 'Rentable';
-          if (pct >= 10) return 'Limite';
-          return 'Critique';
+          if (pct >= SEUILS.margeRentable) return 'Rentable';
+          if (pct >= SEUILS.margeLimite)   return 'Limite';
+          if (pct >= 0)                    return 'Non rentable';
+          return 'À perte';
         };
 
         return (

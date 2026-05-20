@@ -127,7 +127,7 @@ function Devis() {
       numero: `CH-${new Date().getFullYear()}-${String(Math.max(0, ...prev.map(c => parseInt((c.numero || '').split('-').pop()) || 0)) + 1).padStart(3, '0')}`,
       clientId: d.clientId,
       montantDevis: parseFloat(d.montantHT || d.prixPropose) || 0,
-      surface: 0,
+      surface: parseFloat(d.surface) || 0,
       statut: 'Planifié', priorite: 'Normale', avancement: 0,
       dateDebut: '', nombreJours: d.dureeEstimee || '', nombrePersonnes: d.nombrePersonnes || '',
       inclusSamedi: false, avenants: [], montantFacture: 0,
@@ -291,6 +291,16 @@ function Devis() {
                   style={{ ...inputStyle, width: 100, fontSize: 18, fontWeight: 700, borderColor: '#f59e0b60' }}
                 />
               </div>
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: '#8b5cf6', marginBottom: 6 }}>Surface (m²)</div>
+                <input
+                  type="number" min="0" step="1"
+                  placeholder="Ex : 250"
+                  value={form.surface || ''}
+                  onChange={e => setForm(f => ({ ...f, surface: parseFloat(e.target.value) || 0 }))}
+                  style={{ ...inputStyle, width: 110, fontSize: 18, fontWeight: 700, borderColor: '#8b5cf660' }}
+                />
+              </div>
               {form.dureeEstimee && parseInt(form.dureeEstimee) > 0 && (
                 <div style={{ fontSize: 13, color: 'var(--text-muted)', paddingBottom: 6 }}>
                   ≈ <strong style={{ color: '#0d3d6e' }}>{Math.ceil(parseInt(form.dureeEstimee) / 5)} semaine{Math.ceil(parseInt(form.dureeEstimee) / 5) > 1 ? 's' : ''}</strong> de travail
@@ -304,6 +314,45 @@ function Devis() {
                   )}
                 </div>
               )}
+              {(() => {
+                const montant = parseFloat(form.montantHT) || 0;
+                const surf = parseFloat(form.surface) || 0;
+                if (montant <= 0 || surf <= 0) return null;
+                const prixActuel = montant / surf;
+                const historique = chantiers
+                  .filter(ch => parseFloat(ch.surface) > 0)
+                  .map(ch => {
+                    const dv = devis.find(d => String(d.id) === String(ch.devisId));
+                    const ca = parseFloat(dv?.montantHT) || 0;
+                    const s = parseFloat(ch.surface) || 0;
+                    return ca > 0 && s > 0 ? ca / s : null;
+                  })
+                  .filter(Boolean);
+                const prixMoyen = historique.length > 0
+                  ? historique.reduce((a, b) => a + b, 0) / historique.length
+                  : null;
+                const isOk = prixMoyen !== null ? prixActuel >= prixMoyen * 0.95 : null;
+                const couleur = isOk === null ? '#8b5cf6' : isOk ? '#10b981' : '#f59e0b';
+                return (
+                  <div style={{ width: '100%', marginTop: 6, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', paddingBottom: 4 }}>
+                    <span style={{ fontSize: 14, color: couleur, fontWeight: 800 }}>
+                      {fmtN(Math.round(prixActuel))} CHF/m²
+                    </span>
+                    {prixMoyen !== null ? (
+                      <span style={{ fontSize: 11, background: couleur + '18', color: couleur, border: `1px solid ${couleur}40`, borderRadius: 20, padding: '2px 10px', fontWeight: 700 }}>
+                        {isOk ? '✓ Au-dessus de la moyenne' : '⚠ En dessous de la moyenne'}
+                      </span>
+                    ) : null}
+                    {prixMoyen !== null ? (
+                      <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                        · Moyenne : {fmtN(Math.round(prixMoyen))} CHF/m² ({historique.length} chantier{historique.length > 1 ? 's' : ''})
+                      </span>
+                    ) : (
+                      <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>· Aucun historique m² — premier chantier de référence</span>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
           </div>
 

@@ -229,8 +229,17 @@ export default function useAgents({ chantiers, devis, factures, clients, paramet
   const toggleAgent = useCallback((name) => setAgentsActifs(prev => ({ ...prev, [name]: !prev[name] })), []);
   const forcerExecution = useCallback(() => executer(true), [executer]);
   const simulerRapport = useCallback(() =>
-    simulerRapportLundi({ chantiers: chantiers || [], factures: factures || [], devis: devis || [], parametres: parametres || {} }),
-  [chantiers, factures, devis, parametres]);
+    simulerRapportLundi({
+      chantiers: chantiers || [],
+      factures: factures || [],
+      devis: devis || [],
+      clients: clients || [],
+      parametres: parametres || {},
+      rapports,
+      agentData,
+      alertes,
+    }),
+  [chantiers, factures, devis, clients, parametres, rapports, agentData, alertes]);
 
   const nbNonLues = alertes.filter(a => !a.lu).length;
   const hasNouveauRapport = rapports.some(r => r.nouveau);

@@ -239,24 +239,22 @@ export function runRapportAuto({ chantiers, factures, devis, parametres, dernier
   } catch (e) { return { alertes: [], data: null }; }
 }
 
-// ─── SIMULATION : Rapport lundi matin ────────────────────────
-// Même logique que runRapportAuto mais sans contrainte jour/heure.
-// Projette le rapport tel qu'il sera généré au prochain lundi matin.
-export function simulerRapportLundi({ chantiers, factures, devis, parametres }) {
+// ─── SIMULATION INTELLIGENTE : Briefing lundi matin ─────────
+// Apprend des semaines passées, anticipe les risques, recommande
+// les actions prioritaires avant lundi.
+export function simulerRapportLundi({ chantiers, factures, devis, parametres, clients = [], rapports = [], agentData = {}, alertes = [] }) {
   try {
     const now = new Date();
-
-    // Date du prochain lundi (ou lundi prochain si on est déjà lundi)
-    const prochainLundi = new Date(now);
-    const jourActuel = now.getDay(); // 0=dim, 1=lun, ...6=sam
+    const jourActuel = now.getDay();
     const joursJusquaLundi = jourActuel === 0 ? 1 : jourActuel === 1 ? 7 : 8 - jourActuel;
+    const prochainLundi = new Date(now);
     prochainLundi.setDate(now.getDate() + joursJusquaLundi);
     prochainLundi.setHours(7, 30, 0, 0);
 
-    // Période de référence : 7 derniers jours (ce que l'agent verra lundi)
     const debutSemaine = new Date(now);
     debutSemaine.setDate(now.getDate() - 7);
 
+    // ── Données de base ──────────────────────────────────────
     const actifs = chantiers.filter(isChantierActif);
     const enRetard = actifs.filter(c => {
       const r = new Set((c.journal || []).map(e => e.date).filter(Boolean)).size;
@@ -275,33 +273,218 @@ export function simulerRapportLundi({ chantiers, factures, devis, parametres }) 
       .filter(f => f.dateEmission && new Date(f.dateEmission) >= debutSemaine)
       .reduce((s, f) => s + (parseFloat(f.montantTTC) || 0), 0);
 
-    const nbTermines = chantiers.filter(c =>
-      ['terminé', 'facturé', 'clôturé'].includes((c.statut || '').toLowerCase()) &&
-      c.dateFin && new Date(c.dateFin) >= debutSemaine
-    ).length;
-
-    // Projections : si la semaine continue au même rythme
     const joursEcoules = Math.max(1, jourActuel === 0 ? 7 : jourActuel);
-    const joursRestants = joursJusquaLundi;
-    const tauxQuotidienHeures = heuresSemaine / joursEcoules;
-    const tauxQuotidienCA = caFactureSemaine / joursEcoules;
-    const projectionHeures = Math.round(heuresSemaine + tauxQuotidienHeures * joursRestants);
-    const projectionCA = Math.round(caFactureSemaine + tauxQuotidienCA * joursRestants);
+    const projectionHeures = Math.round(heuresSemaine + (heuresSemaine / joursEcoules) * joursJusquaLundi);
+    const projectionCA    = Math.round(caFactureSemaine + (caFactureSemaine / joursEcoules) * joursJusquaLundi);
+
+    // ── APPRENTISSAGE : historique des rapports passés ───────
+    const rapportsValides = (rapports || []).filter(r => r && r.heuresSaisies >= 0);
+    const moyenneHeures = rapportsValides.length > 0
+      ? Math.round(rapportsValides.reduce((s, r) => s + r.heuresSaisies, 0) / rapportsValides.length) : null;
+    const moyenneCA = rapportsValides.length > 0
+      ? Math.round(rapportsValides.reduce((s, r) => s + r.caFacture, 0) / rapportsValides.length) : null;
+    const tendanceHeures = moyenneHeures > 0 ? Math.round(((projectionHeures - moyenneHeures) / moyenneHeures) * 100) : null;
+    const tendanceCA     = moyenneCA > 0     ? Math.round(((projectionCA - moyenneCA) / moyenneCA) * 100) : null;
+
+    // ── ERREURS À ÉVITER (patterns historiques) ──────────────
+    const erreursAEviter = [];
+
+    // Chantiers chroniquement en retard sur plusieurs semaines
+    const compteurRetard = new Map();
+    rapportsValides.forEach(r => {
+      (r.chantierRetard || []).forEach(nom => compteurRetard.set(nom, (compteurRetard.get(nom) || 0) + 1));
+    });
+    [...compteurRetard.entries()]
+      .filter(([, n]) => n >= 2)
+      .sort((a, b) => b[1] - a[1])
+      .forEach(([nom, n]) => {
+        erreursAEviter.push({
+          type: 'retard_chronique',
+          message: `"${nom}" en retard ${n} semaine${n > 1 ? 's' : ''} d'affilée`,
+          conseil: 'Revoir le planning ou renforcer l\'équipe sur ce chantier',
+        });
+      });
+
+    // Semaines sans saisie d'heures
+    const semainesVides = rapportsValides.filter(r => r.heuresSaisies === 0).length;
+    if (semainesVides >= 1) {
+      erreursAEviter.push({
+        type: 'heures_oubliees',
+        message: `${semainesVides} semaine${semainesVides > 1 ? 's' : ''} sans aucune heure saisie dans l'historique`,
+        conseil: 'Saisir les heures avant le vendredi soir — le rapport lundi sera vide sinon',
+      });
+    }
+
+    // CA anormalement bas (< 50% moyenne) dans l'historique
+    const semainesBasses = rapportsValides.filter(r => moyenneCA && r.caFacture < moyenneCA * 0.5).length;
+    if (semainesBasses >= 2) {
+      erreursAEviter.push({
+        type: 'ca_faible',
+        message: `${semainesBasses} semaines avec CA < 50% de la moyenne historique`,
+        conseil: 'Anticiper la facturation en fin de semaine — ne pas attendre lundi',
+      });
+    }
+
+    // ── RISQUES DÉTECTÉS (depuis RadarPrécoce) ───────────────
+    const risques = (agentData?.RadarPrecoce?.risques || [])
+      .filter(r => r.score >= 30)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 4)
+      .map(r => ({ chantier: r.nom, score: r.score, niveau: r.niveau, facteurs: r.facteurs || [] }));
+
+    // ── ACTIONS AVANT LUNDI ───────────────────────────────────
+    const actionsAvantLundi = [];
+
+    // Factures impayées > 30j
+    const now_ts = now.getTime();
+    (factures || [])
+      .filter(f => {
+        const st = (f.statut || '').toLowerCase();
+        if (!['envoyee', 'partielle', 'retard'].includes(st) || !f.dateEmission) return false;
+        return (now_ts - new Date(f.dateEmission).getTime()) / 86400000 > 30;
+      })
+      .map(f => {
+        const cl = (clients || []).find(c => String(c.id) === String(f.clientId));
+        const age = Math.round((now_ts - new Date(f.dateEmission).getTime()) / 86400000);
+        return { nom: f.numero || '—', client: cl ? `${cl.prenom} ${cl.nom}` : '—', age, montant: parseFloat(f.montantTTC) || 0 };
+      })
+      .sort((a, b) => b.age - a.age)
+      .slice(0, 3)
+      .forEach(f => actionsAvantLundi.push({
+        priorite: f.age > 60 ? 'URGENT' : 'IMPORTANT',
+        icone: '💰',
+        action: `Relancer ${f.client} — ${f.nom}`,
+        detail: `Impayée depuis ${f.age} jours · CHF ${fmtN(f.montant)}`,
+      }));
+
+    // Employés sans saisie d'heures cette semaine
+    const employes = (parametres?.employes || []).filter(e => e.actif !== false);
+    const sansSaisie = employes.filter(emp =>
+      !actifs.some(c =>
+        (c.journal || []).some(entry =>
+          entry.date && new Date(entry.date) >= debutSemaine &&
+          (entry.employes || []).some(e => String(e.employeId || e.id) === String(emp.id) && (parseFloat(e.heuresTravaillees) || 0) > 0)
+        )
+      )
+    );
+    if (sansSaisie.length > 0) {
+      actionsAvantLundi.push({
+        priorite: 'IMPORTANT',
+        icone: '⏱️',
+        action: `Compléter les heures manquantes avant lundi`,
+        detail: `${sansSaisie.map(e => e.prenom || e.nom).slice(0, 4).join(', ')} — aucune heure cette semaine`,
+      });
+    }
+
+    // Devis en attente de réponse > 14 jours
+    (devis || [])
+      .filter(d => (d.statut || '').toLowerCase() === 'envoyé' && d.date && (now_ts - new Date(d.date).getTime()) / 86400000 > 14)
+      .map(d => {
+        const cl = (clients || []).find(c => String(c.id) === String(d.clientId));
+        return { numero: d.numero, client: cl ? `${cl.prenom} ${cl.nom}` : '—', age: Math.round((now_ts - new Date(d.date).getTime()) / 86400000) };
+      })
+      .sort((a, b) => b.age - a.age)
+      .slice(0, 2)
+      .forEach(d => actionsAvantLundi.push({
+        priorite: d.age > 30 ? 'URGENT' : 'NOTE',
+        icone: '📋',
+        action: `Relancer devis ${d.numero} — ${d.client}`,
+        detail: `Sans réponse depuis ${d.age} jours`,
+      }));
+
+    // Opportunités de facturation (depuis OptimisationFacturation)
+    (agentData?.OptimisationFacturation?.opportunites || []).slice(0, 2).forEach(op => {
+      actionsAvantLundi.push({
+        priorite: 'IMPORTANT',
+        icone: '📄',
+        action: `Émettre facture — ${op.nomChantier || op.nom || ''}`,
+        detail: `Potentiel CHF ${fmtN(op.potentiel || 0)} · avancement ${op.avancement || '?'}%`,
+      });
+    });
+
+    const ordPriorite = { URGENT: 0, IMPORTANT: 1, NOTE: 2 };
+    actionsAvantLundi.sort((a, b) => (ordPriorite[a.priorite] ?? 3) - (ordPriorite[b.priorite] ?? 3));
+
+    // ── ANTICIPATIONS semaine suivante ────────────────────────
+    const anticipations = [];
+
+    const soldeJ30 = agentData?.TresoreriePredictor?.solde30;
+    if (soldeJ30 != null) {
+      anticipations.push({
+        icone: soldeJ30 >= 0 ? '✅' : '⚠️',
+        label: 'Trésorerie J+30',
+        valeur: `CHF ${fmtN(soldeJ30)}`,
+        couleur: soldeJ30 >= 0 ? '#10b981' : '#ef4444',
+        detail: soldeJ30 < 0 ? 'Solde négatif prévu — accélérer les encaissements' : 'Trésorerie saine prévue',
+      });
+    }
+
+    if (projectionCA > 0) {
+      anticipations.push({
+        icone: tendanceCA === null ? '📊' : tendanceCA >= 0 ? '📈' : '📉',
+        label: 'CA projeté lundi',
+        valeur: `CHF ${fmtN(projectionCA)}`,
+        couleur: tendanceCA === null ? '#8b5cf6' : tendanceCA >= 0 ? '#10b981' : '#f59e0b',
+        detail: tendanceCA !== null ? `${tendanceCA >= 0 ? '+' : ''}${tendanceCA}% vs moyenne historique` : 'Première référence — pas encore de baseline',
+      });
+    }
+
+    if (enRetard.length > 0) {
+      anticipations.push({
+        icone: '🔴',
+        label: 'Chantiers à risque',
+        valeur: `${enRetard.length} en retard`,
+        couleur: '#ef4444',
+        detail: enRetard.slice(0, 3).map(c => c.nom || c.numero).join(', '),
+      });
+    }
+
+    const caProjectionAnnuelle = agentData?.ProjectionAnnuelle?.caProjecte;
+    if (caProjectionAnnuelle) {
+      anticipations.push({
+        icone: '🎯',
+        label: 'Projection annuelle',
+        valeur: `CHF ${fmtN(caProjectionAnnuelle)}`,
+        couleur: '#0d3d6e',
+        detail: `Taux d'atteinte objectif : ${agentData.ProjectionAnnuelle?.txAtteinte ?? '—'}%`,
+      });
+    }
+
+    // ── SCORE DE SANTÉ SEMAINE (/100) ─────────────────────────
+    let score = 100;
+    score -= Math.min(25, enRetard.length * 10);
+    score -= Math.min(20, (factures || []).filter(f => {
+      const st = (f.statut || '').toLowerCase();
+      return ['envoyee', 'partielle', 'retard'].includes(st) && f.dateEmission && (now_ts - new Date(f.dateEmission).getTime()) / 86400000 > 30;
+    }).length * 7);
+    score -= Math.min(15, sansSaisie.length * 5);
+    if (risques.some(r => r.niveau === 'CRITIQUE')) score -= 15;
+    if (tendanceCA !== null && tendanceCA < -20) score -= 10;
+    if (semainesVides > 0) score -= 5;
+    score = Math.max(0, Math.min(100, score));
 
     return {
       simulation: true,
       dateLundi: prochainLundi.toLocaleDateString('fr-CH', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' }),
-      timestampLundi: prochainLundi.getTime(),
-      semaine: `Simulation — Semaine du ${debutSemaine.toLocaleDateString('fr-CH', { day: '2-digit', month: '2-digit' })} au ${now.toLocaleDateString('fr-CH', { day: '2-digit', month: '2-digit' })}`,
+      semaine: `Semaine du ${debutSemaine.toLocaleDateString('fr-CH', { day: '2-digit', month: '2-digit' })} au ${now.toLocaleDateString('fr-CH', { day: '2-digit', month: '2-digit' })}`,
       heuresSaisies: Math.round(heuresSemaine),
       caFacture: Math.round(caFactureSemaine),
       nbActifs: actifs.length,
-      nbTermines,
       nbEnRetard: enRetard.length,
       chantierRetard: enRetard.map(c => c.nom || c.numero),
       projectionHeures,
       projectionCA,
-      joursRestants,
+      joursRestants: joursJusquaLundi,
+      moyenneHeures,
+      moyenneCA,
+      tendanceHeures,
+      tendanceCA,
+      nbRapportsHistoriques: rapportsValides.length,
+      risques,
+      actionsAvantLundi,
+      erreursAEviter,
+      anticipations,
+      scoreSemaine: score,
     };
   } catch (e) {
     return null;

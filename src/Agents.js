@@ -748,63 +748,163 @@ export default function Agents({
             </div>
           )}
 
-          {/* ── Simulation rapport lundi matin ── */}
-          <div style={{ ...DS.card, padding: '20px 24px', borderLeft: '4px solid #8b5cf6' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: simRapport ? 20 : 0 }}>
+          {/* ── Briefing intelligent lundi matin ── */}
+          <div style={{ ...DS.card, padding: '22px 26px', borderLeft: '4px solid #8b5cf6' }}>
+            {/* En-tête */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: simRapport ? 22 : 0 }}>
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <FileBarChart2 size={18} color="#8b5cf6" />
-                  <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-primary)' }}>Simulation — Rapport lundi matin</span>
-                  <span style={{ background: '#f3e8ff', color: '#7c3aed', border: '1px solid #ddd6fe', borderRadius: 20, padding: '1px 8px', fontSize: 10, fontWeight: 700 }}>SIMULATION</span>
+                  <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-primary)' }}>Briefing intelligent — Lundi matin</span>
+                  <span style={{ background: '#f3e8ff', color: '#7c3aed', border: '1px solid #ddd6fe', borderRadius: 20, padding: '1px 8px', fontSize: 10, fontWeight: 700 }}>IA · PRÉDICTIF</span>
                 </div>
                 <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--text-muted)' }}>
-                  Prévisualise le rapport qui sera généré automatiquement au prochain lundi matin
+                  Apprend de l'historique · anticipe les risques · recommande les actions prioritaires
                 </p>
               </div>
               <button onClick={lancerSimulation} disabled={simRunning}
                 style={{ ...DS.btnPrimary, display: 'flex', alignItems: 'center', gap: 7, opacity: simRunning ? 0.7 : 1, fontSize: 13 }}>
                 <RefreshCw size={13} style={{ animation: simRunning ? 'spin 1s linear infinite' : 'none' }} />
-                {simRunning ? 'Simulation...' : simRapport ? 'Actualiser' : 'Lancer la simulation'}
+                {simRunning ? 'Analyse en cours...' : simRapport ? 'Actualiser' : 'Lancer l\'analyse'}
               </button>
             </div>
 
-            {simRapport && (
-              <div>
-                <div style={{ padding: '10px 14px', background: '#f3e8ff', border: '1px solid #ddd6fe', borderRadius: 8, marginBottom: 16, fontSize: 12 }}>
-                  <span style={{ fontWeight: 700, color: '#7c3aed' }}>Généré automatiquement le : </span>
-                  <span style={{ color: '#5b21b6' }}>{simRapport.dateLundi} à 7h30</span>
-                  {simRapport.joursRestants > 0 && (
-                    <span style={{ marginLeft: 10, color: 'var(--text-muted)' }}>— dans {simRapport.joursRestants} jour{simRapport.joursRestants > 1 ? 's' : ''}</span>
-                  )}
-                </div>
+            {simRapport && (() => {
+              const s = simRapport;
+              const scoreCouleur = s.scoreSemaine >= 75 ? '#10b981' : s.scoreSemaine >= 50 ? '#f59e0b' : '#ef4444';
+              const scoreLabel  = s.scoreSemaine >= 75 ? 'Semaine favorable' : s.scoreSemaine >= 50 ? 'Vigilance requise' : 'Semaine difficile';
+              const fmtTendance = (pct) => pct === null ? null : pct >= 0 ? `+${pct}%` : `${pct}%`;
+              const couleurTendance = (pct) => pct === null ? 'var(--text-muted)' : pct >= 0 ? '#10b981' : '#ef4444';
+              return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 10, marginBottom: 14 }}>
-                  {[
-                    { label: 'Heures saisies', val: `${simRapport.heuresSaisies}h`, couleur: '#0d3d6e', note: `Proj. ${simRapport.projectionHeures}h` },
-                    { label: 'CA facturé', val: `CHF ${fmtN(simRapport.caFacture)}`, couleur: '#10b981', note: `Proj. CHF ${fmtN(simRapport.projectionCA)}` },
-                    { label: 'Chantiers actifs', val: simRapport.nbActifs, couleur: '#f59e0b', note: null },
-                    { label: 'En retard', val: simRapport.nbEnRetard, couleur: simRapport.nbEnRetard > 0 ? '#ef4444' : '#10b981', note: null },
-                  ].map(m => (
-                    <div key={m.label} style={{ background: 'var(--bg-glass)', border: '1px solid var(--border)', borderRadius: 10, padding: '12px 14px', textAlign: 'center' }}>
-                      <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', marginBottom: 4 }}>{m.label}</div>
-                      <div style={{ fontSize: 20, fontWeight: 800, color: m.couleur, lineHeight: 1 }}>{m.val}</div>
-                      {m.note && <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 4 }}>{m.note}</div>}
+                  {/* Score + date */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '14px 18px', background: scoreCouleur + '0d', border: `1px solid ${scoreCouleur}30`, borderRadius: 12 }}>
+                    <div style={{ textAlign: 'center', minWidth: 64 }}>
+                      <div style={{ fontSize: 38, fontWeight: 900, color: scoreCouleur, lineHeight: 1 }}>{s.scoreSemaine}</div>
+                      <div style={{ fontSize: 9, fontWeight: 700, color: scoreCouleur, textTransform: 'uppercase', letterSpacing: '0.6px' }}>/100</div>
                     </div>
-                  ))}
-                </div>
-
-                {simRapport.chantierRetard?.length > 0 && (
-                  <div style={{ padding: '8px 12px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, fontSize: 12, color: '#991b1b', marginBottom: 10 }}>
-                    <strong>Chantiers en retard :</strong> {simRapport.chantierRetard.join(', ')}
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--text-primary)' }}>{scoreLabel}</div>
+                      <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
+                        {s.dateLundi} à 7h30 · dans {s.joursRestants} jour{s.joursRestants > 1 ? 's' : ''}
+                        {s.nbRapportsHistoriques > 0 && <span style={{ marginLeft: 8 }}>· Basé sur {s.nbRapportsHistoriques} semaine{s.nbRapportsHistoriques > 1 ? 's' : ''} d'historique</span>}
+                      </div>
+                    </div>
                   </div>
-                )}
 
-                <div style={{ padding: '8px 14px', background: 'rgba(139,92,246,0.04)', border: '1px solid rgba(139,92,246,0.15)', borderRadius: 8, fontSize: 11, color: 'var(--text-muted)' }}>
-                  Les projections (Proj.) sont calculées en extrapolant le rythme actuel sur les {simRapport.joursRestants} jour{simRapport.joursRestants > 1 ? 's' : ''} restants jusqu'à lundi.
-                  Le rapport réel sera généré automatiquement dès votre première connexion lundi après 7h.
+                  {/* KPIs avec tendances */}
+                  <div>
+                    <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', color: 'var(--text-muted)', marginBottom: 10 }}>Cette semaine → Projection lundi</div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10 }}>
+                      {[
+                        { label: 'Heures saisies', val: `${s.heuresSaisies}h`, proj: `→ ${s.projectionHeures}h`, tendance: s.tendanceHeures, moy: s.moyenneHeures ? `Moy. ${s.moyenneHeures}h` : null, couleur: '#0d3d6e' },
+                        { label: 'CA facturé', val: `CHF ${fmtN(s.caFacture)}`, proj: `→ CHF ${fmtN(s.projectionCA)}`, tendance: s.tendanceCA, moy: s.moyenneCA ? `Moy. CHF ${fmtN(s.moyenneCA)}` : null, couleur: '#10b981' },
+                        { label: 'Chantiers actifs', val: s.nbActifs, proj: null, tendance: null, moy: null, couleur: '#f59e0b' },
+                        { label: 'En retard', val: s.nbEnRetard, proj: null, tendance: null, moy: null, couleur: s.nbEnRetard > 0 ? '#ef4444' : '#10b981' },
+                      ].map(m => (
+                        <div key={m.label} style={{ background: 'var(--bg-glass)', border: '1px solid var(--border)', borderRadius: 10, padding: '12px 14px' }}>
+                          <div style={{ fontSize: 9, color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', marginBottom: 5 }}>{m.label}</div>
+                          <div style={{ fontSize: 20, fontWeight: 800, color: m.couleur, lineHeight: 1 }}>{m.val}</div>
+                          {m.proj && <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 3 }}>{m.proj}</div>}
+                          {m.tendance !== null && m.tendance !== undefined && (
+                            <div style={{ fontSize: 10, fontWeight: 700, color: couleurTendance(m.tendance), marginTop: 2 }}>
+                              {fmtTendance(m.tendance)} vs historique
+                            </div>
+                          )}
+                          {m.moy && <div style={{ fontSize: 9, color: 'var(--text-muted)', marginTop: 2 }}>{m.moy}</div>}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Actions avant lundi */}
+                  {s.actionsAvantLundi?.length > 0 && (
+                    <div>
+                      <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', color: 'var(--text-muted)', marginBottom: 10 }}>Actions prioritaires avant lundi</div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+                        {s.actionsAvantLundi.map((a, i) => {
+                          const pColors = { URGENT: { bg: '#fef2f2', border: '#fecaca', text: '#991b1b', badge: '#ef4444' }, IMPORTANT: { bg: '#fffbeb', border: '#fde68a', text: '#92400e', badge: '#f59e0b' }, NOTE: { bg: '#f0fdf4', border: '#bbf7d0', text: '#166534', badge: '#10b981' } };
+                          const c = pColors[a.priorite] || pColors.NOTE;
+                          return (
+                            <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 12px', background: c.bg, border: `1px solid ${c.border}`, borderRadius: 8 }}>
+                              <span style={{ fontSize: 14, flexShrink: 0 }}>{a.icone}</span>
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                                  <span style={{ fontSize: 12, fontWeight: 700, color: c.text }}>{a.action}</span>
+                                  <span style={{ fontSize: 9, fontWeight: 700, background: c.badge, color: '#fff', borderRadius: 20, padding: '1px 7px' }}>{a.priorite}</span>
+                                </div>
+                                <div style={{ fontSize: 11, color: c.text, opacity: 0.8, marginTop: 1 }}>{a.detail}</div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Risques détectés */}
+                  {s.risques?.length > 0 && (
+                    <div>
+                      <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', color: 'var(--text-muted)', marginBottom: 10 }}>Risques détectés — RadarPrécoce</div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+                        {s.risques.map((r, i) => {
+                          const nColors = { CRITIQUE: '#ef4444', DANGER: '#f59e0b', ATTENTION: '#3b82f6' };
+                          const nc = nColors[r.niveau] || '#6b7280';
+                          return (
+                            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', background: nc + '0d', border: `1px solid ${nc}30`, borderRadius: 8 }}>
+                              <div style={{ width: 36, height: 36, borderRadius: 8, background: nc + '18', border: `1px solid ${nc}30`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: 13, color: nc, flexShrink: 0 }}>{r.score}</div>
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)' }}>{r.chantier}</div>
+                                {r.facteurs?.length > 0 && <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 1 }}>{r.facteurs.slice(0, 2).join(' · ')}</div>}
+                              </div>
+                              <span style={{ fontSize: 9, fontWeight: 700, background: nc, color: '#fff', borderRadius: 20, padding: '2px 8px', flexShrink: 0 }}>{r.niveau}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Erreurs à éviter */}
+                  {s.erreursAEviter?.length > 0 && (
+                    <div>
+                      <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', color: 'var(--text-muted)', marginBottom: 10 }}>Erreurs historiques à éviter</div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+                        {s.erreursAEviter.map((e, i) => (
+                          <div key={i} style={{ padding: '10px 12px', background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.2)', borderRadius: 8 }}>
+                            <div style={{ fontSize: 12, fontWeight: 600, color: '#92400e' }}>⚠ {e.message}</div>
+                            <div style={{ fontSize: 11, color: '#78350f', marginTop: 3 }}>{e.conseil}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Anticipations */}
+                  {s.anticipations?.length > 0 && (
+                    <div>
+                      <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', color: 'var(--text-muted)', marginBottom: 10 }}>Anticipations — Semaine à venir</div>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 10 }}>
+                        {s.anticipations.map((a, i) => (
+                          <div key={i} style={{ padding: '12px 14px', background: a.couleur + '0d', border: `1px solid ${a.couleur}30`, borderRadius: 10 }}>
+                            <div style={{ fontSize: 13, marginBottom: 4 }}>{a.icone} <span style={{ fontWeight: 700, color: a.couleur }}>{a.valeur}</span></div>
+                            <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: 3 }}>{a.label}</div>
+                            <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>{a.detail}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Note de bas */}
+                  <div style={{ padding: '8px 14px', background: 'rgba(139,92,246,0.04)', border: '1px solid rgba(139,92,246,0.15)', borderRadius: 8, fontSize: 10, color: 'var(--text-muted)' }}>
+                    Le rapport réel sera généré automatiquement dès votre première connexion lundi après 7h. Les projections extrapolent le rythme actuel sur {s.joursRestants} jour{s.joursRestants > 1 ? 's' : ''} restants.
+                    {s.nbRapportsHistoriques === 0 && ' Aucun historique disponible — la précision augmente semaine après semaine.'}
+                  </div>
                 </div>
-              </div>
-            )}
+              );
+            })()}
           </div>
 
           {/* ── Rapports hebdomadaires RapportAuto ── */}

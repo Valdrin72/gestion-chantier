@@ -22,7 +22,7 @@ const isDev = process.env.NODE_ENV !== 'production';
 // ═══════════════════════════════════════════════════════════════
 
 // ─── T1-A1 : AlerteChantier ───────────────────────────────────
-export function runAlerteChantier({ chantiers, devis, factures = [], parametres }) {
+export function runAlerteChantier({ chantiers, devis, factures = [], parametres, getCouts }) {
   const alertes = [];
   const actifs = chantiers.filter(isChantierActif);
   const cfg = parametres?.agentsConfig?.alerteChantier || {
@@ -34,7 +34,7 @@ export function runAlerteChantier({ chantiers, devis, factures = [], parametres 
 
   actifs.forEach(c => {
     try {
-      const couts = calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis);
+      const couts = getCouts ? getCouts(c) : calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis);
       const joursR = new Set((c.journal || []).map(e => e.date).filter(Boolean)).size;
       const joursRestants = c.nombreJours > 0 ? c.nombreJours - joursR : null;
       // Retard calendaire : date de fin prévue dépassée ET chantier toujours "en cours"
@@ -1877,6 +1877,22 @@ export function runAllAgents({ chantiers, devis, factures, clients, parametres, 
   const enabled = agentsActifs || {};
   const isEnabled = (name) => enabled[name] !== false; // actif par défaut
 
+  // ── Cache partagé calculerCoutsChantier — calculé une seule fois pour tous les agents ──
+  // Évite 80–200 recalculs redondants par cycle sur les mêmes données.
+  const coutsCache = new Map();
+  const getCouts = (chantier) => {
+    if (!coutsCache.has(chantier.id)) {
+      coutsCache.set(chantier.id, calculerCoutsChantier(
+        chantier,
+        parametres.employes,
+        parametres.localites,
+        parametres.parametres,
+        devis
+      ));
+    }
+    return coutsCache.get(chantier.id);
+  };
+
   const result = {
     alertes: [], predictions: {}, patterns: {}, rapport: null,
     statuts: {}, agentData: {}, memoire: { ...memoire },
@@ -1918,13 +1934,13 @@ export function runAllAgents({ chantiers, devis, factures, clients, parametres, 
   };
 
   // ── TIER 1 ──
-  runAgent('AlerteChantier',          (m) => runAlerteChantier({ chantiers, devis, factures, parametres }));
+  runAgent('AlerteChantier',          (m) => runAlerteChantier({ chantiers, devis, factures, parametres, getCouts }));
   runAgent('SuiviDevis',              (m) => runSuiviDevis({ devis, factures, clients }));
   const a3 = runAgent('TresoreriePredictor', (m) => runTresoreriePredictor({ chantiers, factures, devis, parametres }));
   if (a3?.data) result.predictions = a3.data;
   const a4 = runAgent('RapportAuto',  (m) => runRapportAuto({ chantiers, factures, devis, parametres, dernierRapport }));
   if (a4?.data) result.rapport = a4.data;
-  const a5 = runAgent('MemoireChantier', (m) => runMemoireChantier({ chantiers, devis, parametres }));
+  const a5 = runAgent('MemoireChantier', (m) => runMemoireChantier({ chantiers, devis, parametres, getCouts }));
   if (a5?.data) result.patterns = a5.data;
   runAgent('ProductiviteEquipe',      (m) => runProductiviteEquipe({ chantiers, parametres, memoire: m }));
   runAgent('RelancePaiements',        (m) => runRelancePaiements({ factures, clients, memoire: m }));
@@ -1934,22 +1950,22 @@ export function runAllAgents({ chantiers, devis, factures, clients, parametres, 
   // ── TIER 2 (reçoit agentContext Tier 1) ──
   runAgent('ConflitsPlanning',     (m) => runConflitsPlanning({ chantiers, parametres, agentContext }));
   runAgent('PlanningCoherence',    (m) => runPlanningCoherence({ chantiers, devis, parametres }));
-  runAgent('ApprentissageMarge',   (m) => runApprentissageMarge({ chantiers, devis, parametres, agentContext, memoire: m }));
-  runAgent('SanteClient',          (m) => runSanteClient({ chantiers, clients, devis, factures, parametres, agentContext }));
-  runAgent('ProjectionAnnuelle',   (m) => runProjectionAnnuelle({ chantiers, factures, devis, parametres, agentContext, memoire: m }));
-  runAgent('BenchmarkTypeTravaux', (m) => runBenchmarkTypeTravaux({ chantiers, devis, parametres, agentContext }));
+  runAgent('ApprentissageMarge',   (m) => runApprentissageMarge({ chantiers, devis, parametres, agentContext, memoire: m, getCouts }));
+  runAgent('SanteClient',          (m) => runSanteClient({ chantiers, clients, devis, factures, parametres, agentContext, getCouts }));
+  runAgent('ProjectionAnnuelle',   (m) => runProjectionAnnuelle({ chantiers, factures, devis, parametres, agentContext, memoire: m, getCouts }));
+  runAgent('BenchmarkTypeTravaux', (m) => runBenchmarkTypeTravaux({ chantiers, devis, parametres, agentContext, getCouts }));
   runAgent('ConformiteBTP',        (m) => runConformiteBTP({ chantiers, parametres, agentContext }));
-  runAgent('DerivePredictor',      (m) => runDerivePredictor({ chantiers, devis, parametres, agentContext }));
+  runAgent('DerivePredictor',      (m) => runDerivePredictor({ chantiers, devis, parametres, agentContext, getCouts }));
   runAgent('PipelineCommercial',   (m) => runPipelineCommercial({ devis, chantiers, clients, agentContext, memoire: m }));
   runAgent('AlerteRisqueClient',   (m) => runAlerteRisqueClient({ chantiers, clients, factures, agentContext }));
   runAgent('OptimisationEquipe',   (m) => runOptimisationEquipe({ chantiers, parametres, agentContext }));
   runAgent('ScoreOffre',           (m) => runScoreOffre({ devis, chantiers, parametres, agentContext }));
 
   // ── TIER 3 (reçoit agentContext Tier 1 + 2) ──
-  runAgent('RadarPrecoce',    (m) => runRadarPrecoce({ chantiers, devis, parametres, agentContext }));
+  runAgent('RadarPrecoce',    (m) => runRadarPrecoce({ chantiers, devis, parametres, agentContext, getCouts }));
   runAgent('DSOAnalyse',      (m) => runDSOAnalyse({ agentContext, memoire: m }));
   runAgent('Saisonnierte',    (m) => runSaisonnierte({ chantiers, devis, memoire: m }));
-  runAgent('CoutMOAnalyse',   (m) => runCoutMOAnalyse({ chantiers, devis, parametres, agentContext }));
+  runAgent('CoutMOAnalyse',   (m) => runCoutMOAnalyse({ chantiers, devis, parametres, agentContext, getCouts }));
   runAgent('AnalyseCycles',   (m) => runAnalyseCycles({ chantiers, devis, agentContext, memoire: m }));
   runAgent('CoachDirecteur',  (m) => runCoachDirecteur({ chantiers, devis, factures, parametres, agentContext, memoire: m, alertes: result.alertes }));
   runAgent('RapportNaturel',  (m) => runRapportNaturel({ chantiers, factures, agentContext, memoire: m }));

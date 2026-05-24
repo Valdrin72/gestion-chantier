@@ -1087,9 +1087,6 @@ export default function Agents({
             </div>
             )}
           </div>
-        </div>
-      )}
-
         </div></TabBoundary>
       )}
 

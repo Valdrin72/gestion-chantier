@@ -79,13 +79,13 @@ export default function Statistiques({ chantiers, clients, devis = [], parametre
     .filter(emp => emp.actif !== false)
     .map(emp => {
       const chantiersEmp = chantiersFiltres.filter(c =>
-        (c.equipe || []).some(m => parseInt(m.employeId) === emp.id)
+        (c.equipe || []).some(m => String(m.employeId) === String(emp.id))
       );
       let joursTotaux = 0;
       let coutTotal = 0;
       chantiersEmp.forEach(c => {
         const eq = calculerRentabiliteEquipe(c, parametres);
-        const membre = eq.membres.find(m => parseInt(m.employeId) === emp.id);
+        const membre = eq.membres.find(m => String(m.employeId) === String(emp.id));
         if (membre) {
           joursTotaux += membre.joursRealises;
           coutTotal   += membre.coutTotal;

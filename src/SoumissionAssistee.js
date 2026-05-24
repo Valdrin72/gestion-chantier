@@ -200,7 +200,7 @@ function PlanningChantier({ planning, totalJours }) {
             key={p.phase}
             title={`${p.label} — ${p.joursNet.toFixed(1)} j`}
             style={{
-              width: `${(p.joursNet / totalReel) * 100}%`,
+              width: `${totalReel > 0 ? (p.joursNet / totalReel) * 100 : 0}%`,
               background: p.couleur,
               transition: 'width 0.4s ease',
               minWidth: p.joursNet > 0 ? 3 : 0,

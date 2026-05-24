@@ -261,7 +261,7 @@ export const calculerCoutsChantier = (chantier, employes = [], localites = [], c
     .map(m => parseInt(m.employeId))
     .filter(id => !empIdsAvecHeures.includes(id));
   const coutEquipeReelDetaille = [...empIdsAvecHeures, ...empIdsEquipeSansHeures].map(empId => {
-    const emp = employes.find(e => e.id === empId);
+    const emp = employes.find(e => String(e.id) === String(empId));
     const joursReels = heuresEmploye(journalCouts, empId) / 8;
     const tarif = getTarifJour(emp);
     return { employeId: empId, joursReels, tarif, cout: tarif * joursReels };
@@ -538,7 +538,7 @@ export const calculerRentabiliteEquipe = (chantier, parametres) => {
   const journalEq = chantier.journal || [];
   const getJoursReelsEq = (m) => heuresEmploye(journalEq, parseInt(m.employeId)) / 8;
   const membres = (chantier.equipe || []).map(m => {
-    const emp = employes.find(e => e.id === parseInt(m.employeId));
+    const emp = employes.find(e => String(e.id) === String(m.employeId));
     const joursReels = getJoursReelsEq(m);
     const tarifJourBrut = emp?.tarifJour || 0;
     const tarifJour = emp?.tarifDejaCharge ? tarifJourBrut : tarifJourBrut * coefficient;
@@ -899,7 +899,7 @@ export const calculerEtatChantier = (chantier, employes = [], devisList = [], pa
   const tousEmpIds = [...empIdsJournal, ...empIdsEquipe];
 
   const membreDetail = tousEmpIds.map(empId => {
-    const emp     = employes.find(e => e.id === empId);
+    const emp     = employes.find(e => String(e.id) === String(empId));
     // Règle BTP : appliquer le coefficient MO si le tarif n'est pas déjà chargé
     const coeff = emp?.tarifDejaCharge ? 1 : coefficientMO;
     const tarifJour  = (parseFloat(emp?.tarifJour) || 0) * coeff;

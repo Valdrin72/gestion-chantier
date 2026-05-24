@@ -90,10 +90,10 @@ export default function Heures({ chantiers = [], parametres = {}, setChantiers }
         const employes2 = entry.employes ? [...entry.employes] : [];
         const ei = employes2.findIndex(e => String(e.employeId) === String(employeId));
         if (ei >= 0) employes2[ei] = { ...employes2[ei], heuresTravaillees: String(h) };
-        else employes2.push({ employeId, heuresTravaillees: String(h) });
+        else employes2.push({ employeId: parseInt(employeId), heuresTravaillees: String(h) });
         journal[idx] = { ...entry, employes: employes2 };
       } else {
-        journal.push({ date, employes: [{ employeId, heuresTravaillees: String(h) }] });
+        journal.push({ date, employes: [{ employeId: parseInt(employeId), heuresTravaillees: String(h) }] });
       }
       return { ...c, journal };
     }));

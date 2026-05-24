@@ -1,6 +1,6 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { calculerDateFinOuvrables, calculerCoutsChantier, calculerCA } from './donnees';
+import { calculerDateFinOuvrables, calculerCoutsChantier, calculerCA, heuresEmploye } from './donnees';
 
 // ===== COORDONNÉES CYNA =====
 const CYNA = {
@@ -272,12 +272,13 @@ export const exportFicheChantier = async (chantier, clients, parametres, devis =
       startY: y,
       head: [['Employé', 'Poste', 'Rôle', 'Jours prévus', 'Jours réalisés', 'Coût prévu', 'Coût réel']],
       body: chantier.equipe.map(m => {
-        const emp = (parametres.employes || []).find(e => e.id === parseInt(m.employeId));
+        const emp = (parametres.employes || []).find(e => String(e.id) === String(m.employeId));
+        const joursReelsReel = Math.round(heuresEmploye(chantier.journal || [], parseInt(m.employeId)) / 8 * 10) / 10;
         return [
           emp?.nom || '-', emp?.poste || '-', m.role || '-',
-          `${m.joursPlannifies}j`, `${m.joursRealises || 0}j`,
+          `${m.joursPlannifies}j`, `${joursReelsReel}j`,
           `CHF ${((emp?.tarifJour || 0) * (m.joursPlannifies || 0)).toLocaleString()}`,
-          `CHF ${((emp?.tarifJour || 0) * (parseFloat(m.joursRealises) || 0)).toLocaleString()}`,
+          `CHF ${((emp?.tarifJour || 0) * joursReelsReel).toLocaleString()}`,
         ];
       }),
       headStyles: { fillColor: BLEU, fontSize: 8 },

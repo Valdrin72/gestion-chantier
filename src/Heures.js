@@ -125,15 +125,18 @@ export default function Heures({ chantiers = [], parametres = {}, setChantiers }
     let total = 0, supp = 0, nsSaisis = 0, samH = false;
 
     if (periodeGlobale === 'semaine') {
-      const weekDayIsos = weekDays.slice(0, 6).map(isoDate); // Lun–Sam
+      // Inclure les 7 jours (lun–dim) pour cohérence avec la colonne TOTAL et le TOTAL row du tableau
+      // Le dimanche est possible en heures supplémentaires (CCT ×1.50)
+      const weekDayIsos = weekDays.map(isoDate);
       actifs.forEach(e => {
         const empHours = hoursMap[e.id] || {};
         weekDayIsos.forEach((d, i) => {
           const h = empHours[d] || 0;
           total += h;
           if (h > 8) supp += (h - 8);
-          if (i === 5 && h > 0) samH = true;
+          if (i === 5 && h > 0) samH = true; // index 5 = SAM
         });
+        // "Non saisies" = aucune heure lun–ven (jours standard)
         const hasSaisie = weekDayIsos.slice(0, 5).some(d => (empHours[d] || 0) > 0);
         if (!hasSaisie) nsSaisis++;
       });
@@ -173,7 +176,7 @@ export default function Heures({ chantiers = [], parametres = {}, setChantiers }
     if (periodeGlobale === 'semaine') {
       return employes.filter(e => {
         const m = hoursMap[e.id] || {};
-        return weekDays.slice(0, 6).some(d => (m[isoDate(d)] || 0) > 8);
+        return weekDays.some(d => (m[isoDate(d)] || 0) > 8); // 7 jours pour cohérence avec KPI
       }).length;
     }
     const { debut, fin } = getIntervallesPeriode(periodeGlobale);

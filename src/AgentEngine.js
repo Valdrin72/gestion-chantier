@@ -1677,6 +1677,219 @@ export function runAnalyseCycles({ chantiers, devis, agentContext, memoire = {} 
   } catch (e) { return { alertes: [], data: {}, memoire }; }
 }
 
+// ─── T3-A27 : DiagnosticRaison ────────────────────────────────
+// Pour chaque chantier actif problématique, identifie la cause
+// principale (MO, matériel, sous-tarification, délai, multi)
+// et propose une action corrective chiffrée en CHF.
+export function runDiagnosticRaison({ chantiers, devis, parametres, agentContext, getCouts }) {
+  const alertes = [];
+  const diagnostics = [];
+
+  chantiers.filter(isChantierActif).forEach(c => {
+    try {
+      const couts = getCouts
+        ? getCouts(c)
+        : calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis);
+
+      const ca = couts.montantTotal;
+      if (!ca || ca <= 0) return;
+
+      // Avancement depuis le journal (source unique)
+      const joursRealises = new Set((c.journal || []).map(e => e.date).filter(Boolean)).size;
+      const avancement = c.nombreJours > 0
+        ? Math.min(100, Math.round((joursRealises / c.nombreJours) * 100))
+        : Math.min(100, Math.max(0, parseFloat(c.avancement) || 0));
+
+      if (avancement === 0 || couts.totalCoutsReel <= 0) return;
+
+      // EAC projeté (coût à l'achèvement)
+      const eac = avancement > 0 ? couts.totalCoutsReel / (avancement / 100) : null;
+      const margeReelPct = Number.isFinite(couts.margeReelPct) ? couts.margeReelPct : null;
+
+      // Retard calendaire en jours
+      const joursRestants = c.nombreJours > 0 ? c.nombreJours - joursRealises : null;
+      let retardJours = joursRestants !== null && joursRestants < 0 ? Math.abs(joursRestants) : 0;
+      if (retardJours === 0 && c.dateDebut && c.nombreJours > 0) {
+        const finPrevue = new Date(c.dateDebut);
+        finPrevue.setDate(finPrevue.getDate() + Math.round(c.nombreJours * 7 / 5));
+        const today = new Date(); today.setHours(0, 0, 0, 0);
+        if (finPrevue < today) {
+          retardJours = Math.max(retardJours, Math.floor((today - finPrevue) / 86400000));
+        }
+      }
+
+      // Seuil de déclenchement du diagnostic
+      const eacDepasseCA = eac !== null && eac > ca;
+      const margeTropFaible = margeReelPct !== null && margeReelPct < 20;
+      const retardSignificatif = retardJours > 3;
+
+      if (!eacDepasseCA && !margeTropFaible && !retardSignificatif) return;
+
+      // ── Calcul des pourcentages par poste de coût ──────────
+      const moReel = ca > 0 ? (couts.coutEquipeReel / ca) * 100 : 0;
+      const moBudget = ca > 0 ? (couts.coutEquipePrevu / ca) * 100 : 0;
+      const moEcart = couts.coutEquipeReel - couts.coutEquipePrevu;
+
+      const materielReel = ca > 0 ? (couts.coutMaterielReel / ca) * 100 : 0;
+      const materielBudget = ca > 0 ? (couts.coutMaterielPrevu / ca) * 100 : 0;
+      const materielEcart = couts.coutMaterielReel - couts.coutMaterielPrevu;
+
+      const sousTraitanceReel = ca > 0 ? (couts.coutSousTraitanceReel / ca) * 100 : 0;
+      const sousTraitanceBudget = ca > 0 ? (couts.coutSousTraitancePrevu / ca) * 100 : 0;
+      const sousTraitanceEcart = couts.coutSousTraitanceReel - couts.coutSousTraitancePrevu;
+
+      // Taux horaire réel constaté (coût MO / total heures travaillées toutes équipes)
+      const totalHeures = (c.journal || []).reduce((s, entry) =>
+        s + (entry.employes || []).reduce((ss, ej) => ss + (parseFloat(ej.heuresTravaillees) || 0), 0), 0);
+      const tarifHoraireReel = totalHeures > 0 ? couts.coutEquipeReel / totalHeures : null;
+
+      // EAC vs CA dépassement %
+      const eacVsCA = eac !== null && ca > 0 ? Math.round(((eac - ca) / ca) * 1000) / 10 : 0;
+
+      // ── Identification de la cause principale ──────────────
+      const moEcartAbs = Math.abs(moEcart);
+      const materielEcartAbs = Math.abs(materielEcart);
+      const sousTraitanceEcartAbs = Math.abs(sousTraitanceEcart);
+      const maxEcart = Math.max(moEcartAbs, materielEcartAbs, sousTraitanceEcartAbs);
+
+      // Sous-tarification : marge budgétée initiale < 10%
+      const margeBudgetPct = couts.margePrevuPct !== null && Number.isFinite(couts.margePrevuPct) ? couts.margePrevuPct : null;
+      const sousTarifie = margeBudgetPct !== null && margeBudgetPct < 10;
+
+      // Nombre de postes dépassant leur budget de >10%
+      const nbPostesEnDepassement = [
+        moEcart > ca * 0.05,
+        materielEcart > ca * 0.03,
+        sousTraitanceEcart > ca * 0.03,
+        retardJours > 7,
+      ].filter(Boolean).length;
+
+      let causePrincipale;
+      if (sousTarifie && margeBudgetPct < 10) {
+        causePrincipale = 'underpriced';
+      } else if (nbPostesEnDepassement >= 3) {
+        causePrincipale = 'multi';
+      } else if (retardJours > 7 && retardJours * (couts.coutEquipeReel / Math.max(1, joursRealises)) > moEcartAbs && retardJours * (couts.coutEquipeReel / Math.max(1, joursRealises)) > materielEcartAbs) {
+        causePrincipale = 'delays';
+      } else if (maxEcart > 0 && moEcartAbs >= materielEcartAbs && moEcartAbs >= sousTraitanceEcartAbs) {
+        causePrincipale = 'main_overrun';
+      } else if (maxEcart > 0 && materielEcartAbs > moEcartAbs) {
+        causePrincipale = 'materials';
+      } else {
+        causePrincipale = retardJours > 3 ? 'delays' : 'main_overrun';
+      }
+
+      // ── Score de gravité 0–100 ─────────────────────────────
+      let scoreGravite = 0;
+      if (eacDepasseCA) scoreGravite += Math.min(40, Math.round(Math.abs(eacVsCA) * 0.8));
+      if (margeTropFaible) {
+        const ecartMarge = 20 - (margeReelPct ?? 20);
+        scoreGravite += Math.min(35, Math.round(ecartMarge * 1.5));
+      }
+      if (retardSignificatif) scoreGravite += Math.min(25, Math.round(retardJours * 2));
+      scoreGravite = Math.min(100, Math.max(0, scoreGravite));
+
+      // ── Explication lisible patron BTP ─────────────────────
+      const moReelFmt = Math.round(moReel * 10) / 10;
+      const moBudgetFmt = Math.round(moBudget * 10) / 10;
+      const materielReelFmt = Math.round(materielReel * 10) / 10;
+      const materielBudgetFmt = Math.round(materielBudget * 10) / 10;
+
+      let explication = '';
+      if (causePrincipale === 'main_overrun') {
+        explication = `MO réel : ${moReelFmt}% du CA vs budget ${moBudgetFmt}% → écart +CHF ${fmtN(Math.round(moEcart))}`;
+        if (tarifHoraireReel !== null) explication += ` · Coût horaire constaté : CHF ${Math.round(tarifHoraireReel * 10) / 10}/h`;
+      } else if (causePrincipale === 'materials') {
+        explication = `Matériel réel : ${materielReelFmt}% du CA vs budget ${materielBudgetFmt}% → écart +CHF ${fmtN(Math.round(materielEcart))}`;
+      } else if (causePrincipale === 'underpriced') {
+        explication = `Sous-tarification : marge budgétée initiale de ${Math.round(margeBudgetPct * 10) / 10}% (< 10%) — le devis ne couvrait pas les charges`;
+      } else if (causePrincipale === 'delays') {
+        const coutJourMoyen = joursRealises > 0 ? Math.round(couts.coutEquipeReel / joursRealises) : 0;
+        explication = `Retard de ${retardJours} jours ouvrables · coût journalier MO moyen CHF ${fmtN(coutJourMoyen)}`;
+        if (eacVsCA !== 0) explication += ` → EAC dépasse le CA de ${Math.abs(eacVsCA)}%`;
+      } else {
+        // multi
+        const postes = [];
+        if (moEcart > 0) postes.push(`MO +CHF ${fmtN(Math.round(moEcart))}`);
+        if (materielEcart > 0) postes.push(`Matériel +CHF ${fmtN(Math.round(materielEcart))}`);
+        if (sousTraitanceEcart > 0) postes.push(`Sous-trait. +CHF ${fmtN(Math.round(sousTraitanceEcart))}`);
+        explication = `Dépassements multiples : ${postes.join(', ')}`;
+        if (retardJours > 0) explication += ` · retard ${retardJours}j`;
+      }
+
+      // ── Action corrective + impact CHF estimé ──────────────
+      let actionCorrective = '';
+      let impactCHF = 0;
+
+      if (causePrincipale === 'main_overrun') {
+        const economiePossible = Math.min(moEcartAbs, ca * 0.05);
+        actionCorrective = `Revoir l'affectation des heures : réduire la présence de ${Math.ceil(economiePossible / Math.max(1, parseFloat(parametres?.parametres?.tarifJourMoyen) || 600))} jour(s) sur ce chantier`;
+        impactCHF = Math.round(economiePossible);
+      } else if (causePrincipale === 'materials') {
+        actionCorrective = `Renégocier les achats matériaux ou chercher des fournisseurs alternatifs pour les ${Math.round(materielEcartAbs / Math.max(1, ca / 100))}% de dépassement`;
+        impactCHF = Math.round(materielEcartAbs * 0.5);
+      } else if (causePrincipale === 'underpriced') {
+        const margeManquante = ca * 0.15 - (couts.margeReel ?? 0);
+        actionCorrective = `Émettre un avenant pour récupérer les surcoûts — marge cible 15% requiert +CHF ${fmtN(Math.round(Math.max(0, margeManquante)))}`;
+        impactCHF = Math.round(Math.max(0, margeManquante));
+      } else if (causePrincipale === 'delays') {
+        const coutJourMoyen = joursRealises > 0 ? couts.coutEquipeReel / joursRealises : 0;
+        const economieAcceleration = retardJours * coutJourMoyen * 0.3;
+        actionCorrective = `Renforcer l'équipe pour rattraper ${Math.round(retardJours * 0.5)} jours de retard — économie nette estimée CHF ${fmtN(Math.round(economieAcceleration))}`;
+        impactCHF = Math.round(economieAcceleration);
+      } else {
+        const prioritePoste = moEcartAbs >= materielEcartAbs && moEcartAbs >= sousTraitanceEcartAbs
+          ? `réduire la MO (économie estimée CHF ${fmtN(Math.round(moEcartAbs * 0.4))})`
+          : `renégocier le matériel (économie estimée CHF ${fmtN(Math.round(materielEcartAbs * 0.5))})`;
+        actionCorrective = `Action prioritaire : ${prioritePoste}`;
+        impactCHF = Math.round(Math.max(moEcartAbs, materielEcartAbs) * 0.4);
+      }
+
+      // ── Alerte diagnostic si impact > 5000 CHF ────────────
+      if (impactCHF > 5000) {
+        alertes.push({
+          id: uid('dr-diag'),
+          agent: 'DiagnosticRaison',
+          type: 'diagnostic',
+          niveau: scoreGravite >= 60 ? 'DANGER' : 'ATTENTION',
+          message: `${c.nom || c.numero} — ${causePrincipale === 'main_overrun' ? 'MO excessif' : causePrincipale === 'materials' ? 'Matériaux dépassés' : causePrincipale === 'underpriced' ? 'Sous-tarification' : causePrincipale === 'delays' ? 'Retard coûteux' : 'Dépassements multiples'} · impact CHF ${fmtN(impactCHF)}`,
+          detail: explication,
+          chantier_id: c.id,
+          timestamp: Date.now(),
+          lu: false,
+          action: { page: 'chantiers', ctx: { chantierActif: c.id } },
+        });
+      }
+
+      diagnostics.push({
+        chantierId: c.id,
+        nom: c.nom || c.numero,
+        causePrincipale,
+        score: scoreGravite,
+        details: {
+          moReel: Math.round(moReel * 10) / 10,
+          moBudget: Math.round(moBudget * 10) / 10,
+          moEcart: Math.round(moEcart),
+          materielReel: Math.round(materielReel * 10) / 10,
+          materielBudget: Math.round(materielBudget * 10) / 10,
+          materielEcart: Math.round(materielEcart),
+          tarifHoraire: tarifHoraireReel !== null ? Math.round(tarifHoraireReel * 10) / 10 : null,
+          nbJoursEcart: retardJours,
+          eacVsCA: Math.round(eacVsCA * 10) / 10,
+        },
+        explication,
+        actionCorrective,
+        impactCHF,
+      });
+    } catch (e) {
+      console.warn('[T3-DiagnosticRaison]', c.id, e);
+    }
+  });
+
+  diagnostics.sort((a, b) => b.score - a.score);
+  return { alertes, data: { diagnostics } };
+}
+
 // ─── T3-A20 : CoachDirecteur ──────────────────────────────────
 export function runCoachDirecteur({ chantiers, devis, factures, parametres, agentContext, memoire = {}, alertes = [] }) {
   try {
@@ -1775,6 +1988,7 @@ const AGENT_SCHEMAS = {
   OptimisationEquipe:     { suggestions: 'array', sousUtilises: 'array' },
   ScoreOffre:             { scoresOffres: 'array' },
   AnalyseCycles:          { cycles: 'array', nbTermines: 'number' },
+  DiagnosticRaison:       { diagnostics: 'array' },
 };
 
 function validateAgentOutput(name, data) {
@@ -1968,6 +2182,7 @@ export function runAllAgents({ chantiers, devis, factures, clients, parametres, 
   runAgent('Saisonnierte',    (m) => runSaisonnierte({ chantiers, devis, memoire: m }));
   runAgent('CoutMOAnalyse',   (m) => runCoutMOAnalyse({ chantiers, devis, parametres, agentContext, getCouts }));
   runAgent('AnalyseCycles',   (m) => runAnalyseCycles({ chantiers, devis, agentContext, memoire: m }));
+  runAgent('DiagnosticRaison', (m) => runDiagnosticRaison({ chantiers, devis, parametres, agentContext, getCouts }));
   runAgent('CoachDirecteur',  (m) => runCoachDirecteur({ chantiers, devis, factures, parametres, agentContext, memoire: m, alertes: result.alertes }));
   runAgent('RapportNaturel',  (m) => runRapportNaturel({ chantiers, factures, agentContext, memoire: m }));
 

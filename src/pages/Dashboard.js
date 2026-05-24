@@ -685,6 +685,155 @@ function Dashboard() {
         </p>
       </div>
 
+      {/* ── BRIEFING IA DU DIRECTEUR ─────────────────────────── */}
+      {(() => {
+        const scoreDirecteur = agentState?.scoreGlobal ?? null;
+        const prioritesIA = agentState?.priorites || [];
+        const alertesIA = agentState?.alertes || [];
+
+        // Ne pas afficher si aucune donnée agent disponible
+        if (scoreDirecteur === null && prioritesIA.length === 0 && alertesIA.length === 0) return null;
+
+        const scoreColor = scoreDirecteur === null ? '#94a3b8'
+          : scoreDirecteur >= 75 ? '#10b981'
+          : scoreDirecteur >= 50 ? '#f59e0b'
+          : '#ef4444';
+
+        const scoreBgColor = scoreDirecteur === null ? '#94a3b820'
+          : scoreDirecteur >= 75 ? '#10b98120'
+          : scoreDirecteur >= 50 ? '#f59e0b20'
+          : '#ef444420';
+
+        // Top 3 actions : priorites en premier, sinon alertes critiques
+        const top3 = prioritesIA.length > 0
+          ? prioritesIA.slice(0, 3)
+          : alertesIA.filter(a => ['critique', 'danger'].includes((a.niveau || '').toLowerCase())).slice(0, 3);
+
+        // Première alerte critique ou danger
+        const alerteCritique = alertesIA.find(a => ['critique', 'danger'].includes((a.niveau || '').toLowerCase())) || null;
+
+        return (
+          <div style={{
+            background: 'linear-gradient(135deg, #0d3d6e, #1a5c8a)',
+            borderRadius: 16,
+            padding: '18px 22px',
+            marginBottom: 20,
+            boxShadow: '0 8px 32px rgba(13,61,110,0.35), 0 2px 8px rgba(0,0,0,0.15)',
+            border: '1px solid rgba(255,255,255,0.12)',
+            backdropFilter: 'blur(12px)',
+            position: 'relative',
+            overflow: 'hidden',
+          }}>
+            {/* Décor arrière-plan */}
+            <div style={{ position: 'absolute', right: -40, top: -40, width: 180, height: 180, borderRadius: '50%', background: 'rgba(255,255,255,0.04)', pointerEvents: 'none' }} />
+            <div style={{ position: 'absolute', left: -20, bottom: -30, width: 120, height: 120, borderRadius: '50%', background: 'rgba(255,255,255,0.03)', pointerEvents: 'none' }} />
+
+            {/* En-tête */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+              <Bot size={14} color="rgba(255,255,255,0.7)" />
+              <span style={{ fontSize: 10, fontWeight: 800, color: 'rgba(255,255,255,0.55)', textTransform: 'uppercase', letterSpacing: '1.2px' }}>Briefing IA du Directeur</span>
+              <span style={{ marginLeft: 'auto', fontSize: 10, color: 'rgba(255,255,255,0.4)', cursor: 'pointer', fontWeight: 600 }} onClick={() => naviguer('agents')}>Voir Centre IA →</span>
+            </div>
+
+            {/* 3 colonnes */}
+            <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'stretch' }}>
+
+              {/* COL 1 — Score santé (30%) */}
+              <div style={{ flex: '0 0 auto', minWidth: 120, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                <div style={{
+                  width: 80, height: 80, borderRadius: '50%',
+                  background: scoreBgColor,
+                  border: `3px solid ${scoreColor}`,
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                  boxShadow: `0 0 20px ${scoreColor}40`,
+                }}>
+                  {scoreDirecteur !== null ? (
+                    <>
+                      <span style={{ fontSize: 24, fontWeight: 900, color: scoreColor, lineHeight: 1, letterSpacing: '-1px' }}>{scoreDirecteur}</span>
+                      <span style={{ fontSize: 9, fontWeight: 700, color: scoreColor, opacity: 0.8 }}>/100</span>
+                    </>
+                  ) : (
+                    <span style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.4)' }}>—</span>
+                  )}
+                </div>
+                <div style={{ fontSize: 9, fontWeight: 800, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '0.8px', textAlign: 'center' }}>Sante Entreprise</div>
+                {scoreDirecteur !== null && (
+                  <div style={{ fontSize: 10, color: scoreColor, fontWeight: 700, textAlign: 'center' }}>
+                    {scoreDirecteur >= 75 ? 'Excellent' : scoreDirecteur >= 50 ? 'A surveiller' : 'Critique'}
+                  </div>
+                )}
+              </div>
+
+              {/* Separateur vertical */}
+              <div style={{ width: 1, background: 'rgba(255,255,255,0.1)', flexShrink: 0, alignSelf: 'stretch', minHeight: 60 }} />
+
+              {/* COL 2 — 3 actions (45%) */}
+              <div style={{ flex: '1 1 180px', minWidth: 160 }}>
+                <div style={{ fontSize: 9, fontWeight: 800, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 8 }}>3 Actions Aujourd'hui</div>
+                {top3.length === 0 ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <CheckCircle size={12} color="#10b981" />
+                    <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)', fontStyle: 'italic' }}>Aucune action urgente — entreprise sur les rails</span>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    {top3.map((item, idx) => {
+                      const titre = item.titre || item.message || item.description || '—';
+                      const impact = item.impact || null;
+                      return (
+                        <div key={idx} style={{ display: 'flex', alignItems: 'flex-start', gap: 7 }}>
+                          <span style={{ fontSize: 9, fontWeight: 900, color: 'rgba(255,255,255,0.4)', background: 'rgba(255,255,255,0.08)', borderRadius: '50%', width: 16, height: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1 }}>{idx + 1}</span>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.85)', lineHeight: 1.3, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{titre}</span>
+                            {impact && <span style={{ fontSize: 10, color: '#f59e0b', fontWeight: 700 }}>CHF {impact}</span>}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Separateur vertical */}
+              <div style={{ width: 1, background: 'rgba(255,255,255,0.1)', flexShrink: 0, alignSelf: 'stretch', minHeight: 60 }} />
+
+              {/* COL 3 — Alerte critique (25%) */}
+              <div style={{ flex: '0 1 160px', minWidth: 130, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                <div style={{ fontSize: 9, fontWeight: 800, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 8 }}>Alerte Critique</div>
+                {alerteCritique ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span style={{
+                        display: 'inline-block', width: 8, height: 8, borderRadius: '50%',
+                        background: '#ef4444',
+                        boxShadow: '0 0 8px #ef4444',
+                        animation: 'pulse 1.5s ease-in-out infinite',
+                        flexShrink: 0,
+                      }} />
+                      <span style={{ fontSize: 10, fontWeight: 800, color: '#ef4444', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                        {(alerteCritique.niveau || 'CRITIQUE').toUpperCase()}
+                      </span>
+                    </div>
+                    <p style={{ margin: 0, fontSize: 12, color: 'rgba(255,255,255,0.75)', lineHeight: 1.4, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                      {alerteCritique.titre || alerteCritique.message || '—'}
+                    </p>
+                    {alerteCritique.agent && (
+                      <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', fontStyle: 'italic' }}>via {alerteCritique.agent}</span>
+                    )}
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                    <ShieldCheck size={16} color="#10b981" strokeWidth={2} />
+                    <span style={{ fontSize: 12, color: '#10b981', fontWeight: 700 }}>Aucun risque critique</span>
+                  </div>
+                )}
+              </div>
+
+            </div>
+          </div>
+        );
+      })()}
+
       {/* ── KPI CARDS ────────────────────────────────────────── */}
       <div className="kpi-grid" style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'var(--g4)', gap: isMobile ? 10 : 16, marginBottom: 24 }}>
         {[

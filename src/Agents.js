@@ -284,6 +284,7 @@ export default function Agents({
         {[
           ['coach', `Coach Directeur${priorites.length > 0 ? ` (${priorites.length})` : ''}`],
           ['alertes', `Alertes ${alertesNonLues.length > 0 ? `(${alertesNonLues.length})` : ''}`],
+          ['diagnostics', `Diagnostics${(agentData?.diagnostics?.length) > 0 ? ` (${agentData.diagnostics.length})` : ''}`],
           ['agents', `Agents (${AGENTS_META.length})`],
           ['predictions', 'Prédictions'],
           ['memoire', 'Mémoire'],
@@ -401,11 +402,97 @@ export default function Agents({
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
                         <span style={{ background: niv.bg, color: niv.color, borderRadius: 20, padding: '2px 8px', fontSize: 10, fontWeight: 700 }}>{a.niveau}</span>
                         {agentMeta && <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{agentMeta.nom}</span>}
+                        {a.montant && <span style={{ fontSize: 10, background: '#fef3c7', color: '#92400e', border: '1px solid #fde68a', borderRadius: 20, padding: '1px 8px', fontWeight: 700 }}>CHF {fmtN(Math.abs(Math.round(a.montant)))}</span>}
                         <span style={{ fontSize: 11, color: 'var(--text-muted)', marginLeft: 'auto' }}>{fmtDiff(a.timestamp)}</span>
                       </div>
                       <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--text-primary)', marginBottom: 2 }}>{a.message}</div>
-                      {a.detail && <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{a.detail}</div>}
+                      {a.detail && <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: a.action ? 6 : 0 }}>{a.detail}</div>}
+                      {a.action && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6 }}>
+                          <Zap size={11} style={{ color: niv.color, flexShrink: 0 }} />
+                          <span style={{ fontSize: 11, fontWeight: 600, color: niv.color, fontStyle: 'italic' }}>{a.action}</span>
+                        </div>
+                      )}
+                      {a.causePrincipale && (
+                        <div style={{ display: 'flex', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
+                          {a.causePrincipale === 'main_overrun' && <span style={{ fontSize: 10, background: '#fee2e2', color: '#991b1b', border: '1px solid #fecaca', borderRadius: 20, padding: '1px 8px', fontWeight: 600 }}>MO dépassé</span>}
+                          {a.causePrincipale === 'underpriced' && <span style={{ fontSize: 10, background: '#fef3c7', color: '#92400e', border: '1px solid #fde68a', borderRadius: 20, padding: '1px 8px', fontWeight: 600 }}>Sous-tarifé</span>}
+                          {a.causePrincipale === 'delays' && <span style={{ fontSize: 10, background: '#eff6ff', color: '#1e40af', border: '1px solid #bfdbfe', borderRadius: 20, padding: '1px 8px', fontWeight: 600 }}>Retard planning</span>}
+                          {a.causePrincipale === 'materials' && <span style={{ fontSize: 10, background: '#f0fdf4', color: '#065f46', border: '1px solid #bbf7d0', borderRadius: 20, padding: '1px 8px', fontWeight: 600 }}>Matériaux dépassés</span>}
+                          {a.causePrincipale === 'multi' && <span style={{ fontSize: 10, background: '#fdf2f8', color: '#701a75', border: '1px solid #f5d0fe', borderRadius: 20, padding: '1px 8px', fontWeight: 600 }}>Causes multiples</span>}
+                        </div>
+                      )}
                     </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════════════════════
+          ONGLET DIAGNOSTICS — Analyse racine par chantier
+      ══════════════════════════════════════════════════════ */}
+      {onglet === 'diagnostics' && (
+        <div>
+          {!(agentData?.diagnostics?.length) ? (
+            <div style={{ ...DS.card, textAlign: 'center', padding: '40px 20px' }}>
+              <CheckCircle size={32} strokeWidth={1.5} style={{ color: '#10b981', display: 'block', margin: '0 auto 12px' }} />
+              <div style={{ fontWeight: 600, marginBottom: 4 }}>Aucun chantier en difficulté</div>
+              <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>L'agent DiagnosticRaison analysera les chantiers à problème lors de la prochaine exécution</div>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {(agentData.diagnostics || []).map(d => {
+                const gravColor = d.score >= 70 ? '#991b1b' : d.score >= 40 ? '#92400e' : '#065f46';
+                const gravBg = d.score >= 70 ? '#fee2e2' : d.score >= 40 ? '#fef3c7' : '#f0fdf4';
+                return (
+                  <div key={d.chantierId} style={{ ...DS.card, padding: '18px 20px', borderLeft: `4px solid ${gravColor}` }}>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 10, gap: 12, flexWrap: 'wrap' }}>
+                      <div>
+                        <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-primary)', marginBottom: 3 }}>{d.nom}</div>
+                        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                          {d.causePrincipale === 'main_overrun' && <span style={{ fontSize: 10, background: '#fee2e2', color: '#991b1b', border: '1px solid #fecaca', borderRadius: 20, padding: '1px 8px', fontWeight: 700 }}>MO dépassé</span>}
+                          {d.causePrincipale === 'underpriced' && <span style={{ fontSize: 10, background: '#fef3c7', color: '#92400e', border: '1px solid #fde68a', borderRadius: 20, padding: '1px 8px', fontWeight: 700 }}>Sous-tarifé</span>}
+                          {d.causePrincipale === 'delays' && <span style={{ fontSize: 10, background: '#eff6ff', color: '#1e40af', border: '1px solid #bfdbfe', borderRadius: 20, padding: '1px 8px', fontWeight: 700 }}>Retard planning</span>}
+                          {d.causePrincipale === 'materials' && <span style={{ fontSize: 10, background: '#f0fdf4', color: '#065f46', border: '1px solid #bbf7d0', borderRadius: 20, padding: '1px 8px', fontWeight: 700 }}>Matériaux dépassés</span>}
+                          {d.causePrincipale === 'multi' && <span style={{ fontSize: 10, background: '#fdf2f8', color: '#701a75', border: '1px solid #f5d0fe', borderRadius: 20, padding: '1px 8px', fontWeight: 700 }}>Causes multiples</span>}
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                        <div style={{ background: gravBg, color: gravColor, borderRadius: 12, padding: '6px 14px', textAlign: 'center' }}>
+                          <div style={{ fontSize: 20, fontWeight: 900 }}>{d.score}</div>
+                          <div style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase' }}>Gravité</div>
+                        </div>
+                        {d.impactCHF > 0 && (
+                          <div style={{ background: '#fff7ed', color: '#92400e', border: '1px solid #fed7aa', borderRadius: 12, padding: '6px 14px', textAlign: 'center' }}>
+                            <div style={{ fontSize: 16, fontWeight: 900 }}>CHF {fmtN(Math.round(d.impactCHF))}</div>
+                            <div style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase' }}>Impact potentiel</div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    {d.explication && (
+                      <div style={{ fontSize: 12, color: 'var(--text-secondary)', background: 'var(--bg-glass-2)', borderRadius: 8, padding: '8px 12px', marginBottom: 10, lineHeight: 1.5 }}>{d.explication}</div>
+                    )}
+                    {d.details && (
+                      <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: d.actionCorrective ? 10 : 0 }}>
+                        {d.details.moReel != null && <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>MO réel: <strong style={{ color: d.details.moReel > (d.details.moBudget || 50) ? '#ef4444' : '#10b981' }}>{Math.round(d.details.moReel)}%</strong> du CA {d.details.moBudget != null ? `(budget: ${Math.round(d.details.moBudget)}%)` : ''}</div>}
+                        {d.details.moEcart != null && d.details.moEcart !== 0 && <div style={{ fontSize: 11, color: '#ef4444', fontWeight: 600 }}>Écart MO: CHF {fmtN(Math.abs(Math.round(d.details.moEcart)))}</div>}
+                        {d.details.nbJoursEcart != null && d.details.nbJoursEcart !== 0 && <div style={{ fontSize: 11, color: '#f59e0b', fontWeight: 600 }}>Retard: {d.details.nbJoursEcart}j</div>}
+                        {d.details.eacVsCA != null && d.details.eacVsCA > 0 && <div style={{ fontSize: 11, color: '#ef4444', fontWeight: 600 }}>EAC: +{Math.round(d.details.eacVsCA)}% vs CA</div>}
+                      </div>
+                    )}
+                    {d.actionCorrective && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8, padding: '8px 12px', background: `${gravColor}10`, borderRadius: 8, border: `1px solid ${gravColor}25` }}>
+                        <Zap size={13} style={{ color: gravColor, flexShrink: 0 }} />
+                        <div>
+                          <div style={{ fontSize: 10, fontWeight: 700, color: gravColor, textTransform: 'uppercase', letterSpacing: '0.3px' }}>Action recommandée</div>
+                          <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)', marginTop: 2 }}>{d.actionCorrective}</div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 );
               })}

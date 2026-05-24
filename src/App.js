@@ -51,6 +51,12 @@ function App() {
     );
   }
 
+  // DIAGNOSTIC MODE — bypass auth for automated testing
+  if (process.env.REACT_APP_DIAG_MODE === 'true') {
+    const diagProfil = { id: 'cyna', nom: 'CYNA', icone: '◈', couleur: '#0d3d6e', pages: ['dashboard','chantiers','clients','employes','devis','heures','finances','planning','rapport','agents','parametres'] };
+    return <AppInner key="diag-user" profil={diagProfil} deconnecter={() => {}} userId="diag-user-001" />;
+  }
+
   if (!session) {
     return <Login />;
   }

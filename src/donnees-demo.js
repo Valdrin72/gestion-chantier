@@ -96,6 +96,14 @@ export const donneesDemo = {
     joursAlerte: 5,
     tauxChargesSociales: 30,
     chargesMensuelles: 45000,
+    nomSociete: 'CYNA Sàrl',
+    adresseSoc: 'Cardinal-Journet 5',
+    cpSoc: '1217 Meyrin',
+    tel1Soc: '078 747 14 48',
+    tel2Soc: '079 480 94 41',
+    emailSoc: 'info@cyna.ch',
+    nTVA: 'CHE-xxx.xxx.xxx TVA',
+    iban: 'CH00 0000 0000 0000 0000 0',
   },
 
   // ══════════════════════════════════════════════════════════════════════════

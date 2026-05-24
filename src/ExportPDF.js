@@ -16,6 +16,18 @@ const CYNA = {
   iban: 'CH00 0000 0000 0000 0000 0',
 };
 
+// ===== COORDONNÉES CYNA (dynamiques depuis paramètres) =====
+const getCYNA = (parametres) => ({
+  nom:        parametres?.parametres?.nomSociete  || 'CYNA Sàrl',
+  adresse:    parametres?.parametres?.adresseSoc  || 'Cardinal-Journet 5',
+  codePostal: parametres?.parametres?.cpSoc       || '1217 Meyrin',
+  tel1:       parametres?.parametres?.tel1Soc     || '078 747 14 48',
+  tel2:       parametres?.parametres?.tel2Soc     || '079 480 94 41',
+  email:      parametres?.parametres?.emailSoc    || 'info@cyna.ch',
+  nTVA:       parametres?.parametres?.nTVA        || 'CHE-xxx.xxx.xxx TVA',
+  iban:       parametres?.parametres?.iban        || 'CH00 0000 0000 0000 0000 0',
+});
+
 // ===== CONDITIONS GÉNÉRALES =====
 const CONDITIONS = `CONDITIONS GÉNÉRALES — CYNA Sàrl
 
@@ -622,4 +634,307 @@ export const exportRapportMensuel = async (chantiers, clients, parametres, mois,
 
   ajouterPiedPage(doc, false);
   doc.save(`Rapport_Mensuel_${nomsMois[mois]}_${annee}.pdf`);
+};
+
+// ===== EXPORT FACTURE (QR-FACTURE SIX GROUP) =====
+export const exportFacture = async (facture, client, chantier, devis, parametres) => {
+  const doc = new jsPDF();
+  const cyna = getCYNA(parametres);
+
+  // --- Protections calculs (règles CYNA SÀRL) ---
+  const montantHT    = parseFloat(facture.montantHT) || 0;
+  const tva          = parseFloat(facture.tva) || 8.1;
+  const montantTVA   = montantHT * (tva / 100);
+  const montantTTC   = montantHT * (1 + tva / 100);   // recalculé, jamais depuis facture.montantTTC
+  const montantPaye  = parseFloat(facture.montantPaye) || 0;
+  const montantRestant = Math.max(0, montantTTC - montantPaye);
+  const estSolde     = montantRestant <= 0;
+
+  const formatCHF = (val) => `CHF ${Math.round(val).toLocaleString('fr-CH')}`;
+
+  // ─────────────────────────────────────────────
+  // 1. EN-TÊTE
+  // ─────────────────────────────────────────────
+  let y = await ajouterEntete(
+    doc,
+    'FACTURE',
+    `N° ${facture.numero || '—'}  ·  ${facture.dateEmission || '—'}`
+  );
+
+  // ─────────────────────────────────────────────
+  // 2. BLOC CLIENT + PRESTATAIRE
+  // ─────────────────────────────────────────────
+  doc.setFillColor(...GRIS_CLAIR);
+  doc.rect(10, y, 90, 46, 'F');
+  doc.setFillColor(230, 240, 255);
+  doc.rect(110, y, 90, 46, 'F');
+
+  // Colonne gauche — CLIENT
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(9);
+  doc.setTextColor(...BLEU);
+  doc.text('CLIENT', 15, y + 7);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(50, 50, 50);
+  if (client) {
+    doc.text(`${client.prenom || ''} ${client.nom || ''}`.trim() || '—', 15, y + 14);
+    if (client.entreprise) doc.text(client.entreprise, 15, y + 20);
+    if (client.adresse)    doc.text(client.adresse,    15, y + 26);
+    const villeCantonClient = [client.ville, client.canton].filter(Boolean).join(' (') + (client.canton ? ')' : '');
+    if (villeCantonClient) doc.text(villeCantonClient, 15, y + 32);
+    if (client.telephone)  doc.text(client.telephone,  15, y + 38);
+  } else {
+    doc.text('—', 15, y + 14);
+  }
+
+  // Colonne droite — PRESTATAIRE
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(...BLEU);
+  doc.text('PRESTATAIRE', 115, y + 7);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(50, 50, 50);
+  doc.text(cyna.nom,       115, y + 14);
+  doc.text(cyna.adresse,   115, y + 20);
+  doc.text(cyna.codePostal,115, y + 26);
+  doc.text(`☎ ${cyna.tel1}`, 115, y + 32);
+  doc.text(`✉ ${cyna.email}`, 115, y + 38);
+  doc.text(`N° TVA : ${cyna.nTVA}`, 115, y + 44);
+  y += 54;
+
+  // ─────────────────────────────────────────────
+  // 3. TABLEAU DE FACTURATION
+  // ─────────────────────────────────────────────
+  y = sectionTitre(doc, y, 'DÉTAIL DE LA FACTURE', BLEU_FONCE);
+
+  const lignesFacture = [
+    [
+      'Travaux selon devis / chantier',
+      chantier?.nom || devis?.numero || '—',
+      formatCHF(montantHT),
+    ],
+  ];
+  if (facture.notes) {
+    lignesFacture.push([
+      { content: `Notes : ${facture.notes}`, styles: { fontStyle: 'italic', textColor: [100, 100, 100] } },
+      '',
+      '',
+    ]);
+  }
+
+  autoTable(doc, {
+    startY: y,
+    head: [['Description', 'Réf.', 'Montant HT']],
+    body: lignesFacture,
+    headStyles: { fillColor: BLEU_FONCE, fontSize: 9 },
+    bodyStyles: { fontSize: 9 },
+    columnStyles: {
+      0: { cellWidth: 105 },
+      1: { cellWidth: 45 },
+      2: { cellWidth: 40, halign: 'right' },
+    },
+    margin: { left: 10, right: 10 },
+  });
+  y = doc.lastAutoTable.finalY + 6;
+
+  // Récapitulatif financier (sous le tableau)
+  const recapX = 110;
+  doc.setFillColor(...GRIS_CLAIR);
+  doc.rect(recapX, y, 90, 40, 'F');
+
+  const lignesRecap = [
+    [`Sous-total HT :`,         formatCHF(montantHT),   false, false],
+    [`TVA ${tva}% :`,           formatCHF(montantTVA),  false, false],
+    [`TOTAL TTC :`,             formatCHF(montantTTC),  true,  false],
+  ];
+  lignesRecap.forEach(([label, val, bold, _], i) => {
+    const ry = y + 10 + i * 10;
+    doc.setFont('helvetica', bold ? 'bold' : 'normal');
+    doc.setFontSize(bold ? 12 : 10);
+    doc.setTextColor(...(bold ? BLEU_FONCE : [50, 50, 50]));
+    doc.text(label, recapX + 5, ry);
+    doc.text(val, recapX + 85, ry, { align: 'right' });
+  });
+  y += 48;
+
+  // ─────────────────────────────────────────────
+  // 4. INFORMATIONS DE PAIEMENT
+  // ─────────────────────────────────────────────
+  if (y > 190) { doc.addPage(); y = 20; }
+  y = sectionTitre(doc, y, 'INFORMATIONS DE PAIEMENT', BLEU);
+
+  doc.setFillColor(...GRIS_CLAIR);
+  const infoBoxHeight = montantPaye > 0 ? 46 : 40;
+  doc.rect(10, y, 190, infoBoxHeight, 'F');
+
+  const infoLines = [
+    [`Numéro de facture :`, facture.numero || '—'],
+    [`Date d'émission :`,   facture.dateEmission || '—'],
+    [`Échéance :`,          facture.dateEcheance || '30 jours net'],
+  ];
+  if (montantPaye > 0) {
+    infoLines.push([`Déjà payé :`, formatCHF(montantPaye)]);
+  }
+
+  infoLines.forEach(([label, val], i) => {
+    const iy = y + 8 + i * 8;
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9);
+    doc.setTextColor(...BLEU);
+    doc.text(label, 15, iy);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(50, 50, 50);
+    doc.text(String(val), 75, iy);
+  });
+
+  // Solde à payer
+  const soldeY = y + 8 + infoLines.length * 8;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(11);
+  doc.setTextColor(...(estSolde ? VERT : ROUGE));
+  doc.text('SOLDE À PAYER :', 15, soldeY);
+  doc.text(formatCHF(montantRestant), 195, soldeY, { align: 'right' });
+  doc.setTextColor(0, 0, 0);
+  y += infoBoxHeight + 10;
+
+  // ─────────────────────────────────────────────
+  // 5. SECTION QR-PAIEMENT SIX GROUP
+  // ─────────────────────────────────────────────
+  if (y > 200) { doc.addPage(); y = 20; }
+
+  // Ligne de découpe pointillée
+  doc.setLineDashPattern([2, 2], 0);
+  doc.setDrawColor(150, 150, 150);
+  doc.line(10, y + 10, 200, y + 10);
+  // Petits ciseaux en texte
+  doc.setFontSize(7);
+  doc.setTextColor(150, 150, 150);
+  doc.text('✂', 6, y + 11);
+  doc.setLineDashPattern([], 0);
+  y += 18;
+
+  const qrBaseY = y;
+
+  // ── Colonne 1 : Récépissé (x=10, largeur=60) ──────────────────
+  const col1X = 10;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8);
+  doc.setTextColor(...BLEU_FONCE);
+  doc.text('RÉCÉPISSÉ', col1X, qrBaseY + 5);
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7);
+  doc.setTextColor(80, 80, 80);
+  doc.text('Compte / Payable à :', col1X, qrBaseY + 12);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7);
+  doc.setTextColor(30, 30, 30);
+  doc.text(cyna.iban,       col1X, qrBaseY + 17);
+  doc.text(cyna.nom,        col1X, qrBaseY + 22);
+  doc.text(cyna.adresse,    col1X, qrBaseY + 27);
+  doc.text(cyna.codePostal, col1X, qrBaseY + 32);
+
+  doc.setDrawColor(150, 150, 150);
+  doc.line(col1X, qrBaseY + 35, col1X + 55, qrBaseY + 35);
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7);
+  doc.setTextColor(80, 80, 80);
+  doc.text('Montant :', col1X, qrBaseY + 41);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(30, 30, 30);
+  doc.text(formatCHF(montantTTC), col1X + 20, qrBaseY + 41);
+
+  doc.line(col1X, qrBaseY + 45, col1X + 55, qrBaseY + 45);
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7);
+  doc.setTextColor(80, 80, 80);
+  doc.text('Monnaie :', col1X, qrBaseY + 51);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(30, 30, 30);
+  doc.text('CHF', col1X + 20, qrBaseY + 51);
+
+  // ── Colonne 2 : Zone QR (x=75, largeur=60) ────────────────────
+  const col2X = 75;
+  // Carré QR 46×46mm
+  doc.setDrawColor(100, 100, 100);
+  doc.setLineWidth(0.3);
+  doc.rect(col2X, qrBaseY, 46, 46);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7);
+  doc.setTextColor(150, 150, 150);
+  doc.text('[SWISS QR CODE]', col2X + 23, qrBaseY + 20, { align: 'center' });
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(6);
+  doc.text('(Généré par votre banque)', col2X + 23, qrBaseY + 27, { align: 'center' });
+  doc.setLineWidth(0.2);
+
+  // ── Colonne 3 : Section paiement (x=130, largeur=80) ──────────
+  const col3X = 130;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8);
+  doc.setTextColor(...BLEU_FONCE);
+  doc.text('SECTION PAIEMENT', col3X, qrBaseY + 5);
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7);
+  doc.setTextColor(80, 80, 80);
+  doc.text('Payable à :', col3X, qrBaseY + 12);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7);
+  doc.setTextColor(30, 30, 30);
+  doc.text(cyna.iban,       col3X, qrBaseY + 17);
+  doc.text(cyna.nom,        col3X, qrBaseY + 22);
+  doc.text(cyna.adresse,    col3X, qrBaseY + 27);
+  doc.text(cyna.codePostal, col3X, qrBaseY + 32);
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7);
+  doc.setTextColor(80, 80, 80);
+  doc.text('Référence :', col3X, qrBaseY + 39);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(30, 30, 30);
+  doc.text(facture.numero || '—', col3X, qrBaseY + 44);
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7);
+  doc.setTextColor(80, 80, 80);
+  doc.text('Payable par :', col3X, qrBaseY + 51);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(30, 30, 30);
+  const nomClient = [`${client?.prenom || ''} ${client?.nom || ''}`.trim() || '—'];
+  if (client?.entreprise) nomClient.push(client.entreprise);
+  if (client?.adresse)    nomClient.push(client.adresse);
+  if (client?.ville)      nomClient.push(client.ville);
+  nomClient.forEach((ligne, i) => {
+    doc.text(ligne, col3X, qrBaseY + 56 + i * 5);
+  });
+
+  const montantY = qrBaseY + 56 + nomClient.length * 5 + 3;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7);
+  doc.setTextColor(80, 80, 80);
+  doc.text('Montant :', col3X, montantY);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(30, 30, 30);
+  doc.text(formatCHF(montantTTC), col3X + 20, montantY);
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7);
+  doc.setTextColor(80, 80, 80);
+  doc.text('Monnaie :', col3X, montantY + 6);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(30, 30, 30);
+  doc.text('CHF', col3X + 20, montantY + 6);
+
+  doc.setTextColor(0, 0, 0);
+
+  // ─────────────────────────────────────────────
+  // 6. PIED DE PAGE
+  // ─────────────────────────────────────────────
+  ajouterPiedPage(doc, false);
+
+  doc.save(`Facture_${facture.numero || 'sans-numero'}_${facture.dateEmission || 'date'}.pdf`);
 };

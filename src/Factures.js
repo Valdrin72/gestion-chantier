@@ -12,7 +12,7 @@ import { DS } from './ds';
 import { exportCSV } from './utils/exportCSV';
 import { fmtN, getIntervallesPeriode, facturesInPeriode, genererNumeroFacture, calculerStatutFacture } from './donnees';
 import { prochainRappel, niveauInfo, genererTexteRappel, marquerRappelEnvoye } from './relances';
-import { exportFicheChantier } from './ExportPDF';
+import { exportFicheChantier, exportFacture } from './ExportPDF';
 
 // ── TVA suisse ───────────────────────────────────────────────
 const TVA_OPTIONS = [
@@ -577,13 +577,23 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
                         )}
                         {(() => {
                           const chantierF = chantiers.find(c => String(c.id) === String(f.chantierId));
-                          if (!chantierF || !parametres) return null;
+                          const clientF = clients.find(c => String(c.id) === String(f.clientId));
+                          const devisF = devis.find(d => String(d.id) === String(f.devisId));
                           return (
-                            <button
-                              style={{ ...DS.iconBtn, padding: '5px 8px' }}
-                              title="Exporter fiche chantier PDF"
-                              onClick={() => exportFicheChantier(chantierF, clients, parametres, devis)}
-                            ><FileDown size={13} /></button>
+                            <>
+                              <button
+                                style={{ ...DS.iconBtn, padding: '5px 8px', background: 'rgba(13,61,110,0.08)', color: '#0d3d6e' }}
+                                title="Télécharger facture PDF (QR-paiement)"
+                                onClick={() => exportFacture(f, clientF, chantierF, devisF, parametres)}
+                              ><FileDown size={13} /></button>
+                              {chantierF && parametres && (
+                                <button
+                                  style={{ ...DS.iconBtn, padding: '5px 8px' }}
+                                  title="Exporter fiche chantier PDF"
+                                  onClick={() => exportFicheChantier(chantierF, clients, parametres, devis)}
+                                ><FileDown size={13} /></button>
+                              )}
+                            </>
                           );
                         })()}
                       </div>
@@ -665,13 +675,23 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
             <BadgeStatut statut={f.statut} />
           {(() => {
             const chantierDetail = chantiers.find(c => String(c.id) === String(f.chantierId));
-            if (!chantierDetail || !parametres) return null;
+            const clientDetail = clients.find(c => String(c.id) === String(f.clientId));
+            const devisDetail = devis.find(d => String(d.id) === String(f.devisId));
             return (
-              <button
-                style={{ ...S.btnGhost, display: 'flex', alignItems: 'center', gap: 5 }}
-                title="Exporter fiche chantier PDF"
-                onClick={() => exportFicheChantier(chantierDetail, clients, parametres, devis)}
-              ><FileDown size={14} /> PDF</button>
+              <>
+                <button
+                  style={{ ...S.btnGhost, display: 'flex', alignItems: 'center', gap: 5, background: 'rgba(13,61,110,0.08)', color: '#0d3d6e', fontWeight: 700 }}
+                  title="Télécharger facture PDF avec section QR-paiement"
+                  onClick={() => exportFacture(f, clientDetail, chantierDetail, devisDetail, parametres)}
+                ><FileDown size={14} /> Facture PDF</button>
+                {chantierDetail && parametres && (
+                  <button
+                    style={{ ...S.btnGhost, display: 'flex', alignItems: 'center', gap: 5 }}
+                    title="Exporter fiche chantier PDF"
+                    onClick={() => exportFicheChantier(chantierDetail, clients, parametres, devis)}
+                  ><FileDown size={14} /> Fiche chantier</button>
+                )}
+              </>
             );
           })()}
           {canEdit && (

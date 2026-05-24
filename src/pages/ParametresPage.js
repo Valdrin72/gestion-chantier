@@ -120,6 +120,7 @@ function Parametres({ parametres, setParametres, clients = [], setClients = () =
     { id: 'localites', label: 'Localités', desc: 'Frais déplacement' },
     { id: 'travaux', label: 'Travaux', desc: 'Types et tarifs' },
     { id: 'zones', label: 'Zones géo.', desc: 'Tarifs par région' },
+    { id: 'societe', label: 'Société', desc: 'IBAN · N° TVA · Coordonnées' },
     { id: 'paiements', label: 'Paiements', desc: 'Délais et rappels' },
     { id: 'rapport', label: 'Rapport', desc: 'Alertes hebdo' },
     { id: 'agents', label: 'Agents IA', desc: 'Seuils des alertes' },
@@ -394,6 +395,72 @@ function Parametres({ parametres, setParametres, clients = [], setClients = () =
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {onglet === 'societe' && (
+        <div style={carteStyle}>
+          <div className="ds-card-title" style={{ marginBottom: 8 }}>Coordonnées légales</div>
+          <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 20 }}>
+            Ces informations apparaissent sur toutes les factures PDF. Obligatoires pour la conformité légale suisse.
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 15, marginBottom: 15 }}>
+            <div style={{ background: 'var(--bg-glass-2)', border: '1px solid var(--border)', borderRadius: 12, padding: 15 }}>
+              <label style={labelStyle}>Nom de la société</label>
+              <input type="text" placeholder="CYNA Sàrl"
+                value={parametres.parametres?.nomSociete || ''}
+                onChange={e => sauv({ ...parametres, parametres: { ...parametres.parametres, nomSociete: e.target.value } })}
+                style={inputStyle} />
+            </div>
+            <div style={{ background: 'rgba(16,185,129,0.04)', border: '1px solid rgba(16,185,129,0.3)', borderRadius: 12, padding: 15 }}>
+              <label style={{ ...labelStyle, color: '#10b981' }}>N° TVA AFC (obligatoire)</label>
+              <input type="text" placeholder="CHE-123.456.789 TVA"
+                value={parametres.parametres?.nTVA || ''}
+                onChange={e => sauv({ ...parametres, parametres: { ...parametres.parametres, nTVA: e.target.value } })}
+                style={{ ...inputStyle, borderColor: '#10b981', fontWeight: 700 }} />
+              <div style={{ fontSize: 11, color: '#10b981', marginTop: 6 }}>Format : CHE-XXX.XXX.XXX TVA</div>
+            </div>
+          </div>
+          <div style={{ background: 'rgba(13,61,110,0.04)', border: '2px solid rgba(13,61,110,0.3)', borderRadius: 12, padding: 18, marginBottom: 15 }}>
+            <label style={{ ...labelStyle, color: '#0d3d6e', fontSize: 13 }}>IBAN (obligatoire — apparaît sur toutes les factures)</label>
+            <input type="text" placeholder="CH44 3199 9123 0008 8901 2"
+              value={parametres.parametres?.iban || ''}
+              onChange={e => sauv({ ...parametres, parametres: { ...parametres.parametres, iban: e.target.value } })}
+              style={{ ...inputStyle, borderColor: '#0d3d6e', fontWeight: 700, fontSize: 16, letterSpacing: '0.05em' }} />
+            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 6 }}>
+              Format IBAN suisse : CH + 2 chiffres contrôle + 17 chiffres (26 caractères sans espaces)
+            </div>
+            {parametres.parametres?.iban && !/^CH\d{2}[0-9A-Z]{17}$/.test((parametres.parametres.iban || '').replace(/\s/g, '')) && (
+              <div style={{ fontSize: 11, color: '#ef4444', fontWeight: 600, marginTop: 4 }}>⚠ Format IBAN invalide — vérifiez votre numéro</div>
+            )}
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 15, marginBottom: 15 }}>
+            <div style={{ background: 'var(--bg-glass-2)', border: '1px solid var(--border)', borderRadius: 12, padding: 15 }}>
+              <label style={labelStyle}>Adresse</label>
+              <input type="text" placeholder="Cardinal-Journet 5"
+                value={parametres.parametres?.adresseSoc || ''}
+                onChange={e => sauv({ ...parametres, parametres: { ...parametres.parametres, adresseSoc: e.target.value } })}
+                style={inputStyle} />
+            </div>
+            <div style={{ background: 'var(--bg-glass-2)', border: '1px solid var(--border)', borderRadius: 12, padding: 15 }}>
+              <label style={labelStyle}>Code postal + Ville</label>
+              <input type="text" placeholder="1217 Meyrin"
+                value={parametres.parametres?.cpSoc || ''}
+                onChange={e => sauv({ ...parametres, parametres: { ...parametres.parametres, cpSoc: e.target.value } })}
+                style={inputStyle} />
+            </div>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 15 }}>
+            {[['Téléphone 1', 'tel1Soc', '078 747 14 48'], ['Téléphone 2', 'tel2Soc', '079 480 94 41'], ['Email', 'emailSoc', 'info@cyna.ch']].map(([label, key, ph]) => (
+              <div key={key} style={{ background: 'var(--bg-glass-2)', border: '1px solid var(--border)', borderRadius: 12, padding: 15 }}>
+                <label style={labelStyle}>{label}</label>
+                <input type="text" placeholder={ph}
+                  value={parametres.parametres?.[key] || ''}
+                  onChange={e => sauv({ ...parametres, parametres: { ...parametres.parametres, [key]: e.target.value } })}
+                  style={inputStyle} />
+              </div>
+            ))}
+          </div>
         </div>
       )}
 

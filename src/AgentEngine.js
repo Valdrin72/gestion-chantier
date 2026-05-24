@@ -1734,8 +1734,6 @@ export function runDiagnosticRaison({ chantiers, devis, parametres, agentContext
       const materielBudget = ca > 0 ? (couts.coutMaterielPrevu / ca) * 100 : 0;
       const materielEcart = couts.coutMaterielReel - couts.coutMaterielPrevu;
 
-      const sousTraitanceReel = ca > 0 ? (couts.coutSousTraitanceReel / ca) * 100 : 0;
-      const sousTraitanceBudget = ca > 0 ? (couts.coutSousTraitancePrevu / ca) * 100 : 0;
       const sousTraitanceEcart = couts.coutSousTraitanceReel - couts.coutSousTraitancePrevu;
 
       // Taux horaire réel constaté (coût MO / total heures travaillées toutes équipes)

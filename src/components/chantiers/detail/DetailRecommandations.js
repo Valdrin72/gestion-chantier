@@ -22,7 +22,6 @@ function genererRecommandations(etat, couts, chantier, factures, devis) {
   const ca = etat.devisTotal;
 
   const montantFactureHT = factures.reduce((s, f) => s + (parseFloat(f.montantHT) || 0), 0);
-  const montantFactureTTC = factures.reduce((s, f) => s + (parseFloat(f.montantTTC) || 0), 0);
   const avancement = etat.avancementPct;
   const deriveJours = etat.deriveJours;
 

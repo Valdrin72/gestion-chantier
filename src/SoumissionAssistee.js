@@ -368,7 +368,8 @@ export default function SoumissionAssistee({ parametres, onCreerDevis, naviguer 
     const totalAchats = calcules.reduce((s, c) => s + c.fournisseur, 0);
     const coutSansFreis = coutMOTotal + totalAchats;
     const coutAvecFreis = coutSansFreis * (1 + (parseFloat(params.fraisGeneraux) || 0) / 100);
-    const prixVente = coutAvecFreis * (1 + (parseFloat(params.margeCible) || 0) / 100);
+    const margeCible = (parseFloat(params.margeCible) || 0) / 100;
+    const prixVente = margeCible < 1 ? coutAvecFreis / (1 - margeCible) : coutAvecFreis * 2;
     const margeReelle = prixVente > 0 ? (prixVente - coutAvecFreis) / prixVente : 0;
 
     return {

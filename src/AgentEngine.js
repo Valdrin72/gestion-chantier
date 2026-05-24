@@ -1092,9 +1092,10 @@ export function runDerivePredictor({ chantiers, devis, parametres, agentContext,
     const avancement = c.nombreJours > 0
       ? Math.min(100, Math.round((joursRealises / c.nombreJours) * 100))
       : Math.min(100, Math.max(0, parseFloat(c.avancement) || 0));
-    const CA = couts.montantTotal || 0;
+    const CA = couts.montantTotal;
+    if (!CA || CA <= 0) return;
 
-    if (avancement < 15 || joursRealises === 0 || CA === 0) return;
+    if (avancement < 15 || joursRealises === 0) return;
     const coutActuel = couts.totalCoutsReel || 0;
     if (coutActuel === 0) return;
 

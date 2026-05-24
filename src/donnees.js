@@ -422,8 +422,9 @@ export const calculerCoutsChantier = (chantier, employes = [], localites = [], c
 // ===== STATUT RENTABILITÉ =====
 export const statutRentabilite = (margeReelPct) => {
   const v = parseFloat(margeReelPct) || 0;
-  if (v >= SEUILS.margeRentable) return { label: 'Rentable',      couleur: '#10b981' };
-  if (v >= SEUILS.margeLimite)   return { label: 'Limite',         couleur: '#f59e0b' };
+  if (v < 0)                     return { label: 'À perte',         couleur: '#7f1d1d' };
+  if (v >= SEUILS.margeRentable) return { label: 'Rentable',        couleur: '#10b981' };
+  if (v >= SEUILS.margeLimite)   return { label: 'Limite',          couleur: '#f59e0b' };
   return                                 { label: 'Non rentable',    couleur: '#ef4444' };
 };
 

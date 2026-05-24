@@ -40,5 +40,5 @@ export function peutFaire(profilId, action) {
 }
 
 export function getPagesAutorisees(profilId) {
-  return PERMISSIONS[profilId]?.pages ?? ACCES_TOTAL.pages;
+  return PERMISSIONS[profilId]?.pages ?? [];
 }

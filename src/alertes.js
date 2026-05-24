@@ -78,7 +78,8 @@ export function calculerAlertes({ chantiers = [], devis = [], factures = [], pai
   // ── 3. Factures en retard de paiement + relances à envoyer ───
   if (['cyna', 'cynatech'].includes(profilId)) {
     factures.forEach(f => {
-      if (f.statut !== 'envoyee' && f.statut !== 'partielle' && f.statut !== 'retard') return;
+      const statutF = f.statut?.toLowerCase();
+      if (statutF !== 'envoyee' && statutF !== 'partielle' && statutF !== 'retard') return;
       const dateEch = f.dateEcheance || (f.dateEmission ? new Date(new Date(f.dateEmission).getTime() + 30 * 86400000).toISOString().slice(0, 10) : null);
       if (!dateEch) return;
       const echeance = new Date(dateEch);
@@ -118,7 +119,7 @@ export function calculerAlertes({ chantiers = [], devis = [], factures = [], pai
 
   // ── 4. Factures brouillon non émises ────────────────────────
   if (['cyna', 'cynatech'].includes(profilId)) {
-    const brouillons = factures.filter(f => f.statut === 'brouillon');
+    const brouillons = factures.filter(f => f.statut?.toLowerCase() === 'brouillon');
     if (brouillons.length > 0) {
       push({
         type: 'factures_brouillon',
@@ -156,7 +157,7 @@ export function calculerAlertes({ chantiers = [], devis = [], factures = [], pai
         const joursDepuisTermine = Math.floor((now - dateTermine) / 86400000);
         if (joursDepuisTermine < 7) return; // grâce de 7 jours
         const hasFactureFinale = factures.some(f =>
-          String(f.chantierId) === String(c.id) && (f.type === 'finale' || f.type === 'standard') && f.statut !== 'annulee'
+          String(f.chantierId) === String(c.id) && (f.type === 'finale' || f.type === 'standard') && f.statut?.toLowerCase() !== 'annulee'
         );
         if (!hasFactureFinale) {
           push({

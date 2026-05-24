@@ -36,12 +36,6 @@ const AGENTS_PAR_DEFAUT = {
   SentinelAgent: true,
 };
 
-// Convertit récursivement tout champ non-string/number/boolean/null en string sûre
-// pour éviter qu'un objet corrompu du localStorage ne crashe React.
-function safeStringField(v) {
-  if (v == null || typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean') return v;
-  return undefined; // supprime le champ s'il est objet non-attendu
-}
 
 function sanitiserAlertes(alertes) {
   if (!Array.isArray(alertes)) return [];

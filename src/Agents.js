@@ -235,6 +235,7 @@ const NIVEAU_CONFIG = {
   ATTENTION: { bg: '#FEF3C7', color: '#92400E', border: '#FDE68A' },
   INFO:      { bg: '#EFF6FF', color: '#1E40AF', border: '#BFDBFE' },
 };
+const NIVEAU_ORDRE = { CRITIQUE: 0, DANGER: 1, ATTENTION: 2, INFO: 3 };
 
 export default function Agents({
   agentsActifs = {}, agentsStatuts = {}, agentsLogs = {}, alertes = [], predictions = {},
@@ -246,6 +247,7 @@ export default function Agents({
   const [expanded, setExpanded] = useState({});
   const [tierVisible, setTierVisible] = useState({ 1: true, 2: true, 3: true });
   const [simRapport, setSimRapport] = useState(null);
+  const [filtreAlerte, setFiltreAlerte] = useState('TOUS');
   const [simRunning, setSimRunning] = useState(false);
   const simTimerRef = useRef(null);
 
@@ -409,21 +411,59 @@ export default function Agents({
       ══════════════════════════════════════════════════════ */}
       {onglet === 'alertes' && (
         <TabBoundary label="Alertes"><div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 8 }}>
+          {/* Header : compteur + bouton tout lire */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
             <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>{alertes.length} alerte{alertes.length !== 1 ? 's' : ''} · {alertesNonLues.length} non lue{alertesNonLues.length !== 1 ? 's' : ''}</span>
             {alertesNonLues.length > 0 && (
               <button onClick={marquerTousLus} style={{ ...DS.btnGhost, fontSize: 12, padding: '5px 12px' }}>Tout marquer comme lu</button>
             )}
           </div>
+          {/* Filtres par niveau */}
+          {alertes.length > 0 && (
+            <div style={{ display: 'flex', gap: 6, marginBottom: 16, flexWrap: 'wrap' }}>
+              {['TOUS', 'CRITIQUE', 'DANGER', 'ATTENTION', 'INFO'].map(niv => {
+                const count = niv === 'TOUS' ? alertes.length : alertes.filter(a => a.niveau === niv).length;
+                const cfg = niv === 'TOUS' ? null : NIVEAU_CONFIG[niv];
+                const actif = filtreAlerte === niv;
+                return (
+                  <button key={niv} onClick={() => setFiltreAlerte(niv)}
+                    style={{
+                      fontSize: 11, fontWeight: 700, padding: '4px 12px', borderRadius: 20, cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s',
+                      background: actif ? (cfg ? cfg.bg : DS.brand.soft) : 'transparent',
+                      color: actif ? (cfg ? cfg.color : DS.brand.secondary) : 'var(--text-muted)',
+                      border: actif ? `1px solid ${cfg ? cfg.border : 'transparent'}` : '1px solid var(--border)',
+                    }}>
+                    {niv}{count > 0 && niv !== 'TOUS' ? ` (${count})` : niv === 'TOUS' ? ` (${count})` : ''}
+                  </button>
+                );
+              })}
+            </div>
+          )}
           {alertes.length === 0 ? (
             <div style={{ ...DS.card, textAlign: 'center', padding: '40px 20px' }}>
               <CheckCircle size={32} strokeWidth={1.5} style={{ color: '#10b981', display: 'block', margin: '0 auto 12px' }} />
               <div style={{ fontWeight: 600, marginBottom: 4 }}>Aucune alerte active</div>
               <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Tous vos chantiers sont dans les normes</div>
             </div>
-          ) : (
+          ) : (() => {
+            const alertesFiltrees = (filtreAlerte === 'TOUS' ? alertes : alertes.filter(a => a.niveau === filtreAlerte))
+              .slice()
+              .sort((a, b) => {
+                const oa = NIVEAU_ORDRE[a.niveau] ?? 99;
+                const ob = NIVEAU_ORDRE[b.niveau] ?? 99;
+                if (oa !== ob) return oa - ob;
+                return (b.timestamp || 0) - (a.timestamp || 0);
+              });
+            if (alertesFiltrees.length === 0) {
+              return (
+                <div style={{ ...DS.card, textAlign: 'center', padding: '32px 20px', color: 'var(--text-muted)', fontSize: 13 }}>
+                  Aucune alerte de niveau <strong>{filtreAlerte}</strong>
+                </div>
+              );
+            }
+            return (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {alertes.map(a => {
+              {alertesFiltrees.map(a => {
                 const niv = NIVEAU_CONFIG[a.niveau] || NIVEAU_CONFIG.INFO;
                 const agentMeta = AGENTS_META.find(m => m.id === a.agent);
                 return (
@@ -459,7 +499,8 @@ export default function Agents({
                 );
               })}
             </div>
-          )}
+            );
+          })()}
         </div></TabBoundary>
       )}
 

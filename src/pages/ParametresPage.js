@@ -258,7 +258,7 @@ function Parametres({ parametres, setParametres, clients = [], setClients = () =
                     <div style={{ marginTop: 8, fontSize: 11, color: 'var(--text-muted)', lineHeight: 1.5 }}>
                       {(val == null || isNaN(val))
                         ? <span style={{ color: '#10b981', fontWeight: 600 }}>✓ 8.1% appliqué automatiquement (taux légal CH 2024)</span>
-                        : <span>Taux actif : <strong style={{ color: '#10b981' }}>{val}%</strong> — TTC = HT × {(1 + val / 100).toFixed(3)}</span>
+                        : <span>Taux actif : <strong style={{ color: '#10b981' }}>{val}%</strong> — TTC = HT × {Math.round((1 + val / 100) * 1000) / 1000}</span>
                       }
                       <br />
                       <span style={{ color: 'var(--text-muted)', fontSize: 10 }}>Standard BTP Suisse : 8.1% · Pas de double comptage — appliqué une seule fois</span>

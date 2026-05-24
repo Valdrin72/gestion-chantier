@@ -25,7 +25,7 @@ const btnDanger = DS.btnDanger;
 
 function ImportCSVModal({ onClose, onImport }) {
   const [etape, setEtape] = useState('upload'); // 'upload' | 'preview' | 'done'
-  const [parsed, setParsed] = useState(null); // { headers, rows }
+  const [, setParsed] = useState(null); // { headers, rows }
   const [clients, setClients] = useState([]);
   const [mode, setMode] = useState('fusionner'); // 'fusionner' | 'remplacer'
   const [erreur, setErreur] = useState('');

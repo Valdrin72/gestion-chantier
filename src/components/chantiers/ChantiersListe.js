@@ -118,6 +118,7 @@ function ChantiersListe({
       const indicateurs = ind.sort((a, b) => PRIO_IND[a.type] - PRIO_IND[b.type]).slice(0, 2);
       return { c, etatC, decision, indicateurs };
     }).sort((a, b) => a.decision.priorite - b.decision.priorite);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chantiersFiltres, parametres.employes, devis]);
 
   const nbCritique = useMemo(() => scored.filter(x => x.decision.niveau === 'critique').length, [scored]);

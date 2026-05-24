@@ -141,7 +141,7 @@ export default function useAgents({ chantiers, devis, factures, clients, paramet
     } finally {
       setRunning(false);
     }
-  }, [chantiers, devis, factures, clients, parametres, agentsActifs, dernierRapport]);
+  }, [chantiers, devis, factures, clients, parametres, agentsActifs, dernierRapport, running]);
 
   // Référence à executer toujours à jour (évite le stale-closure dans setInterval)
   const executerRef = useRef(executer);

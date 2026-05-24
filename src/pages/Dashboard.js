@@ -402,7 +402,7 @@ function Dashboard() {
       return s + pct;
     }, 0);
     return sum / actifs.length;
-  }, [actifs, parametres.employes, parametres.parametres, devis]);
+  }, [actifs, parametres, devis]);
 
   const BADGE_STATUT_DASH = {
     ok:        { label: 'En cours',  bg: '#D1FAE5', color: '#065F46' },

@@ -58,7 +58,7 @@ function Employes({ parametres, setParametres, chantiers, naviguer }) {
             style={{
               display: 'inline-flex', alignItems: 'center', gap: 6,
               padding: '7px 16px', borderRadius: 20, fontSize: 13, fontWeight: 600,
-              cursor: 'pointer', border: 'none', fontFamily: 'inherit',
+              cursor: 'pointer', fontFamily: 'inherit',
               background: onglet === key ? 'linear-gradient(135deg, #0d3d6e 0%, #082d52 100%)' : 'var(--ds-btn-ghost-bg)',
               color: onglet === key ? '#fff' : 'var(--text-secondary)',
               boxShadow: onglet === key ? '0 2px 10px rgba(13,61,110,0.30)' : 'none',

@@ -199,7 +199,6 @@ function Devis() {
       setErreurs(nouvellesErreurs);
       return;
     }
-    const montant = montantParsed;
     if (form.id) {
       setDevis(devis.map(d => d.id === form.id ? form : d));
     } else {

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Plus, Sun, Moon, Menu, X, ChevronRight, LogOut, Bell, CheckCircle, AlertTriangle, Info } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { calculerAlertes } from '../alertes';
+import GlobalSearch from './GlobalSearch';
 
 export function Sidebar({ sidebarOuvert, setSidebarOuvert, navAutorisees, page, naviguer, darkMode, toggleDarkMode, profil, deconnecter }) {
   return (
@@ -376,6 +377,7 @@ export function Topbar({ setSidebarOuvert, canGoBack, page, revenirArriere, navA
             ))}
           </div>
         )}
+        <GlobalSearch naviguer={naviguer} />
         <NotificationBell naviguer={naviguer} />
         <button
           onClick={toggleDarkMode}

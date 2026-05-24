@@ -8,6 +8,14 @@ import {
 import { fmtN } from './donnees';
 import { DS } from './ds';
 
+// Protège contre les valeurs non-string (action:{page,ctx}, detail:objet...)
+function safeStr(v) {
+  if (v == null) return '';
+  if (typeof v === 'string') return v;
+  if (typeof v === 'object') return v.label || v.action || v.message || '';
+  return String(v);
+}
+
 // ── Métadonnées des agents (3 tiers) ─────────────────────────
 const AGENTS_META = [
   // ── TIER 1 — ANALYSE PURE ──────────────────────────────────
@@ -405,9 +413,9 @@ export default function Agents({
                         {a.montant && <span style={{ fontSize: 10, background: '#fef3c7', color: '#92400e', border: '1px solid #fde68a', borderRadius: 20, padding: '1px 8px', fontWeight: 700 }}>CHF {fmtN(Math.abs(Math.round(a.montant)))}</span>}
                         <span style={{ fontSize: 11, color: 'var(--text-muted)', marginLeft: 'auto' }}>{fmtDiff(a.timestamp)}</span>
                       </div>
-                      <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--text-primary)', marginBottom: 2 }}>{a.message}</div>
-                      {a.detail && <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: a.action ? 6 : 0 }}>{a.detail}</div>}
-                      {a.action && (
+                      <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--text-primary)', marginBottom: 2 }}>{safeStr(a.message)}</div>
+                      {a.detail && <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: a.action ? 6 : 0 }}>{safeStr(a.detail)}</div>}
+                      {a.action && typeof a.action === 'string' && (
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6 }}>
                           <Zap size={11} style={{ color: niv.color, flexShrink: 0 }} />
                           <span style={{ fontSize: 11, fontWeight: 600, color: niv.color, fontStyle: 'italic' }}>{a.action}</span>
@@ -940,10 +948,10 @@ export default function Agents({
                               <span style={{ fontSize: 14, flexShrink: 0 }}>{a.icone}</span>
                               <div style={{ flex: 1, minWidth: 0 }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                                  <span style={{ fontSize: 12, fontWeight: 700, color: c.text }}>{a.action}</span>
+                                  <span style={{ fontSize: 12, fontWeight: 700, color: c.text }}>{safeStr(a.action)}</span>
                                   <span style={{ fontSize: 9, fontWeight: 700, background: c.badge, color: '#fff', borderRadius: 20, padding: '1px 7px' }}>{a.priorite}</span>
                                 </div>
-                                <div style={{ fontSize: 11, color: c.text, opacity: 0.8, marginTop: 1 }}>{a.detail}</div>
+                                <div style={{ fontSize: 11, color: c.text, opacity: 0.8, marginTop: 1 }}>{safeStr(a.detail)}</div>
                               </div>
                             </div>
                           );
@@ -999,7 +1007,7 @@ export default function Agents({
                           <div key={i} style={{ padding: '12px 14px', background: a.couleur + '0d', border: `1px solid ${a.couleur}30`, borderRadius: 10 }}>
                             <div style={{ fontSize: 13, marginBottom: 4 }}>{a.icone} <span style={{ fontWeight: 700, color: a.couleur }}>{a.valeur}</span></div>
                             <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: 3 }}>{a.label}</div>
-                            <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>{a.detail}</div>
+                            <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>{safeStr(a.detail)}</div>
                           </div>
                         ))}
                       </div>

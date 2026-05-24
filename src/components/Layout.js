@@ -281,7 +281,7 @@ function NotificationBell({ naviguer }) {
                         lineHeight: 1.4,
                         whiteSpace: 'normal',
                       }}>
-                        {a.message || '—'}
+                        {typeof a.message === 'string' ? a.message : '—'}
                       </div>
                       <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 3 }}>
                         {dateRelative(a.date)}

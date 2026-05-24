@@ -56,16 +56,16 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
   const seuilRentabilite = (caTotal > 0 && tauxMargeContribution > 0) ? chargesFixes / tauxMargeContribution : 0;
 
   // PROJECTION CA
-  const { caRealise, moyenneMensuelle, projectionAnnuelle, moisRestants, caPrevisionnel } = useMemo(() => {
-    const moisActuel = new Date().getMonth();
+  const { caRealise, moyenneMensuelle, projectionAnnuelle, moisRestants, caPrevisionnel, moisActuel } = useMemo(() => {
+    const mois = new Date().getMonth();
     const annee = new Date().getFullYear();
     const ca = chantiers.filter(c => {
       const d = new Date(c.dateDebut);
-      return d.getFullYear() === annee && d.getMonth() <= moisActuel && calculerCA(c, devis) !== null;
+      return d.getFullYear() === annee && d.getMonth() <= mois && calculerCA(c, devis) !== null;
     }).reduce((t, c) => t + calculerCA(c, devis), 0);
-    const moy = moisActuel > 0 ? ca / (moisActuel + 1) : ca;
-    const restants = 11 - moisActuel;
-    return { caRealise: ca, moyenneMensuelle: moy, projectionAnnuelle: moy * 12, moisRestants: restants, caPrevisionnel: ca + moy * restants };
+    const moy = mois > 0 ? ca / (mois + 1) : ca;
+    const restants = 11 - mois;
+    return { caRealise: ca, moyenneMensuelle: moy, projectionAnnuelle: moy * 12, moisRestants: restants, caPrevisionnel: ca + moy * restants, moisActuel: mois };
   }, [chantiers, devis]);
 
   // ===== DONNÉES PAR CHANTIER (filtrés par période) =====

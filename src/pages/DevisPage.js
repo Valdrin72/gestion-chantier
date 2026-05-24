@@ -471,15 +471,12 @@ function Devis() {
         </div>
       )}
 
-      {/* ── Liste des devis ── */}
+      {/* ── Liste des devis — tous les devis sans filtre période (KPIs seuls sont filtrés) ── */}
       {(() => {
-        const { debut: dvDebut, fin: dvFin } = getIntervallesPeriode(periodeGlobale);
-        const dvDebutStr = `${dvDebut.getFullYear()}-${String(dvDebut.getMonth()+1).padStart(2,'0')}-${String(dvDebut.getDate()).padStart(2,'0')}`;
-        const dvFinStr   = `${dvFin.getFullYear()}-${String(dvFin.getMonth()+1).padStart(2,'0')}-${String(dvFin.getDate()).padStart(2,'0')}`;
-        const devisBase = devis.filter(d => {
-          const dateD = d.dateEmission || d.date;
-          if (!dateD) return true; // brouillons sans date → toujours visibles
-          return dateD >= dvDebutStr && dateD <= dvFinStr;
+        const devisBase = [...devis].sort((a, b) => {
+          const da = a.dateEmission || a.date || '';
+          const db = b.dateEmission || b.date || '';
+          return db.localeCompare(da); // plus récents en premier
         });
         const devisFiltres = filtreDevis === 'Tous' ? devisBase : devisBase.filter(d => d.statut?.trim().toLowerCase() === filtreDevis.toLowerCase());
         const totalPages = Math.ceil(devisFiltres.length / PAGE_SIZE);

@@ -1,7 +1,6 @@
 import React, { useMemo } from 'react';
 import { AlertTriangle, TrendingUp, ChevronRight } from 'lucide-react';
 import { fmtN, calculerCA } from '../../donnees';
-import { couleurStatut as couleurStatutDS } from '../../ds';
 import { useApp } from '../../context/AppContext';
 
 const COLONNES = [

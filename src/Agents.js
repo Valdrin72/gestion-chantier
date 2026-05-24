@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, Component } from 'react';
 import {
   Bot, AlertTriangle, FileText, TrendingUp, TrendingDown, FileBarChart2, Brain,
   CheckCircle, Clock, RefreshCw,
@@ -14,6 +14,30 @@ function safeStr(v) {
   if (typeof v === 'string') return v;
   if (typeof v === 'object') return v.label || v.action || v.message || '';
   return String(v);
+}
+
+// ErrorBoundary local qui affiche le crash inline (composant + stack) sans crasher toute la page
+class TabBoundary extends Component {
+  constructor(props) { super(props); this.state = { err: null, stack: null }; }
+  static getDerivedStateFromError(err) { return { err }; }
+  componentDidCatch(err, info) {
+    this.setState({ stack: info?.componentStack });
+    console.error('[TabBoundary]', err, info?.componentStack);
+  }
+  reset = () => this.setState({ err: null, stack: null });
+  render() {
+    if (this.state.err) {
+      return (
+        <div style={{ padding: 16, background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 10 }}>
+          <div style={{ fontWeight: 700, color: '#991b1b', marginBottom: 6 }}>⚠ Erreur dans l'onglet "{this.props.label}"</div>
+          <pre style={{ fontSize: 10, color: '#991b1b', whiteSpace: 'pre-wrap', margin: '0 0 8px' }}>{String(this.state.err?.message || this.state.err)}</pre>
+          {this.state.stack && <pre style={{ fontSize: 9, color: '#6b7280', whiteSpace: 'pre-wrap', margin: '0 0 8px', maxHeight: 200, overflow: 'auto' }}>{this.state.stack.trim()}</pre>}
+          <button onClick={this.reset} style={{ fontSize: 12, padding: '4px 12px', background: '#ef4444', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer' }}>Réessayer</button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
 }
 
 // ── Métadonnées des agents (3 tiers) ─────────────────────────
@@ -309,7 +333,7 @@ export default function Agents({
           ONGLET COACH DIRECTEUR
       ══════════════════════════════════════════════════════ */}
       {onglet === 'coach' && (
-        <div>
+        <TabBoundary label="Coach Directeur"><div>
           {priorites.length === 0 ? (
             <div style={{ ...DS.card, textAlign: 'center', padding: '48px 20px', color: 'var(--text-muted)', fontSize: 13 }}>
               <Bot size={40} strokeWidth={1.2} style={{ marginBottom: 12, opacity: 0.4, display: 'block', margin: '0 auto 12px' }} />
@@ -377,14 +401,14 @@ export default function Agents({
               </div>
             </>
           )}
-        </div>
+        </div></TabBoundary>
       )}
 
       {/* ══════════════════════════════════════════════════════
           ONGLET ALERTES
       ══════════════════════════════════════════════════════ */}
       {onglet === 'alertes' && (
-        <div>
+        <TabBoundary label="Alertes"><div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 8 }}>
             <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>{alertes.length} alerte{alertes.length !== 1 ? 's' : ''} · {alertesNonLues.length} non lue{alertesNonLues.length !== 1 ? 's' : ''}</span>
             {alertesNonLues.length > 0 && (
@@ -436,14 +460,14 @@ export default function Agents({
               })}
             </div>
           )}
-        </div>
+        </div></TabBoundary>
       )}
 
       {/* ══════════════════════════════════════════════════════
           ONGLET DIAGNOSTICS — Analyse racine par chantier
       ══════════════════════════════════════════════════════ */}
       {onglet === 'diagnostics' && (
-        <div>
+        <TabBoundary label="Diagnostics"><div>
           {!(agentData?.diagnostics?.length) ? (
             <div style={{ ...DS.card, textAlign: 'center', padding: '40px 20px' }}>
               <CheckCircle size={32} strokeWidth={1.5} style={{ color: '#10b981', display: 'block', margin: '0 auto 12px' }} />
@@ -482,7 +506,7 @@ export default function Agents({
                       </div>
                     </div>
                     {d.explication && (
-                      <div style={{ fontSize: 12, color: 'var(--text-secondary)', background: 'var(--bg-glass-2)', borderRadius: 8, padding: '8px 12px', marginBottom: 10, lineHeight: 1.5 }}>{d.explication}</div>
+                      <div style={{ fontSize: 12, color: 'var(--text-secondary)', background: 'var(--bg-glass-2)', borderRadius: 8, padding: '8px 12px', marginBottom: 10, lineHeight: 1.5 }}>{safeStr(d.explication)}</div>
                     )}
                     {d.details && (
                       <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: d.actionCorrective ? 10 : 0 }}>
@@ -497,7 +521,7 @@ export default function Agents({
                         <Zap size={13} style={{ color: gravColor, flexShrink: 0 }} />
                         <div>
                           <div style={{ fontSize: 10, fontWeight: 700, color: gravColor, textTransform: 'uppercase', letterSpacing: '0.3px' }}>Action recommandée</div>
-                          <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)', marginTop: 2 }}>{d.actionCorrective}</div>
+                          <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)', marginTop: 2 }}>{safeStr(d.actionCorrective)}</div>
                         </div>
                       </div>
                     )}
@@ -506,14 +530,14 @@ export default function Agents({
               })}
             </div>
           )}
-        </div>
+        </div></TabBoundary>
       )}
 
       {/* ══════════════════════════════════════════════════════
           ONGLET AGENTS ({AGENTS_META.length} agents organisés par tiers)
       ══════════════════════════════════════════════════════ */}
       {onglet === 'agents' && (
-        <div>
+        <TabBoundary label="Agents"><div>
           {[1, 2, 3].map(tier => {
             const agentsDuTier = AGENTS_META.filter(a => a.tier === tier);
             const meta = TIER_META[tier];
@@ -608,14 +632,14 @@ export default function Agents({
               </div>
             );
           })}
-        </div>
+        </div></TabBoundary>
       )}
 
       {/* ══════════════════════════════════════════════════════
           ONGLET PRÉDICTIONS
       ══════════════════════════════════════════════════════ */}
       {onglet === 'predictions' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+        <TabBoundary label="Prédictions"><div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
           {/* Trésorerie */}
           {Object.keys(predictions).length > 0 && (
             <div>
@@ -721,14 +745,14 @@ export default function Agents({
               </div>
             </div>
           )}
-        </div>
+        </div></TabBoundary>
       )}
 
       {/* ══════════════════════════════════════════════════════
           ONGLET MÉMOIRE
       ══════════════════════════════════════════════════════ */}
       {onglet === 'memoire' && (
-        <div>
+        <TabBoundary label="Mémoire"><div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20, padding: '12px 16px', background: 'linear-gradient(135deg,#f0fdf4,#dcfce7)', border: '1px solid #86efac', borderRadius: 12 }}>
             <Brain size={18} color="#15803d" />
             <div>
@@ -811,14 +835,14 @@ export default function Agents({
               );
             })}
           </div>
-        </div>
+        </div></TabBoundary>
       )}
 
       {/* ══════════════════════════════════════════════════════
           ONGLET RAPPORTS
       ══════════════════════════════════════════════════════ */}
       {onglet === 'rapports' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+        <TabBoundary label="Rapports"><div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
 
           {/* ── Rapport IA en langage naturel ── */}
           {agentData?.RapportNaturel?.paras?.length > 0 ? (
@@ -1064,6 +1088,9 @@ export default function Agents({
             )}
           </div>
         </div>
+      )}
+
+        </div></TabBoundary>
       )}
 
       <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>

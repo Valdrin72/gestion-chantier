@@ -665,7 +665,7 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
             <div className="ds-card-title">Projections CA annuel {new Date().getFullYear()}</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '15px', marginBottom: '25px' }}>
               {[
-                { label: 'CA réalisé', val: `CHF ${fmtN(Math.round(caRealise))}`, couleur: '#10b981', desc: `${moisActuel + 1} mois` },
+                { label: 'CA réalisé', val: `CHF ${fmtN(Math.round(caRealise))}`, couleur: '#10b981', desc: `${moisActuel + 1} mois` }, // eslint-disable-line no-undef
                 { label: 'Moyenne/mois', val: `CHF ${fmtN(Math.round(moyenneMensuelle))}`, couleur: '#10b981', desc: 'Tendance actuelle' },
                 { label: 'Projection annuelle', val: `CHF ${fmtN(Math.round(projectionAnnuelle))}`, couleur: '#8b5cf6', desc: 'Sur 12 mois' },
                 { label: 'CA prévisionnel', val: `CHF ${fmtN(Math.round(caPrevisionnel))}`, couleur: '#f59e0b', desc: `Réalisé + ${moisRestants} mois prévus` },

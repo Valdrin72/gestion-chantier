@@ -60,7 +60,8 @@ const _dates_ch4 = [
   // Mai 2026 — reprise chantier après arrêt mars
   '2026-05-04','2026-05-05','2026-05-06','2026-05-07','2026-05-08',
   '2026-05-11','2026-05-12','2026-05-13','2026-05-19','2026-05-20',
-  '2026-05-21','2026-05-22','2026-05-25','2026-05-26','2026-05-27',
+  '2026-05-21','2026-05-22','2026-05-26','2026-05-27','2026-05-28',
+  // Note: 2026-05-25 = Lundi de Pentecôte (jour férié genevois) → remplacé par 2026-05-28 (jeudi)
 ];
 
 // Chantier 5 — 13 jours saisis (sur 35 prévus) 2026-04-14 → 2026-06-02
@@ -759,7 +760,7 @@ export const donneesDemo = {
       ])),
     },
 
-    // ── CH4 — En cours, gros chantier public, 25/90 jours saisis ────────────
+    // ── CH4 — En cours, gros chantier public, 40/90 jours saisis ────────────
     // Test projection EAC/RAD, alerte facture impayée (F-2026-003 > 60j)
     {
       id: 4,
@@ -805,7 +806,7 @@ export const donneesDemo = {
       ])),
     },
 
-    // ── CH5 — En cours, petit chantier, 6/10 jours, alerte relance facture ──
+    // ── CH5 — En cours, petit chantier, 13/35 jours, alerte relance facture ──
     {
       id: 5,
       numero: 'CH-2026-002',
@@ -1110,7 +1111,7 @@ export const donneesDemo = {
 //  rentabilite-analyst | CH1 marge ~22%, CH3 dépassement matériel, CH4 EAC/RAD,
 //                      | CH7 planifié sans coûts réels → projection impossible
 //  facturation-suisse  | TVA 8.1% sur 7 factures, acompte+solde CH3, F6 impayée >60j
-//  planning-chantier   | CH4 En cours 25/90j, CH5 6/35j pause Pâques, CH6 8/45j
+//  planning-chantier   | CH4 En cours 40/90j, CH5 13/35j pause Pâques, CH6 18/45j
 //  alerts-engine       | F6 retard paiement >60j, CH3 dépassement matériel +12.5%,
 //                      | CH7 devis 'envoyé' (pas encore 'accepté')
 //  bug-hunter          | Tous les IDs sont numbers, statuts .toLowerCase() sûrs,
@@ -1127,7 +1128,7 @@ export const donneesDemo = {
 //        marge nette = 23417.5 − 8760 (FG12%) = 14657.5 → 20.1% ✅
 //   CH2  CA=54500 | totalCoûts=37035 | marge nette ≈ 20% ✅
 //   CH3  CA=115000 | imprevus=4000 | materielReel=31500 → marge nette ≈ -4% (alerte ⚠️)
-//   CH4  25/90j = 27.8% avancement → projection EAC disponible (>=20%)
+//   CH4  40/90j = 44.4% avancement → projection EAC disponible (>=20%)
 //   CH7  journal=[] → avancement=0%, projection impossible, RAD=null, EAC=null
 //
 // ══════════════════════════════════════════════════════════════════════════════

@@ -27,9 +27,18 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
   }, [chantiers, periodeGlobale]);
 
   // ===== CALCULS GLOBAUX (uniquement chantiers avec devis pour CA et marges) =====
-  const chantiersAvecDevis = chantiersPeriode.filter(c => calculerCA(c, devis) !== null);
-  const caTotal = chantiersAvecDevis.reduce((t, c) => t + calculerCA(c, devis), 0);
-  const coutsTotal = chantiersAvecDevis.reduce((t, c) => t + calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis).totalCoutsReel, 0);
+  const chantiersAvecDevis = useMemo(
+    () => chantiersPeriode.filter(c => calculerCA(c, devis) !== null),
+    [chantiersPeriode, devis]
+  );
+  const caTotal = useMemo(
+    () => chantiersAvecDevis.reduce((t, c) => t + calculerCA(c, devis), 0),
+    [chantiersAvecDevis, devis]
+  );
+  const coutsTotal = useMemo(
+    () => chantiersAvecDevis.reduce((t, c) => t + calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis).totalCoutsReel, 0),
+    [chantiersAvecDevis, parametres.employes, parametres.localites, parametres.parametres, devis]
+  );
   const margeAvantCharges = caTotal - coutsTotal;
   // Les coûts MO incluent déjà le coefficient 1.35 (charges employeur).
   // chargesSociales ici = estimation des charges non-MO (impôts, FG hors MO) — indicatif seulement.
@@ -47,18 +56,20 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
   const seuilRentabilite = (caTotal > 0 && tauxMargeContribution > 0) ? chargesFixes / tauxMargeContribution : 0;
 
   // PROJECTION CA
-  const moisActuel = new Date().getMonth();
-  const caRealise = chantiers.filter(c => {
-    const d = new Date(c.dateDebut);
-    return d.getFullYear() === new Date().getFullYear() && d.getMonth() <= moisActuel && calculerCA(c, devis) !== null;
-  }).reduce((t, c) => t + calculerCA(c, devis), 0);
-  const moyenneMensuelle = moisActuel > 0 ? caRealise / (moisActuel + 1) : caRealise;
-  const projectionAnnuelle = moyenneMensuelle * 12;
-  const moisRestants = 11 - moisActuel;
-  const caPrevisionnel = caRealise + (moyenneMensuelle * moisRestants);
+  const { caRealise, moyenneMensuelle, projectionAnnuelle, moisRestants, caPrevisionnel } = useMemo(() => {
+    const moisActuel = new Date().getMonth();
+    const annee = new Date().getFullYear();
+    const ca = chantiers.filter(c => {
+      const d = new Date(c.dateDebut);
+      return d.getFullYear() === annee && d.getMonth() <= moisActuel && calculerCA(c, devis) !== null;
+    }).reduce((t, c) => t + calculerCA(c, devis), 0);
+    const moy = moisActuel > 0 ? ca / (moisActuel + 1) : ca;
+    const restants = 11 - moisActuel;
+    return { caRealise: ca, moyenneMensuelle: moy, projectionAnnuelle: moy * 12, moisRestants: restants, caPrevisionnel: ca + moy * restants };
+  }, [chantiers, devis]);
 
   // ===== DONNÉES PAR CHANTIER (filtrés par période) =====
-  const donneesChantiers = chantiersPeriode.map(c => {
+  const donneesChantiers = useMemo(() => chantiersPeriode.map(c => {
     const couts = calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis);
     const montantTotal = calculerCA(c, devis); // null si aucun devis lié
     const caDisponible = montantTotal !== null;
@@ -87,10 +98,10 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
     if (couts.margeReelPct !== null && Number.isFinite(couts.margeReelPct) && couts.margeReelPct < SEUILS.margeLimite) depassements.push(`Marge critique ${couts.margeReelPct}%`);
 
     return { ...c, couts, montantTotal, ecartBudget, coutParHeure, caParHeure, coutParM2, caParM2, margeParM2, ecartJours, tauxFacturation, heuresPrevu, heuresRealise, joursPrevu, joursReel, depassements };
-  });
+  }), [chantiersPeriode, parametres.employes, parametres.localites, parametres.parametres, devis]);
 
   // ===== DONNÉES PAR EMPLOYÉ (filtrés par période) =====
-  const donneesEmployes = (parametres.employes || []).map(emp => {
+  const donneesEmployes = useMemo(() => (parametres.employes || []).map(emp => {
     // Source unique : journal (cohérent avec calculerCoutsChantier)
     const joursTotal = chantiersPeriode.reduce((t, c) => {
       const heures = heuresEmploye(c.journal || [], emp.id);
@@ -113,10 +124,10 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
     const coutReel = coutTotal; // coutTotal = brut × coeff inclut déjà les charges sociales
 
     return { ...emp, joursTotal, heuresTotal, coutTotal, caGenere, coutHoraire, productivite, chargesSoc, coutReel };
-  }).filter(e => e.joursTotal > 0);
+  }).filter(e => e.joursTotal > 0), [chantiersPeriode, parametres.employes, parametres.parametres, devis]);
 
   // ===== RENTABILITÉ PAR MÉTRÉ (uniquement chantiers avec devis, période filtrée) =====
-  const donneesMetres = parametres.typesTravaux.map(t => {
+  const donneesMetres = useMemo(() => parametres.typesTravaux.map(t => {
     const tous = chantiersPeriode.filter(c => (c.typesTravaux || []).includes(t.nom));
     const avecDevis = tous.filter(c => calculerCA(c, devis) !== null);
     const surface = avecDevis.reduce((s, c) => s + (parseFloat(c.surface) || 0), 0);
@@ -128,7 +139,7 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
     const margeParM2 = surface > 0 ? Math.round(marge / surface) : 0;
     const margePct = ca > 0 ? Math.round((marge / ca) * 1000) / 10 : 0;
     return { nom: t.nom, count: tous.length, nbAvecDevis: avecDevis.length, surface, ca, couts, marge, caParM2, coutParM2, margeParM2, margePct };
-  }).filter(t => t.count > 0);
+  }).filter(t => t.count > 0), [chantiersPeriode, parametres.typesTravaux, parametres.employes, parametres.localites, parametres.parametres, devis]);
 
   // ===== DONNÉES PAR CLIENT (uniquement chantiers avec devis pour CA/marge, période filtrée) =====
   const donneesClients = useMemo(() => clients.map(cl => {

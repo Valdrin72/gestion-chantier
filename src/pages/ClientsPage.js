@@ -200,10 +200,10 @@ function Clients({ clients, setClients, chantiers, setChantiers, devis = [], set
                   const chantiersDuClient = chantiers.filter(ch => String(ch.clientId) === String(c.id));
                   const idsCh = new Set(chantiersDuClient.map(ch => String(ch.id)));
                   const devisDuClient = devis.filter(dv => String(dv.clientId) === String(c.id));
-                  const idsFactures = new Set(factures.filter(f => idsCh.has(String(f.chantierId)) || devisDuClient.some(dv => String(dv.id) === String(f.devisId))).map(f => f.id));
+                  const idsFactures = new Set(factures.filter(f => idsCh.has(String(f.chantierId)) || devisDuClient.some(dv => String(dv.id) === String(f.devisId))).map(f => String(f.id)));
                   if (idsCh.size > 0) setChantiers(chantiers.filter(ch => !idsCh.has(String(ch.id))));
                   if (devisDuClient.length > 0) setDevis(devis.filter(dv => String(dv.clientId) !== String(c.id)));
-                  if (idsFactures.size > 0) setFactures(factures.filter(f => !idsFactures.has(f.id)));
+                  if (idsFactures.size > 0) setFactures(factures.filter(f => !idsFactures.has(String(f.id))));
                   setClients(clients.filter(cl => String(cl.id) !== String(c.id)));
                 }} style={{ ...btnDanger, padding: '6px 10px' }} title="Supprimer ce client"><Trash2 size={13} /></button>
               </div>

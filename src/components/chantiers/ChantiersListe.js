@@ -314,7 +314,7 @@ function ChantiersListe({
                         }}>{decision.label}</span>
                         {derive && (
                           <div style={{ marginTop: 4, fontSize: 10, fontWeight: 700, color: derive.statut === 'rouge' ? '#ef4444' : derive.statut === 'orange' ? '#f59e0b' : '#10b981', whiteSpace: 'nowrap' }}>
-                            EAC {Number.isFinite(derive.margeEstimeePct) ? `${derive.margeEstimeePct > 0 ? '+' : ''}${derive.margeEstimeePct}%` : '—'} · {derive.confiance}
+                            EAC {Number.isFinite(derive.margeEstimeePct) ? `${derive.margeEstimeePct > 0 ? '+' : ''}${derive.margeEstimeePct}%` : '—'} · {typeof derive.confiance === 'string' ? derive.confiance : ''}
                           </div>
                         )}
                       </td>

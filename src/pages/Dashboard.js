@@ -788,7 +788,7 @@ function Dashboard() {
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                     {top3.map((item, idx) => {
                       const titre = safeStr(item.titre || item.action || item.message || item.description || '—');
-                      const impact = item.impact || null;
+                      const impact = typeof item.impact === 'string' || typeof item.impact === 'number' ? item.impact : null;
                       return (
                         <div key={idx} style={{ display: 'flex', alignItems: 'flex-start', gap: 7 }}>
                           <span style={{ fontSize: 9, fontWeight: 900, color: 'rgba(255,255,255,0.4)', background: 'rgba(255,255,255,0.08)', borderRadius: '50%', width: 16, height: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1 }}>{idx + 1}</span>

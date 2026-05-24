@@ -23,7 +23,7 @@ function RapportIA({ agentData }) {
           <Bot size={22} color="#8b5cf6" />
           <div style={{ flex: 1 }}>
             <div style={{ fontWeight: 800, fontSize: 16, color: 'var(--text-primary)' }}>Résumé exécutif — IA</div>
-            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{rapport.date}</div>
+            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{typeof rapport.date === 'string' ? rapport.date : ''}</div>
           </div>
           {rapport.scoreEntreprise !== null && (
             <div style={{ textAlign: 'center', background: scoreColor + '14', border: `1px solid ${scoreColor}30`, borderRadius: 12, padding: '10px 18px' }}>

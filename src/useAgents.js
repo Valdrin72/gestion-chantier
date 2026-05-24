@@ -186,18 +186,18 @@ export default function useAgents({ chantiers, devis, factures, clients, paramet
 
       const now = Date.now();
 
-      // Déduplique les alertes par type+entité
+      // Déduplique les alertes par type+entité — sanitise avant d'entrer dans le state
       setAlertes(prev => {
         const lues = prev.filter(a => a.lu);
         const cles = new Set(result.alertes.map(a => `${a.agent}_${a.type}_${a.chantier_id || a.devis_id || ''}`));
         const filtrees = lues.filter(a => !cles.has(`${a.agent}_${a.type}_${a.chantier_id || a.devis_id || ''}`));
-        return [...result.alertes, ...filtrees].slice(0, 100);
+        return sanitiserAlertes([...result.alertes, ...filtrees].slice(0, 100));
       });
 
       setPredictions(result.predictions);
       setPatterns(result.patterns);
       setAgentsStatuts(result.statuts);
-      setAgentData(result.agentData || {});
+      setAgentData(sanitiserAgentData(result.agentData || {}));
       setDernierRun(now);
 
       // Logs par agent (10 dernières exécutions)

@@ -396,8 +396,8 @@ export default function Agents({
                 ].map(item => (
                   <div key={item.label} style={{ ...DS.card, padding: '14px 16px' }}>
                     <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 5 }}>{item.label}</div>
-                    <div style={{ fontSize: 20, fontWeight: 900, color: item.couleur, letterSpacing: '-0.5px', marginBottom: 2 }}>{item.val}</div>
-                    <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{item.sub}</div>
+                    <div style={{ fontSize: 20, fontWeight: 900, color: item.couleur, letterSpacing: '-0.5px', marginBottom: 2 }}>{safeStr(item.val)}</div>
+                    <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{safeStr(item.sub)}</div>
                   </div>
                 ))}
               </div>
@@ -756,7 +756,7 @@ export default function Agents({
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                           <div style={{ width: 8, height: 8, borderRadius: '50%', background: couleur, flexShrink: 0 }} />
                           <span style={{ fontWeight: 700, fontSize: 13, color: 'var(--text-primary)' }}>{r.nom}</span>
-                          <span style={{ fontSize: 11, fontWeight: 700, color: couleur, background: `${couleur}18`, padding: '2px 8px', borderRadius: 20 }}>{r.statutTexte}</span>
+                          <span style={{ fontSize: 11, fontWeight: 700, color: couleur, background: `${couleur}18`, padding: '2px 8px', borderRadius: 20 }}>{safeStr(r.statutTexte)}</span>
                         </div>
                         <div style={{ display: 'flex', gap: 16, fontSize: 12, color: 'var(--text-muted)', flexWrap: 'wrap' }}>
                           <span>Avancement <strong style={{ color: 'var(--text-primary)' }}>{r.avancement != null ? r.avancement : '—'}%</strong></span>
@@ -770,7 +770,7 @@ export default function Agents({
                               <Brain size={9} /> Calibré mémoire ({r.nbHistorique} chantiers)
                             </span>
                           )}
-                          <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>Confiance {r.confiance}</span>
+                          <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>Confiance {safeStr(r.confiance)}</span>
                         </div>
                       </div>
                       {/* Barre EAC vs CA */}

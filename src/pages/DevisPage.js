@@ -19,6 +19,119 @@ const btnDanger = DS.btnDanger;
 
 const PAGE_SIZE = 50;
 
+// Ratios h/m² par type de travaux (source: productivite-cyna skill)
+const RATIOS_MO = [
+  { nom: 'Plafonds suspendus',   ratio: 0.65, unite: 'm²', label: 'Faux-plafond modulaire 600×600' },
+  { nom: 'Faux plancher',        ratio: 0.80, unite: 'm²', label: 'Faux-plancher technique H=15-30cm' },
+  { nom: 'Cloisons vitrées',     ratio: 1.20, unite: 'm²', label: 'Cloisons vitrées aluminium' },
+  { nom: 'Cloisons amovibles',   ratio: 0.80, unite: 'm²', label: 'Cloisons amovibles standard' },
+  { nom: 'Panneaux sandwich',    ratio: 0.90, unite: 'm²', label: 'Panneaux sandwich' },
+  { nom: 'BA13',                 ratio: 1.15, unite: 'm²', label: 'Plaques BA13 prêt à peindre' },
+  { nom: 'Portes standards',     ratio: 2.00, unite: 'u',  label: 'Porte standard (par unité)' },
+  { nom: 'Portes coupe-feu',     ratio: 3.00, unite: 'u',  label: 'Porte coupe-feu (par unité)' },
+];
+
+const FACTEURS = [
+  { id: 'normal',   label: 'Conditions normales',          factor: 1.00 },
+  { id: 'hauteur',  label: '+ Hauteur > 3.5m (échaf.)',    factor: 1.20 },
+  { id: 'exigu',    label: '+ Local exigu (< 1.5m)',       factor: 1.30 },
+  { id: 'decoupes', label: '+ Nombreuses découpes (>20%)', factor: 1.15 },
+  { id: 'renov',    label: '+ Rénovation (démontage)',      factor: 1.25 },
+  { id: 'grand',    label: '− Grand chantier (>500m²)',    factor: 0.90 },
+];
+
+function CalculateurMO({ surface, onApply }) {
+  const [ouvert, setOuvert] = useState(false);
+  const [typeIdx, setTypeIdx] = useState(0);
+  const [facteurId, setFacteurId] = useState('normal');
+  const [nbPersonnes, setNbPersonnes] = useState(2);
+
+  const type = RATIOS_MO[typeIdx];
+  const facteur = FACTEURS.find(f => f.id === facteurId) || FACTEURS[0];
+  const qte = type.unite === 'u' ? Math.max(1, Math.round(surface / 4)) : surface;
+  const heuresRaw = qte * type.ratio * facteur.factor;
+  const heuresTotal = Math.round(heuresRaw * 10) / 10;
+  const nb = Math.max(1, parseInt(nbPersonnes) || 2);
+  const joursCalc = Math.ceil(heuresTotal / 8);
+  const joursAvecEquipe = Math.ceil(heuresTotal / (8 * nb));
+
+  if (!ouvert) {
+    return (
+      <div style={{ marginBottom: 20 }}>
+        <button onClick={() => setOuvert(true)} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', background: 'linear-gradient(135deg, #fff7ed, #fef3c7)', border: '1px solid #fcd34d', borderRadius: 12, padding: '12px 16px', cursor: 'pointer', fontFamily: 'inherit' }}>
+          <HardHat size={16} color="#d97706" />
+          <div style={{ textAlign: 'left', flex: 1 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#92400e' }}>Calculateur MO — Ratios BTP</div>
+            <div style={{ fontSize: 11, color: '#b45309', marginTop: 1 }}>Estimer les heures et la durée selon le type de travaux ({surface} m² saisis)</div>
+          </div>
+          <span style={{ fontSize: 11, color: '#d97706' }}>▼</span>
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ marginBottom: 20, background: 'linear-gradient(135deg, #fff7ed, #fffbf0)', border: '1px solid #fcd34d', borderRadius: 14, padding: '18px 20px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <HardHat size={16} color="#d97706" />
+          <span style={{ fontWeight: 800, fontSize: 14, color: '#92400e' }}>Calculateur MO — Ratios BTP</span>
+          <span style={{ fontSize: 10, background: '#fef3c7', color: '#d97706', border: '1px solid #fcd34d', borderRadius: 20, padding: '2px 8px', fontWeight: 600 }}>productivite-cyna</span>
+        </div>
+        <button onClick={() => setOuvert(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#d97706', fontSize: 12, fontFamily: 'inherit' }}>▲ Réduire</button>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
+        <div>
+          <label style={{ fontSize: 11, fontWeight: 700, color: '#92400e', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: 6 }}>Type de travaux</label>
+          <select value={typeIdx} onChange={e => setTypeIdx(parseInt(e.target.value))} style={{ ...DS.input, borderColor: '#fcd34d', background: 'white', fontSize: 13 }}>
+            {RATIOS_MO.map((t, i) => <option key={t.nom} value={i}>{t.nom} — {t.ratio} h/{t.unite}</option>)}
+          </select>
+        </div>
+        <div>
+          <label style={{ fontSize: 11, fontWeight: 700, color: '#92400e', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: 6 }}>Facteur de correction</label>
+          <select value={facteurId} onChange={e => setFacteurId(e.target.value)} style={{ ...DS.input, borderColor: '#fcd34d', background: 'white', fontSize: 13 }}>
+            {FACTEURS.map(f => <option key={f.id} value={f.id}>{f.label} (×{f.factor})</option>)}
+          </select>
+        </div>
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14, flexWrap: 'wrap' }}>
+        <div>
+          <label style={{ fontSize: 11, fontWeight: 700, color: '#92400e', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: 6 }}>Nb personnes</label>
+          <input type="number" min="1" max="10" value={nbPersonnes} onChange={e => setNbPersonnes(e.target.value)} style={{ ...DS.input, width: 80, borderColor: '#fcd34d', background: 'white' }} />
+        </div>
+        <div style={{ background: 'rgba(217,119,6,0.08)', border: '1px solid #fcd34d', borderRadius: 12, padding: '12px 20px', display: 'flex', gap: 28, flexWrap: 'wrap' }}>
+          <div>
+            <div style={{ fontSize: 10, color: '#92400e', fontWeight: 700, textTransform: 'uppercase', marginBottom: 3 }}>Surface</div>
+            <div style={{ fontSize: 18, fontWeight: 900, color: '#d97706' }}>{type.unite === 'u' ? `≈${qte}` : surface} {type.unite}</div>
+          </div>
+          <div>
+            <div style={{ fontSize: 10, color: '#92400e', fontWeight: 700, textTransform: 'uppercase', marginBottom: 3 }}>Heures totales</div>
+            <div style={{ fontSize: 18, fontWeight: 900, color: '#d97706' }}>{heuresTotal}h</div>
+            <div style={{ fontSize: 10, color: '#b45309' }}>{type.ratio}×{facteur.factor !== 1 ? facteur.factor : ''} h/{type.unite}</div>
+          </div>
+          <div>
+            <div style={{ fontSize: 10, color: '#92400e', fontWeight: 700, textTransform: 'uppercase', marginBottom: 3 }}>1 personne</div>
+            <div style={{ fontSize: 18, fontWeight: 900, color: '#d97706' }}>{joursCalc}j</div>
+          </div>
+          {nb > 1 && (
+            <div>
+              <div style={{ fontSize: 10, color: '#92400e', fontWeight: 700, textTransform: 'uppercase', marginBottom: 3 }}>{nb} personnes</div>
+              <div style={{ fontSize: 18, fontWeight: 900, color: '#10b981' }}>{joursAvecEquipe}j</div>
+            </div>
+          )}
+        </div>
+      </div>
+      <button
+        onClick={() => { onApply({ duree: String(joursAvecEquipe), personnes: String(nb) }); setOuvert(false); }}
+        style={{ background: '#d97706', color: '#fff', border: 'none', borderRadius: 8, padding: '9px 20px', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
+      >
+        Appliquer ({joursAvecEquipe}j · {nb} pers.) →
+      </button>
+      <span style={{ fontSize: 11, color: '#b45309', marginLeft: 10 }}>Remplace les champs Durée et Personnes</span>
+    </div>
+  );
+}
+
 function Devis() {
   const { devis, setDevis, clients, parametres, naviguer, setChantiers, chantiers, factures, setFactures, contexte = {}, afficherNotif, confirmer, periodeGlobale = 'mois' } = useApp();
   const [ajout, setAjout] = useState(false);
@@ -356,6 +469,9 @@ function Devis() {
               })()}
             </div>
           </div>
+
+          {/* ── Calculateur MO (ratios productivite-cyna) ── */}
+          {(parseFloat(form.surface) || 0) > 0 && <CalculateurMO surface={parseFloat(form.surface) || 0} onApply={({ duree, personnes }) => setForm(f => ({ ...f, dureeEstimee: duree, nombrePersonnes: personnes }))} />}
 
           {/* ── Avenants ── */}
           <div style={{ background: 'rgba(139,92,246,0.04)', border: '1px solid rgba(139,92,246,0.2)', borderRadius: 12, padding: '20px', marginBottom: 20 }}>

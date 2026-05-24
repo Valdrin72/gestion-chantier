@@ -67,24 +67,8 @@ export default function useAgents({ chantiers, devis, factures, clients, paramet
     return _initStateRef.current;
   };
 
-  const [agentsActifs, setAgentsActifs] = useState(() => {
-    const persisted = _getInitState();
-    return { ...AGENTS_PAR_DEFAUT, ...(persisted?.agentsActifs || {}) };
-  });
-
-  // ── WATCHDOG PERMANENT — réactive tous les agents désactivés toutes les 2 min ──
-  useEffect(() => {
-    const watchdog = setInterval(() => {
-      setAgentsActifs(prev => {
-        const patch = {};
-        Object.keys(AGENTS_PAR_DEFAUT).forEach(k => {
-          if (prev[k] === false) patch[k] = true;
-        });
-        return Object.keys(patch).length > 0 ? { ...prev, ...patch } : prev;
-      });
-    }, 2 * 60 * 1000);
-    return () => clearInterval(watchdog);
-  }, []);
+  // Agents toujours actifs — pas de désactivation possible
+  const agentsActifs = AGENTS_PAR_DEFAUT;
   const [alertes, setAlertes] = useState(() => _getInitState()?.alertes || []);
   const [predictions, setPredictions] = useState(() => _getInitState()?.predictions || {});
   const [patterns, setPatterns] = useState(() => _getInitState()?.patterns || {});
@@ -129,16 +113,6 @@ export default function useAgents({ chantiers, devis, factures, clients, paramet
       setAgentsStatuts(result.statuts);
       setAgentData(result.agentData || {});
       setDernierRun(now);
-
-      // Réactivation immédiate des agents signalés inactifs par SentinelAgent
-      const aReactiver = result.agentData?.SentinelAgent?.agentsAReactiver || [];
-      if (aReactiver.length > 0) {
-        setAgentsActifs(prev => {
-          const patch = {};
-          aReactiver.forEach(k => { patch[k] = true; });
-          return { ...prev, ...patch };
-        });
-      }
 
       // Logs par agent (10 dernières exécutions)
       setAgentsLogs(prev => {
@@ -226,19 +200,18 @@ export default function useAgents({ chantiers, devis, factures, clients, paramet
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chantiers, devis, factures]);
 
-  // Persistence de l'état courant (debounced 800ms)
+  // Persistence de l'état courant (debounced 800ms) — agentsActifs non persisté (toujours actifs)
   const saveTimerRef = useRef(null);
   useEffect(() => {
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     saveTimerRef.current = setTimeout(() => {
-      saveState({ agentsActifs, alertes, predictions, patterns, rapports, agentsStatuts, agentsLogs, agentData, dernierRun });
+      saveState({ agentsActifs: AGENTS_PAR_DEFAUT, alertes, predictions, patterns, rapports, agentsStatuts, agentsLogs, agentData, dernierRun });
     }, 800);
     return () => clearTimeout(saveTimerRef.current);
-  }, [agentsActifs, alertes, predictions, patterns, rapports, agentsStatuts, agentsLogs, agentData, dernierRun]);
+  }, [alertes, predictions, patterns, rapports, agentsStatuts, agentsLogs, agentData, dernierRun]);
 
   const marquerLu = useCallback((id) => setAlertes(prev => prev.map(a => a.id === id ? { ...a, lu: true } : a)), []);
   const marquerTousLus = useCallback(() => setAlertes(prev => prev.map(a => ({ ...a, lu: true }))), []);
-  const toggleAgent = useCallback((name) => setAgentsActifs(prev => ({ ...prev, [name]: !prev[name] })), []);
   const forcerExecution = useCallback(() => executer(true), [executer]);
   const simulerRapport = useCallback(() =>
     simulerRapportLundi({
@@ -263,6 +236,6 @@ export default function useAgents({ chantiers, devis, factures, clients, paramet
     agentsActifs, agentsStatuts, agentsLogs, agentData,
     dernierRun, running, nbNonLues, hasNouveauRapport,
     scoreGlobal, priorites, memoire: memoireRef.current,
-    marquerLu, marquerTousLus, toggleAgent, forcerExecution, simulerRapport,
+    marquerLu, marquerTousLus, forcerExecution, simulerRapport,
   };
 }

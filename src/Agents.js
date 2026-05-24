@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   Bot, AlertTriangle, FileText, TrendingUp, TrendingDown, FileBarChart2, Brain,
-  ToggleLeft, ToggleRight, CheckCircle, Clock, RefreshCw,
+  CheckCircle, Clock, RefreshCw,
   ChevronDown, ChevronRight, Activity, Zap, Users, Shield,
   BarChart2, Target, Layers, AlertCircle, Star, Eye,
 } from 'lucide-react';
@@ -208,7 +208,7 @@ export default function Agents({
   agentsActifs = {}, agentsStatuts = {}, agentsLogs = {}, alertes = [], predictions = {},
   patterns = {}, rapports = [], dernierRun = null, running = false, nbNonLues = 0, agentData = {},
   scoreGlobal = null, priorites = [], memoire = {},
-  toggleAgent, forcerExecution, marquerLu, marquerTousLus, simulerRapport,
+  forcerExecution, marquerLu, marquerTousLus, simulerRapport,
 }) {
   const [onglet, setOnglet] = useState('coach');
   const [expanded, setExpanded] = useState({});
@@ -239,7 +239,7 @@ export default function Agents({
     return `il y a ${Math.floor(diff / 1440)}j`;
   };
 
-  const nbActifs = AGENTS_META.filter(m => (agentsActifs || {})[m.id] !== false).length;
+  const nbActifs = AGENTS_META.length; // Tous les agents sont toujours actifs
   const alertesNonLues = alertes.filter(a => !a.lu);
 
   return (
@@ -524,7 +524,6 @@ export default function Agents({
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                     {agentsDuTier.map(agent => {
                       const statut = agentsStatuts[agent.id] || {};
-                      const actif = (agentsActifs || {})[agent.id] !== false;
                       const logs = agentsLogs[agent.id] || [];
                       const isExpanded = expanded[agent.id];
                       const nbRes = (alertes || []).filter(a => a.agent === agent.id).length;
@@ -539,7 +538,6 @@ export default function Agents({
                               <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 3 }}>
                                 <span style={{ fontWeight: 700, fontSize: 14 }}>{agent.nom}</span>
                                 {agent.apprentissage && <span style={{ background: '#f0fdf4', color: '#15803d', border: '1px solid #bbf7d0', borderRadius: 20, padding: '1px 8px', fontSize: 10, fontWeight: 700 }}>APPREND</span>}
-                                {!actif && <span style={{ background: '#fef3c7', color: '#92400e', border: '1px solid #fde68a', borderRadius: 20, padding: '1px 8px', fontSize: 10, fontWeight: 700 }}>⚡ RÉACTIVATION AUTO</span>}
                                 {statut.erreur && <span style={{ background: '#fee2e2', color: '#991b1b', borderRadius: 20, padding: '1px 8px', fontSize: 10, fontWeight: 700 }}>ERREUR</span>}
                                 {nbRes > 0 && <span style={{ background: agent.couleur + '18', color: agent.couleur, borderRadius: 20, padding: '1px 8px', fontSize: 10, fontWeight: 700 }}>{nbRes} alerte{nbRes > 1 ? 's' : ''}</span>}
                               </div>
@@ -551,10 +549,6 @@ export default function Agents({
                               </div>
                             </div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-                              <button onClick={() => toggleAgent(agent.id)} title={actif ? 'Pause temporaire (réactivation auto dans 2 min)' : 'Réactiver maintenant'}
-                                style={{ background: 'none', border: 'none', cursor: 'pointer', color: actif ? agent.couleur : 'var(--text-muted)', padding: 0, display: 'flex', alignItems: 'center' }}>
-                                {actif ? <ToggleRight size={28} strokeWidth={1.5} /> : <ToggleLeft size={28} strokeWidth={1.5} />}
-                              </button>
                               <button onClick={() => toggleExpand(agent.id)}
                                 style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 4 }}>
                                 {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}

@@ -27,7 +27,7 @@ function useMemoire() {
     localStorage.setItem('cyna_ia_memoire', texte);
   }, []);
 
-  // Sauvegarde manuelle (bouton "Mémoriser")
+  // Sauvegarde explicite (PanneauMemoire)
   const sauvegarder = useCallback((extrait) => {
     const date = new Date().toLocaleDateString('fr-CH');
     const ligne = `[${date}] ${extrait.slice(0, 400)}`;
@@ -89,11 +89,8 @@ function MarkdownSimple({ texte }) {
   );
 }
 
-// ── Bloc résultat avec bouton Mémoriser ────────────────────────
-function ResultatIA({ texte, error, loading, onSauvegarder }) {
-  const [memorise, setMemorise] = useState(false);
-
-  useEffect(() => { setMemorise(false); }, [texte]);
+// ── Bloc résultat IA — mémoire automatique ─────────────────────
+function ResultatIA({ texte, error, loading }) {
 
   if (loading) {
     return (
@@ -121,14 +118,9 @@ function ResultatIA({ texte, error, loading, onSauvegarder }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: DS.brand.secondary, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
           <Sparkles size={12} /> Analyse Claude AI
         </div>
-        {onSauvegarder && (
-          <button
-            onClick={() => { onSauvegarder(texte); setMemorise(true); }}
-            style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 5, padding: '5px 12px', borderRadius: 8, border: `1px solid ${DS.brand.secondary}55`, background: memorise ? DS.brand.soft : 'transparent', color: DS.brand.secondary, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
-            <Brain size={12} />
-            {memorise ? 'Mémorisé ✓' : 'Mémoriser'}
-          </button>
-        )}
+        <span style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, color: DS.brand.secondary, opacity: 0.7 }}>
+          <Brain size={11} /> Mémorisé automatiquement
+        </span>
       </div>
       <MarkdownSimple texte={texte} />
     </div>
@@ -515,16 +507,13 @@ function ChatLibre({ memoire, setMemoire }) {
     const cappedMessages = newMessages.slice(-100);
     setMessages(cappedMessages);
     const reponse = await appeler('chat_libre', { messages: cappedMessages.slice(-30), contexte_cyna: memoire });
-    if (reponse) setMessages(prev => [...prev, { role: 'assistant', content: reponse }].slice(-100));
-  };
-
-  const sauvegarderInsight = (msg) => {
-    if (msg.role !== 'assistant') return;
-    const date = new Date().toLocaleDateString('fr-CH');
-    const ligne = `[${date}] ${msg.content.slice(0, 300)}`;
-    // Utilise trimMemoire pour respecter la limite unifiée
-    const update = trimMemoire(memoire ? `${memoire}\n${ligne}` : ligne);
-    setMemoire(update);
+    if (reponse) {
+      setMessages(prev => [...prev, { role: 'assistant', content: reponse }].slice(-100));
+      // Auto-mémorisation de chaque réponse
+      const date = new Date().toLocaleDateString('fr-CH');
+      const ligne = `[${date}] ${reponse.slice(0, 300)}`;
+      setMemoire(trimMemoire(memoire ? `${memoire}\n${ligne}` : ligne));
+    }
   };
 
   return (
@@ -561,14 +550,6 @@ function ChatLibre({ memoire, setMemoire }) {
         {messages.map((msg, i) => (
           <div key={i}>
             <BulleMessage msg={msg} />
-            {msg.role === 'assistant' && (
-              <div style={{ display: 'flex', justifyContent: 'flex-start', marginTop: 4, paddingLeft: 4 }}>
-                <button onClick={() => sauvegarderInsight(msg)}
-                  style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '3px 10px', borderRadius: 6, border: `1px solid ${DS.brand.secondary}44`, background: 'transparent', color: DS.brand.secondary, fontSize: 11, cursor: 'pointer', fontFamily: 'inherit' }}>
-                  <Brain size={10} /> Mémoriser
-                </button>
-              </div>
-            )}
           </div>
         ))}
         {loading && (
@@ -623,7 +604,10 @@ function GenererEmail({ memoire, onSauvegarder }) {
     const newMessages = [...messages, { role: 'user', content: q }];
     setMessages(newMessages);
     const reponse = await appeler('chat_email', { emailParams: form, messages: newMessages, contexte_cyna: memoire });
-    if (reponse) setMessages(prev => [...prev, { role: 'assistant', content: reponse }]);
+    if (reponse) {
+      setMessages(prev => [...prev, { role: 'assistant', content: reponse }]);
+      if (onSauvegarder) onSauvegarder(reponse);
+    }
   };
 
   const generer = async () => {
@@ -684,14 +668,6 @@ function GenererEmail({ memoire, onSauvegarder }) {
             {messages.map((msg, i) => (
               <div key={i}>
                 <BulleMessage msg={msg} />
-                {msg.role === 'assistant' && (
-                  <div style={{ display: 'flex', justifyContent: 'flex-start', marginTop: 4, paddingLeft: 4 }}>
-                    <button onClick={() => onSauvegarder && onSauvegarder(msg.content)}
-                      style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '3px 10px', borderRadius: 6, border: `1px solid ${DS.brand.secondary}44`, background: 'transparent', color: DS.brand.secondary, fontSize: 11, cursor: 'pointer', fontFamily: 'inherit' }}>
-                      <Brain size={10} /> Mémoriser
-                    </button>
-                  </div>
-                )}
               </div>
             ))}
             {loading && (
@@ -808,7 +784,10 @@ function AnalyserPdfTexte({ memoire, onSauvegarder }) {
     const newMessages = [...messages, { role: 'user', content: q }];
     setMessages(newMessages);
     const reponse = await appeler('chat_pdf', { pdfTexte: texte, typeDoc, messages: newMessages, contexte_cyna: memoire });
-    if (reponse) setMessages(prev => [...prev, { role: 'assistant', content: reponse }]);
+    if (reponse) {
+      setMessages(prev => [...prev, { role: 'assistant', content: reponse }]);
+      if (onSauvegarder) onSauvegarder(reponse);
+    }
   };
 
   const analyser = async () => {
@@ -870,14 +849,6 @@ function AnalyserPdfTexte({ memoire, onSauvegarder }) {
             {messages.map((msg, i) => (
               <div key={i}>
                 <BulleMessage msg={msg} />
-                {msg.role === 'assistant' && (
-                  <div style={{ display: 'flex', justifyContent: 'flex-start', marginTop: 4, paddingLeft: 4 }}>
-                    <button onClick={() => onSauvegarder && onSauvegarder(msg.content)}
-                      style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '3px 10px', borderRadius: 6, border: `1px solid ${DS.brand.secondary}44`, background: 'transparent', color: DS.brand.secondary, fontSize: 11, cursor: 'pointer', fontFamily: 'inherit' }}>
-                      <Brain size={10} /> Mémoriser
-                    </button>
-                  </div>
-                )}
               </div>
             ))}
             {loading && (

@@ -492,7 +492,7 @@ export function simulerRapportLundi({ chantiers, factures, devis, parametres, cl
 }
 
 // ─── T1-A5 : MémoireChantier ─────────────────────────────────
-export function runMemoireChantier({ chantiers, devis, parametres }) {
+export function runMemoireChantier({ chantiers, devis, parametres, getCouts }) {
   try {
     const STATUTS_TERMINES = ['terminé', 'termine', 'terminée', 'terminee', 'facturé', 'facture', 'clôturé', 'cloture'];
     const termines = chantiers.filter(c => STATUTS_TERMINES.includes((c.statut || '').toLowerCase()));
@@ -501,7 +501,7 @@ export function runMemoireChantier({ chantiers, devis, parametres }) {
     termines.forEach(c => {
       try {
         const type = c.typeChantier || (c.typesTravaux?.[0]) || 'Autre';
-        const couts = calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis);
+        const couts = getCouts ? getCouts(c) : calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis);
         if (couts.totalCoutsPrevu <= 0 || couts.totalCoutsReel <= 0) return;
         const ecartPct = ((couts.totalCoutsReel - couts.totalCoutsPrevu) / couts.totalCoutsPrevu) * 100;
         const ca = calculerCA(c, devis);
@@ -880,7 +880,7 @@ export function runPlanningCoherence({ chantiers, devis, parametres }) {
 }
 
 // ─── T2-A11 : ApprentissageMarge ─────────────────────────────
-export function runApprentissageMarge({ chantiers, devis, parametres, agentContext, memoire = {} }) {
+export function runApprentissageMarge({ chantiers, devis, parametres, agentContext, memoire = {}, getCouts }) {
   const alertes = [];
   const patterns = agentContext?.MemoireChantier || {};
   const predictions = [];
@@ -890,7 +890,7 @@ export function runApprentissageMarge({ chantiers, devis, parametres, agentConte
     const pattern = patterns[type];
     if (!pattern || pattern.count < 2) return;
 
-    const couts = calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis);
+    const couts = getCouts ? getCouts(c) : calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis);
     if (couts.totalCoutsPrevu <= 0) return;
 
     // Prédiction basée sur l'écart historique moyen
@@ -916,7 +916,7 @@ export function runApprentissageMarge({ chantiers, devis, parametres, agentConte
 }
 
 // ─── T2-A12 : SantéClient ─────────────────────────────────────
-export function runSanteClient({ chantiers, clients, devis, factures, parametres, agentContext }) {
+export function runSanteClient({ chantiers, clients, devis, factures, parametres, agentContext, getCouts }) {
   const alertes = [];
   const dsoData = agentContext?.RelancePaiements?.dsoParClient || {};
   const statsClients = [];
@@ -927,7 +927,7 @@ export function runSanteClient({ chantiers, clients, devis, factures, parametres
 
     const avecCA = mesChantiers.filter(c => calculerCA(c, devis) !== null);
     const caTotal = avecCA.reduce((s, c) => s + calculerCA(c, devis), 0);
-    const coutTotal = avecCA.reduce((s, c) => s + calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis).totalCoutsReel, 0);
+    const coutTotal = avecCA.reduce((s, c) => s + (getCouts ? getCouts(c) : calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis)).totalCoutsReel, 0);
     const marge = caTotal > 0 ? ((caTotal - coutTotal) / caTotal) * 100 : null;
     const facturesClient = (factures || []).filter(f => String(f.clientId) === String(cl.id));
     const totalFacture = facturesClient.reduce((s, f) => s + (parseFloat(f.montantTTC) || 0), 0);
@@ -959,7 +959,7 @@ export function runSanteClient({ chantiers, clients, devis, factures, parametres
 }
 
 // ─── T2-A13 : ProjectionAnnuelle ──────────────────────────────
-export function runProjectionAnnuelle({ chantiers, factures, devis, parametres, agentContext, memoire = {} }) {
+export function runProjectionAnnuelle({ chantiers, factures, devis, parametres, agentContext, memoire = {}, getCouts }) {
   try {
     const now = new Date();
     const annee = now.getFullYear();
@@ -981,7 +981,7 @@ export function runProjectionAnnuelle({ chantiers, factures, devis, parametres, 
     const caPipeline = devisEnAttente.reduce((s, d) => s + (parseFloat(d.montantHT || d.prixPropose) || 0), 0);
 
     // Coûts réels year-to-date
-    const coutsRealises = chantiersAnnee.reduce((s, c) => s + calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis).totalCoutsReel, 0);
+    const coutsRealises = chantiersAnnee.reduce((s, c) => s + (getCouts ? getCouts(c) : calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis)).totalCoutsReel, 0);
     const margeYTD = caRealise > 0 ? ((caRealise - coutsRealises) / caRealise) * 100 : null;
 
     // Chargement objectif depuis localStorage
@@ -1013,7 +1013,7 @@ export function runProjectionAnnuelle({ chantiers, factures, devis, parametres, 
 }
 
 // ─── T2-A14 : BenchmarkTypeTravaux ────────────────────────────
-export function runBenchmarkTypeTravaux({ chantiers, devis, parametres, agentContext }) {
+export function runBenchmarkTypeTravaux({ chantiers, devis, parametres, agentContext, getCouts }) {
   const alertes = [];
   const patterns = agentContext?.MemoireChantier || {};
   const benchmark = [];
@@ -1023,7 +1023,7 @@ export function runBenchmarkTypeTravaux({ chantiers, devis, parametres, agentCon
     if (chantiersDuType.length === 0) return;
 
     const caTotal = chantiersDuType.reduce((s, c) => s + calculerCA(c, devis), 0);
-    const coutTotal = chantiersDuType.reduce((s, c) => s + calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis).totalCoutsReel, 0);
+    const coutTotal = chantiersDuType.reduce((s, c) => s + (getCouts ? getCouts(c) : calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis)).totalCoutsReel, 0);
     const marge = caTotal > 0 ? ((caTotal - coutTotal) / caTotal) * 100 : null;
     const pattern = patterns[t.nom];
 
@@ -1083,11 +1083,11 @@ export function runConformiteBTP({ chantiers, parametres, agentContext }) {
 }
 
 // ─── T2-A17b : DerivePredictor ────────────────────────────────────
-export function runDerivePredictor({ chantiers, devis, parametres, agentContext }) {
+export function runDerivePredictor({ chantiers, devis, parametres, agentContext, getCouts }) {
   const resultats = [];
 
   chantiers.filter(isChantierActif).forEach(c => {
-    const couts = calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis);
+    const couts = getCouts ? getCouts(c) : calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis);
     const joursRealises = new Set((c.journal || []).map(e => e.date).filter(Boolean)).size;
     const avancement = c.nombreJours > 0
       ? Math.min(100, Math.round((joursRealises / c.nombreJours) * 100))
@@ -1170,7 +1170,7 @@ export function runDerivePredictor({ chantiers, devis, parametres, agentContext 
 // ═══════════════════════════════════════════════════════════════
 
 // ─── T3-A16 : RadarPrécoce ────────────────────────────────────
-export function runRadarPrecoce({ chantiers, devis, parametres, agentContext }) {
+export function runRadarPrecoce({ chantiers, devis, parametres, agentContext, getCouts }) {
   const alertes = [];
   const risques = [];
 
@@ -1179,7 +1179,7 @@ export function runRadarPrecoce({ chantiers, devis, parametres, agentContext }) 
     const facteurs = [];
 
     // Facteur 1 : marge faible
-    const couts = calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis);
+    const couts = getCouts ? getCouts(c) : calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis);
     if (couts.montantTotal > 0 && couts.totalCoutsReel > 0 && Number.isFinite(couts.margeReelPct)) {
       const marge = couts.margeReelPct;
       if (marge < 0) { score += 40; facteurs.push(`marge à perte (${Math.round(marge * 10) / 10}%)`); }
@@ -1296,14 +1296,14 @@ export function runSaisonnierte({ chantiers, devis, memoire = {} }) {
 }
 
 // ─── T3-A19 : CoûtMOAnalyse ───────────────────────────────────
-export function runCoutMOAnalyse({ chantiers, devis, parametres, agentContext }) {
+export function runCoutMOAnalyse({ chantiers, devis, parametres, agentContext, getCouts }) {
   const alertes = [];
   const analyse = [];
 
   chantiers.forEach(c => {
     const ca = calculerCA(c, devis);
     if (!ca || ca <= 0) return;
-    const couts = calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis);
+    const couts = getCouts ? getCouts(c) : calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis);
     if (couts.totalCoutsReel <= 0) return;
 
     const pctMO = couts.totalCoutsReel > 0 ? (couts.coutEquipeReel / couts.totalCoutsReel) * 100 : 0;

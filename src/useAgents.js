@@ -13,6 +13,8 @@ import { runAllAgents, simulerRapportLundi } from './AgentEngine';
 const STORAGE_KEY   = 'cyna_agents_state';
 const MEMOIRE_KEY   = 'cyna_agents_memoire';
 const INTERVAL_MS   = 60 * 60 * 1000; // toutes les heures
+// Incrémenter pour forcer un reset du cache localStorage si le schéma change
+const SCHEMA_VERSION = 3;
 
 // Tous les agents actifs par défaut
 const AGENTS_PAR_DEFAUT = {
@@ -62,6 +64,11 @@ function loadState() {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw);
+    // Purge automatique si version de schéma obsolète
+    if ((parsed?.schemaVersion ?? 0) < SCHEMA_VERSION) {
+      localStorage.removeItem(STORAGE_KEY);
+      return null;
+    }
     if (parsed?.alertes)  parsed.alertes  = sanitiserAlertes(parsed.alertes);
     if (parsed?.rapports) parsed.rapports = sanitiserRapports(parsed.rapports);
     return parsed;
@@ -70,6 +77,7 @@ function loadState() {
 function saveState(state) {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      schemaVersion: SCHEMA_VERSION,
       agentsActifs: state.agentsActifs,
       alertes: state.alertes.slice(0, 100),
       predictions: state.predictions,

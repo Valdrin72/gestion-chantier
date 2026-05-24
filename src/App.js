@@ -24,6 +24,7 @@ import CentreIA from './pages/CentreIA';
 import Parametres from './pages/ParametresPage';
 import { AppProvider } from './context/AppContext';
 import InstallPWA from './components/InstallPWA';
+import OfflineBanner from './components/OfflineBanner';
 import ConfirmModal from './components/ui/ConfirmModal';
 import ErrorBoundary from './components/ErrorBoundary';
 
@@ -334,6 +335,7 @@ function AppInner({ profil, deconnecter, userId }) {
         />
       </div>
     </div>
+    <OfflineBanner />
     <InstallPWA />
     {notif && (
       <div style={{

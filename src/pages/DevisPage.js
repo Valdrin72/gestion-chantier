@@ -78,12 +78,15 @@ function Devis() {
     const nouvellesErreurs = {};
     if (!form.clientId) nouvellesErreurs.clientId = 'Sélectionner un client';
     if (!form.typesTravaux?.length) nouvellesErreurs.typesTravaux = 'Sélectionner au moins un type de travaux';
+    const montantParsed = parseFloat(form.montantHT);
+    if (!form.montantHT || !Number.isFinite(montantParsed) || montantParsed <= 0) {
+      nouvellesErreurs.montantHT = 'Le montant HT est obligatoire et doit être positif';
+    }
     if (Object.keys(nouvellesErreurs).length > 0) {
       setErreurs(nouvellesErreurs);
       return;
     }
-    const montant = parseFloat(form.montantHT);
-    if (Number.isFinite(montant) && montant < 0) { alert('Le montant HT ne peut pas être négatif.'); return; }
+    const montant = montantParsed;
     if (form.id) {
       setDevis(devis.map(d => d.id === form.id ? form : d));
     } else {
@@ -267,6 +270,7 @@ function Devis() {
               onChange={e => { const raw = e.target.value.replace(/'/g, '').replace(/[^0-9.]/g, ''); setForm({ ...form, montantHT: raw }); }}
               style={{ ...inputStyle, fontSize: '22px', fontWeight: 800, borderColor: '#10b98160', letterSpacing: '-0.5px' }}
             />
+            {erreurs.montantHT && <div style={{ marginTop: 6, fontSize: 12, color: '#ef4444' }}>{erreurs.montantHT}</div>}
             {form.montantHT && parseFloat(form.montantHT) > 0 && (
               <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
                 <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>CA enregistré :</span>

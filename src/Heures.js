@@ -319,7 +319,10 @@ export default function Heures({ chantiers = [], parametres = {}, setChantiers }
                     );
                   })}
                   <td style={{ ...DS.td, textAlign: 'center', fontWeight: 900, fontSize: 14, color: '#0d3d6e' }}>
-                    {Math.round(totalHeures * 10) / 10}h
+                    {(() => {
+                      const weekTotal = actifs.reduce((t, e) => t + weekDays.reduce((ws, d) => ws + ((hoursMap[e.id] || {})[isoDate(d)] || 0), 0), 0);
+                      return weekTotal > 0 ? `${Math.round(weekTotal * 10) / 10}h` : '—';
+                    })()}
                   </td>
                 </tr>
               </tbody>

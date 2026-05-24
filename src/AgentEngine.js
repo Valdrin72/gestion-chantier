@@ -1306,22 +1306,22 @@ export function runCoutMOAnalyse({ chantiers, devis, parametres, agentContext })
     const couts = calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis);
     if (couts.totalCoutsReel <= 0) return;
 
-    const pctMO = couts.totalCoutsReel > 0 ? (couts.coutMOReel / couts.totalCoutsReel) * 100 : 0;
-    const pctMOSurCA = ca > 0 ? (couts.coutMOReel / ca) * 100 : 0;
+    const pctMO = couts.totalCoutsReel > 0 ? (couts.coutEquipeReel / couts.totalCoutsReel) * 100 : 0;
+    const pctMOSurCA = ca > 0 ? (couts.coutEquipeReel / ca) * 100 : 0;
 
     const margeReel = parseFloat(couts.margeReelPct);
     analyse.push({
       id: c.id, nom: c.nom || c.numero,
-      coutMO: Math.round(couts.coutMOReel), ca: Math.round(ca),
+      coutMO: Math.round(couts.coutEquipeReel), ca: Math.round(ca),
       pctMO: Math.round(pctMO * 10) / 10, pctMOSurCA: Math.round(pctMOSurCA * 10) / 10,
       margeReel: isNaN(margeReel) ? null : margeReel,
     });
 
     // Alerte si MO > 70% des coûts totaux
-    if (pctMO > 70 && couts.coutMOReel > 5000) {
+    if (pctMO > 70 && couts.coutEquipeReel > 5000) {
       alertes.push({ id: uid('mo-fort'), agent: 'CoutMOAnalyse', type: 'couts', niveau: 'INFO',
         message: `${c.nom || c.numero} — MO à ${Math.round(pctMO)}% des coûts`,
-        detail: `CHF ${fmtN(Math.round(couts.coutMOReel))} en main-d'œuvre · vérifier coefficient charges`,
+        detail: `CHF ${fmtN(Math.round(couts.coutEquipeReel))} en main-d'œuvre · vérifier coefficient charges`,
         chantier_id: c.id, timestamp: Date.now(), lu: false, action: { page: 'chantiers', ctx: { chantierActif: c.id } } });
     }
   });

@@ -216,7 +216,8 @@ function Employes({ parametres, setParametres, chantiers, naviguer }) {
           , 0);
 
           const jours = Math.round(heures / 8 * 10) / 10;
-          const coutReel = jours * (parseFloat(e.tarifJour) || 0);
+          const coeffMO = e.tarifDejaCharge ? 1 : (parseFloat(parametres?.parametres?.coefficientMainOeuvre) || 1.35);
+          const coutReel = jours * (parseFloat(e.tarifJour) || 0) * coeffMO;
           const chantiersActifs = chantiers.filter(c =>
             (c.journal || []).some(j =>
               j.employes?.some(je => String(je.employeId) === String(e.id))

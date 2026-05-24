@@ -304,8 +304,8 @@ function calcLigne(l, tarifH) {
 // ── Badge rentabilité ────────────────────────────────────────
 function BadgeRentabilite({ marge }) {
   const pct = Math.round(marge * 100);
-  if (pct >= 15) return <span style={{ background: 'rgba(16,185,129,0.14)', color: '#10b981', border: '1px solid rgba(16,185,129,0.3)', padding: '3px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: 700 }}>Rentable +{pct}%</span>;
-  if (pct >= 0)  return <span style={{ background: 'rgba(245,158,11,0.14)', color: '#f59e0b', border: '1px solid rgba(245,158,11,0.3)', padding: '3px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: 700 }}>Limite {pct}%</span>;
+  if (pct >= 20) return <span style={{ background: 'rgba(16,185,129,0.14)', color: '#10b981', border: '1px solid rgba(16,185,129,0.3)', padding: '3px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: 700 }}>Rentable +{pct}%</span>;
+  if (pct >= 15) return <span style={{ background: 'rgba(245,158,11,0.14)', color: '#f59e0b', border: '1px solid rgba(245,158,11,0.3)', padding: '3px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: 700 }}>Limite {pct}%</span>;
   return <span style={{ background: 'rgba(239,68,68,0.12)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.28)', padding: '3px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: 700 }}>Perte {pct}%</span>;
 }
 
@@ -319,7 +319,7 @@ export default function SoumissionAssistee({ parametres, onCreerDevis, naviguer 
     heuresParJour: paramsGlobaux.heuresJour || 8,
     tarifHoraire:  paramsGlobaux.tarifHoraire || 85,
     margeCible:    paramsGlobaux.margeCible || 25,
-    fraisGeneraux: paramsGlobaux.fraisGeneraux || 10,
+    fraisGeneraux: paramsGlobaux.fraisGeneraux || 12,
   });
   const [titreProjet, setTitreProjet] = useState('');
   const [importEnCours, setImportEnCours] = useState(false);

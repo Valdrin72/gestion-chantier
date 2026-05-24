@@ -55,7 +55,7 @@ function App() {
     return <Login />;
   }
 
-  return <AppInner profil={profilAuth} deconnecter={deconnecter} userId={session.user.id} />;
+  return <AppInner key={session.user.id} profil={profilAuth} deconnecter={deconnecter} userId={session.user.id} />;
 }
 
 function AppInner({ profil, deconnecter, userId }) {

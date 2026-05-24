@@ -85,6 +85,7 @@ export const donneesDemo = {
     coefficientMainOeuvre: 1.35,
     joursAlerte: 5,
     tauxChargesSociales: 30,
+    chargesMensuelles: 45000,
   },
 
   // ══════════════════════════════════════════════════════════════════════════

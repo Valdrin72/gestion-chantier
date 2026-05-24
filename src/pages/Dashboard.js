@@ -108,7 +108,7 @@ function Dashboard() {
       const avancement = etat?.avancementPct ?? 0;
       const montantFacture = (factures || [])
         .filter(f => String(f.chantierId) === String(c.id))
-        .reduce((s, f) => s + (parseFloat(f.montantTTC) || 0), 0);
+        .reduce((s, f) => s + (parseFloat(f.montantHT) || 0), 0);
       const facturationPotentielle = (avancement / 100) * devisTotal;
       const resteAFacturer = Math.max(0, facturationPotentielle - montantFacture);
       const encaissementPrevu = Math.round(resteAFacturer * 0.5);

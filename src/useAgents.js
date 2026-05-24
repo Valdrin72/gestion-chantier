@@ -219,9 +219,14 @@ export default function useAgents({ chantiers, devis, factures, clients, paramet
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chantiers, devis, factures]);
 
-  // Persistence de l'état courant
+  // Persistence de l'état courant (debounced 800ms)
+  const saveTimerRef = useRef(null);
   useEffect(() => {
-    saveState({ agentsActifs, alertes, predictions, patterns, rapports, agentsStatuts, agentsLogs, agentData, dernierRun });
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => {
+      saveState({ agentsActifs, alertes, predictions, patterns, rapports, agentsStatuts, agentsLogs, agentData, dernierRun });
+    }, 800);
+    return () => clearTimeout(saveTimerRef.current);
   }, [agentsActifs, alertes, predictions, patterns, rapports, agentsStatuts, agentsLogs, agentData, dernierRun]);
 
   const marquerLu = useCallback((id) => setAlertes(prev => prev.map(a => a.id === id ? { ...a, lu: true } : a)), []);

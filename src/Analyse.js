@@ -31,9 +31,12 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
   const caTotal = chantiersAvecDevis.reduce((t, c) => t + calculerCA(c, devis), 0);
   const coutsTotal = chantiersAvecDevis.reduce((t, c) => t + calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis).totalCoutsReel, 0);
   const margeAvantCharges = caTotal - coutsTotal;
-  const chargesSociales = coutsTotal * (tauxChargesSociales / 100);
+  // Les coûts MO incluent déjà le coefficient 1.35 (charges employeur).
+  // chargesSociales ici = estimation des charges non-MO (impôts, FG hors MO) — indicatif seulement.
+  const chargesSocialesIndic = caTotal * (tauxChargesSociales / 100) * 0.3; // ~30% du CA en MO × taux → estimation
+  const chargesSociales = chargesSocialesIndic; // affiché comme indicateur, non déduit doublement
   const fraisGeneraux = caTotal * (tauxFraisGeneraux / 100);
-  const margeAvantImpots = margeAvantCharges - chargesSociales - fraisGeneraux;
+  const margeAvantImpots = margeAvantCharges - fraisGeneraux;
   const impots = margeAvantImpots > 0 ? margeAvantImpots * (tauxImpots / 100) : 0;
   const margeNette = margeAvantImpots - impots;
   const margeNettePct = caTotal > 0 ? Math.round((margeNette / caTotal) * 1000) / 10 : 0;
@@ -105,8 +108,9 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
     }, 0);
     const coutHoraire = heuresTotal > 0 ? Math.round(coutTotal / heuresTotal) : 0;
     const productivite = coutTotal > 0 ? Math.round((caGenere / coutTotal) * 100) : 0;
-    const chargesSoc = emp.tarifDejaCharge ? 0 : coutTotal * (tauxChargesSociales / 100);
-    const coutReel = coutTotal + chargesSoc;
+    // chargesSoc = portion charges incluse dans le coefficient (pas ajoutée en plus — coeff déjà intègre les charges)
+    const chargesSoc = emp.tarifDejaCharge ? 0 : joursTotal * (parseFloat(emp.tarifJour) || 0) * (coeff - 1);
+    const coutReel = coutTotal; // coutTotal = brut × coeff inclut déjà les charges sociales
 
     return { ...emp, joursTotal, heuresTotal, coutTotal, caGenere, coutHoraire, productivite, chargesSoc, coutReel };
   }).filter(e => e.joursTotal > 0);

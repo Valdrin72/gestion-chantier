@@ -12,6 +12,8 @@ const CYNA = {
   tel2: '079 480 94 41',
   tel3: '078 748 90 29',
   email: 'info@cyna.ch',
+  nTVA: 'CHE-xxx.xxx.xxx TVA',
+  iban: 'CH00 0000 0000 0000 0000 0',
 };
 
 // ===== CONDITIONS GÉNÉRALES =====

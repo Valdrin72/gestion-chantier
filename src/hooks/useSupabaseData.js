@@ -80,6 +80,8 @@ export default function useSupabaseData(userId) {
   const syncTimer   = useRef(null);
   const pendingRef  = useRef(null);
   const dataRef     = useRef({ chantiers: _initChantiers, devis: _initDevis, factures: _initFactures, clients: _initClients, parametres: donneesInitiales });
+  const mountedRef  = useRef(true);
+  useEffect(() => { mountedRef.current = true; return () => { mountedRef.current = false; }; }, []);
 
   // Numéros de factures de test créées par les agents — supprimées une fois lors du chargement
   const FACTURES_TEST = new Set([
@@ -179,10 +181,12 @@ export default function useSupabaseData(userId) {
     // Re-sync quand l'app revient au premier plan (retour sur l'onglet / déverrouillage téléphone)
     async function resyncSiVisible() {
       if (document.visibilityState !== 'visible') return;
+      if (cancelled) return;
       // Si des données locales sont en attente de sync, ne pas écraser
       if (pendingRef.current) return;
       try {
         const row = await lireRowUser(userId);
+        if (cancelled) return;
         if (row && row.data && Object.keys(row.data).length > 0) {
           rowIdRef.current = row.id;
           appliquerData(row.data);
@@ -228,16 +232,17 @@ export default function useSupabaseData(userId) {
     dataRef.current   = { ...dataRef.current, ...updates };
     if (syncTimer.current) clearTimeout(syncTimer.current);
     syncTimer.current = setTimeout(async () => {
+      if (!mountedRef.current) return;
       const payload = pendingRef.current;
       pendingRef.current = null;
       setSyncing(true);
       try {
         const id = await ecrireRowUser(userId, rowIdRef.current, payload);
-        rowIdRef.current = id;
+        if (mountedRef.current) rowIdRef.current = id;
       } catch (e) {
         if (process.env.NODE_ENV !== 'production') console.warn('[Sync Supabase]', e.message);
       } finally {
-        setSyncing(false);
+        if (mountedRef.current) setSyncing(false);
       }
     }, 800);
   }

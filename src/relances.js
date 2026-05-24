@@ -47,7 +47,7 @@ function montantRestant(facture) {
  * Niveau 1, 2 ou 3 selon le retard et les rappels déjà envoyés.
  */
 export function prochainRappel(facture) {
-  if (!facture || facture.statut === 'payee' || facture.statut === 'annulee') return null;
+  if (!facture || facture.statut?.toLowerCase() === 'payee' || facture.statut?.toLowerCase() === 'annulee') return null;
   if (!facture.dateEcheance) return null;
   if (montantRestant(facture) <= 0) return null;
 

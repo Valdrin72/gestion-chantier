@@ -71,7 +71,7 @@ function PanneauProchaineEtape({ etat, couts, chantier, factures }) {
         <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', color: etape.couleur, opacity: 0.75 }}>
           Prochaine étape recommandée
         </span>
-        <div style={{ fontSize: 13, fontWeight: 700, color: etape.couleur, marginTop: 1 }}>{etape.action}</div>
+        <div style={{ fontSize: 13, fontWeight: 700, color: etape.couleur, marginTop: 1 }}>{typeof etape.action === 'string' ? etape.action : ''}</div>
         <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{etape.raison}</div>
       </div>
     </div>

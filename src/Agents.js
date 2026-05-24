@@ -350,8 +350,8 @@ export default function Agents({
                         <span style={{ background: i === 0 ? '#fee2e2' : i === 1 ? '#fef3c7' : '#e8f0f9', color: i === 0 ? '#991b1b' : i === 1 ? '#92400e' : '#0d3d6e', borderRadius: 20, padding: '2px 10px', fontSize: 10, fontWeight: 700 }}>{p.categorie}</span>
                         <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Impact : {p.impact}</span>
                       </div>
-                      <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-primary)', marginBottom: 4 }}>{p.action}</div>
-                      <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{p.detail}</div>
+                      <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-primary)', marginBottom: 4 }}>{safeStr(p.action)}</div>
+                      <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{safeStr(p.detail)}</div>
                     </div>
                     <div style={{ fontSize: 18, fontWeight: 900, color: 'var(--text-muted)', flexShrink: 0 }}>#{i + 1}</div>
                   </div>
@@ -853,8 +853,8 @@ export default function Agents({
                 {agentData.RapportNaturel.actionPrincipale && (
                   <div style={{ marginTop: 20, padding: '12px 16px', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 10 }}>
                     <div style={{ fontSize: 11, fontWeight: 700, color: '#0d3d6e', textTransform: 'uppercase', marginBottom: 4 }}>Action prioritaire recommandée</div>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: '#0d3d6e' }}>{agentData.RapportNaturel.actionPrincipale.icone} {agentData.RapportNaturel.actionPrincipale.action}</div>
-                    <div style={{ fontSize: 12, color: '#0d3d6e', marginTop: 2 }}>{agentData.RapportNaturel.actionPrincipale.detail}</div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: '#0d3d6e' }}>{agentData.RapportNaturel.actionPrincipale.icone} {safeStr(agentData.RapportNaturel.actionPrincipale.action)}</div>
+                    <div style={{ fontSize: 12, color: '#0d3d6e', marginTop: 2 }}>{safeStr(agentData.RapportNaturel.actionPrincipale.detail)}</div>
                   </div>
                 )}
               </div>

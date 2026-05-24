@@ -45,8 +45,8 @@ function RapportIA({ agentData }) {
         {rapport.actionPrincipale && (
           <div style={{ marginTop: 22, padding: '14px 18px', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 10 }}>
             <div style={{ fontSize: 10, fontWeight: 700, color: '#082d52', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: 5 }}>Action prioritaire recommandée</div>
-            <div style={{ fontSize: 14, fontWeight: 700, color: '#0d3d6e' }}>{rapport.actionPrincipale.action}</div>
-            <div style={{ fontSize: 12, color: '#0d3d6e', marginTop: 3 }}>{rapport.actionPrincipale.detail}</div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: '#0d3d6e' }}>{typeof rapport.actionPrincipale.action === 'string' ? rapport.actionPrincipale.action : ''}</div>
+            <div style={{ fontSize: 12, color: '#0d3d6e', marginTop: 3 }}>{typeof rapport.actionPrincipale.detail === 'string' ? rapport.actionPrincipale.detail : ''}</div>
           </div>
         )}
       </div>

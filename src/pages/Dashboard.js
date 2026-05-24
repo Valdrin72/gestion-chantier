@@ -1104,7 +1104,7 @@ function Dashboard() {
                 )}
                 {interpretation?.action && (
                   <div style={{ fontSize: 11, color: interpretation.couleur, background: interpretation.couleur + '10', border: `1px solid ${interpretation.couleur}25`, borderRadius: 8, padding: '6px 10px', marginBottom: 10 }}>
-                    {interpretation.action}
+                    {safeStr(interpretation.action)}
                   </div>
                 )}
                 {top3.length > 0 && (

@@ -36,7 +36,25 @@ const AGENTS_PAR_DEFAUT = {
 
 function sanitiserAlertes(alertes) {
   if (!Array.isArray(alertes)) return [];
-  return alertes.filter(a => a && typeof a.message === 'string');
+  return alertes
+    .filter(a => a && typeof a.message === 'string')
+    .map(a => ({
+      ...a,
+      // action peut être {page,ctx} (navigation) ou string (description) — on garde les 2 cas
+      // mais on ne le rend jamais directement dans le JSX sans safeStr
+      detail: typeof a.detail === 'string' ? a.detail : undefined,
+    }));
+}
+
+function sanitiserRapports(rapports) {
+  if (!Array.isArray(rapports)) return [];
+  return rapports.map(r => {
+    if (!r) return r;
+    if (r.actionPrincipale && typeof r.actionPrincipale.action !== 'string') {
+      return { ...r, actionPrincipale: null };
+    }
+    return r;
+  });
 }
 
 function loadState() {
@@ -44,7 +62,8 @@ function loadState() {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw);
-    if (parsed?.alertes) parsed.alertes = sanitiserAlertes(parsed.alertes);
+    if (parsed?.alertes)  parsed.alertes  = sanitiserAlertes(parsed.alertes);
+    if (parsed?.rapports) parsed.rapports = sanitiserRapports(parsed.rapports);
     return parsed;
   } catch { return null; }
 }

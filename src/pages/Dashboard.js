@@ -15,10 +15,11 @@ import { STATUTS_CLOS } from '../constants/statuts';
 import { useApp } from '../context/AppContext';
 import useIsMobile from '../hooks/useIsMobile';
 import { calculerAlertes } from '../alertes';
+import SaisieRapideDashboard from '../components/SaisieRapideDashboard';
 
 function Dashboard() {
   const isMobile = useIsMobile();
-  const { chantiers, clients, factures, devis = [], parametres, naviguer, actionsLog = [], periodeGlobale = 'mois', setPeriodeGlobale = () => {}, agentState, profil } = useApp();
+  const { chantiers, setChantiers, clients, factures, devis = [], parametres, naviguer, actionsLog = [], periodeGlobale = 'mois', setPeriodeGlobale = () => {}, agentState, profil, afficherNotif } = useApp();
   const agentAlertes = agentState?.alertes || [];
   const facturesSafe = useMemo(() => factures || [], [factures]);
   const [insightsFerme, setInsightsFerme] = useState(false);
@@ -1301,6 +1302,16 @@ function Dashboard() {
             </div>
           )}
         </div>
+      </div>
+
+      {/* ── SAISIE RAPIDE HEURES ─────────────────────────────────── */}
+      <div style={{ marginBottom: 20 }}>
+        <SaisieRapideDashboard
+          chantiersActifs={actifs}
+          parametres={parametres}
+          setChantiers={setChantiers}
+          afficherNotif={afficherNotif}
+        />
       </div>
 
       {/* ── IA INSIGHTS BAR ──────────────────────────────────────── */}

@@ -38,7 +38,7 @@ function RapportIA({ agentData }) {
               <div style={{ width: 26, height: 26, borderRadius: '50%', background: '#8b5cf614', border: '1px solid #8b5cf630', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: '#8b5cf6', flexShrink: 0 }}>
                 {i + 1}
               </div>
-              <p style={{ margin: 0, fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.75 }}>{para}</p>
+              <p style={{ margin: 0, fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.75 }}>{typeof para === 'string' ? para : ''}</p>
             </div>
           ))}
         </div>

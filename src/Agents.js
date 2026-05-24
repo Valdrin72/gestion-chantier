@@ -205,9 +205,9 @@ const NIVEAU_CONFIG = {
 };
 
 export default function Agents({
-  agentsActifs, agentsStatuts, agentsLogs, alertes, predictions,
-  patterns, rapports, dernierRun, running, nbNonLues, agentData = {},
-  scoreGlobal, priorites = [], memoire = {},
+  agentsActifs = {}, agentsStatuts = {}, agentsLogs = {}, alertes = [], predictions = {},
+  patterns = {}, rapports = [], dernierRun = null, running = false, nbNonLues = 0, agentData = {},
+  scoreGlobal = null, priorites = [], memoire = {},
   toggleAgent, forcerExecution, marquerLu, marquerTousLus, simulerRapport,
 }) {
   const [onglet, setOnglet] = useState('coach');

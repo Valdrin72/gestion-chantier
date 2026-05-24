@@ -25,6 +25,7 @@ import Parametres from './pages/ParametresPage';
 import { AppProvider } from './context/AppContext';
 import InstallPWA from './components/InstallPWA';
 import ConfirmModal from './components/ui/ConfirmModal';
+import ErrorBoundary from './components/ErrorBoundary';
 
 // Fallback par page quand l'historique est vide
 const NAV_FALLBACK = {
@@ -284,6 +285,7 @@ function AppInner({ profil, deconnecter, userId }) {
           </div>
         )}
         <main className="app-main">
+          <ErrorBoundary key={page}>
           {page === 'dashboard'    && <Dashboard />}
           {page === 'chantiers'    && pagesAutorisees.includes('chantiers')  && <Chantiers />}
           {page === 'devis'        && pagesAutorisees.includes('devis')      && <Devis />}
@@ -305,6 +307,7 @@ function AppInner({ profil, deconnecter, userId }) {
               </button>
             </div>
           )}
+          </ErrorBoundary>
         </main>
         {saisieHeuresCtx && (() => {
           const chantierLive = chantiers.find(c => String(c.id) === String(saisieHeuresCtx.chantierId)) || null;

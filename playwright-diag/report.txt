@@ -1,0 +1,76 @@
+
+────────────────────────────────────────────────────────────
+  ÉTAPE 1 — Page de connexion
+────────────────────────────────────────────────────────────
+[SCREENSHOT] Page de connexion → /home/user/gestion-chantier/playwright-diag/screenshots/01-login.png
+Titre: CYNA — Gestion de chantiers
+Formulaire de connexion: OUI
+
+────────────────────────────────────────────────────────────
+  ÉTAPE 2 — Tentative de connexion
+────────────────────────────────────────────────────────────
+Champ email visible: true, Champ password visible: true
+[SCREENSHOT] Formulaire rempli → /home/user/gestion-chantier/playwright-diag/screenshots/02-login-filled.png
+Bouton connexion cliqué
+[SCREENSHOT] Après connexion → /home/user/gestion-chantier/playwright-diag/screenshots/03-after-login.png
+URL après connexion: http://localhost:3000/
+URL actuelle: http://localhost:3000/
+
+────────────────────────────────────────────────────────────
+  ÉTAPE 3 — Dashboard
+────────────────────────────────────────────────────────────
+[SCREENSHOT] Dashboard complet → /home/user/gestion-chantier/playwright-diag/screenshots/03-dashboard.png
+[OK] Dashboard — Aucun NaN/undefined/Infinity visible
+Valeurs CHF trouvées: (aucune)
+Pourcentages trouvés: (aucune)
+Heures trouvées: (aucune)
+
+────────────────────────────────────────────────────────────
+  ÉTAPE 4 — Page Devis
+────────────────────────────────────────────────────────────
+[SCREENSHOT] Page Devis → /home/user/gestion-chantier/playwright-diag/screenshots/04-devis.png
+[OK] Devis — Aucun NaN/undefined/Infinity visible
+[ATTENTION] Aucune ligne devis trouvée
+Montants CHF sur page Devis: (aucun — possible bug montant=0)
+
+────────────────────────────────────────────────────────────
+  ÉTAPE 5 — Page Chantiers
+────────────────────────────────────────────────────────────
+[SCREENSHOT] Page Chantiers → /home/user/gestion-chantier/playwright-diag/screenshots/05-chantiers.png
+[OK] Chantiers — Aucun NaN/undefined/Infinity visible
+Montants CHF sur Chantiers: (aucun)
+Pourcentages sur Chantiers: (aucun)
+Nombre d'éléments card/chantier: 0
+
+────────────────────────────────────────────────────────────
+  ÉTAPE 6 — Page Heures / Journal
+────────────────────────────────────────────────────────────
+[SCREENSHOT] Page Heures → /home/user/gestion-chantier/playwright-diag/screenshots/06-heures.png
+[OK] Heures — Aucun NaN/undefined/Infinity visible
+Heures trouvées: (aucune — possible bug heures=0)
+Valeurs CHF sur Heures: (aucune)
+[ATTENTION] Aucune ligne dans le journal des heures
+
+────────────────────────────────────────────────────────────
+  ÉTAPE 7 — Page Employés
+────────────────────────────────────────────────────────────
+[SCREENSHOT] Page Employés → /home/user/gestion-chantier/playwright-diag/screenshots/07-employes.png
+[OK] Employés — Aucun NaN/undefined/Infinity visible
+[INFO] Onglet Performance non trouvé
+
+────────────────────────────────────────────────────────────
+  ÉTAPE 8 — Inventaire de la navigation
+────────────────────────────────────────────────────────────
+Items de navigation trouvés:
+
+────────────────────────────────────────────────────────────
+  RAPPORT FINAL — Erreurs console
+────────────────────────────────────────────────────────────
+[ALERTE] 1 erreur(s) console:
+  [error] Failed to load resource: the server responded with a status of 400 ()
+
+────────────────────────────────────────────────────────────
+  RAPPORT FINAL — Résumé
+────────────────────────────────────────────────────────────
+Screenshots sauvegardés dans: /home/user/gestion-chantier/playwright-diag/screenshots
+Total erreurs console: 1

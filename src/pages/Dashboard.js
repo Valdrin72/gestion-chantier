@@ -442,7 +442,7 @@ function Dashboard() {
           {[
             { label: "CA actif", Icon: DollarSign, valeur: `CHF ${fmtN(kpi.caEnCours)}`, sous: `En cours + Planifié · ${kpi.nbChantiersActifs} chantier${kpi.nbChantiersActifs !== 1 ? 's' : ''}`, ...DS.kpi.blue, page: 'devis' },
             { label: 'Marge moy.', Icon: TrendingUp, valeur: kpi.rentaMoyenne !== null ? `${Math.round(kpi.rentaMoyenne)}%` : '—', sous: `${kpi.nbChantiersRenta} analysé${kpi.nbChantiersRenta !== 1 ? 's' : ''}`, ...(kpi.rentaMoyenne === null || kpi.rentaMoyenne >= 15 ? DS.kpi.green : kpi.rentaMoyenne >= 0 ? DS.kpi.amber : DS.kpi.red), page: 'rapport', ctx: { onglet: 'analyse' } },
-            { label: 'Chantiers', Icon: HardHat, valeur: `${kpi.nbChantiersActifs}`, sous: kpiReel.nbDepassement > 0 ? `${kpiReel.nbDepassement} en retard` : 'Tous OK', ...DS.kpi.amber, page: 'chantiers' },
+            { label: 'Chantiers', Icon: HardHat, valeur: `${kpi.nbChantiersActifs}`, sous: kpiReel.nbDepassement > 0 ? `${kpiReel.nbDepassement} en retard` : 'Tous OK', ...DS.kpi.green, page: 'chantiers' },
             { label: 'Heures', Icon: Clock, valeur: kpi.heuresEngagees > 0 ? `${fmtN(kpi.heuresEngagees)}h` : '—', sous: `${kpi.nbEmployes} employé${kpi.nbEmployes !== 1 ? 's' : ''}`, ...DS.kpi.purple, page: 'heures' },
           ].map(({ label, Icon, valeur, sous, gradient, glow, page: dest, ctx }) => (
             <div key={label} onClick={() => naviguer(dest, ctx || {})} className="kpi-card"
@@ -702,7 +702,7 @@ function Dashboard() {
             valeur: `${kpi.nbChantiersActifs}`,
             sous: kpiReel.nbDepassement > 0 ? `${kpiReel.nbDepassement} en retard` : 'Tous dans les temps',
             desc: 'Statut "En cours" — chantiers avec heures en cours',
-            ...DS.kpi.amber,
+            ...DS.kpi.green,
             badge: kpiReel.nbDepassement > 0 ? `${kpiReel.nbDepassement} en retard` : null },
           { label: periodeGlobale === 'semaine' ? 'Heures semaine' : periodeGlobale === 'annee' ? 'Heures année' : 'Heures ce mois', Icon: Clock, page: 'heures',
             valeur: kpi.heuresEngagees > 0 ? `${fmtN(kpi.heuresEngagees)}h` : '—',
@@ -830,8 +830,7 @@ function Dashboard() {
                       onMouseEnter={e => { e.currentTarget.style.borderColor = '#0d3d6e'; e.currentTarget.style.boxShadow = '0 2px 12px rgba(13,61,110,0.1)'; }}
                       onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--dash-border)'; e.currentTarget.style.boxShadow = 'none'; }}
                     >
-                      {/* Badge statut — coin haut droite */}
-                      <span style={{ position: 'absolute', top: 10, right: 12, background: statBadge.bg, color: statBadge.color, borderRadius: 20, padding: '2px 9px', fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap', zIndex: 1 }}>{statBadge.label}</span>
+                      {/* Badge statut — intégré dans le layout, plus d'absolute pour éviter le chevauchement */}
 
                       {/* Contenu */}
                       <div className="dash-chantier-row" style={{ flex: 1, padding: '14px 16px', minWidth: 0, display: 'flex', alignItems: 'center', gap: 16 }}>
@@ -868,8 +867,9 @@ function Dashboard() {
                         {/* Séparateur */}
                         <div className="dash-sep" style={{ width: 1, alignSelf: 'stretch', background: 'var(--dash-border)', flexShrink: 0 }} />
 
-                        {/* Jours + barre */}
+                        {/* Jours + barre + badge statut */}
                         <div style={{ flex: '0 0 120px' }}>
+                          <span style={{ display: 'inline-block', background: statBadge.bg, color: statBadge.color, borderRadius: 20, padding: '1px 8px', fontSize: 10, fontWeight: 700, whiteSpace: 'nowrap', marginBottom: 4 }}>{statBadge.label}</span>
                           <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 6 }}>
                             {joursTotal > 0 ? `${joursRealises} / ${joursTotal} jours` : `${progress}%`}
                           </div>

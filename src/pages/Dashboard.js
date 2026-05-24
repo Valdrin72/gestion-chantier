@@ -1145,7 +1145,7 @@ function Dashboard() {
               {agentAlertes.slice(0, 7).map((a) => {
                 const DOTS = { DANGER: '#EF4444', CRITIQUE: '#ef4444', ATTENTION: '#F59E0B', INFO: '#3B82F6' };
                 const dot = DOTS[a.niveau] || '#3B82F6';
-                const handleClick = () => { if (a.action?.page) naviguer(a.action.page, a.action.ctx); else naviguer('agents'); };
+                const handleClick = () => { if (a.actionPage) naviguer(a.actionPage, a.actionCtx || {}); else naviguer('agents'); };
                 return (
                   <div key={a.id} onClick={handleClick}
                     style={{ padding: '9px 11px', borderRadius: 10, border: `1px solid ${a.lu ? 'var(--dash-border)' : dot + '40'}`, cursor: 'pointer', background: a.lu ? 'var(--bg-glass)' : dot + '08', transition: 'all 0.15s', display: 'flex', alignItems: 'flex-start', gap: 9 }}

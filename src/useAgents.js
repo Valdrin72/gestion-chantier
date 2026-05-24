@@ -14,7 +14,7 @@ const STORAGE_KEY   = 'cyna_agents_state';
 const MEMOIRE_KEY   = 'cyna_agents_memoire';
 const INTERVAL_MS   = 60 * 60 * 1000; // toutes les heures
 // Incrémenter pour forcer un reset du cache localStorage si le schéma change
-const SCHEMA_VERSION = 4;
+const SCHEMA_VERSION = 5;
 
 // Tous les agents actifs par défaut
 const AGENTS_PAR_DEFAUT = {
@@ -41,15 +41,21 @@ function sanitiserAlertes(alertes) {
   if (!Array.isArray(alertes)) return [];
   return alertes
     .filter(a => a && typeof a.message === 'string')
-    .map(a => ({
-      ...a,
-      message: typeof a.message === 'string' ? a.message : '—',
-      detail:  typeof a.detail  === 'string' ? a.detail  : undefined,
-      // action peut être {page,ctx} (nav) ou string — on normalise : si c'est un objet avec page on garde, sinon string ou supprimé
-      action: typeof a.action === 'string' ? a.action
-            : (a.action && typeof a.action === 'object' && typeof a.action.page === 'string') ? a.action
-            : undefined,
-    }));
+    .map(a => {
+      const out = {
+        ...a,
+        message: typeof a.message === 'string' ? a.message : '—',
+        detail:  typeof a.detail  === 'string' ? a.detail  : undefined,
+        action:  typeof a.action  === 'string' ? a.action  : undefined,
+      };
+      // Aplatir {page,ctx} → actionPage + actionCtx pour ne jamais stocker d'objet dans action
+      if (a.action && typeof a.action === 'object') {
+        out.actionPage = typeof a.action.page === 'string' ? a.action.page : undefined;
+        out.actionCtx  = (a.action.ctx && typeof a.action.ctx === 'object') ? a.action.ctx : {};
+        out.action     = undefined;
+      }
+      return out;
+    });
 }
 
 function sanitiserPriorites(priorites) {

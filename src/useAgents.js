@@ -60,8 +60,15 @@ function saveMemoire(memoire) {
 }
 
 export default function useAgents({ chantiers, devis, factures, clients, parametres }) {
+  // Lecture localStorage unique au mount — partagée entre tous les useState initialiseurs
+  const _initStateRef = useRef(undefined);
+  const _getInitState = () => {
+    if (_initStateRef.current === undefined) _initStateRef.current = loadState();
+    return _initStateRef.current;
+  };
+
   const [agentsActifs, setAgentsActifs] = useState(() => {
-    const persisted = loadState();
+    const persisted = _getInitState();
     return { ...AGENTS_PAR_DEFAUT, ...(persisted?.agentsActifs || {}) };
   });
 
@@ -78,14 +85,14 @@ export default function useAgents({ chantiers, devis, factures, clients, paramet
     }, 2 * 60 * 1000);
     return () => clearInterval(watchdog);
   }, []);
-  const [alertes, setAlertes] = useState(() => loadState()?.alertes || []);
-  const [predictions, setPredictions] = useState(() => loadState()?.predictions || {});
-  const [patterns, setPatterns] = useState(() => loadState()?.patterns || {});
-  const [rapports, setRapports] = useState(() => loadState()?.rapports || []);
-  const [agentsStatuts, setAgentsStatuts] = useState(() => loadState()?.agentsStatuts || {});
-  const [agentsLogs, setAgentsLogs] = useState(() => loadState()?.agentsLogs || {});
-  const [agentData, setAgentData] = useState(() => loadState()?.agentData || {});
-  const [dernierRun, setDernierRun] = useState(() => loadState()?.dernierRun || null);
+  const [alertes, setAlertes] = useState(() => _getInitState()?.alertes || []);
+  const [predictions, setPredictions] = useState(() => _getInitState()?.predictions || {});
+  const [patterns, setPatterns] = useState(() => _getInitState()?.patterns || {});
+  const [rapports, setRapports] = useState(() => _getInitState()?.rapports || []);
+  const [agentsStatuts, setAgentsStatuts] = useState(() => _getInitState()?.agentsStatuts || {});
+  const [agentsLogs, setAgentsLogs] = useState(() => _getInitState()?.agentsLogs || {});
+  const [agentData, setAgentData] = useState(() => _getInitState()?.agentData || {});
+  const [dernierRun, setDernierRun] = useState(() => _getInitState()?.dernierRun || null);
   const [running, setRunning] = useState(false);
   const memoireRef = useRef(loadMemoire());
 

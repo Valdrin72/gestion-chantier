@@ -80,7 +80,7 @@ export function genererTexteRappel(niveau, facture, client, societe = {}) {
 
   const montant     = fmtCHF(montantRestant(facture));
   const numero      = facture.numero || '—';
-  const dateEmission = fmtDate(facture.dateEmission || facture.creeLe);
+  const dateEmission = fmtDate(facture.dateEmission);
   const dateEcheance = fmtDate(facture.dateEcheance);
   const joursRetard  = joursDepuis(facture.dateEcheance);
   const rappels      = facture.rappels || [];

@@ -277,7 +277,7 @@ function Dashboard() {
     });
 
     // Alertes métier complémentaires (types non couverts par les calculs ci-dessus)
-    const TYPES_ADDITIFS = new Set(['devis_attente', 'factures_brouillon', 'chantier_sans_devis', 'chantier_sans_facture', 'rappel_a_envoyer']);
+    const TYPES_ADDITIFS = new Set(['devis_attente', 'factures_brouillon', 'chantier_sans_devis', 'chantier_sans_facture', 'rappel_a_envoyer', 'facture_retard']);
     const existingIds = new Set(list.map(a => a.id));
     calculerAlertes(
       { chantiers, devis, factures, clients, paiements: {} },
@@ -368,7 +368,7 @@ function Dashboard() {
       });
       return { semaine: deb.toLocaleDateString('fr-CH', { day: '2-digit', month: '2-digit' }), CA: Math.round(ca), Couts: Math.round(couts), Encaissements: Math.round(enc) };
     });
-  }, [factures, actifs, parametres.employes]);
+  }, [factures, actifs, parametres.employes, parametres.parametres]);
 
   // ── Répartition des coûts (donut) ──────────────────────────
   const repartitionCouts = useMemo(() => {

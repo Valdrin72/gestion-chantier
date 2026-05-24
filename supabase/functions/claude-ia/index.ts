@@ -288,17 +288,20 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Vérification JWT Supabase — le token doit appartenir à un utilisateur authentifié
-    const token = authHeader.replace('Bearer ', '');
-    if (SUPABASE_URL && SUPABASE_ANON_KEY) {
-      const authCheck = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
-        headers: { 'Authorization': `Bearer ${token}`, 'apikey': SUPABASE_ANON_KEY },
+    // Vérification JWT Supabase — fail-closed : rejeter si variables d'env manquantes
+    if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+      return new Response(JSON.stringify({ error: 'Configuration serveur manquante' }), {
+        status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
-      if (!authCheck.ok) {
-        return new Response(JSON.stringify({ error: 'Token invalide ou expiré' }), {
-          status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
+    }
+    const token = authHeader.replace('Bearer ', '');
+    const authCheck = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+      headers: { 'Authorization': `Bearer ${token}`, 'apikey': SUPABASE_ANON_KEY },
+    });
+    if (!authCheck.ok) {
+      return new Response(JSON.stringify({ error: 'Token invalide ou expiré' }), {
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
     const body = await req.json();

@@ -7,8 +7,8 @@ export function useChantierCalculs(selected) {
 
   const etat = useMemo(() => {
     if (!selected) return null;
-    return calculerEtatChantier(selected, parametres.employes, devis);
-  }, [selected, parametres.employes, devis]);
+    return calculerEtatChantier(selected, parametres.employes, devis, parametres?.parametres || parametres);
+  }, [selected, parametres.employes, devis, parametres]);
 
   const couts = useMemo(() => {
     if (!selected) return null;

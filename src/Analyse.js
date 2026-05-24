@@ -59,8 +59,8 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
     const couts = calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis);
     const montantTotal = calculerCA(c, devis); // null si aucun devis lié
     const caDisponible = montantTotal !== null;
-    const heuresPrevu = parseFloat(c.heuresPrevu) || 0;
-    const heuresRealise = parseFloat(c.heuresRealise) || 0;
+    const heuresPrevu = (c.equipe || []).reduce((s, m) => s + (parseFloat(m.joursPlannifies) || 0) * 8, 0);
+    const heuresRealise = (c.journal || []).flatMap(e => e.employes || []).reduce((s, e) => s + (parseFloat(e.heuresTravaillees) || 0), 0);
     const surface = parseFloat(c.surface) || 0;
     const joursPrevu = parseInt(c.nombreJours) || 0;
     const joursReelJournal = new Set((c.journal || []).map(e => e.date).filter(Boolean)).size;

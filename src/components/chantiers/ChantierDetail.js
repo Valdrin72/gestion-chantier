@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   HardHat, Pencil, Trash2, AlertTriangle, CheckCircle,
   ChevronRight, DollarSign, Clock,
@@ -130,7 +130,8 @@ function ChantierDetail({ chantier, detailOnglet, setDetailOnglet, modeCompleter
   const _pctEncaisseRaw = devisTotal > 0 ? (montantPayeLie / devisTotal) * 100 : 0;
   const pctEncaisse = isNaN(_pctEncaisseRaw) ? 0 : Math.min(Math.round(_pctEncaisseRaw), 100);
 
-  const alertesChantier = (() => {
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const alertesChantier = useMemo(() => {
     const list = [];
     if (joursRestants !== null && joursRestants < 0) {
       const abs = Math.abs(joursRestants);
@@ -162,7 +163,8 @@ function ChantierDetail({ chantier, detailOnglet, setDetailOnglet, modeCompleter
       list.push({ id: 'avt_devis', texte: `Démarrage avant signature du devis (${c.dateDebut} < acceptation ${devisLie.dateAcceptation})`, gravite: 'warning', icone: 'warning' });
     }
     return list.sort((a, b) => (b.gravite === 'critique' ? 1 : 0) - (a.gravite === 'critique' ? 1 : 0));
-  })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [c, etat, devis, joursRestants]);
 
   const chantierStatusBadge = ['en cours', 'suspendu'].includes((c.statut || '').toLowerCase()) ? getChantierStatus(c) : null;
   const devisSource = devis.find(d => String(d.id) === String(c.devisId));

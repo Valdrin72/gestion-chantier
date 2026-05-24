@@ -635,7 +635,7 @@ export const donneesDemo = {
       priorite: 'Haute',
       typesTravaux: ['Cloisons vitrées', 'Faux plancher'],
       surface: 280,
-      // Pas de montantDevis — CA = devis[id=1].montantHT = 52400
+      // Pas de montantDevis — CA = devis[id=1].montantHT = 73000
       equipe: [
         { employeId: 1, joursPlannifies: 20 },
         { employeId: 2, joursPlannifies: 20 },
@@ -679,7 +679,7 @@ export const donneesDemo = {
       priorite: 'Normale',
       typesTravaux: ['Plafonds suspendus'],
       surface: 220,
-      // CA = devis[id=2].montantHT = 38900
+      // CA = devis[id=2].montantHT = 54500
       equipe: [
         { employeId: 5, joursPlannifies: 14 },
         { employeId: 6, joursPlannifies: 14 },
@@ -721,7 +721,7 @@ export const donneesDemo = {
       priorite: 'Haute',
       typesTravaux: ['Cloisons vitrées', 'Cloisons amovibles'],
       surface: 520,
-      // CA = devis[id=3].montantHT = 87500
+      // CA = devis[id=3].montantHT = 115000
       equipe: [
         { employeId: 8,  joursPlannifies: 30 },
         { employeId: 9,  joursPlannifies: 30 },
@@ -749,7 +749,7 @@ export const donneesDemo = {
       ])),
     },
 
-    // ── CH4 — En cours, gros chantier public, 25/40 jours saisis ────────────
+    // ── CH4 — En cours, gros chantier public, 25/90 jours saisis ────────────
     // Test projection EAC/RAD, alerte facture impayée (F-2026-003 > 60j)
     {
       id: 4,
@@ -1100,7 +1100,7 @@ export const donneesDemo = {
 //  rentabilite-analyst | CH1 marge ~22%, CH3 dépassement matériel, CH4 EAC/RAD,
 //                      | CH7 planifié sans coûts réels → projection impossible
 //  facturation-suisse  | TVA 8.1% sur 7 factures, acompte+solde CH3, F6 impayée >60j
-//  planning-chantier   | CH4 En cours 25/40j, CH5 6/10j pause Pâques, CH6 8/18j
+//  planning-chantier   | CH4 En cours 25/90j, CH5 6/35j pause Pâques, CH6 8/45j
 //  alerts-engine       | F6 retard paiement >60j, CH3 dépassement matériel +12.5%,
 //                      | CH7 devis 'envoyé' (pas encore 'accepté')
 //  bug-hunter          | Tous les IDs sont numbers, statuts .toLowerCase() sûrs,
@@ -1117,7 +1117,7 @@ export const donneesDemo = {
 //        marge nette = 23417.5 − 8760 (FG12%) = 14657.5 → 20.1% ✅
 //   CH2  CA=54500 | totalCoûts=37035 | marge nette ≈ 20% ✅
 //   CH3  CA=115000 | imprevus=4000 | materielReel=31500 → marge nette ≈ -4% (alerte ⚠️)
-//   CH4  25/40j = 62.5% avancement → projection EAC disponible (>=20%)
+//   CH4  25/90j = 27.8% avancement → projection EAC disponible (>=20%)
 //   CH7  journal=[] → avancement=0%, projection impossible, RAD=null, EAC=null
 //
 // ══════════════════════════════════════════════════════════════════════════════

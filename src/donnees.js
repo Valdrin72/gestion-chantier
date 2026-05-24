@@ -60,20 +60,23 @@ export const joursOuvrableRestants = (dateDebut, nombreJours, inclusSamedi = fal
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   
+  const maxIter = nombreJours * 3 + 400;
   if (dateFin < today) {
     let joursDepasse = 0;
+    let iter = 0;
     const d = new Date(today);
-    while (d > dateFin) {
+    while (d > dateFin && ++iter < maxIter) {
       d.setDate(d.getDate() - 1);
       const jour = d.getDay();
       if (inclusSamedi ? jour !== 0 : (jour !== 0 && jour !== 6)) joursDepasse++;
     }
     return -joursDepasse;
   }
-  
+
   let joursRestants = 0;
+  let iter = 0;
   const d = new Date(today);
-  while (d < dateFin) {
+  while (d < dateFin && ++iter < maxIter) {
     d.setDate(d.getDate() + 1);
     const jour = d.getDay();
     if (inclusSamedi ? jour !== 0 : (jour !== 0 && jour !== 6)) joursRestants++;
@@ -1030,7 +1033,7 @@ export const calculerEtatChantier = (chantier, employes = [], devisList = [], pa
 
 export const assertEtatValide = (etat) => {
   if (!etat) {
-    console.error('[CYNA] assertEtatValide : etat est null ou undefined');
+    if (process.env.NODE_ENV !== 'production') console.error('[CYNA] assertEtatValide : etat est null ou undefined');
     return false;
   }
 
@@ -1077,7 +1080,7 @@ export const assertEtatValide = (etat) => {
   }
 
   if (erreurs.length > 0) {
-    console.error('[CYNA] assertEtatValide — anomalies détectées :', erreurs);
+    if (process.env.NODE_ENV !== 'production') console.error('[CYNA] assertEtatValide — anomalies détectées :', erreurs);
     return false;
   }
 

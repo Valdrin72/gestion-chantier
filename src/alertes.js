@@ -57,7 +57,8 @@ export function calculerAlertes({ chantiers = [], devis = [], factures = [], pai
   // ── 2. Devis sans réponse depuis >14 jours ──────────────────
   if (['cyna', 'cynatech'].includes(profilId)) {
     devis.forEach(d => {
-      if (d.statut?.toLowerCase() === 'envoyé' && !d.chantierId) {
+      const devisAChantier = chantiers.some(c => String(c.devisId) === String(d.id));
+      if (d.statut?.toLowerCase() === 'envoyé' && !devisAChantier) {
         const dateRef = new Date(d.dateEmission || d.date || now);
         if (isNaN(dateRef.getTime())) return;
         const joursAttente = Math.floor((now - dateRef) / 86400000);
@@ -96,7 +97,7 @@ export function calculerAlertes({ chantiers = [], devis = [], factures = [], pai
         const info = niveauInfo(rappel.niveau);
         push({
           type: 'rappel_a_envoyer',
-          niveau: rappel.niveau === 3 ? 'critique' : (rappel.niveau === 2 ? 'critique' : 'warning'),
+          niveau: rappel.niveau === 3 ? 'critique' : 'warning',
           message: `${info.label} à envoyer pour facture ${f.numero} — ${joursRetard} j de retard · CHF ${montantRestant.toLocaleString('fr-CH')}`,
           page: 'finances',
           entityId: f.id,

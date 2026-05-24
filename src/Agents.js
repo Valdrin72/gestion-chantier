@@ -829,7 +829,7 @@ export default function Agents({
                   <Bot size={20} color="#8b5cf6" />
                   <div>
                     <div style={{ fontWeight: 800, fontSize: 14, color: 'var(--text-primary)' }}>Résumé exécutif</div>
-                    <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{agentData.RapportNaturel.date}</div>
+                    <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{typeof agentData.RapportNaturel.date === 'string' ? agentData.RapportNaturel.date : ''}</div>
                   </div>
                   {agentData.RapportNaturel.scoreEntreprise !== null && (
                     <div style={{ marginLeft: 'auto', textAlign: 'center' }}>
@@ -846,7 +846,7 @@ export default function Agents({
                       <div style={{ width: 24, height: 24, borderRadius: '50%', background: '#8b5cf614', border: '1px solid #8b5cf630', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: '#8b5cf6', flexShrink: 0 }}>
                         {i + 1}
                       </div>
-                      <p style={{ margin: 0, fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.7 }}>{para}</p>
+                      <p style={{ margin: 0, fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.7 }}>{typeof para === 'string' ? para : ''}</p>
                     </div>
                   ))}
                 </div>

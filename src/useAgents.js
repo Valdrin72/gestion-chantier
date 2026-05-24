@@ -14,7 +14,7 @@ const STORAGE_KEY   = 'cyna_agents_state';
 const MEMOIRE_KEY   = 'cyna_agents_memoire';
 const INTERVAL_MS   = 60 * 60 * 1000; // toutes les heures
 // Incrémenter pour forcer un reset du cache localStorage si le schéma change
-const SCHEMA_VERSION = 3;
+const SCHEMA_VERSION = 4;
 
 // Tous les agents actifs par défaut
 const AGENTS_PAR_DEFAUT = {
@@ -36,26 +36,79 @@ const AGENTS_PAR_DEFAUT = {
   SentinelAgent: true,
 };
 
+// Convertit récursivement tout champ non-string/number/boolean/null en string sûre
+// pour éviter qu'un objet corrompu du localStorage ne crashe React.
+function safeStringField(v) {
+  if (v == null || typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean') return v;
+  return undefined; // supprime le champ s'il est objet non-attendu
+}
+
 function sanitiserAlertes(alertes) {
   if (!Array.isArray(alertes)) return [];
   return alertes
     .filter(a => a && typeof a.message === 'string')
     .map(a => ({
       ...a,
-      // action peut être {page,ctx} (navigation) ou string (description) — on garde les 2 cas
-      // mais on ne le rend jamais directement dans le JSX sans safeStr
-      detail: typeof a.detail === 'string' ? a.detail : undefined,
+      message: typeof a.message === 'string' ? a.message : '—',
+      detail:  typeof a.detail  === 'string' ? a.detail  : undefined,
+      // action peut être {page,ctx} (nav) ou string — on normalise : si c'est un objet avec page on garde, sinon string ou supprimé
+      action: typeof a.action === 'string' ? a.action
+            : (a.action && typeof a.action === 'object' && typeof a.action.page === 'string') ? a.action
+            : undefined,
     }));
+}
+
+function sanitiserPriorites(priorites) {
+  if (!Array.isArray(priorites)) return [];
+  return priorites.map(p => ({
+    ...p,
+    action:   typeof p.action   === 'string' ? p.action   : '',
+    detail:   typeof p.detail   === 'string' ? p.detail   : '',
+    impact:   typeof p.impact   === 'string' ? p.impact   : '',
+    categorie:typeof p.categorie=== 'string' ? p.categorie: '',
+  }));
+}
+
+function sanitiserAgentData(agentData) {
+  if (!agentData || typeof agentData !== 'object') return {};
+  const out = { ...agentData };
+  // RapportNaturel : paras et actionPrincipale
+  if (out.RapportNaturel) {
+    const rn = { ...out.RapportNaturel };
+    if (Array.isArray(rn.paras)) rn.paras = rn.paras.map(p => typeof p === 'string' ? p : '');
+    if (rn.actionPrincipale) {
+      rn.actionPrincipale = {
+        ...rn.actionPrincipale,
+        action: typeof rn.actionPrincipale.action === 'string' ? rn.actionPrincipale.action : '',
+        detail: typeof rn.actionPrincipale.detail === 'string' ? rn.actionPrincipale.detail : '',
+      };
+    }
+    out.RapportNaturel = rn;
+  }
+  // CoachDirecteur : priorités
+  if (out.CoachDirecteur?.priorites) {
+    out.CoachDirecteur = {
+      ...out.CoachDirecteur,
+      priorites: sanitiserPriorites(out.CoachDirecteur.priorites),
+    };
+  }
+  return out;
 }
 
 function sanitiserRapports(rapports) {
   if (!Array.isArray(rapports)) return [];
   return rapports.map(r => {
     if (!r) return r;
-    if (r.actionPrincipale && typeof r.actionPrincipale.action !== 'string') {
-      return { ...r, actionPrincipale: null };
+    const out = { ...r };
+    if (Array.isArray(out.paras)) out.paras = out.paras.map(p => typeof p === 'string' ? p : '');
+    if (out.actionPrincipale) {
+      out.actionPrincipale = {
+        ...out.actionPrincipale,
+        action: typeof out.actionPrincipale.action === 'string' ? out.actionPrincipale.action : '',
+        detail: typeof out.actionPrincipale.detail === 'string' ? out.actionPrincipale.detail : '',
+      };
     }
-    return r;
+    return out;
   });
 }
 
@@ -69,8 +122,9 @@ function loadState() {
       localStorage.removeItem(STORAGE_KEY);
       return null;
     }
-    if (parsed?.alertes)  parsed.alertes  = sanitiserAlertes(parsed.alertes);
-    if (parsed?.rapports) parsed.rapports = sanitiserRapports(parsed.rapports);
+    if (parsed?.alertes)   parsed.alertes   = sanitiserAlertes(parsed.alertes);
+    if (parsed?.rapports)  parsed.rapports  = sanitiserRapports(parsed.rapports);
+    if (parsed?.agentData) parsed.agentData = sanitiserAgentData(parsed.agentData);
     return parsed;
   } catch { return null; }
 }

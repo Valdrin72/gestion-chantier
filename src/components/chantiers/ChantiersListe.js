@@ -1,8 +1,9 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import {
-  HardHat, X, Pencil, Trash2, AlertTriangle, ChevronRight, DollarSign, Clock, Eye, TrendingUp, Download,
+  HardHat, X, Pencil, Trash2, AlertTriangle, ChevronRight, DollarSign, Clock, Eye, TrendingUp, Download, LayoutList, LayoutGrid,
 } from 'lucide-react';
 import { exportCSV } from '../../utils/exportCSV';
+import KanbanChantiers from './KanbanChantiers';
 import {
   fmtN, calculerCoutsChantier, C, calculerEtatChantier,
   assertEtatCoherent, calculerCA, isChantierActif, getIntervallesPeriode, chantiersInPeriode,
@@ -25,6 +26,7 @@ function ChantiersListe({
 }) {
   const { chantiers, clients, devis = [], parametres, naviguer, contexte, agentState, confirmer, periodeGlobale = 'mois' } = useApp();
   const [page, setPage] = useState(0);
+  const [vueMode, setVueMode] = useState('liste');
   useEffect(() => { setPage(0); }, [filtre, periodeGlobale, chantiersFiltres.length]);
 
   const deriveMap = React.useMemo(() => {
@@ -167,6 +169,19 @@ function ChantiersListe({
           {chantiersFiltres.length > 0 && (
             <button onClick={exporterCSV} style={{ ...DS.btnGhost }}><Download size={14} /> Exporter CSV</button>
           )}
+          {/* Toggle liste / kanban */}
+          <div style={{ display: 'flex', background: 'var(--bg-glass-2)', border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
+            <button
+              onClick={() => setVueMode('liste')}
+              title="Vue liste"
+              style={{ padding: '7px 11px', cursor: 'pointer', fontFamily: 'inherit', border: 'none', background: vueMode === 'liste' ? 'var(--bg-card)' : 'transparent', color: vueMode === 'liste' ? '#4F46E5' : 'var(--text-muted)', borderRight: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: vueMode === 'liste' ? 700 : 400, transition: 'all 0.15s' }}
+            ><LayoutList size={14} /> Liste</button>
+            <button
+              onClick={() => setVueMode('kanban')}
+              title="Vue Kanban"
+              style={{ padding: '7px 11px', cursor: 'pointer', fontFamily: 'inherit', border: 'none', background: vueMode === 'kanban' ? 'var(--bg-card)' : 'transparent', color: vueMode === 'kanban' ? '#4F46E5' : 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: vueMode === 'kanban' ? 700 : 400, transition: 'all 0.15s' }}
+            ><LayoutGrid size={14} /> Kanban</button>
+          </div>
         </div>
       </div>
 
@@ -201,30 +216,37 @@ function ChantiersListe({
 
       {formSlot}
 
-      {nbCritique > 0 ? (
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: 12,
-          padding: '13px 18px', borderRadius: 12, marginBottom: 16,
-          background: C.danger + '0f', border: `1px solid ${C.danger}30`, borderLeft: `4px solid ${C.danger}`,
-        }}>
-          <AlertTriangle size={18} strokeWidth={2} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
-          <span style={{ fontSize: 14, fontWeight: 800, color: C.danger }}>
-            {nbCritique} chantier{nbCritique > 1 ? 's' : ''} bloque{nbCritique > 1 ? 'nt' : ''} aujourd'hui
-          </span>
-        </div>
-      ) : nbWarning > 0 ? (
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: 12,
-          padding: '13px 18px', borderRadius: 12, marginBottom: 16,
-          background: C.warning + '0f', border: `1px solid ${C.warning}30`, borderLeft: `4px solid ${C.warning}`,
-        }}>
-          <AlertTriangle size={18} strokeWidth={2} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
-          <span style={{ fontSize: 14, fontWeight: 800, color: C.warning }}>
-            {nbWarning} chantier{nbWarning > 1 ? 's' : ''} à surveiller
-          </span>
-        </div>
-      ) : null}
-      <div style={{ ...DS.card, padding: 0, overflow: 'hidden' }}>
+      {/* ── Vue Kanban ── */}
+      {vueMode === 'kanban' && (
+        <KanbanChantiers scored={scored} onSelect={onSelect} />
+      )}
+
+      {vueMode === 'liste' && (
+        nbCritique > 0 ? (
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 12,
+            padding: '13px 18px', borderRadius: 12, marginBottom: 16,
+            background: C.danger + '0f', border: `1px solid ${C.danger}30`, borderLeft: `4px solid ${C.danger}`,
+          }}>
+            <AlertTriangle size={18} strokeWidth={2} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
+            <span style={{ fontSize: 14, fontWeight: 800, color: C.danger }}>
+              {nbCritique} chantier{nbCritique > 1 ? 's' : ''} bloque{nbCritique > 1 ? 'nt' : ''} aujourd'hui
+            </span>
+          </div>
+        ) : nbWarning > 0 ? (
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 12,
+            padding: '13px 18px', borderRadius: 12, marginBottom: 16,
+            background: C.warning + '0f', border: `1px solid ${C.warning}30`, borderLeft: `4px solid ${C.warning}`,
+          }}>
+            <AlertTriangle size={18} strokeWidth={2} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
+            <span style={{ fontSize: 14, fontWeight: 800, color: C.warning }}>
+              {nbWarning} chantier{nbWarning > 1 ? 's' : ''} à surveiller
+            </span>
+          </div>
+        ) : null
+      )}
+      {vueMode === 'liste' && <div style={{ ...DS.card, padding: 0, overflow: 'hidden' }}>
         {scored.length === 0 ? (
           <div style={{ padding: '40px 24px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 14 }}>
             {contexte?.clientActif || contexte?.employeActif ? 'Aucun chantier ne correspond à ce filtre.' : 'Aucun chantier à afficher.'}
@@ -329,10 +351,10 @@ function ChantiersListe({
             </table>
           </div>
         )}
-      </div>
+      </div>}
 
-      {/* Pagination */}
-      {totalPages > 1 && (
+      {/* Pagination — liste seulement */}
+      {vueMode === 'liste' && totalPages > 1 && (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, marginTop: 12 }}>
           <button
             onClick={() => setPage(p => Math.max(0, p - 1))}

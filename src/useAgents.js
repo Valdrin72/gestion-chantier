@@ -34,8 +34,19 @@ const AGENTS_PAR_DEFAUT = {
   SentinelAgent: true,
 };
 
+function sanitiserAlertes(alertes) {
+  if (!Array.isArray(alertes)) return [];
+  return alertes.filter(a => a && typeof a.message === 'string');
+}
+
 function loadState() {
-  try { const raw = localStorage.getItem(STORAGE_KEY); return raw ? JSON.parse(raw) : null; } catch { return null; }
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (parsed?.alertes) parsed.alertes = sanitiserAlertes(parsed.alertes);
+    return parsed;
+  } catch { return null; }
 }
 function saveState(state) {
   try {

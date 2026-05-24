@@ -17,6 +17,14 @@ import useIsMobile from '../hooks/useIsMobile';
 import { calculerAlertes } from '../alertes';
 import SaisieRapideDashboard from '../components/SaisieRapideDashboard';
 
+// Protège le rendu contre les valeurs non-string (données localStorage corrompues)
+function safeStr(v) {
+  if (v == null) return '';
+  if (typeof v === 'string') return v;
+  if (typeof v === 'object') return v.label || v.action || v.message || JSON.stringify(v);
+  return String(v);
+}
+
 function Dashboard() {
   const isMobile = useIsMobile();
   const { chantiers, setChantiers, clients, factures, devis = [], parametres, naviguer, actionsLog = [], periodeGlobale = 'mois', setPeriodeGlobale = () => {}, agentState, profil, afficherNotif } = useApp();
@@ -779,7 +787,7 @@ function Dashboard() {
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                     {top3.map((item, idx) => {
-                      const titre = item.titre || item.message || item.description || '—';
+                      const titre = safeStr(item.titre || item.action || item.message || item.description || '—');
                       const impact = item.impact || null;
                       return (
                         <div key={idx} style={{ display: 'flex', alignItems: 'flex-start', gap: 7 }}>
@@ -816,7 +824,7 @@ function Dashboard() {
                       </span>
                     </div>
                     <p style={{ margin: 0, fontSize: 12, color: 'rgba(255,255,255,0.75)', lineHeight: 1.4, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                      {alerteCritique.titre || alerteCritique.message || '—'}
+                      {safeStr(alerteCritique.titre || alerteCritique.message || '—')}
                     </p>
                     {alerteCritique.agent && (
                       <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', fontStyle: 'italic' }}>via {alerteCritique.agent}</span>
@@ -1146,8 +1154,8 @@ function Dashboard() {
                   >
                     <div style={{ width: 7, height: 7, borderRadius: '50%', background: dot, marginTop: 4, flexShrink: 0 }} />
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontWeight: a.lu ? 500 : 700, fontSize: 12, color: 'var(--text-primary)', marginBottom: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.message}</div>
-                      {a.detail && <div style={{ fontSize: 11, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.detail}</div>}
+                      <div style={{ fontWeight: a.lu ? 500 : 700, fontSize: 12, color: 'var(--text-primary)', marginBottom: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{safeStr(a.message)}</div>
+                      {a.detail && <div style={{ fontSize: 11, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{safeStr(a.detail)}</div>}
                     </div>
                     <ChevronRight size={12} style={{ color: 'var(--text-muted)', flexShrink: 0, marginTop: 2 }} />
                   </div>

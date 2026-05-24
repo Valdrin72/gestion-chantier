@@ -867,9 +867,11 @@ function Dashboard() {
                         {/* Séparateur */}
                         <div className="dash-sep" style={{ width: 1, alignSelf: 'stretch', background: 'var(--dash-border)', flexShrink: 0 }} />
 
-                        {/* Jours + barre + badge statut */}
+                        {/* Jours + barre + badge statut (badge aligné à droite de la carte) */}
                         <div style={{ flex: '0 0 120px' }}>
-                          <span style={{ display: 'inline-block', background: statBadge.bg, color: statBadge.color, borderRadius: 20, padding: '1px 8px', fontSize: 10, fontWeight: 700, whiteSpace: 'nowrap', marginBottom: 4 }}>{statBadge.label}</span>
+                          <div style={{ textAlign: 'right', marginBottom: 4 }}>
+                            <span style={{ display: 'inline-block', background: statBadge.bg, color: statBadge.color, borderRadius: 20, padding: '1px 8px', fontSize: 10, fontWeight: 700, whiteSpace: 'nowrap' }}>{statBadge.label}</span>
+                          </div>
                           <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 6 }}>
                             {joursTotal > 0 ? `${joursRealises} / ${joursTotal} jours` : `${progress}%`}
                           </div>

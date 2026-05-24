@@ -373,8 +373,8 @@ export default function Agents({
                     </div>
                     <div style={{ flex: 1 }}>
                       <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 5, flexWrap: 'wrap' }}>
-                        <span style={{ background: i === 0 ? '#fee2e2' : i === 1 ? '#fef3c7' : '#e8f0f9', color: i === 0 ? '#991b1b' : i === 1 ? '#92400e' : '#0d3d6e', borderRadius: 20, padding: '2px 10px', fontSize: 10, fontWeight: 700 }}>{p.categorie}</span>
-                        <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Impact : {p.impact}</span>
+                        <span style={{ background: i === 0 ? '#fee2e2' : i === 1 ? '#fef3c7' : '#e8f0f9', color: i === 0 ? '#991b1b' : i === 1 ? '#92400e' : '#0d3d6e', borderRadius: 20, padding: '2px 10px', fontSize: 10, fontWeight: 700 }}>{safeStr(p.categorie)}</span>
+                        <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Impact : {safeStr(p.impact)}</span>
                       </div>
                       <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-primary)', marginBottom: 4 }}>{safeStr(p.action)}</div>
                       <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{safeStr(p.detail)}</div>
@@ -731,7 +731,7 @@ export default function Agents({
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
                 {agentData.Saisonnierte.prochainsMois.map((m, i) => (
                   <div key={i} style={{ ...DS.card, padding: '16px 18px', borderTop: `3px solid ${m.intensite === 'fort' ? '#10b981' : m.intensite === 'moyen' ? '#f59e0b' : '#ef4444'}` }}>
-                    <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 6 }}>{m.mois}</div>
+                    <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 6 }}>{safeStr(m.mois)}</div>
                     <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 4 }}>{m.count} chantier(s) historiquement</div>
                     <div style={{ fontSize: 11, fontWeight: 700, color: m.intensite === 'fort' ? '#10b981' : m.intensite === 'moyen' ? '#f59e0b' : '#6b7280', textTransform: 'uppercase' }}>
                       {m.intensite === 'fort' ? <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><TrendingUp size={11} /> Période forte</span> : m.intensite === 'creux' ? <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><TrendingDown size={11} /> Période creuse</span> : <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><BarChart2 size={11} /> Période normale</span>}
@@ -918,7 +918,7 @@ export default function Agents({
                 {agentData.RapportNaturel.actionPrincipale && (
                   <div style={{ marginTop: 20, padding: '12px 16px', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 10 }}>
                     <div style={{ fontSize: 11, fontWeight: 700, color: '#0d3d6e', textTransform: 'uppercase', marginBottom: 4 }}>Action prioritaire recommandée</div>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: '#0d3d6e' }}>{agentData.RapportNaturel.actionPrincipale.icone} {safeStr(agentData.RapportNaturel.actionPrincipale.action)}</div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: '#0d3d6e' }}>{safeStr(agentData.RapportNaturel.actionPrincipale.icone)} {safeStr(agentData.RapportNaturel.actionPrincipale.action)}</div>
                     <div style={{ fontSize: 12, color: '#0d3d6e', marginTop: 2 }}>{safeStr(agentData.RapportNaturel.actionPrincipale.detail)}</div>
                   </div>
                 )}
@@ -1010,7 +1010,7 @@ export default function Agents({
                           const c = pColors[a.priorite] || pColors.NOTE;
                           return (
                             <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 12px', background: c.bg, border: `1px solid ${c.border}`, borderRadius: 8 }}>
-                              <span style={{ fontSize: 14, flexShrink: 0 }}>{a.icone}</span>
+                              <span style={{ fontSize: 14, flexShrink: 0 }}>{safeStr(a.icone)}</span>
                               <div style={{ flex: 1, minWidth: 0 }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                                   <span style={{ fontSize: 12, fontWeight: 700, color: c.text }}>{safeStr(a.action)}</span>
@@ -1037,10 +1037,10 @@ export default function Agents({
                             <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', background: nc + '0d', border: `1px solid ${nc}30`, borderRadius: 8 }}>
                               <div style={{ width: 36, height: 36, borderRadius: 8, background: nc + '18', border: `1px solid ${nc}30`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: 13, color: nc, flexShrink: 0 }}>{r.score}</div>
                               <div style={{ flex: 1, minWidth: 0 }}>
-                                <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)' }}>{r.chantier}</div>
-                                {r.facteurs?.length > 0 && <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 1 }}>{r.facteurs.slice(0, 2).join(' · ')}</div>}
+                                <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)' }}>{safeStr(r.chantier)}</div>
+                                {r.facteurs?.length > 0 && <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 1 }}>{r.facteurs.slice(0, 2).map(f => typeof f === 'string' ? f : '').join(' · ')}</div>}
                               </div>
-                              <span style={{ fontSize: 9, fontWeight: 700, background: nc, color: '#fff', borderRadius: 20, padding: '2px 8px', flexShrink: 0 }}>{r.niveau}</span>
+                              <span style={{ fontSize: 9, fontWeight: 700, background: nc, color: '#fff', borderRadius: 20, padding: '2px 8px', flexShrink: 0 }}>{safeStr(r.niveau)}</span>
                             </div>
                           );
                         })}
@@ -1055,8 +1055,8 @@ export default function Agents({
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
                         {s.erreursAEviter.map((e, i) => (
                           <div key={i} style={{ padding: '10px 12px', background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.2)', borderRadius: 8 }}>
-                            <div style={{ fontSize: 12, fontWeight: 600, color: '#92400e' }}>⚠ {e.message}</div>
-                            <div style={{ fontSize: 11, color: '#78350f', marginTop: 3 }}>{e.conseil}</div>
+                            <div style={{ fontSize: 12, fontWeight: 600, color: '#92400e' }}>⚠ {safeStr(e.message)}</div>
+                            <div style={{ fontSize: 11, color: '#78350f', marginTop: 3 }}>{safeStr(e.conseil)}</div>
                           </div>
                         ))}
                       </div>
@@ -1070,8 +1070,8 @@ export default function Agents({
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 10 }}>
                         {s.anticipations.map((a, i) => (
                           <div key={i} style={{ padding: '12px 14px', background: a.couleur + '0d', border: `1px solid ${a.couleur}30`, borderRadius: 10 }}>
-                            <div style={{ fontSize: 13, marginBottom: 4 }}>{a.icone} <span style={{ fontWeight: 700, color: a.couleur }}>{a.valeur}</span></div>
-                            <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: 3 }}>{a.label}</div>
+                            <div style={{ fontSize: 13, marginBottom: 4 }}>{safeStr(a.icone)} <span style={{ fontWeight: 700, color: a.couleur }}>{safeStr(a.valeur)}</span></div>
+                            <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: 3 }}>{safeStr(a.label)}</div>
                             <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>{safeStr(a.detail)}</div>
                           </div>
                         ))}

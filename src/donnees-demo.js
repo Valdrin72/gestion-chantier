@@ -50,26 +50,35 @@ const _dates_ch3 = [
 // Chantier 4 — 25 jours saisis (sur 90 prévus) 2026-02-02 → 2026-07-07
 // 02,03,04,05,06/02 | 09,10,11,12,13/02 | 16,17,18,19,20/02
 // 23,24,25,26,27/02 | 02,03,04,05,06/03
+// CH4 — 40 jours saisis (sur 90 prévus) : fév-mars + mai 2026
 const _dates_ch4 = [
   '2026-02-02','2026-02-03','2026-02-04','2026-02-05','2026-02-06',
   '2026-02-09','2026-02-10','2026-02-11','2026-02-12','2026-02-13',
   '2026-02-16','2026-02-17','2026-02-18','2026-02-19','2026-02-20',
   '2026-02-23','2026-02-24','2026-02-25','2026-02-26','2026-02-27',
   '2026-03-02','2026-03-03','2026-03-04','2026-03-05','2026-03-06',
+  // Mai 2026 — reprise chantier après arrêt mars
+  '2026-05-04','2026-05-05','2026-05-06','2026-05-07','2026-05-08',
+  '2026-05-11','2026-05-12','2026-05-13','2026-05-19','2026-05-20',
+  '2026-05-21','2026-05-22','2026-05-25','2026-05-26','2026-05-27',
 ];
 
-// Chantier 5 — 6 jours saisis (sur 35 prévus) 2026-04-14 → 2026-06-02
-// 14,15,16,17/04 — pause Pâques 18-21 avr — 22,23/04
+// Chantier 5 — 13 jours saisis (sur 35 prévus) 2026-04-14 → 2026-06-02
+// 14,15,16,17/04 — 22,23/04 — mai 2026
 const _dates_ch5 = [
   '2026-04-14','2026-04-15','2026-04-16','2026-04-17',
   '2026-04-22','2026-04-23',
+  '2026-05-04','2026-05-05','2026-05-06','2026-05-07','2026-05-08',
+  '2026-05-11','2026-05-12',
 ];
 
-// Chantier 6 — 8 jours saisis (sur 45 prévus) 2026-04-07 → 2026-06-09
-// 07,08,09,10/04 | 14,15,16,17/04 (17 avr = jeudi, avant Vendredi saint 18)
+// Chantier 6 — 18 jours saisis (sur 45 prévus) 2026-04-07 → 2026-06-09
+// 07,08,09,10/04 | 14,15,16,17/04 | mai 2026
 const _dates_ch6 = [
   '2026-04-07','2026-04-08','2026-04-09','2026-04-10',
   '2026-04-14','2026-04-15','2026-04-16','2026-04-17',
+  '2026-05-04','2026-05-05','2026-05-06','2026-05-07','2026-05-08',
+  '2026-05-11','2026-05-12','2026-05-13','2026-05-19','2026-05-20',
 ];
 
 export const donneesDemo = {
@@ -787,7 +796,7 @@ export const donneesDemo = {
       ],
       avenants: [],
       notes: 'Chantier institutionnel — accès badge requis, horaires 07h00-17h00',
-      // Journal : 25 jours sur 40 — emp 1: 8h, emp 2: 8h, emp 3: 7h, emp 9: 8h
+      // Journal : 40 jours sur 90 — emp 1: 8h, emp 2: 8h, emp 3: 7h, emp 9: 8h
       journal: _dates_ch4.map(date => _jour(date, [
         { employeId: 1, heuresTravaillees: 8 },
         { employeId: 2, heuresTravaillees: 8 },
@@ -828,7 +837,7 @@ export const donneesDemo = {
       imprevus: [],
       avenants: [],
       notes: 'Client prioritaire — livraison souhaitée avant fin avril',
-      // Journal : 6 jours sur 10 — emp 5: 8h, emp 6: 8h
+      // Journal : 13 jours sur 35 — emp 5: 8h, emp 6: 8h
       journal: _dates_ch5.map(date => _jour(date, [
         { employeId: 5, heuresTravaillees: 8 },
         { employeId: 6, heuresTravaillees: 8 },
@@ -868,7 +877,7 @@ export const donneesDemo = {
       imprevus: [],
       avenants: [],
       notes: 'Phase 1 de 3 — client stratégique, qualité de finition prioritaire',
-      // Journal : 8 jours sur 18 — emp 8: 8h, emp 10: 8h, emp 7: 8h
+      // Journal : 18 jours sur 45 — emp 8: 8h, emp 10: 8h, emp 7: 8h
       journal: _dates_ch6.map(date => _jour(date, [
         { employeId: 8,  heuresTravaillees: 8 },
         { employeId: 10, heuresTravaillees: 8 },

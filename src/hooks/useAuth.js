@@ -5,6 +5,7 @@ const TOUTES_PAGES = [
   'dashboard', 'chantiers', 'clients', 'employes', 'devis', 'heures',
   'finances', 'planning', 'rapport', 'agents', 'parametres',
   'factures', 'statistiques', 'paiements', 'analyse', 'importpdf', 'metrage', 'photos',
+  'calculs', 'alertes',
 ];
 
 const ROLE_PAGES = {
@@ -24,10 +25,25 @@ const ROLE_PAGES = {
   },
 };
 
+const DEMO_SESSION = {
+  user: {
+    id: '00000000-0000-0000-0000-000000000001',
+    email: 'demo@cyna.ch',
+    app_metadata: { role: 'cyna' },
+    user_metadata: {},
+    aud: 'authenticated',
+  },
+};
+const DEMO_FLAG = 'cyna_demo_mode';
+
 export default function useAuth() {
-  const [session, setSession] = useState(null);
-  const [profil, setProfil] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const isDemoMode = () => {
+    try { return localStorage.getItem(DEMO_FLAG) === '1'; } catch { return false; }
+  };
+
+  const [session, setSession] = useState(() => isDemoMode() ? DEMO_SESSION : null);
+  const [profil, setProfil] = useState(() => isDemoMode() ? ROLE_PAGES['cyna'] : null);
+  const [loading, setLoading] = useState(() => !isDemoMode());
   const [erreur, setErreur] = useState(null);
 
   const resolverProfil = useCallback((user) => {
@@ -39,8 +55,12 @@ export default function useAuth() {
     return ROLE_PAGES[role];
   }, []);
 
+  const [demoActive, setDemoActive] = useState(() => isDemoMode());
+
   useEffect(() => {
+    if (demoActive) return; // Demo mode : skip Supabase auth
     supabase.auth.getSession().then(({ data: { session: s } }) => {
+      if (isDemoMode()) return; // Demo mode activated while loading
       setSession(s);
       setProfil(resolverProfil(s?.user));
       setLoading(false);
@@ -49,12 +69,22 @@ export default function useAuth() {
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, s) => {
+      if (isDemoMode()) return; // Demo mode activated
       setSession(s);
       setProfil(resolverProfil(s?.user));
     });
 
     return () => subscription.unsubscribe();
-  }, [resolverProfil]);
+  }, [resolverProfil, demoActive]);
+
+  const connecterDemo = useCallback(() => {
+    try { localStorage.setItem(DEMO_FLAG, '1'); } catch {}
+    setDemoActive(true);
+    setSession(DEMO_SESSION);
+    setProfil(ROLE_PAGES['cyna']);
+    setLoading(false);
+    setErreur(null);
+  }, []);
 
   const connecter = useCallback(async (email, motDePasse) => {
     setErreur(null);
@@ -67,10 +97,13 @@ export default function useAuth() {
   }, []);
 
   const deconnecter = useCallback(async () => {
-    await supabase.auth.signOut();
+    try { localStorage.removeItem(DEMO_FLAG); } catch {}
+    if (!isDemoMode()) await supabase.auth.signOut();
+    setSession(null);
+    setProfil(null);
   }, []);
 
-  return { session, profil, loading, erreur, connecter, deconnecter };
+  return { session, profil, loading, erreur, connecter, connecterDemo, deconnecter };
 }
 
 function traduireErreur(msg) {

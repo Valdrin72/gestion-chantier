@@ -3,7 +3,7 @@ import useAuth from './hooks/useAuth';
 import { supabase } from './lib/supabase';
 
 export default function Login({ onLogin }) {
-  const { connecter, erreur } = useAuth();
+  const { connecter, connecterDemo, erreur } = useAuth();
   const [email, setEmail] = useState('');
   const [motDePasse, setMotDePasse] = useState('');
   const [chargement, setChargement] = useState(false);
@@ -259,8 +259,24 @@ export default function Login({ onLogin }) {
           </form>
         </div>
 
+        {/* Demo mode */}
+        <div style={{ textAlign: 'center', marginTop: '16px' }}>
+          <button
+            type="button"
+            data-testid="demo-login"
+            onClick={() => { connecterDemo(); if (onLogin) onLogin(); }}
+            style={{
+              background: 'none', border: '1px solid #cbd5e1', color: '#7c8fa1',
+              borderRadius: '8px', padding: '8px 20px', fontSize: '12px',
+              cursor: 'pointer', fontFamily: 'inherit', letterSpacing: '0.2px',
+            }}
+          >
+            Continuer en mode demo
+          </button>
+        </div>
+
         {/* Footer */}
-        <div style={{ textAlign: 'center', marginTop: '20px', color: '#a8b8c8', fontSize: '11px', letterSpacing: '0.3px' }}>
+        <div style={{ textAlign: 'center', marginTop: '16px', color: '#a8b8c8', fontSize: '11px', letterSpacing: '0.3px' }}>
           CYNA SÀRL · Application sécurisée
         </div>
       </div>

@@ -32,11 +32,11 @@ function Slider({ label, min, max, step, value, onChange, format = v => v, hint 
     <div style={{ marginBottom: 20 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
         <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)' }}>{label}</label>
-        <span style={{ fontSize: 13, fontWeight: 800, color: '#3b82f6', background: 'rgba(59,130,246,0.1)', padding: '2px 10px', borderRadius: 20 }}>{format(value)}</span>
+        <span style={{ fontSize: 13, fontWeight: 800, color: '#0d3d6e', background: 'rgba(13,61,110,0.08)', padding: '2px 10px', borderRadius: 20 }}>{format(value)}</span>
       </div>
       <input type="range" min={min} max={max} step={step} value={value}
         onChange={e => onChange(Number(e.target.value))}
-        style={{ width: '100%', accentColor: '#3b82f6', cursor: 'pointer' }} />
+        style={{ width: '100%', accentColor: '#0d3d6e', cursor: 'pointer' }} />
       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'var(--text-muted)', marginTop: 2 }}>
         <span>{format(min)}</span><span>{format(max)}</span>
       </div>
@@ -155,7 +155,7 @@ export default function SimulateurCroissance({ chantiers = [], devis = [], factu
       <div style={{ marginBottom: 24 }}>
         <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>Base actuelle (données réelles)</div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12 }}>
-          <KpiSim label="Employés actifs" value={baseMetrics.nbEmployes} sub="équipe actuelle" icon={Users} couleur="#3b82f6" />
+          <KpiSim label="Employés actifs" value={baseMetrics.nbEmployes} sub="équipe actuelle" icon={Users} couleur="#0d3d6e" />
           <KpiSim label="CA annuel" value={baseMetrics.caAnnuel > 0 ? `CHF ${fmtN(Math.round(baseMetrics.caAnnuel / 1000))}k` : '—'} sub={`${baseMetrics.nbChantiersAnnee} chantiers`} icon={DollarSign} couleur="#10b981" />
           <KpiSim label="Marge nette moy." value={`${baseMetrics.margesMoyenne}%`} sub="sur chantiers terminés" icon={TrendingUp} couleur={baseMetrics.margesMoyenne >= SEUILS.margeRentable ? '#10b981' : '#f59e0b'} />
           <KpiSim label="Tarif jour moyen" value={`CHF ${fmtN(baseMetrics.tarifMoyen)}`} sub="coût chargé employeur" icon={Target} couleur="#8b5cf6" />
@@ -227,7 +227,7 @@ export default function SimulateurCroissance({ chantiers = [], devis = [], factu
               label="CA additionnel"
               value={`CHF ${fmtN(Math.round(projection.caAdditionnel / 1000))}k`}
               sub={`${projection.joursFactures}j × CHF ${fmtN(tarifSim)} × ${nbNouveaux} emp.`}
-              icon={DollarSign} couleur="#3b82f6"
+              icon={DollarSign} couleur="#0d3d6e"
             />
             <KpiSim
               label="Marge nette générée"

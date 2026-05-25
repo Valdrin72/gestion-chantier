@@ -32,13 +32,13 @@ export const PERMISSIONS = {
 };
 
 export function peutAcceder(profilId, page) {
-  return PERMISSIONS[profilId]?.pages.includes(page) ?? true;
+  return PERMISSIONS[profilId]?.pages.includes(page) ?? false;
 }
 
 export function peutFaire(profilId, action) {
-  return PERMISSIONS[profilId]?.actions[action] ?? true;
+  return PERMISSIONS[profilId]?.actions[action] ?? false;
 }
 
 export function getPagesAutorisees(profilId) {
-  return PERMISSIONS[profilId]?.pages ?? ACCES_TOTAL.pages;
+  return PERMISSIONS[profilId]?.pages ?? [];
 }

@@ -57,7 +57,8 @@ export function calculerAlertes({ chantiers = [], devis = [], factures = [], pai
   // ── 2. Devis sans réponse depuis >14 jours ──────────────────
   if (['cyna', 'cynatech'].includes(profilId)) {
     devis.forEach(d => {
-      if (d.statut?.toLowerCase() === 'envoyé' && !d.chantierId) {
+      const devisAChantier = chantiers.some(c => String(c.devisId) === String(d.id));
+      if (d.statut?.toLowerCase() === 'envoyé' && !devisAChantier) {
         const dateRef = new Date(d.dateEmission || d.date || now);
         if (isNaN(dateRef.getTime())) return;
         const joursAttente = Math.floor((now - dateRef) / 86400000);
@@ -77,7 +78,8 @@ export function calculerAlertes({ chantiers = [], devis = [], factures = [], pai
   // ── 3. Factures en retard de paiement + relances à envoyer ───
   if (['cyna', 'cynatech'].includes(profilId)) {
     factures.forEach(f => {
-      if (f.statut !== 'envoyee' && f.statut !== 'partielle' && f.statut !== 'retard') return;
+      const statutF = f.statut?.toLowerCase();
+      if (statutF !== 'envoyee' && statutF !== 'partielle' && statutF !== 'retard') return;
       const dateEch = f.dateEcheance || (f.dateEmission ? new Date(new Date(f.dateEmission).getTime() + 30 * 86400000).toISOString().slice(0, 10) : null);
       if (!dateEch) return;
       const echeance = new Date(dateEch);
@@ -96,7 +98,7 @@ export function calculerAlertes({ chantiers = [], devis = [], factures = [], pai
         const info = niveauInfo(rappel.niveau);
         push({
           type: 'rappel_a_envoyer',
-          niveau: rappel.niveau === 3 ? 'critique' : (rappel.niveau === 2 ? 'critique' : 'warning'),
+          niveau: rappel.niveau === 3 ? 'critique' : 'warning',
           message: `${info.label} à envoyer pour facture ${f.numero} — ${joursRetard} j de retard · CHF ${montantRestant.toLocaleString('fr-CH')}`,
           page: 'finances',
           entityId: f.id,
@@ -117,7 +119,7 @@ export function calculerAlertes({ chantiers = [], devis = [], factures = [], pai
 
   // ── 4. Factures brouillon non émises ────────────────────────
   if (['cyna', 'cynatech'].includes(profilId)) {
-    const brouillons = factures.filter(f => f.statut === 'brouillon');
+    const brouillons = factures.filter(f => f.statut?.toLowerCase() === 'brouillon');
     if (brouillons.length > 0) {
       push({
         type: 'factures_brouillon',
@@ -155,7 +157,7 @@ export function calculerAlertes({ chantiers = [], devis = [], factures = [], pai
         const joursDepuisTermine = Math.floor((now - dateTermine) / 86400000);
         if (joursDepuisTermine < 7) return; // grâce de 7 jours
         const hasFactureFinale = factures.some(f =>
-          String(f.chantierId) === String(c.id) && (f.type === 'finale' || f.type === 'standard') && f.statut !== 'annulee'
+          String(f.chantierId) === String(c.id) && (f.type === 'finale' || f.type === 'standard') && f.statut?.toLowerCase() !== 'annulee'
         );
         if (!hasFactureFinale) {
           push({
@@ -276,5 +278,5 @@ export const ALERTE_LABELS = {
 export const ALERTE_COULEURS = {
   critique: { bg: 'rgba(239,68,68,0.12)',   text: '#ef4444', border: 'rgba(239,68,68,0.3)' },
   warning:  { bg: 'rgba(245,158,11,0.12)',  text: '#f59e0b', border: 'rgba(245,158,11,0.3)' },
-  info:     { bg: 'rgba(59,130,246,0.12)',  text: '#3b82f6', border: 'rgba(59,130,246,0.3)' },
+  info:     { bg: 'rgba(13,61,110,0.10)',  text: '#0d3d6e', border: 'rgba(13,61,110,0.25)' },
 };

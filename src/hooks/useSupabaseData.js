@@ -22,12 +22,11 @@ import { donneesInitiales, migrerJournal } from '../donnees';
 
 const STORAGE_MARKER = '__cyna_storage__';
 const STORAGE_TABLE  = 'devis';
+// Incrémenter quand les données démo changent — force le rechargement depuis donneesInitiales
+const DEMO_VERSION   = 5;
 
 const LEGACY_STATUTS = { 'Validé': 'accepté', 'Signé': 'accepté', 'Envoyé': 'envoyé', 'Refusé': 'refusé', 'Brouillon': 'brouillon', 'Annulé': 'refusé' };
 
-function chargerLocal(cle, defaut) {
-  try { const r = localStorage.getItem(cle); return r ? JSON.parse(r) : defaut; } catch { return defaut; }
-}
 function sauvegarderLocal(cle, data) {
   try { localStorage.setItem(cle, JSON.stringify(data)); } catch {}
 }
@@ -61,11 +60,18 @@ async function ecrireRowUser(userId, rowId, payload) {
   }
 }
 
+// Données initiales précalculées une seule fois (hors du composant — stable)
+const _initChantiers = donneesInitiales.chantiers.map(c => ({ ...c, journal: migrerJournal(c.journal || []) }));
+const _initDevis     = donneesInitiales.devis;
+const _initFactures  = donneesInitiales.factures || [];
+const _initClients   = donneesInitiales.clients;
+
 export default function useSupabaseData(userId) {
-  const [chantiers,   setChantiersState]  = useState([]);
-  const [devis,       setDevisState]      = useState([]);
-  const [factures,    setFacturesState]   = useState([]);
-  const [clients,     setClientsState]    = useState([]);
+  // Initialiser avec donneesInitiales — visible immédiatement, Supabase écrase ensuite
+  const [chantiers,   setChantiersState]  = useState(_initChantiers);
+  const [devis,       setDevisState]      = useState(_initDevis);
+  const [factures,    setFacturesState]   = useState(_initFactures);
+  const [clients,     setClientsState]    = useState(_initClients);
   const [parametres,  setParametresState] = useState(donneesInitiales);
   const [loading,     setLoading]         = useState(true);
   const [syncing,     setSyncing]         = useState(false);
@@ -73,7 +79,9 @@ export default function useSupabaseData(userId) {
   const rowIdRef    = useRef(null);
   const syncTimer   = useRef(null);
   const pendingRef  = useRef(null);
-  const dataRef     = useRef({});
+  const dataRef     = useRef({ chantiers: _initChantiers, devis: _initDevis, factures: _initFactures, clients: _initClients, parametres: donneesInitiales });
+  const mountedRef  = useRef(true);
+  useEffect(() => { mountedRef.current = true; return () => { mountedRef.current = false; }; }, []);
 
   // Numéros de factures de test créées par les agents — supprimées une fois lors du chargement
   const FACTURES_TEST = new Set([
@@ -88,14 +96,43 @@ export default function useSupabaseData(userId) {
     const dv = (d.devis || []).map(x => ({ ...x, statut: LEGACY_STATUTS[x.statut] || x.statut }));
     const facturesPropres = (d.factures || []).filter(f => !FACTURES_TEST.has(f.numero));
     const nettoyage = facturesPropres.length < (d.factures || []).length;
-    setChantiersState(c);
-    setDevisState(dv);
-    setFacturesState(facturesPropres);
-    setClientsState(d.clients || []);
-    setParametresState(d.parametres || donneesInitiales);
-    dataRef.current = { chantiers: c, devis: dv, factures: facturesPropres, clients: d.clients || [], parametres: d.parametres || donneesInitiales };
-    // Si des factures test ont été supprimées, resync immédiatement vers Supabase
-    if (nettoyage) scheduleSync({ factures: facturesPropres });
+
+    const storedParams = d.parametres || {};
+    const outdated = (storedParams.demoVersion || 0) < DEMO_VERSION;
+
+    // Données actives : si vides ou périmées → injecter donneesInitiales
+    const chantiersFinaux = (!outdated && c.length > 0) ? c
+      : donneesInitiales.chantiers.map(ch => ({ ...ch, journal: migrerJournal(ch.journal || []) }));
+    const devisFinaux     = (!outdated && dv.length > 0) ? dv : donneesInitiales.devis;
+    const clientsFinaux   = (!outdated && (d.clients || []).length > 0) ? (d.clients || []) : donneesInitiales.clients;
+    const facturesFinales = (!outdated && facturesPropres.length > 0) ? facturesPropres : (donneesInitiales.factures || []);
+    const params = outdated ? { ...donneesInitiales, demoVersion: DEMO_VERSION } : {
+      ...donneesInitiales,
+      ...storedParams,
+      demoVersion:  DEMO_VERSION,
+      employes:     (storedParams.employes?.length     > 0) ? storedParams.employes     : donneesInitiales.employes,
+      typesTravaux: (storedParams.typesTravaux?.length  > 0) ? storedParams.typesTravaux : donneesInitiales.typesTravaux,
+      localites:    (storedParams.localites?.length    > 0) ? storedParams.localites    : donneesInitiales.localites,
+      zones:        (storedParams.zones?.length        > 0) ? storedParams.zones        : donneesInitiales.zones,
+    };
+
+    setChantiersState(chantiersFinaux);
+    setDevisState(devisFinaux);
+    setFacturesState(facturesFinales);
+    setClientsState(clientsFinaux);
+    setParametresState(params);
+    dataRef.current = { chantiers: chantiersFinaux, devis: devisFinaux, factures: facturesFinales, clients: clientsFinaux, parametres: params };
+
+    const needsSync = nettoyage || outdated || c.length === 0 || dv.length === 0 || !storedParams.employes?.length;
+    if (needsSync) {
+      // Mettre à jour aussi le localStorage pour que le fallback offline soit correct
+      sauvegarderLocal('cyna_chantiers',  chantiersFinaux);
+      sauvegarderLocal('cyna_devis',      devisFinaux);
+      sauvegarderLocal('cyna_factures',   facturesFinales);
+      sauvegarderLocal('cyna_clients',    clientsFinaux);
+      sauvegarderLocal('cyna_parametres', params);
+      scheduleSync({ chantiers: chantiersFinaux, devis: devisFinaux, factures: facturesFinales, clients: clientsFinaux, parametres: params });
+    }
   }
 
   // ── Chargement initial ───────────────────────────────────────────────────
@@ -113,26 +150,26 @@ export default function useSupabaseData(userId) {
           rowIdRef.current = row.id;
           appliquerData(row.data);
         } else {
-          // Migration depuis localStorage
+          // Pas de données Supabase → charger directement donneesInitiales
           const localData = {
-            chantiers:  (chargerLocal('cyna_chantiers', donneesInitiales.chantiers)).map(c => ({ ...c, journal: migrerJournal(c.journal || []) })),
-            devis:      (chargerLocal('cyna_devis', donneesInitiales.devis)).map(d => ({ ...d, statut: LEGACY_STATUTS[d.statut] || d.statut })),
-            factures:   chargerLocal('cyna_factures', []),
-            clients:    chargerLocal('cyna_clients', donneesInitiales.clients),
-            parametres: chargerLocal('cyna_parametres', donneesInitiales),
+            chantiers:  donneesInitiales.chantiers.map(c => ({ ...c, journal: migrerJournal(c.journal || []) })),
+            devis:      donneesInitiales.devis,
+            factures:   donneesInitiales.factures || [],
+            clients:    donneesInitiales.clients,
+            parametres: { ...donneesInitiales, demoVersion: DEMO_VERSION },
           };
           if (!cancelled) appliquerData(localData);
           const id = await ecrireRowUser(userId, row?.id ?? null, localData);
           rowIdRef.current = id;
         }
       } catch (e) {
-        if (process.env.NODE_ENV !== 'production') console.warn('[Sync] Chargement Supabase échoué, fallback localStorage:', e.message);
+        if (process.env.NODE_ENV !== 'production') console.warn('[Sync] Chargement Supabase échoué, fallback donneesInitiales:', e.message);
         if (!cancelled) appliquerData({
-          chantiers:  chargerLocal('cyna_chantiers', donneesInitiales.chantiers),
-          devis:      chargerLocal('cyna_devis', donneesInitiales.devis),
-          factures:   chargerLocal('cyna_factures', []),
-          clients:    chargerLocal('cyna_clients', donneesInitiales.clients),
-          parametres: chargerLocal('cyna_parametres', donneesInitiales),
+          chantiers:  donneesInitiales.chantiers,
+          devis:      donneesInitiales.devis,
+          factures:   donneesInitiales.factures || [],
+          clients:    donneesInitiales.clients,
+          parametres: { ...donneesInitiales, demoVersion: DEMO_VERSION },
         });
       } finally {
         if (!cancelled) setLoading(false);
@@ -144,10 +181,12 @@ export default function useSupabaseData(userId) {
     // Re-sync quand l'app revient au premier plan (retour sur l'onglet / déverrouillage téléphone)
     async function resyncSiVisible() {
       if (document.visibilityState !== 'visible') return;
+      if (cancelled) return;
       // Si des données locales sont en attente de sync, ne pas écraser
       if (pendingRef.current) return;
       try {
         const row = await lireRowUser(userId);
+        if (cancelled) return;
         if (row && row.data && Object.keys(row.data).length > 0) {
           rowIdRef.current = row.id;
           appliquerData(row.data);
@@ -193,16 +232,17 @@ export default function useSupabaseData(userId) {
     dataRef.current   = { ...dataRef.current, ...updates };
     if (syncTimer.current) clearTimeout(syncTimer.current);
     syncTimer.current = setTimeout(async () => {
+      if (!mountedRef.current) return;
       const payload = pendingRef.current;
       pendingRef.current = null;
       setSyncing(true);
       try {
         const id = await ecrireRowUser(userId, rowIdRef.current, payload);
-        rowIdRef.current = id;
+        if (mountedRef.current) rowIdRef.current = id;
       } catch (e) {
         if (process.env.NODE_ENV !== 'production') console.warn('[Sync Supabase]', e.message);
       } finally {
-        setSyncing(false);
+        if (mountedRef.current) setSyncing(false);
       }
     }, 800);
   }

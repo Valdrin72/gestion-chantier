@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { fmtN, calculerCoutsChantier, calculerCA, getAlerte, calculerDateFinOuvrables, isChantierActif } from './donnees';
 import { DS } from './ds';
 import useIsMobile from './hooks/useIsMobile';
@@ -37,30 +37,41 @@ export default function Rapport({ chantiers, clients, devis = [], parametres, pa
   const semaineSuivante = getSemaineSuivante();
 
   // ===== CALCULS =====
-  const chantiersEnCours = chantiers.filter(isChantierActif);
-  const chantiersPlanifies = chantiers.filter(c => c.statut?.trim().toLowerCase() === 'planifié');
+  const chantiersEnCours = useMemo(() => chantiers.filter(isChantierActif), [chantiers]);
+  const chantiersPlanifies = useMemo(() => chantiers.filter(c => c.statut?.trim().toLowerCase() === 'planifié'), [chantiers]);
 
-  const alertes = chantiers.filter(c => {
+  const alertes = useMemo(() => chantiers.filter(c => {
     const r = new Set((c.journal || []).map(e => e.date).filter(Boolean)).size;
     const j = c.nombreJours > 0 ? c.nombreJours - r : null;
     return j !== null && j <= (parametres.parametres?.joursAlerte || 5) && c.statut?.trim().toLowerCase() !== 'terminé';
-  });
+  }), [chantiers, parametres]);
 
-  const caTotal = chantiers.filter(c => calculerCA(c, devis) !== null).reduce((t, c) => t + calculerCA(c, devis), 0);
+  const caTotal = useMemo(() => {
+    return chantiers.reduce((t, c) => {
+      const ca = calculerCA(c, devis);
+      return t + (ca !== null ? ca : 0);
+    }, 0);
+  }, [chantiers, devis]);
 
   const getPaiements = (chantierId) => paiementsData[chantierId] || [];
   const isPaye = (p) => ['payé', 'payee', 'payée'].includes(p.statut?.trim().toLowerCase());
   const isAttente = (p) => ['en attente', 'envoyee', 'envoyée', 'partielle', 'retard'].includes(p.statut?.trim().toLowerCase());
-  const totalPaiementsRecus = chantiers.reduce((t, c) => {
-    return t + getPaiements(c.id).filter(isPaye).reduce((s, p) => s + (parseFloat(p.montant) || 0), 0);
-  }, 0);
-  const totalPaiementsAttente = chantiers.reduce((t, c) => {
-    return t + getPaiements(c.id).filter(isAttente).reduce((s, p) => s + (parseFloat(p.montant) || 0), 0);
-  }, 0);
-  const totalPaiementsRetard = chantiers.reduce((t, c) => {
+  const { totalPaiementsRecus, totalPaiementsAttente, totalPaiementsRetard } = useMemo(() => {
     const today = new Date();
-    return t + getPaiements(c.id).filter(p => isAttente(p) && new Date(p.dateEcheance) < today).reduce((s, p) => s + (parseFloat(p.montant) || 0), 0);
-  }, 0);
+    let recus = 0, attente = 0, retard = 0;
+    chantiers.forEach(c => {
+      getPaiements(c.id).forEach(p => {
+        const m = parseFloat(p.montant) || 0;
+        if (isPaye(p)) recus += m;
+        else if (isAttente(p)) {
+          attente += m;
+          if (new Date(p.dateEcheance) < today) retard += m;
+        }
+      });
+    });
+    return { totalPaiementsRecus: recus, totalPaiementsAttente: attente, totalPaiementsRetard: retard };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chantiers, paiementsData]);
 
 
   const chantiersSemaineProchaine = chantiers.filter(c => {
@@ -237,7 +248,7 @@ export default function Rapport({ chantiers, clients, devis = [], parametres, pa
                       {calculerCA(c, devis) !== null ? `CHF ${fmtN(calculerCA(c, devis))}` : '— Aucun devis lié'}
                     </td>
                     <td style={{ padding: '12px 15px' }}>
-                      <span style={{ background: (isChantierActif(c) ? '#f59e0b' : '#3b82f6') + '18', color: isChantierActif(c) ? '#f59e0b' : '#3b82f6', fontWeight: 600, padding: '3px 10px', borderRadius: '12px', fontSize: '12px' }}>
+                      <span style={{ background: (isChantierActif(c) ? '#f59e0b' : '#0d3d6e') + '18', color: isChantierActif(c) ? '#f59e0b' : '#0d3d6e', fontWeight: 600, padding: '3px 10px', borderRadius: '12px', fontSize: '12px' }}>
                         {c.statut}
                       </span>
                     </td>

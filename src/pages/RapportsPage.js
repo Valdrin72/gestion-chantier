@@ -1,8 +1,5 @@
-import React, { useState } from 'react';
-import Statistiques from '../Statistiques';
-import Rapport from '../Rapport';
+import React, { useState, useEffect } from 'react';
 import Analyse from '../Analyse';
-import Marges from '../Marges';
 import SimulateurCroissance from '../SimulateurCroissance';
 import BenchmarkMarche from '../BenchmarkMarche';
 import { useApp } from '../context/AppContext';
@@ -26,7 +23,7 @@ function RapportIA({ agentData }) {
           <Bot size={22} color="#8b5cf6" />
           <div style={{ flex: 1 }}>
             <div style={{ fontWeight: 800, fontSize: 16, color: 'var(--text-primary)' }}>Résumé exécutif — IA</div>
-            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{rapport.date}</div>
+            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{typeof rapport.date === 'string' ? rapport.date : ''}</div>
           </div>
           {rapport.scoreEntreprise !== null && (
             <div style={{ textAlign: 'center', background: scoreColor + '14', border: `1px solid ${scoreColor}30`, borderRadius: 12, padding: '10px 18px' }}>
@@ -41,15 +38,15 @@ function RapportIA({ agentData }) {
               <div style={{ width: 26, height: 26, borderRadius: '50%', background: '#8b5cf614', border: '1px solid #8b5cf630', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: '#8b5cf6', flexShrink: 0 }}>
                 {i + 1}
               </div>
-              <p style={{ margin: 0, fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.75 }}>{para}</p>
+              <p style={{ margin: 0, fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.75 }}>{typeof para === 'string' ? para : ''}</p>
             </div>
           ))}
         </div>
         {rapport.actionPrincipale && (
           <div style={{ marginTop: 22, padding: '14px 18px', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 10 }}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: '#1d4ed8', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: 5 }}>Action prioritaire recommandée</div>
-            <div style={{ fontSize: 14, fontWeight: 700, color: '#1e40af' }}>{rapport.actionPrincipale.action}</div>
-            <div style={{ fontSize: 12, color: '#3b82f6', marginTop: 3 }}>{rapport.actionPrincipale.detail}</div>
+            <div style={{ fontSize: 10, fontWeight: 700, color: '#082d52', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: 5 }}>Action prioritaire recommandée</div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: '#0d3d6e' }}>{typeof rapport.actionPrincipale.action === 'string' ? rapport.actionPrincipale.action : ''}</div>
+            <div style={{ fontSize: 12, color: '#0d3d6e', marginTop: 3 }}>{typeof rapport.actionPrincipale.detail === 'string' ? rapport.actionPrincipale.detail : ''}</div>
           </div>
         )}
       </div>
@@ -58,16 +55,14 @@ function RapportIA({ agentData }) {
 }
 
 function RapportsPage({ chantiers, clients, devis, parametres, setParametres, paiementsData, periodeGlobale, naviguer, factures }) {
-  const { agentState } = useApp();
-  const [onglet, setOnglet] = useState('rapport-ia');
+  const { agentState, contexte } = useApp();
+  const [onglet, setOnglet] = useState(contexte?.onglet || 'rapport-ia');
+  useEffect(() => { if (contexte?.onglet) setOnglet(contexte.onglet); }, [contexte?.onglet]);
   const tabs = [
-    { id: 'rapport-ia',    label: 'Rapport IA',   Icon: Bot },
-    { id: 'marges',        label: 'Marges',        Icon: null },
-    { id: 'rapport',       label: 'Rapport',       Icon: null },
-    { id: 'statistiques',  label: 'Statistiques',  Icon: null },
-    { id: 'analyse',       label: 'Analyse',       Icon: null },
-    { id: 'simulateur',    label: 'Simulateur',    Icon: TrendingUp },
-    { id: 'benchmark',     label: 'Benchmark',     Icon: Award },
+    { id: 'rapport-ia',  label: 'Rapport IA',  Icon: Bot },
+    { id: 'analyse',     label: 'Analyse',     Icon: null },
+    { id: 'simulateur',  label: 'Simulateur',  Icon: TrendingUp },
+    { id: 'benchmark',   label: 'Benchmark',   Icon: Award },
   ];
   const pillActive   = { background: DS.brand.soft, color: DS.brand.secondary, border: '1px solid transparent' };
   const pillInactive = { background: 'transparent', color: 'var(--text-muted)', border: '1px solid var(--border)' };
@@ -82,13 +77,10 @@ function RapportsPage({ chantiers, clients, devis, parametres, setParametres, pa
           </button>
         ))}
       </div>
-      {onglet === 'rapport-ia'    && <RapportIA agentData={agentState?.agentData} />}
-      {onglet === 'marges'        && <Marges chantiers={chantiers} clients={clients} devis={devis} parametres={parametres} periodeGlobale={periodeGlobale} />}
-      {onglet === 'rapport'       && <Rapport chantiers={chantiers} clients={clients} devis={devis} parametres={parametres} paiementsData={paiementsData} naviguer={naviguer} />}
-      {onglet === 'statistiques'  && <Statistiques chantiers={chantiers} clients={clients} devis={devis} parametres={parametres} periodeGlobale={periodeGlobale} />}
-      {onglet === 'analyse'       && <Analyse chantiers={chantiers} clients={clients} devis={devis} parametres={parametres} setParametres={setParametres} paiementsData={paiementsData} periodeGlobale={periodeGlobale} />}
-      {onglet === 'simulateur'    && <SimulateurCroissance chantiers={chantiers} devis={devis} factures={factures || []} parametres={parametres} />}
-      {onglet === 'benchmark'     && <BenchmarkMarche chantiers={chantiers} devis={devis} parametres={parametres} />}
+      {onglet === 'rapport-ia'  && <RapportIA agentData={agentState?.agentData} />}
+      {onglet === 'analyse'     && <Analyse chantiers={chantiers} clients={clients} devis={devis} parametres={parametres} setParametres={setParametres} paiementsData={paiementsData} periodeGlobale={periodeGlobale} />}
+      {onglet === 'simulateur'  && <SimulateurCroissance chantiers={chantiers} devis={devis} factures={factures || []} parametres={parametres} />}
+      {onglet === 'benchmark'   && <BenchmarkMarche chantiers={chantiers} devis={devis} parametres={parametres} />}
     </div>
   );
 }

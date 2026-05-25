@@ -1,0 +1,216 @@
+
+────────────────────────────────────────────────────────────
+  ÉTAPE 1 — Chargement de l'app (mode DIAG)
+────────────────────────────────────────────────────────────
+[SCREENSHOT] App chargée (avant fermeture modale) -> /home/user/gestion-chantier/playwright-diag/screenshots/01-app-loaded.png
+[OK] Mode DIAG actif — dashboard visible
+[INFO] Modale fermée via: button:has-text("Commencer")
+[SCREENSHOT] App sans modale -> /home/user/gestion-chantier/playwright-diag/screenshots/01b-app-no-modal.png
+
+────────────────────────────────────────────────────────────
+  ÉTAPE 2 — Inventaire de la navigation
+────────────────────────────────────────────────────────────
+Items de navigation:
+  [data-label="Dashboard" / data-page=""] "Dashboard"
+  [data-label="" / data-page=""] "Chantiers"
+  [data-label="" / data-page=""] "Clients"
+  [data-label="Employés" / data-page=""] "Employés"
+  [data-label="Devis" / data-page=""] "Devis"
+  [data-label="Heures" / data-page=""] "Heures"
+  [data-label="Finances" / data-page=""] "Finances
+2"
+  [data-label="Planning" / data-page=""] "Planning"
+  [data-label="Rapports" / data-page=""] "Rapports"
+  [data-label="Centre IA" / data-page=""] "Centre IA"
+  [data-label="Paramètres" / data-page=""] "Paramètres"
+  [data-label="" / data-page=""] "Nouveau devis"
+  [data-label="" / data-page=""] "Accueil"
+  [data-label="" / data-page=""] "Équipe"
+  [data-label="" / data-page=""] "Plus"
+
+────────────────────────────────────────────────────────────
+  ÉTAPE 3 — Dashboard
+────────────────────────────────────────────────────────────
+[NAV] Navigation vers "Dashboard" via: [data-label="Dashboard"]
+[SCREENSHOT] Dashboard -> /home/user/gestion-chantier/playwright-diag/screenshots/03-dashboard.png
+[OK] Dashboard — Aucun NaN/undefined/Infinity
+CHF sur Dashboard: CHF 263'800 | CHF 42'000 | CHF 43'661 | CHF 124'000 | CHF 119'075 | CHF 4'925 | CHF 29'800 | CHF 20'459 | CHF 9'341 | CHF 8'400 | CHF 99'000 | CHF 54'560 | CHF 15'000 | CHF 11'026 | CHF 1'660 | CHF 181'095 | CHF 125'865 | CHF 42'600 | CHF 8'000 | CHF 3'180
+Pourcentages: 8% | 4% | 31% | 15% | 44% | 37% | 70% | 24% | 2% | 1% | 40%
+Heures: 263'800 H | 1'880h | 56h | 45h | 15h
+Nombres suisses: 263'800 | 42'000 | 43'661 | 1'660 | 124'000 | 119'075 | 4'925 | 29'800 | 20'459 | 9'341
+Indicateurs numériques visibles sur Dashboard:
+  "2"
+  "3"
+  "dimanche 24 mai · 3 chantiers actifs"
+  "CHF 263'800 HT"
+  "3 chantiers · En cours + Planifiés"
+  "8%"
+  "3 chantiers analysés"
+  "VOIR CHANTIERS ACTIFS 3 Tous dans les temps Statut "En cours" — chantiers avec heures en cours"
+  "VOIR HEURES ANNÉE 1'880h 9 employés mobilisés Σ heures saisies dans le journal (mois courant)"
+  "1'880h"
+  "9 employés mobilisés"
+  "Score 80/100"
+  "3 critiques"
+  "19 attention"
+  "3 chantiers en dérive"
+  "4 dernières semaines"
+  "PRÉVISION ENCAISSEMENTS 30 J"
+  "Tech Park Romandie – Phase 1 Faux-Plafonds"
+  "CHF 8'400"
+  "70%"
+  "CHF 125'865"
+  "24%"
+  "CHF 42'600"
+  "4%"
+  "CHF 8'000"
+  "2%"
+  "CHF 3'180"
+  "1%"
+  "CHF 1'450"
+  "1 / 3"
+
+────────────────────────────────────────────────────────────
+  ÉTAPE 4 — Page Devis
+────────────────────────────────────────────────────────────
+[NAV] Navigation vers "devis" via texte: "Devis"
+[SCREENSHOT] Page Devis -> /home/user/gestion-chantier/playwright-diag/screenshots/04-devis.png
+[OK] Devis — Aucun NaN/undefined/Infinity
+CHF sur Devis: CHF 195'800 | CHF 163'000 | CHF 124'000 | CHF 29'800 | CHF 68'000 | CHF 95'000 | CHF 41'000 | CHF 42'000
+Nombres suisses (devis): 195'800 | 163'000 | 124'000 | 29'800 | 68'000 | 95'000 | 41'000 | 42'000
+Lignes dans tableau devis: 6, Cards: 0
+Contenu du tableau devis:
+  DEV-2026-001 | 08.01.2026 | Bâtiments Publics Genève
+BPG | CH-2026-001 → | CHF 124'000 | accepté | 
+  DEV-2026-002 | 20.02.2026 | Dupont Immobilier SA
+Marc Dupont | CH-2026-002 → | CHF 29'800 | accepté | 
+  DEV-2026-003 | 01.04.2026 | Müller AG
+Klaus Müller | CH-2026-004 → | CHF 68'000 | envoyé | 
+  DEV-2026-004 | 28.04.2026 | Tech Park Romandie
+Isabelle Rochat | — | CHF 95'000 | envoyé | 
+  DEV-2026-005 | 10.05.2026 | Helvetia Properties
+Jean-Pierre Fontaine | — | CHF 41'000 | brouillon | 
+  DEV-2026-006 | 15.03.2026 | Tech Park Romandie
+Isabelle Rochat | CH-2026-003 → | CHF 42'000 | accepté | Créer la facture
+
+────────────────────────────────────────────────────────────
+  ÉTAPE 5 — Page Chantiers
+────────────────────────────────────────────────────────────
+[NAV] Navigation vers "chantiers" via texte: "Chantiers"
+[SCREENSHOT] Page Chantiers -> /home/user/gestion-chantier/playwright-diag/screenshots/05-chantiers.png
+[OK] Chantiers — Aucun NaN/undefined/Infinity
+CHF sur Chantiers: CHF 263'800
+Pourcentages Chantiers: 8% | 44% | 118.2% | 37% | 85.6% | 40% | 159.9% | 100% | 0%
+Valeurs numériques sur Chantiers:
+  "2"
+  "3"
+  "EN COURS 3 CA CHANTIERS CHF 263'800 4 avec devis · 4 ce an MARGE MOYENNE 8% JOURS PLANIFIÉS 195j"
+  "EN COURS 3"
+  "CA CHANTIERS CHF 263'800 4 avec devis · 4 ce an"
+  "CHF 263'800"
+  "MARGE MOYENNE 8%"
+  "8%"
+  "JOURS PLANIFIÉS 195j"
+  "195j"
+  "3 chantiers bloquent aujourd'hui"
+  "CH-2026-001"
+  "44%"
+  "Perte estimée EAC -118.2% · moyenne"
+  "CH-2026-002"
+
+────────────────────────────────────────────────────────────
+  ÉTAPE 6 — Page Heures
+────────────────────────────────────────────────────────────
+[NAV] Navigation vers "heures" via texte: "Heures"
+[SCREENSHOT] Page Heures -> /home/user/gestion-chantier/playwright-diag/screenshots/06-heures.png
+[OK] Heures — Aucun NaN/undefined/Infinity
+Heures sur page Heures: 3
+Heures | 2'038h | 203.8h | 0h | 8h | 32h | 7h | 28h | 16h | 55h | 31h | 2037.5h
+CHF sur Heures: (aucun)
+Contenu journal des heures:
+  SB
+Sami Berisha
+Chef de chantier | + | 8h | 8h | 8h | 8h | + | + | 32h
+  LF
+Luca Ferretti
+Monteur cloisons | + | 8h | 8h | 8h | 8h | + | + | 32h
+  IK
+Ivan Kovac
+Menuisier | + | 7h | 7h | 7h | 7h | + | + | 28h
+  AD
+Amir Dallah
+Manœuvre | + | + | + | + | + | + | + | —
+  PN
+Patrick Nguyen
+Conducteur de travaux | + | + | + | + | + | + | + | —
+  FR
+Fabio Rossi
+Carreleur | + | + | + | + | + | + | + | —
+  TM
+Thomas Meier
+Monteur vitrages | + | 8h | 8h | + | + | + | + | 16h
+  HZ
+Hans Zimmermann
+Directeur technique | + | 8h | 8h | + | + | + | + | 16h
+  DP
+Dragan Petrovic
+Plâtrier | + | 8h | 8h | 8h | 8h | + | + | 32h
+  MY
+Mehmet Yilmaz
+Technicien faux-planchers | + | 8h | 8h | + | + | + | + | 16h
+
+────────────────────────────────────────────────────────────
+  ÉTAPE 7 — Page Employés
+────────────────────────────────────────────────────────────
+[NAV] Navigation vers "employes" via texte: "Employés"
+[SCREENSHOT] Page Employés -> /home/user/gestion-chantier/playwright-diag/screenshots/07-employes.png
+[OK] Employés — Aucun NaN/undefined/Infinity
+CHF Employés: CHF 88'600 | CHF 443
+Heures Employés: 3'621h | 88
+h
+[SCREENSHOT] Employés — Performance -> /home/user/gestion-chantier/playwright-diag/screenshots/07b-employes-perf.png
+[OK] Employés > Performance — Aucun NaN/undefined/Infinity
+Heures Performance: 2026
+HEURES | 2'038h | 320h | 8h | 360h | 280h | 0h | 104h | 144h | 184h | 182h
+CHF Performance: CHF 136'507 | CHF 26'000 | CHF 21'870 | CHF 16'065 | CHF 8'060 | CHF 6'669 | CHF 8'991 | CHF 16'100 | CHF 21'566 | CHF 11'185
+
+────────────────────────────────────────────────────────────
+  ÉTAPE 8 — Page Finances
+────────────────────────────────────────────────────────────
+[NAV] Navigation vers "finances" via texte: "Finances"
+[SCREENSHOT] Page Finances -> /home/user/gestion-chantier/playwright-diag/screenshots/08-finances.png
+[OK] Finances — Aucun NaN/undefined/Infinity
+CHF Finances: CHF 385 | CHF 329 | CHF 0 | CHF 56 | CHF 16 | CHF 39 | CHF 55 | CHF 124 | CHF 107 | CHF 95 | CHF 58 | CHF 78
+Pourcentages Finances: 40% | 85% | 32% | 28% | 25% | 15% | 20% | 4%
+
+────────────────────────────────────────────────────────────
+  ÉTAPE 9 — Détail chantier (clic sur premier chantier)
+────────────────────────────────────────────────────────────
+[NAV] Navigation vers "chantiers" via texte: "Chantiers"
+Liens/boutons chantier trouvés: 21
+[SCREENSHOT] Détail Chantier -> /home/user/gestion-chantier/playwright-diag/screenshots/09-chantier-detail.png
+[OK] Détail Chantier — Aucun NaN/undefined/Infinity
+CHF Détail: CHF 141'170
+Pourcentages Détail: 113.8% | 44% | 69% | 60%
+Indicateurs détail chantier:
+  "2"
+  "3"
+  "Chantier en perte — déficit estimé CHF 141'170 (-113.8%)"
+  "Main d'œuvre élevée — 69% du coût total (seuil 60%)"
+  "0"
+
+────────────────────────────────────────────────────────────
+  RAPPORT FINAL — Erreurs console
+────────────────────────────────────────────────────────────
+[ALERTE] 2 erreur(s) console:
+  Failed to load resource: the server responded with a status of 400 ()
+  Failed to load resource: the server responded with a status of 400 ()
+[INFO] 1 warning(s) console (premiers 5):
+  [Sync] Chargement Supabase échoué, fallback donneesInitiales: invalid input syntax for type uuid: "diag-user-001"
+
+────────────────────────────────────────────────────────────
+  RÉSUMÉ DIAGNOSTIC
+────────────────────────────────────────────────────────────
+Screenshots: /home/user/gestion-chantier/playwright-diag/screenshots
+Erreurs console: 2
+Warnings console: 1

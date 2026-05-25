@@ -3,10 +3,10 @@ import { Plus, Clock, Calendar, X } from 'lucide-react';
 import { DS } from './ds';
 
 const CATEGORIES = [
-  { id: 'reunion',    label: 'Réunion',    bg: 'rgba(99,102,241,0.12)',  color: '#6366f1' },
-  { id: 'livraison',  label: 'Livraison',  bg: 'rgba(245,158,11,0.12)', color: '#f59e0b' },
-  { id: 'rdv_client', label: 'RDV Client', bg: 'rgba(59,130,246,0.12)', color: '#3b82f6' },
-  { id: 'autre',      label: 'Autre',      bg: 'var(--bg-hover)',        color: 'var(--text-secondary)' },
+  { id: 'reunion',    label: 'Réunion',    bg: '#ede9fe', color: '#5b21b6' },
+  { id: 'livraison',  label: 'Livraison',  bg: '#fef3c7', color: '#92400e' },
+  { id: 'rdv_client', label: 'RDV Client', bg: '#e8f0f9', color: '#0d3d6e' },
+  { id: 'autre',      label: 'Autre',      bg: '#f1f5f9', color: '#475569' },
 ];
 
 const FORM_VIDE = { titre: '', date: '', categorie: 'reunion' };
@@ -69,12 +69,12 @@ export default function Calendrier({ chantiers = [], clients = [], devis = [], f
       if (c.dateDebut) {
         const d = new Date(c.dateDebut);
         if (d.getFullYear() === year && d.getMonth() === month)
-          add(d.getDate(), { label: c.nom || c.numero, bg: 'rgba(59,130,246,0.12)', color: '#3b82f6' });
+          add(d.getDate(), { label: c.nom || c.numero, bg: '#e8f0f9', color: '#0d3d6e' });
       }
       if (c.dateFin) {
         const d = new Date(c.dateFin);
         if (d.getFullYear() === year && d.getMonth() === month)
-          add(d.getDate(), { label: `Fin: ${c.nom || c.numero}`, bg: 'rgba(16,185,129,0.12)', color: '#10b981' });
+          add(d.getDate(), { label: `Fin: ${c.nom || c.numero}`, bg: '#d1fae5', color: '#065f46' });
       }
     });
 
@@ -82,7 +82,7 @@ export default function Calendrier({ chantiers = [], clients = [], devis = [], f
       if (f.dateEcheance) {
         const d = new Date(f.dateEcheance);
         if (d.getFullYear() === year && d.getMonth() === month)
-          add(d.getDate(), { label: `Éch. ${f.numero || 'Facture'}`, bg: 'rgba(239,68,68,0.12)', color: '#ef4444' });
+          add(d.getDate(), { label: `Éch. ${f.numero || 'Facture'}`, bg: '#fee2e2', color: '#991b1b' });
       }
     });
 
@@ -109,7 +109,7 @@ export default function Calendrier({ chantiers = [], clients = [], devis = [], f
     chantiers.forEach(c => {
       if (c.dateDebut) {
         const d = new Date(c.dateDebut); d.setHours(0,0,0,0);
-        if (d >= now && d <= limit) list.push({ date: d, label: c.nom || c.numero, sub: 'Début de chantier', color: '#3b82f6' });
+        if (d >= now && d <= limit) list.push({ date: d, label: c.nom || c.numero, sub: 'Début de chantier', color: '#0d3d6e' });
       }
       if (c.dateFin) {
         const d = new Date(c.dateFin); d.setHours(0,0,0,0);
@@ -194,7 +194,7 @@ export default function Calendrier({ chantiers = [], clients = [], devis = [], f
                     <div style={{
                       display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                       width: 26, height: 26, borderRadius: '50%',
-                      background: isToday(cell.day) ? '#3b82f6' : 'transparent',
+                      background: isToday(cell.day) ? '#0d3d6e' : 'transparent',
                       color: isToday(cell.day) ? '#fff' : 'var(--text-primary)',
                       fontSize: 13, fontWeight: isToday(cell.day) ? 700 : 500, marginBottom: 4,
                     }}>
@@ -233,7 +233,7 @@ export default function Calendrier({ chantiers = [], clients = [], devis = [], f
         {/* Upcoming events */}
         <div style={DS.card}>
           <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--text-primary)', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Calendar size={15} strokeWidth={2} style={{ color: '#3b82f6' }} />
+            <Calendar size={15} strokeWidth={2} style={{ color: '#0d3d6e' }} />
             Prochains événements
           </div>
           {upcoming.length === 0 ? (

@@ -12,7 +12,7 @@ import { DS } from './ds';
 import { exportCSV } from './utils/exportCSV';
 import { fmtN, getIntervallesPeriode, facturesInPeriode, genererNumeroFacture, calculerStatutFacture } from './donnees';
 import { prochainRappel, niveauInfo, genererTexteRappel, marquerRappelEnvoye } from './relances';
-import { exportFicheChantier } from './ExportPDF';
+import { exportFicheChantier, exportFacture } from './ExportPDF';
 
 // ── TVA suisse ───────────────────────────────────────────────
 const TVA_OPTIONS = [
@@ -48,7 +48,7 @@ const SOURCE_LABELS = {
 // ── Couleurs statuts ─────────────────────────────────────────
 const STATUT_COLORS = {
   brouillon:  { bg: 'rgba(139,92,246,0.12)',  text: '#8b5cf6' },
-  envoyee:    { bg: 'rgba(59,130,246,0.12)',  text: '#3b82f6' },
+  envoyee:    { bg: 'rgba(13,61,110,0.12)',   text: '#0d3d6e' },
   partielle:  { bg: 'rgba(245,158,11,0.12)', text: '#f59e0b' },
   payee:      { bg: 'rgba(16,185,129,0.12)', text: '#10b981' },
   retard:     { bg: 'rgba(239,68,68,0.12)',  text: '#ef4444' },
@@ -165,7 +165,7 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
     const entreeHistorique = { id: `pay_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`, montant, date: paiementForm.date, mode: 'Virement', note: paiementForm.note };
     const nouveauPaiements = [...(f.paiementsHistorique || []), entreeHistorique];
     const nouveauMontantPaye = nouveauPaiements.reduce((s, p) => s + (parseFloat(p.montant) || 0), 0);
-    const restant = (f.montantTTC ?? 0) - nouveauMontantPaye;
+    const restant = (parseFloat(f.montantTTC) || 0) - nouveauMontantPaye;
     const nouveauStatut = restant <= 0.01 ? 'payee' : 'partielle';
     const factureMAJ = {
       ...f,
@@ -466,7 +466,7 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
 
       {/* KPIs */}
       <div style={{ display: 'flex', gap: 16, marginBottom: 24, flexWrap: 'wrap' }}>
-        <KpiCard label="Total facturé"  value={`${fmt(kpis.totalFacture)} CHF`}  couleur="#3b82f6" icon="doc" />
+        <KpiCard label="Total facturé"  value={`${fmt(kpis.totalFacture)} CHF`}  couleur="#0d3d6e" icon="doc" />
         <KpiCard label="Encaissé"       value={`${fmt(kpis.totalEncaisse)} CHF`} couleur="#10b981" icon="" />
         <KpiCard label="En retard"      value={`${fmt(kpis.totalRetard)} CHF`}   couleur="#ef4444" icon="" />
         <KpiCard label="Brouillons"     value={kpis.nbBrouillon}                 couleur="#8b5cf6" icon="edit" />
@@ -523,7 +523,7 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
                     style={{ cursor: 'pointer', animationDelay: `${idx * 35}ms` }}
                     onClick={() => voirDetail(f)}>
                     <td style={S.td}>
-                      <span style={{ fontWeight: 700, color: '#60a5fa', letterSpacing: '-0.2px' }}>{f.numero}</span>
+                      <span style={{ fontWeight: 700, color: '#0d3d6e', letterSpacing: '-0.2px' }}>{f.numero}</span>
                     </td>
                     <td style={S.td}>
                       {client?.nom
@@ -577,13 +577,23 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
                         )}
                         {(() => {
                           const chantierF = chantiers.find(c => String(c.id) === String(f.chantierId));
-                          if (!chantierF || !parametres) return null;
+                          const clientF = clients.find(c => String(c.id) === String(f.clientId));
+                          const devisF = devis.find(d => String(d.id) === String(f.devisId));
                           return (
-                            <button
-                              style={{ ...DS.iconBtn, padding: '5px 8px' }}
-                              title="Exporter fiche chantier PDF"
-                              onClick={() => exportFicheChantier(chantierF, clients, parametres, devis)}
-                            ><FileDown size={13} /></button>
+                            <>
+                              <button
+                                style={{ ...DS.iconBtn, padding: '5px 8px', background: 'rgba(13,61,110,0.08)', color: '#0d3d6e' }}
+                                title="Télécharger facture PDF (QR-paiement)"
+                                onClick={() => exportFacture(f, clientF, chantierF, devisF, parametres)}
+                              ><FileDown size={13} /></button>
+                              {chantierF && parametres && (
+                                <button
+                                  style={{ ...DS.iconBtn, padding: '5px 8px' }}
+                                  title="Exporter fiche chantier PDF"
+                                  onClick={() => exportFicheChantier(chantierF, clients, parametres, devis)}
+                                ><FileDown size={13} /></button>
+                              )}
+                            </>
                           );
                         })()}
                       </div>
@@ -665,13 +675,23 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
             <BadgeStatut statut={f.statut} />
           {(() => {
             const chantierDetail = chantiers.find(c => String(c.id) === String(f.chantierId));
-            if (!chantierDetail || !parametres) return null;
+            const clientDetail = clients.find(c => String(c.id) === String(f.clientId));
+            const devisDetail = devis.find(d => String(d.id) === String(f.devisId));
             return (
-              <button
-                style={{ ...S.btnGhost, display: 'flex', alignItems: 'center', gap: 5 }}
-                title="Exporter fiche chantier PDF"
-                onClick={() => exportFicheChantier(chantierDetail, clients, parametres, devis)}
-              ><FileDown size={14} /> PDF</button>
+              <>
+                <button
+                  style={{ ...S.btnGhost, display: 'flex', alignItems: 'center', gap: 5, background: 'rgba(13,61,110,0.08)', color: '#0d3d6e', fontWeight: 700 }}
+                  title="Télécharger facture PDF avec section QR-paiement"
+                  onClick={() => exportFacture(f, clientDetail, chantierDetail, devisDetail, parametres)}
+                ><FileDown size={14} /> Facture PDF</button>
+                {chantierDetail && parametres && (
+                  <button
+                    style={{ ...S.btnGhost, display: 'flex', alignItems: 'center', gap: 5 }}
+                    title="Exporter fiche chantier PDF"
+                    onClick={() => exportFicheChantier(chantierDetail, clients, parametres, devis)}
+                  ><FileDown size={14} /> Fiche chantier</button>
+                )}
+              </>
             );
           })()}
           {canEdit && (
@@ -722,7 +742,7 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
                   {client?.nom || '—'}
                   {naviguer && client && (
                     <span onClick={() => naviguer('clients', { clientActif: client.id })}
-                      style={{ fontSize: 11, color: '#3b82f6', cursor: 'pointer', marginLeft: 6 }}>Voir →</span>
+                      style={{ fontSize: 11, color: '#0d3d6e', cursor: 'pointer', marginLeft: 6 }}>Voir →</span>
                   )}
                 </div>
               </div>
@@ -733,7 +753,7 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
                   {chantier?.nom || chantier?.numero || '—'}
                   {naviguer && chantier && (
                     <span onClick={() => naviguer('chantiers', { chantierActif: chantier.id })}
-                      style={{ fontSize: 11, color: '#3b82f6', cursor: 'pointer', marginLeft: 6 }}>Voir →</span>
+                      style={{ fontSize: 11, color: '#0d3d6e', cursor: 'pointer', marginLeft: 6 }}>Voir →</span>
                   )}
                 </div>
               </div>
@@ -744,7 +764,7 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
                   {devisLie?.numero || '—'}
                   {naviguer && devisLie && (
                     <span onClick={() => naviguer('devis')}
-                      style={{ fontSize: 11, color: '#3b82f6', cursor: 'pointer', marginLeft: 6 }}>Voir →</span>
+                      style={{ fontSize: 11, color: '#0d3d6e', cursor: 'pointer', marginLeft: 6 }}>Voir →</span>
                   )}
                 </div>
               </div>

@@ -1,6 +1,7 @@
 // =============================================
 // CYNA SÀRL — DONNÉES & CALCULS MÉTIER
 // =============================================
+import { donneesDemo } from './donnees-demo';
 
 // ===== SEUILS DE RENTABILITÉ BTP SUISSE — SOURCE UNIQUE DE VÉRITÉ =====
 // Tous les modules (Dashboard, Marges, Analyse, Statistiques, ChantierDetail)
@@ -59,20 +60,23 @@ export const joursOuvrableRestants = (dateDebut, nombreJours, inclusSamedi = fal
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   
+  const maxIter = nombreJours * 3 + 400;
   if (dateFin < today) {
     let joursDepasse = 0;
+    let iter = 0;
     const d = new Date(today);
-    while (d > dateFin) {
+    while (d > dateFin && ++iter < maxIter) {
       d.setDate(d.getDate() - 1);
       const jour = d.getDay();
       if (inclusSamedi ? jour !== 0 : (jour !== 0 && jour !== 6)) joursDepasse++;
     }
     return -joursDepasse;
   }
-  
+
   let joursRestants = 0;
+  let iter = 0;
   const d = new Date(today);
-  while (d < dateFin) {
+  while (d < dateFin && ++iter < maxIter) {
     d.setDate(d.getDate() + 1);
     const jour = d.getDay();
     if (inclusSamedi ? jour !== 0 : (jour !== 0 && jour !== 6)) joursRestants++;
@@ -244,7 +248,7 @@ export const calculerCoutsChantier = (chantier, employes = [], localites = [], c
   const journalCouts = chantier.journal || [];
 
   const coutEquipePrevu = chantier.equipe?.reduce((total, membre) => {
-    const emp = employes.find(e => e.id === parseInt(membre.employeId));
+    const emp = employes.find(e => String(e.id) === String(membre.employeId));
     return total + getTarifJour(emp) * parseFloat(membre.joursPlannifies || 0);
   }, 0) || 0;
 
@@ -257,7 +261,7 @@ export const calculerCoutsChantier = (chantier, employes = [], localites = [], c
     .map(m => parseInt(m.employeId))
     .filter(id => !empIdsAvecHeures.includes(id));
   const coutEquipeReelDetaille = [...empIdsAvecHeures, ...empIdsEquipeSansHeures].map(empId => {
-    const emp = employes.find(e => e.id === empId);
+    const emp = employes.find(e => String(e.id) === String(empId));
     const joursReels = heuresEmploye(journalCouts, empId) / 8;
     const tarif = getTarifJour(emp);
     return { employeId: empId, joursReels, tarif, cout: tarif * joursReels };
@@ -418,8 +422,9 @@ export const calculerCoutsChantier = (chantier, employes = [], localites = [], c
 // ===== STATUT RENTABILITÉ =====
 export const statutRentabilite = (margeReelPct) => {
   const v = parseFloat(margeReelPct) || 0;
-  if (v >= SEUILS.margeRentable) return { label: 'Rentable',      couleur: '#10b981' };
-  if (v >= SEUILS.margeLimite)   return { label: 'Limite',         couleur: '#f59e0b' };
+  if (v < 0)                     return { label: 'À perte',         couleur: '#7f1d1d' };
+  if (v >= SEUILS.margeRentable) return { label: 'Rentable',        couleur: '#10b981' };
+  if (v >= SEUILS.margeLimite)   return { label: 'Limite',          couleur: '#f59e0b' };
   return                                 { label: 'Non rentable',    couleur: '#ef4444' };
 };
 
@@ -497,11 +502,11 @@ export const calculerDevisClient = (devis, coutMO = 0) => {
 
 // ===== C =====
 export const C = {
-  primaire:   '#2563eb',  // blue-600
+  primaire:   '#0d3d6e',  // CYNA brand blue
   secondaire: '#10b981',  // emerald-500
   danger:     '#ef4444',  // red-500
   warning:    '#f59e0b',  // amber-500
-  info:       '#2563eb',  // same as primaire
+  info:       '#0d3d6e',  // same as primaire
   violet:     '#6366f1',  // indigo-500
   orange:     '#f97316',  // orange-500
   cyan:       '#06b6d4',  // cyan-500 (Technicien)
@@ -534,7 +539,7 @@ export const calculerRentabiliteEquipe = (chantier, parametres) => {
   const journalEq = chantier.journal || [];
   const getJoursReelsEq = (m) => heuresEmploye(journalEq, parseInt(m.employeId)) / 8;
   const membres = (chantier.equipe || []).map(m => {
-    const emp = employes.find(e => e.id === parseInt(m.employeId));
+    const emp = employes.find(e => String(e.id) === String(m.employeId));
     const joursReels = getJoursReelsEq(m);
     const tarifJourBrut = emp?.tarifJour || 0;
     const tarifJour = emp?.tarifDejaCharge ? tarifJourBrut : tarifJourBrut * coefficient;
@@ -618,7 +623,7 @@ export const calculerRentabiliteReelle = (chantier, parametres, devisList = []) 
 
   // Coût MO prévisionnel (somme tarifJour × joursPrévus par membre, chargé du coefficient)
   const coutMOPrevu = (chantier.equipe || []).reduce((total, membre) => {
-    const emp = employes.find(e => e.id === parseInt(membre.employeId));
+    const emp = employes.find(e => String(e.id) === String(membre.employeId));
     const coeff = emp?.tarifDejaCharge ? 1 : (parseFloat(parametres?.parametres?.coefficientMainOeuvre) || parseFloat(parametres?.coefficientMainOeuvre) || 1.35);
     return total + (parseFloat(emp?.tarifJour) || 0) * coeff * (parseFloat(membre.joursPlannifies) || 0);
   }, 0);
@@ -798,236 +803,9 @@ export const creerFactureDepuisDevis = (devis, chantier, factures, tva = 8.1) =>
   };
 };
 
-// ===== DONNÉES INITIALES =====
-export const donneesInitiales = {
-  // PARAMÈTRES GLOBAUX
-  parametres: {
-    margeCible: 25,
-    seuilRentabiliteMin: 15,
-    plafondCredi: 40,
-    tauxFraisGeneraux: 12,
-    coefficientMainOeuvre: 1.35,
-    joursAlerte: 5,
-  },
-
-  // CONFIG AGENTS IA (seuils configurables)
-  agentsConfig: {
-    alerteChantier: {
-      seuilMargeDanger: 0,
-      seuilMargeAttention: 15,
-      seuilRetardAttention: 3,
-      seuilRetardCritique: 7,
-      seuilBudgetAttention: 5,
-      seuilBudgetDanger: 20,
-    },
-  },
-
-  // ZONES GÉOGRAPHIQUES
-  zones: [
-    {
-      id: 1, nom: 'Genève',
-      tarifs: {
-        'Cloisons vitrées': 135,
-        'Cloisons amovibles': 95,
-        'Faux plancher': 85,
-        'Plafonds suspendus': 90,
-        'Portes standards': 650,
-        'Portes coupe-feu': 950,
-        'Panneaux sandwich': 110,
-      },
-      tarifDeplacement: 60,
-    },
-    {
-      id: 2, nom: 'Lausanne',
-      tarifs: {
-        'Cloisons vitrées': 120,
-        'Cloisons amovibles': 85,
-        'Faux plancher': 75,
-        'Plafonds suspendus': 80,
-        'Portes standards': 580,
-        'Portes coupe-feu': 850,
-        'Panneaux sandwich': 95,
-      },
-      tarifDeplacement: 50,
-    },
-    { id: 3, nom: 'Berne', tarifs: {}, tarifDeplacement: 45 },
-    { id: 4, nom: 'Zurich', tarifs: {}, tarifDeplacement: 65 },
-    { id: 5, nom: 'Fribourg', tarifs: {}, tarifDeplacement: 40 },
-    { id: 6, nom: 'Neuchâtel', tarifs: {}, tarifDeplacement: 40 },
-    { id: 7, nom: 'Vaud (autre)', tarifs: {}, tarifDeplacement: 45 },
-  ],
-
-  // TYPES DE TRAVAUX
-  typesTravaux: [
-    { id: 1, nom: 'Cloisons vitrées', unite: 'm²', tarifBase: 125 },
-    { id: 2, nom: 'Cloisons amovibles', unite: 'm²', tarifBase: 90 },
-    { id: 3, nom: 'Faux plancher', unite: 'm²', tarifBase: 80 },
-    { id: 4, nom: 'Plafonds suspendus', unite: 'm²', tarifBase: 85 },
-    { id: 5, nom: 'Portes standards', unite: 'unité', tarifBase: 620 },
-    { id: 6, nom: 'Portes coupe-feu', unite: 'unité', tarifBase: 900 },
-    { id: 7, nom: 'Panneaux sandwich', unite: 'm²', tarifBase: 100 },
-    { id: 8, nom: 'Autre', unite: 'forfait', tarifBase: 0 },
-  ],
-
-  // LOCALITÉS (déplacement)
-  localites: [
-    { id: 1, nom: 'Genève', tarifJour: 60 },
-    { id: 2, nom: 'Lausanne', tarifJour: 50 },
-    { id: 3, nom: 'Berne', tarifJour: 45 },
-    { id: 4, nom: 'Zurich', tarifJour: 65 },
-    { id: 5, nom: 'Fribourg', tarifJour: 40 },
-    { id: 6, nom: 'Neuchâtel', tarifJour: 40 },
-    { id: 7, nom: 'Vaud (autre)', tarifJour: 45 },
-  ],
-
-  // EMPLOYÉS
-  employes: [
-    { id: 1, nom: 'Jean Martin', poste: 'Chef de chantier', tarifJour: 420, telephone: '079 111 11 11', email: 'j.martin@cyna.ch', actif: true },
-    { id: 2, nom: 'Pierre Durand', poste: 'Ouvrier qualifié', tarifJour: 350, telephone: '079 222 22 22', email: 'p.durand@cyna.ch', actif: true },
-    { id: 3, nom: 'Marc Weber', poste: 'Manœuvre', tarifJour: 280, telephone: '079 333 33 33', email: 'm.weber@cyna.ch', actif: true },
-  ],
-
-  // PROFILS UTILISATEURS
-  profils: [
-    { id: 1, nom: 'Direction', acces: ['tout'] },
-    { id: 2, nom: 'Conducteur de travaux', acces: ['chantiers', 'equipes', 'couts'] },
-    { id: 3, nom: 'Administratif', acces: ['clients', 'devis', 'factures'] },
-    { id: 4, nom: 'Métreur / Deviseur', acces: ['devis', 'tarification'] },
-    { id: 5, nom: 'Chef d\'équipe', acces: ['mes_chantiers'] },
-  ],
-
-  // CLIENTS
-  clients: [
-    { id: 1, nom: 'Dupont', prenom: 'Marc', entreprise: 'Dupont Immobilier SA', telephone: '022 100 00 01', email: 'marc.dupont@dupont.ch', adresse: 'Rue de Rive 12', ville: 'Genève', canton: 'GE', type: 'Entreprise', notes: 'Client fidèle depuis 2020' },
-    { id: 2, nom: 'Schmidt', prenom: 'Anna', entreprise: 'Schmidt Construction', telephone: '021 200 00 02', email: 'anna.schmidt@schmidt.ch', adresse: 'Avenue de la Gare 5', ville: 'Lausanne', canton: 'VD', type: 'Entreprise', notes: '' },
-  ],
-
-  // CHANTIERS
-  chantiers: [
-    {
-      id: 1,
-      numero: 'CH-2026-001',
-      nom: 'Bureaux Dupont Rive Gauche',
-      clientId: 1,
-      devisId: 1,
-      conducteur: 'Jean Martin',
-      adresse: 'Rue de Rive 12',
-      ville: 'Genève',
-      canton: 'GE',
-      dateDebut: '2026-03-01',
-      nombreJours: 15,
-      inclusSamedi: false,
-      statut: 'En cours',
-      priorite: 'Haute',
-      avancement: 60,
-      typesTravaux: ['Cloisons vitrées', 'Faux plancher'],
-      surface: 280,
-      montantDevis: 52000,
-      avenants: 3500,
-      montantFacture: 0,
-      equipe: [
-        { employeId: 1, role: 'Chef d\'équipe', joursPlannifies: 15, joursRealises: 9 },
-        { employeId: 2, role: 'Ouvrier', joursPlannifies: 15, joursRealises: 9 },
-        { employeId: 3, role: 'Manœuvre', joursPlannifies: 10, joursRealises: 6 },
-      ],
-      coutMaterielPrevu: 18000,
-      coutMaterielReel: 19200,
-      coutSousTraitancePrevu: 0,
-      coutSousTraitanceReel: 0,
-      autresCoutsPrevu: 500,
-      autresCoutsReel: 650,
-      imprevus: [
-        { description: 'Vitrage supplémentaire', montant: 1200 },
-      ],
-      heuresPrevu: 120,
-      heuresRealise: 72,
-      notes: 'Attention : accès restreint le mardi matin',
-      
-    },
-    {
-      id: 2,
-      numero: 'CH-2026-002',
-      nom: 'Centre Médical Schmidt',
-      clientId: 2,
-      devisId: 2,
-      conducteur: 'Jean Martin',
-      adresse: 'Avenue de la Gare 5',
-      ville: 'Lausanne',
-      canton: 'VD',
-      dateDebut: '2026-04-07',
-      nombreJours: 20,
-      inclusSamedi: false,
-      statut: 'Planifié',
-      priorite: 'Normale',
-      avancement: 0,
-      typesTravaux: ['Plafonds suspendus', 'Portes coupe-feu'],
-      surface: 350,
-      montantDevis: 68000,
-      avenants: 0,
-      montantFacture: 0,
-      equipe: [
-        { employeId: 1, role: 'Chef d\'équipe', joursPlannifies: 20, joursRealises: 0 },
-        { employeId: 2, role: 'Ouvrier', joursPlannifies: 20, joursRealises: 0 },
-      ],
-      coutMaterielPrevu: 22000,
-      coutMaterielReel: 22000,
-      coutSousTraitancePrevu: 5000,
-      coutSousTraitanceReel: 5000,
-      autresCoutsPrevu: 800,
-      autresCoutsReel: 800,
-      imprevus: [],
-      heuresPrevu: 160,
-      heuresRealise: 0,
-      notes: '',
-    },
-  ],
-
-  // DEVIS
-  devis: [
-    {
-      id: 1,
-      numero: 'DEV-2026-001',
-      clientId: 1,
-      date: '2026-02-15',
-      statut: 'accepté',
-      zone: 'Genève',
-      typeTravaux: 'Cloisons vitrées',
-      surface: 280,
-      complexite: 'Normale',
-      urgence: 'Non',
-      acces: 'Normal',
-      coutMateriel: 18000,
-      coutTransport: 800,
-      coutSousTraitance: 0,
-      margeCible: 25,
-      montantHT: 52000,
-      prixPropose: 52000,
-      heuresRegie: [],
-      notes: '',
-    },
-    {
-      id: 2,
-      numero: 'DEV-2026-002',
-      clientId: 2,
-      date: '2026-03-20',
-      statut: 'accepté',
-      zone: 'Lausanne',
-      typeTravaux: 'Plafonds suspendus',
-      surface: 350,
-      complexite: 'Normale',
-      urgence: 'Non',
-      acces: 'Normal',
-      coutMateriel: 22000,
-      coutTransport: 600,
-      coutSousTraitance: 5000,
-      margeCible: 22,
-      montantHT: 68000,
-      prixPropose: 68000,
-      heuresRegie: [],
-      notes: '',
-    },
-  ],
-};
+// ===== DONNÉES INITIALES — issues des données de démonstration complètes =====
+// donneesDemo contient 10 employés, 6 clients, 9 devis, 7 chantiers avec journals, 7 factures
+export const donneesInitiales = donneesDemo;
 
 // =============================================
 // MOTEUR MÉTIER CYNA — SOURCE UNIQUE DE VÉRITÉ
@@ -1122,7 +900,7 @@ export const calculerEtatChantier = (chantier, employes = [], devisList = [], pa
   const tousEmpIds = [...empIdsJournal, ...empIdsEquipe];
 
   const membreDetail = tousEmpIds.map(empId => {
-    const emp     = employes.find(e => e.id === empId);
+    const emp     = employes.find(e => String(e.id) === String(empId));
     // Règle BTP : appliquer le coefficient MO si le tarif n'est pas déjà chargé
     const coeff = emp?.tarifDejaCharge ? 1 : coefficientMO;
     const tarifJour  = (parseFloat(emp?.tarifJour) || 0) * coeff;
@@ -1256,7 +1034,7 @@ export const calculerEtatChantier = (chantier, employes = [], devisList = [], pa
 
 export const assertEtatValide = (etat) => {
   if (!etat) {
-    console.error('[CYNA] assertEtatValide : etat est null ou undefined');
+    if (process.env.NODE_ENV !== 'production') console.error('[CYNA] assertEtatValide : etat est null ou undefined');
     return false;
   }
 
@@ -1303,7 +1081,7 @@ export const assertEtatValide = (etat) => {
   }
 
   if (erreurs.length > 0) {
-    console.error('[CYNA] assertEtatValide — anomalies détectées :', erreurs);
+    if (process.env.NODE_ENV !== 'production') console.error('[CYNA] assertEtatValide — anomalies détectées :', erreurs);
     return false;
   }
 

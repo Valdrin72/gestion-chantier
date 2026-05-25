@@ -200,7 +200,7 @@ function PlanningChantier({ planning, totalJours }) {
             key={p.phase}
             title={`${p.label} — ${p.joursNet.toFixed(1)} j`}
             style={{
-              width: `${(p.joursNet / totalReel) * 100}%`,
+              width: `${totalReel > 0 ? (p.joursNet / totalReel) * 100 : 0}%`,
               background: p.couleur,
               transition: 'width 0.4s ease',
               minWidth: p.joursNet > 0 ? 3 : 0,
@@ -304,8 +304,8 @@ function calcLigne(l, tarifH) {
 // ── Badge rentabilité ────────────────────────────────────────
 function BadgeRentabilite({ marge }) {
   const pct = Math.round(marge * 100);
-  if (pct >= 15) return <span style={{ background: 'rgba(16,185,129,0.14)', color: '#10b981', border: '1px solid rgba(16,185,129,0.3)', padding: '3px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: 700 }}>Rentable +{pct}%</span>;
-  if (pct >= 0)  return <span style={{ background: 'rgba(245,158,11,0.14)', color: '#f59e0b', border: '1px solid rgba(245,158,11,0.3)', padding: '3px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: 700 }}>Limite {pct}%</span>;
+  if (pct >= 20) return <span style={{ background: 'rgba(16,185,129,0.14)', color: '#10b981', border: '1px solid rgba(16,185,129,0.3)', padding: '3px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: 700 }}>Rentable +{pct}%</span>;
+  if (pct >= 15) return <span style={{ background: 'rgba(245,158,11,0.14)', color: '#f59e0b', border: '1px solid rgba(245,158,11,0.3)', padding: '3px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: 700 }}>Limite {pct}%</span>;
   return <span style={{ background: 'rgba(239,68,68,0.12)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.28)', padding: '3px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: 700 }}>Perte {pct}%</span>;
 }
 
@@ -319,7 +319,7 @@ export default function SoumissionAssistee({ parametres, onCreerDevis, naviguer 
     heuresParJour: paramsGlobaux.heuresJour || 8,
     tarifHoraire:  paramsGlobaux.tarifHoraire || 85,
     margeCible:    paramsGlobaux.margeCible || 25,
-    fraisGeneraux: paramsGlobaux.fraisGeneraux || 10,
+    fraisGeneraux: paramsGlobaux.fraisGeneraux || 12,
   });
   const [titreProjet, setTitreProjet] = useState('');
   const [importEnCours, setImportEnCours] = useState(false);
@@ -368,7 +368,8 @@ export default function SoumissionAssistee({ parametres, onCreerDevis, naviguer 
     const totalAchats = calcules.reduce((s, c) => s + c.fournisseur, 0);
     const coutSansFreis = coutMOTotal + totalAchats;
     const coutAvecFreis = coutSansFreis * (1 + (parseFloat(params.fraisGeneraux) || 0) / 100);
-    const prixVente = coutAvecFreis * (1 + (parseFloat(params.margeCible) || 0) / 100);
+    const margeCible = (parseFloat(params.margeCible) || 0) / 100;
+    const prixVente = margeCible < 1 ? coutAvecFreis / (1 - margeCible) : coutAvecFreis * 2;
     const margeReelle = prixVente > 0 ? (prixVente - coutAvecFreis) / prixVente : 0;
 
     return {

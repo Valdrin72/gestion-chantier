@@ -47,7 +47,7 @@ function montantRestant(facture) {
  * Niveau 1, 2 ou 3 selon le retard et les rappels déjà envoyés.
  */
 export function prochainRappel(facture) {
-  if (!facture || facture.statut === 'payee' || facture.statut === 'annulee') return null;
+  if (!facture || facture.statut?.toLowerCase() === 'payee' || facture.statut?.toLowerCase() === 'annulee') return null;
   if (!facture.dateEcheance) return null;
   if (montantRestant(facture) <= 0) return null;
 
@@ -80,7 +80,7 @@ export function genererTexteRappel(niveau, facture, client, societe = {}) {
 
   const montant     = fmtCHF(montantRestant(facture));
   const numero      = facture.numero || '—';
-  const dateEmission = fmtDate(facture.dateEmission || facture.creeLe);
+  const dateEmission = fmtDate(facture.dateEmission);
   const dateEcheance = fmtDate(facture.dateEcheance);
   const joursRetard  = joursDepuis(facture.dateEcheance);
   const rappels      = facture.rappels || [];

@@ -498,10 +498,10 @@ export default function ImportPDF({ parametres, onCreerDevis, onCreerChantier, o
           { id: 'calculs', label: '4. Calculs' },
         ].map((e, i) => (
           <div key={e.id} style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-            <div style={{ background: etape === e.id ? '#3b82f6' : ['upload', 'metres', 'montants', 'calculs'].indexOf(etape) > i ? C.secondaire : 'var(--border)', color: 'white', width: '28px', height: '28px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', fontWeight: 700 }}>
+            <div style={{ background: etape === e.id ? '#0d3d6e' : ['upload', 'metres', 'montants', 'calculs'].indexOf(etape) > i ? C.secondaire : 'var(--border)', color: 'white', width: '28px', height: '28px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', fontWeight: 'bold' }}>
               {['upload', 'metres', 'montants', 'calculs'].indexOf(etape) > i ? '✓' : i + 1}
             </div>
-            <span style={{ fontSize: '13px', color: etape === e.id ? '#3b82f6' : 'var(--text-secondary)', fontWeight: etape === e.id ? 'bold' : 'normal' }}>{e.label}</span>
+            <span style={{ fontSize: '13px', color: etape === e.id ? '#0d3d6e' : 'var(--text-secondary)', fontWeight: etape === e.id ? 'bold' : 'normal' }}>{e.label}</span>
             {i < 3 && <div style={{ width: '30px', height: '2px', background: 'var(--border)' }} />}
           </div>
         ))}
@@ -530,9 +530,9 @@ export default function ImportPDF({ parametres, onCreerDevis, onCreerChantier, o
           </div>
 
           <div onClick={() => fileRef.current?.click()}
-            style={{ border: '3px dashed #3b82f6', borderRadius: '16px', padding: '50px', textAlign: 'center', cursor: 'pointer', background: 'var(--bg-hover)', transition: 'all 0.2s' }}>
+            style={{ border: '3px dashed #0d3d6e', borderRadius: '16px', padding: '50px', textAlign: 'center', cursor: 'pointer', background: 'var(--bg-hover)', transition: 'all 0.2s' }}>
             <div style={{ fontSize: '40px', marginBottom: '15px', color: 'var(--text-muted)' }}>↑</div>
-            <div style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '8px' }}>Cliquez pour sélectionner un PDF</div>
+            <div style={{ fontSize: '18px', fontWeight: 'bold', color: 'var(--text-primary)', marginBottom: '8px' }}>Cliquez pour sélectionner un PDF</div>
             <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Ou glissez-déposez votre fichier ici</div>
             <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '10px' }}>Formats acceptés : PDF texte (pas scanné)</div>
           </div>
@@ -543,7 +543,7 @@ export default function ImportPDF({ parametres, onCreerDevis, onCreerChantier, o
           {chargement && (
             <div style={{ textAlign: 'center', padding: '30px', color: 'var(--text-secondary)' }}>
               <div style={{ marginBottom: '10px', color: 'var(--text-secondary)' }}>...</div>
-              <div style={{ fontWeight: 700 }}>Lecture du PDF en cours...</div>
+              <div style={{ fontWeight: 'bold' }}>Lecture du PDF en cours...</div>
               <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '5px' }}>Extraction et analyse du texte</div>
             </div>
           )}
@@ -560,7 +560,7 @@ export default function ImportPDF({ parametres, onCreerDevis, onCreerChantier, o
           <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', alignItems: 'center' }}>
             <button onClick={() => setEtape('upload')} style={{ background: 'var(--bg-hover)', color: 'var(--text-primary)', border: 'none', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer' }}>← Retour</button>
             <div style={{ flex: 1 }}>
-              <strong style={{ color: '#3b82f6' }}>{nomFichier}</strong>
+              <strong style={{ color: '#0d3d6e' }}>{nomFichier}</strong>
               <span style={{ color: 'var(--text-secondary)', fontSize: '13px', marginLeft: '10px' }}>{metres.length} métrés détectés</span>
             </div>
             <button onClick={ajouterMetre} style={{ background: '#10b981', color: 'white', border: 'none', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer' }}>+ Ajouter</button>
@@ -583,7 +583,7 @@ export default function ImportPDF({ parametres, onCreerDevis, onCreerChantier, o
                 <div key={s.label}>
                   <label style={labelStyle}>{s.label}</label>
                   <input type="number" value={s.val} onChange={e => s.set(parseFloat(e.target.value) || 0)}
-                    style={{ ...inputStyle, fontWeight: 700, color: '#10b981', borderColor: '#10b981' }} />
+                    style={{ ...inputStyle, fontWeight: 'bold', color: '#10b981', borderColor: '#10b981' }} />
                 </div>
               ))}
             </div>
@@ -621,7 +621,7 @@ export default function ImportPDF({ parametres, onCreerDevis, onCreerChantier, o
                       </td>
                       <td style={{ padding: '8px 12px' }}>
                         <input type="number" value={m.valeur} onChange={e => modifierMetre(m.id, 'valeur', parseFloat(e.target.value) || 0)}
-                          style={{ ...inputStyle, width: '80px', padding: '4px 8px', fontWeight: 700 }} />
+                          style={{ ...inputStyle, width: '80px', padding: '4px 8px', fontWeight: 'bold' }} />
                       </td>
                       <td style={{ padding: '8px 12px' }}>
                         <select value={m.unite} onChange={e => modifierMetre(m.id, 'unite', e.target.value)}
@@ -657,7 +657,7 @@ export default function ImportPDF({ parametres, onCreerDevis, onCreerChantier, o
                 ].map(s => (
                   <div key={s.label} style={{ background: 'var(--bg-hover)', border: `2px solid ${s.couleur}`, borderRadius: '10px', padding: '12px 20px', textAlign: 'center' }}>
                     <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>{s.label}</div>
-                    <div style={{ fontSize: '20px', fontWeight: 700, color: s.couleur }}>{s.val} {s.unite}</div>
+                    <div style={{ fontSize: '20px', fontWeight: 'bold', color: s.couleur }}>{s.val} {s.unite}</div>
                   </div>
                 ))}
               </div>
@@ -680,7 +680,7 @@ export default function ImportPDF({ parametres, onCreerDevis, onCreerChantier, o
           <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', alignItems: 'center' }}>
             <button onClick={() => setEtape(typePDF === 'les_deux' ? 'metres' : 'upload')} style={{ background: 'var(--bg-hover)', color: 'var(--text-primary)', border: 'none', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer' }}>← Retour</button>
             <div style={{ flex: 1 }}>
-              <strong style={{ color: '#3b82f6' }}>{nomFichier}</strong>
+              <strong style={{ color: '#0d3d6e' }}>{nomFichier}</strong>
               <span style={{ color: 'var(--text-secondary)', fontSize: '13px', marginLeft: '10px' }}>{montants.length} montants détectés</span>
             </div>
             <button onClick={ajouterMontant} style={{ background: '#10b981', color: 'white', border: 'none', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer' }}>+ Ajouter</button>
@@ -694,9 +694,9 @@ export default function ImportPDF({ parametres, onCreerDevis, onCreerChantier, o
             <div className="ds-section-label" style={{ marginTop: 0 }}>Paramètres</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
               <div><label style={labelStyle}>Marge cible (%)</label>
-                <input type="number" value={margeCible} onChange={e => setMargeCible(parseFloat(e.target.value) || 0)} style={{ ...inputStyle, fontWeight: 700, color: '#10b981', borderColor: '#10b981' }} /></div>
+                <input type="number" value={margeCible} onChange={e => setMargeCible(parseFloat(e.target.value) || 0)} style={{ ...inputStyle, fontWeight: 'bold', color: '#10b981', borderColor: '#10b981' }} /></div>
               <div><label style={labelStyle}>Frais généraux (%)</label>
-                <input type="number" value={tauxFraisGen} onChange={e => setTauxFraisGen(parseFloat(e.target.value) || 0)} style={{ ...inputStyle, fontWeight: 700, color: '#10b981', borderColor: '#10b981' }} /></div>
+                <input type="number" value={tauxFraisGen} onChange={e => setTauxFraisGen(parseFloat(e.target.value) || 0)} style={{ ...inputStyle, fontWeight: 'bold', color: '#10b981', borderColor: '#10b981' }} /></div>
             </div>
           </div>
 
@@ -732,7 +732,7 @@ export default function ImportPDF({ parametres, onCreerDevis, onCreerChantier, o
                       </td>
                       <td style={{ padding: '8px 12px' }}>
                         <input type="number" value={m.valeur} onChange={e => modifierMontant(m.id, 'valeur', parseFloat(e.target.value) || 0)}
-                          style={{ ...inputStyle, width: '120px', padding: '4px 8px', fontWeight: 700 }} />
+                          style={{ ...inputStyle, width: '120px', padding: '4px 8px', fontWeight: 'bold' }} />
                       </td>
                       <td style={{ padding: '8px 12px' }}>
                         <select value={m.type} onChange={e => modifierMontant(m.id, 'type', e.target.value)}
@@ -759,13 +759,13 @@ export default function ImportPDF({ parametres, onCreerDevis, onCreerChantier, o
             <div style={{ display: 'flex', gap: '15px', marginTop: '20px' }}>
               <div style={{ background: 'var(--bg-hover)', border: '2px solid #10b981', borderRadius: '10px', padding: '12px 20px', textAlign: 'center', flex: 1 }}>
                 <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Total fournisseur sélectionné</div>
-                <div style={{ fontSize: '22px', fontWeight: 700, color: '#10b981' }}>
+                <div style={{ fontSize: '22px', fontWeight: 'bold', color: '#10b981' }}>
                   CHF {montants.filter(m => m.inclus).reduce((t, m) => t + m.valeur, 0).toLocaleString()}
                 </div>
               </div>
               <div style={{ background: 'var(--bg-hover)', border: `2px solid ${C.secondaire}`, borderRadius: '10px', padding: '12px 20px', textAlign: 'center', flex: 1 }}>
                 <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Prix de vente suggéré</div>
-                <div style={{ fontSize: '22px', fontWeight: 700, color: C.secondaire }}>
+                <div style={{ fontSize: '22px', fontWeight: 'bold', color: C.secondaire }}>
                   CHF {Math.round(montants.filter(m => m.inclus).reduce((t, m) => t + m.valeur, 0) * (1 + tauxFraisGen / 100) / (1 - margeCible / 100)).toLocaleString()}
                 </div>
               </div>
@@ -783,7 +783,7 @@ export default function ImportPDF({ parametres, onCreerDevis, onCreerChantier, o
           </div>
 
           {/* RÉSULTAT PRINCIPAL */}
-          <div style={{ ...carteStyle, borderTop: '5px solid #3b82f6' }}>
+          <div style={{ ...carteStyle, borderTop: '5px solid #0d3d6e' }}>
             <div className="ds-card-title">Résultats de l'analyse</div>
             <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '20px' }}>Fichier : {nomFichier}</div>
 
@@ -801,7 +801,7 @@ export default function ImportPDF({ parametres, onCreerDevis, onCreerChantier, o
                   {[
                     { label: 'Client', val: analyse.client || '—', color: analyse.client ? 'var(--text-primary)' : 'var(--text-muted)' },
                     { label: 'Montant', val: analyse.montant > 0 ? `CHF ${analyse.montant.toLocaleString('fr-CH')}` : '—', color: analyse.montant > 0 ? '#10b981' : 'var(--text-muted)' },
-                    { label: 'Surface', val: analyse.surface > 0 ? `${analyse.surface} m²` : '—', color: analyse.surface > 0 ? '#3b82f6' : 'var(--text-muted)' },
+                    { label: 'Surface', val: analyse.surface > 0 ? `${analyse.surface} m²` : '—', color: analyse.surface > 0 ? '#0d3d6e' : 'var(--text-muted)' },
                     { label: 'Postes', val: analyse.lignes.length > 0 ? `${analyse.lignes.length} poste${analyse.lignes.length > 1 ? 's' : ''}` : '—', color: analyse.lignes.length > 0 ? '#8b5cf6' : 'var(--text-muted)' },
                   ].map(item => (
                     <div key={item.label} style={{ background: 'var(--bg-card)', padding: '12px 16px' }}>
@@ -874,11 +874,11 @@ export default function ImportPDF({ parametres, onCreerDevis, onCreerChantier, o
                 { label: 'Prix premium', val: Math.round(calculs.prixVente * 1.15), desc: 'Marge +15% — Haut de gamme', couleur: C.violet, bg: 'rgba(139,92,246,0.12)' },
               ].map(s => (
                 <div key={s.label} style={{ background: s.bg, border: `3px solid ${s.couleur}`, borderRadius: '14px', padding: '20px', textAlign: 'center' }}>
-                  <div style={{ fontWeight: 700, color: s.couleur, marginBottom: '8px' }}>{s.label}</div>
-                  <div style={{ fontSize: '28px', fontWeight: 700, color: s.couleur }}>CHF {s.val.toLocaleString()}</div>
+                  <div style={{ fontWeight: 'bold', color: s.couleur, marginBottom: '8px' }}>{s.label}</div>
+                  <div style={{ fontSize: '28px', fontWeight: 'bold', color: s.couleur }}>CHF {s.val.toLocaleString()}</div>
                   <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '5px' }}>{s.desc}</div>
                   {calculs.surfaceTotal > 0 && (
-                    <div style={{ fontSize: '12px', color: s.couleur, marginTop: '5px', fontWeight: 700 }}>
+                    <div style={{ fontSize: '12px', color: s.couleur, marginTop: '5px', fontWeight: 'bold' }}>
                       CHF {(s.val / calculs.surfaceTotal).toFixed(0)}/m²
                     </div>
                   )}
@@ -889,7 +889,7 @@ export default function ImportPDF({ parametres, onCreerDevis, onCreerChantier, o
             {/* MARGE */}
             <div style={{ background: calculs.marge >= 0 ? 'rgba(16,185,129,0.10)' : 'rgba(239,68,68,0.09)', border: `1px solid ${calculs.marge >= 0 ? 'rgba(16,185,129,0.3)' : 'rgba(239,68,68,0.25)'}`, borderRadius: '12px', padding: '20px', textAlign: 'center' }}>
               <div style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>Marge estimée au prix conseillé</div>
-              <div style={{ fontSize: '32px', fontWeight: 700, color: calculs.marge >= 0 ? C.secondaire : C.danger }}>
+              <div style={{ fontSize: '32px', fontWeight: 'bold', color: calculs.marge >= 0 ? C.secondaire : C.danger }}>
                 CHF {Math.round(calculs.marge).toLocaleString()}
               </div>
               <div style={{ fontSize: '16px', color: calculs.marge >= 0 ? C.secondaire : C.danger }}>({calculs.margePct}%)</div>
@@ -921,7 +921,7 @@ export default function ImportPDF({ parametres, onCreerDevis, onCreerChantier, o
                   notes: `Importé depuis PDF : ${nomFichier}`,
                   lignes: analyse?.lignes || [],
                 });
-              }} style={{ background: '#10b981', color: 'white', border: 'none', padding: '20px', borderRadius: '12px', cursor: 'pointer', fontSize: '16px', fontWeight: 700 }}>
+              }} style={{ background: '#10b981', color: 'white', border: 'none', padding: '20px', borderRadius: '12px', cursor: 'pointer', fontSize: '16px', fontWeight: 'bold' }}>
                 Créer un métrage avec ces données
               </button>
             </div>

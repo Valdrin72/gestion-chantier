@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   HardHat, Pencil, Trash2, AlertTriangle, CheckCircle,
   ChevronRight, DollarSign, Clock,
@@ -130,7 +130,8 @@ function ChantierDetail({ chantier, detailOnglet, setDetailOnglet, modeCompleter
   const _pctEncaisseRaw = devisTotal > 0 ? (montantPayeLie / devisTotal) * 100 : 0;
   const pctEncaisse = isNaN(_pctEncaisseRaw) ? 0 : Math.min(Math.round(_pctEncaisseRaw), 100);
 
-  const alertesChantier = (() => {
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const alertesChantier = useMemo(() => {
     const list = [];
     if (joursRestants !== null && joursRestants < 0) {
       const abs = Math.abs(joursRestants);
@@ -162,7 +163,8 @@ function ChantierDetail({ chantier, detailOnglet, setDetailOnglet, modeCompleter
       list.push({ id: 'avt_devis', texte: `Démarrage avant signature du devis (${c.dateDebut} < acceptation ${devisLie.dateAcceptation})`, gravite: 'warning', icone: 'warning' });
     }
     return list.sort((a, b) => (b.gravite === 'critique' ? 1 : 0) - (a.gravite === 'critique' ? 1 : 0));
-  })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [c, etat, devis, joursRestants]);
 
   const chantierStatusBadge = ['en cours', 'suspendu'].includes((c.statut || '').toLowerCase()) ? getChantierStatus(c) : null;
   const devisSource = devis.find(d => String(d.id) === String(c.devisId));
@@ -216,10 +218,10 @@ function ChantierDetail({ chantier, detailOnglet, setDetailOnglet, modeCompleter
   })();
 
   const tiles = [
-    { id: 'renta', icone: 'renta', titre: 'RENTABILITÉ', ...margeTile },
-    { id: 'av',    icone: 'av', titre: 'AVANCEMENT',  ...avTile },
-    { id: 'plan',  icone: 'plan', titre: 'PLANNING',    ...planTile },
-    { id: 'act',   icone: actionTile.icone, titre: 'ACTION', val: actionTile.val, label: actionTile.label, couleur: actionTile.couleur },
+    { id: 'renta', icone: 'renta', titre: 'RENTABILITÉ', ...margeTile, desc: '(CA − coûts réels) / CA × 100' },
+    { id: 'av',    icone: 'av', titre: 'AVANCEMENT',  ...avTile,    desc: 'Dates uniques du journal / jours prévus' },
+    { id: 'plan',  icone: 'plan', titre: 'PLANNING',    ...planTile,  desc: 'Jours prévus − jours réalisés (journal)' },
+    { id: 'act',   icone: actionTile.icone, titre: 'ACTION', val: actionTile.val, label: actionTile.label, couleur: actionTile.couleur, desc: 'Recommandation basée sur retard et rentabilité' },
   ];
 
   return (<React.Fragment key="detail">
@@ -282,8 +284,8 @@ function ChantierDetail({ chantier, detailOnglet, setDetailOnglet, modeCompleter
         ].map(o => (
           <button key={o.id} onClick={() => setDetailOnglet(o.id)} style={{
             background: 'transparent', border: 'none',
-            borderBottom: detailOnglet === o.id ? '2px solid #3b82f6' : '2px solid transparent',
-            color: detailOnglet === o.id ? '#3b82f6' : 'var(--text-secondary)',
+            borderBottom: detailOnglet === o.id ? '2px solid #0d3d6e' : '2px solid transparent',
+            color: detailOnglet === o.id ? '#0d3d6e' : 'var(--text-secondary)',
             padding: '10px 18px', marginBottom: '-1px',
             cursor: 'pointer', fontSize: 14, fontWeight: detailOnglet === o.id ? 700 : 400,
           }}>{o.label}</button>
@@ -323,6 +325,11 @@ function ChantierDetail({ chantier, detailOnglet, setDetailOnglet, modeCompleter
             <div style={{ fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.35 }}>
               {t.label}
             </div>
+            {t.desc && (
+              <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 5, fontStyle: 'italic', opacity: 0.8, lineHeight: 1.3 }}>
+                {t.desc}
+              </div>
+            )}
           </div>
         ))}
       </div>
@@ -443,7 +450,7 @@ function ChantierDetail({ chantier, detailOnglet, setDetailOnglet, modeCompleter
               <div style={{ color: 'var(--text-secondary)', marginTop: '8px', cursor: 'pointer', fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}
                 onClick={() => naviguer('clients', { clientActif: c.clientId })}>
                 {client.prenom} {client.nom} — {client.entreprise} · {client.telephone}
-                <span style={{ color: C.primaire, textDecoration: 'none', fontSize: '12px', fontWeight: 600, background: 'rgba(59,130,246,0.1)', padding: '2px 8px', borderRadius: 6 }}>Voir →</span>
+                <span style={{ color: C.primaire, textDecoration: 'none', fontSize: '12px', fontWeight: 600, background: 'rgba(13,61,110,0.1)', padding: '2px 8px', borderRadius: 6 }}>Voir →</span>
               </div>
             )}
           </div>
@@ -520,8 +527,8 @@ function ChantierDetail({ chantier, detailOnglet, setDetailOnglet, modeCompleter
         </div>
       )}
 
-      {etat.projectionDisponible && <DetailProjection etat={etat} fmtK={fmtK} />}
-      {etat.projectionDisponible && <DetailRecommandations etat={etat} couts={couts} />}
+      {etat.projectionDisponible && <DetailProjection etat={etat} couts={couts} chantier={c} factures={facturesLiees} devis={devis} fmtK={fmtK} />}
+      {etat.projectionDisponible && <DetailRecommandations etat={etat} couts={couts} chantier={c} factures={facturesLiees} devis={devis} fmtK={fmtK} />}
       <DetailRentabilite c={c} etat={etat} couts={couts} naviguer={naviguer} fmtN={fmtN} fmtK={fmtK} />
       </>}
 

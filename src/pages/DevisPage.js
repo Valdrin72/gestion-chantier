@@ -1,9 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Plus, Pencil, Trash2, HardHat, Receipt,
   DollarSign, Clock, FileText, TrendingUp, FileDown, Download,
 } from 'lucide-react';
-import useIsMobile from '../hooks/useIsMobile';
 import { fmtN, C, creerFactureDepuisDevis, getIntervallesPeriode } from '../donnees';
 import { exportCSV } from '../utils/exportCSV';
 import { DS } from '../ds';
@@ -20,14 +19,126 @@ const btnDanger = DS.btnDanger;
 
 const PAGE_SIZE = 50;
 
+// Ratios h/m² par type de travaux (source: productivite-cyna skill)
+const RATIOS_MO = [
+  { nom: 'Plafonds suspendus',   ratio: 0.65, unite: 'm²', label: 'Faux-plafond modulaire 600×600' },
+  { nom: 'Faux plancher',        ratio: 0.80, unite: 'm²', label: 'Faux-plancher technique H=15-30cm' },
+  { nom: 'Cloisons vitrées',     ratio: 1.20, unite: 'm²', label: 'Cloisons vitrées aluminium' },
+  { nom: 'Cloisons amovibles',   ratio: 0.80, unite: 'm²', label: 'Cloisons amovibles standard' },
+  { nom: 'Panneaux sandwich',    ratio: 0.90, unite: 'm²', label: 'Panneaux sandwich' },
+  { nom: 'BA13',                 ratio: 1.15, unite: 'm²', label: 'Plaques BA13 prêt à peindre' },
+  { nom: 'Portes standards',     ratio: 2.00, unite: 'u',  label: 'Porte standard (par unité)' },
+  { nom: 'Portes coupe-feu',     ratio: 3.00, unite: 'u',  label: 'Porte coupe-feu (par unité)' },
+];
+
+const FACTEURS = [
+  { id: 'normal',   label: 'Conditions normales',          factor: 1.00 },
+  { id: 'hauteur',  label: '+ Hauteur > 3.5m (échaf.)',    factor: 1.20 },
+  { id: 'exigu',    label: '+ Local exigu (< 1.5m)',       factor: 1.30 },
+  { id: 'decoupes', label: '+ Nombreuses découpes (>20%)', factor: 1.15 },
+  { id: 'renov',    label: '+ Rénovation (démontage)',      factor: 1.25 },
+  { id: 'grand',    label: '− Grand chantier (>500m²)',    factor: 0.90 },
+];
+
+function CalculateurMO({ surface, onApply }) {
+  const [ouvert, setOuvert] = useState(false);
+  const [typeIdx, setTypeIdx] = useState(0);
+  const [facteurId, setFacteurId] = useState('normal');
+  const [nbPersonnes, setNbPersonnes] = useState(2);
+
+  const type = RATIOS_MO[typeIdx];
+  const facteur = FACTEURS.find(f => f.id === facteurId) || FACTEURS[0];
+  const qte = type.unite === 'u' ? Math.max(1, Math.round(surface / 4)) : surface;
+  const heuresRaw = qte * type.ratio * facteur.factor;
+  const heuresTotal = Math.round(heuresRaw * 10) / 10;
+  const nb = Math.max(1, parseInt(nbPersonnes) || 2);
+  const joursCalc = Math.ceil(heuresTotal / 8);
+  const joursAvecEquipe = Math.ceil(heuresTotal / (8 * nb));
+
+  if (!ouvert) {
+    return (
+      <div style={{ marginBottom: 20 }}>
+        <button onClick={() => setOuvert(true)} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', background: 'linear-gradient(135deg, #fff7ed, #fef3c7)', border: '1px solid #fcd34d', borderRadius: 12, padding: '12px 16px', cursor: 'pointer', fontFamily: 'inherit' }}>
+          <HardHat size={16} color="#d97706" />
+          <div style={{ textAlign: 'left', flex: 1 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#92400e' }}>Calculateur MO — Ratios BTP</div>
+            <div style={{ fontSize: 11, color: '#b45309', marginTop: 1 }}>Estimer les heures et la durée selon le type de travaux ({surface} m² saisis)</div>
+          </div>
+          <span style={{ fontSize: 11, color: '#d97706' }}>▼</span>
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ marginBottom: 20, background: 'linear-gradient(135deg, #fff7ed, #fffbf0)', border: '1px solid #fcd34d', borderRadius: 14, padding: '18px 20px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <HardHat size={16} color="#d97706" />
+          <span style={{ fontWeight: 800, fontSize: 14, color: '#92400e' }}>Calculateur MO — Ratios BTP</span>
+          <span style={{ fontSize: 10, background: '#fef3c7', color: '#d97706', border: '1px solid #fcd34d', borderRadius: 20, padding: '2px 8px', fontWeight: 600 }}>productivite-cyna</span>
+        </div>
+        <button onClick={() => setOuvert(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#d97706', fontSize: 12, fontFamily: 'inherit' }}>▲ Réduire</button>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
+        <div>
+          <label style={{ fontSize: 11, fontWeight: 700, color: '#92400e', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: 6 }}>Type de travaux</label>
+          <select value={typeIdx} onChange={e => setTypeIdx(parseInt(e.target.value))} style={{ ...DS.input, borderColor: '#fcd34d', background: 'white', fontSize: 13 }}>
+            {RATIOS_MO.map((t, i) => <option key={t.nom} value={i}>{t.nom} — {t.ratio} h/{t.unite}</option>)}
+          </select>
+        </div>
+        <div>
+          <label style={{ fontSize: 11, fontWeight: 700, color: '#92400e', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: 6 }}>Facteur de correction</label>
+          <select value={facteurId} onChange={e => setFacteurId(e.target.value)} style={{ ...DS.input, borderColor: '#fcd34d', background: 'white', fontSize: 13 }}>
+            {FACTEURS.map(f => <option key={f.id} value={f.id}>{f.label} (×{f.factor})</option>)}
+          </select>
+        </div>
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14, flexWrap: 'wrap' }}>
+        <div>
+          <label style={{ fontSize: 11, fontWeight: 700, color: '#92400e', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: 6 }}>Nb personnes</label>
+          <input type="number" min="1" max="10" value={nbPersonnes} onChange={e => setNbPersonnes(e.target.value)} style={{ ...DS.input, width: 80, borderColor: '#fcd34d', background: 'white' }} />
+        </div>
+        <div style={{ background: 'rgba(217,119,6,0.08)', border: '1px solid #fcd34d', borderRadius: 12, padding: '12px 20px', display: 'flex', gap: 28, flexWrap: 'wrap' }}>
+          <div>
+            <div style={{ fontSize: 10, color: '#92400e', fontWeight: 700, textTransform: 'uppercase', marginBottom: 3 }}>Surface</div>
+            <div style={{ fontSize: 18, fontWeight: 900, color: '#d97706' }}>{type.unite === 'u' ? `≈${qte}` : surface} {type.unite}</div>
+          </div>
+          <div>
+            <div style={{ fontSize: 10, color: '#92400e', fontWeight: 700, textTransform: 'uppercase', marginBottom: 3 }}>Heures totales</div>
+            <div style={{ fontSize: 18, fontWeight: 900, color: '#d97706' }}>{heuresTotal}h</div>
+            <div style={{ fontSize: 10, color: '#b45309' }}>{type.ratio}×{facteur.factor !== 1 ? facteur.factor : ''} h/{type.unite}</div>
+          </div>
+          <div>
+            <div style={{ fontSize: 10, color: '#92400e', fontWeight: 700, textTransform: 'uppercase', marginBottom: 3 }}>1 personne</div>
+            <div style={{ fontSize: 18, fontWeight: 900, color: '#d97706' }}>{joursCalc}j</div>
+          </div>
+          {nb > 1 && (
+            <div>
+              <div style={{ fontSize: 10, color: '#92400e', fontWeight: 700, textTransform: 'uppercase', marginBottom: 3 }}>{nb} personnes</div>
+              <div style={{ fontSize: 18, fontWeight: 900, color: '#10b981' }}>{joursAvecEquipe}j</div>
+            </div>
+          )}
+        </div>
+      </div>
+      <button
+        onClick={() => { onApply({ duree: String(joursAvecEquipe), personnes: String(nb) }); setOuvert(false); }}
+        style={{ background: '#d97706', color: '#fff', border: 'none', borderRadius: 8, padding: '9px 20px', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
+      >
+        Appliquer ({joursAvecEquipe}j · {nb} pers.) →
+      </button>
+      <span style={{ fontSize: 11, color: '#b45309', marginLeft: 10 }}>Remplace les champs Durée et Personnes</span>
+    </div>
+  );
+}
+
 function Devis() {
   const { devis, setDevis, clients, parametres, naviguer, setChantiers, chantiers, factures, setFactures, contexte = {}, afficherNotif, confirmer, periodeGlobale = 'mois' } = useApp();
-  const isMobile = useIsMobile();
   const [ajout, setAjout] = useState(false);
   const [filtreDevis, setFiltreDevis] = useState('Tous');
   const [page, setPage] = useState(0);
 
-  React.useEffect(() => { setPage(0); }, [filtreDevis]);
+  React.useEffect(() => { setPage(0); }, [filtreDevis, periodeGlobale]);
   const [confirmConversion, setConfirmConversion] = useState(null); // { devis, nomChantier }
   const vide = {
     numero: `DEV-${new Date().getFullYear()}-${String(Math.max(0, ...devis.map(d => parseInt((d.numero || '').split('-').pop()) || 0)) + 1).padStart(3, '0')}`,
@@ -38,6 +149,19 @@ function Devis() {
   const [erreurs, setErreurs] = useState({});
 
   // Helper unifié : CA signé d'un devis (montant HT + avenants + heures régie)
+  const prixMoyenM2Historique = useMemo(() => {
+    const prix = chantiers
+      .filter(ch => parseFloat(ch.surface) > 0)
+      .map(ch => {
+        const dv = devis.find(d => String(d.id) === String(ch.devisId));
+        const ca = parseFloat(dv?.montantHT) || 0;
+        const s = parseFloat(ch.surface) || 0;
+        return ca > 0 && s > 0 ? ca / s : null;
+      })
+      .filter(Boolean);
+    return prix.length > 0 ? { moyenne: prix.reduce((a, b) => a + b, 0) / prix.length, count: prix.length } : null;
+  }, [chantiers, devis]);
+
   const caDevis = (d) => {
     const base = parseFloat(d.montantHT || d.prixPropose) || 0;
     const av = Array.isArray(d.avenants) ? d.avenants.reduce((x, a) => x + (parseFloat(a.montant) || 0), 0) : 0;
@@ -66,20 +190,17 @@ function Devis() {
   const sauvegarder = () => {
     const nouvellesErreurs = {};
     if (!form.clientId) nouvellesErreurs.clientId = 'Sélectionner un client';
+    if (!form.typesTravaux?.length) nouvellesErreurs.typesTravaux = 'Sélectionner au moins un type de travaux';
+    const montantParsed = parseFloat(form.montantHT);
+    if (!form.montantHT || !Number.isFinite(montantParsed) || montantParsed <= 0) {
+      nouvellesErreurs.montantHT = 'Le montant HT est obligatoire et doit être positif';
+    }
     if (Object.keys(nouvellesErreurs).length > 0) {
       setErreurs(nouvellesErreurs);
       return;
     }
-    const montant = parseFloat(form.montantHT);
-    if (Number.isFinite(montant) && montant < 0) { alert('Le montant HT ne peut pas être négatif.'); return; }
     if (form.id) {
       setDevis(devis.map(d => d.id === form.id ? form : d));
-      // Sync CA sur les chantiers liés si montantHT a changé
-      if (form.montantHT) {
-        setChantiers(chantiers.map(ch =>
-          String(ch.devisId) === String(form.id) ? { ...ch, montantDevis: parseFloat(form.montantHT) || ch.montantDevis } : ch
-        ));
-      }
     } else {
       setDevis([...devis, { ...form, id: Date.now() }]);
     }
@@ -127,8 +248,7 @@ function Devis() {
       nom: nomChantier.trim() || `Chantier ${d.numero}`,
       numero: `CH-${new Date().getFullYear()}-${String(Math.max(0, ...prev.map(c => parseInt((c.numero || '').split('-').pop()) || 0)) + 1).padStart(3, '0')}`,
       clientId: d.clientId,
-      montantDevis: parseFloat(d.montantHT || d.prixPropose) || 0,
-      surface: 0,
+      surface: parseFloat(d.surface) || 0,
       statut: 'Planifié', priorite: 'Normale', avancement: 0,
       dateDebut: '', nombreJours: d.dureeEstimee || '', nombrePersonnes: d.nombrePersonnes || '',
       inclusSamedi: false, avenants: [], montantFacture: 0,
@@ -140,6 +260,7 @@ function Devis() {
       notes: `Créé depuis devis ${d.numero}`,
       journal: [],
     }]);
+    setDevis(prev => prev.map(dv => String(dv.id) === String(d.id) ? { ...dv, statut: 'accepté' } : dv));
     setConfirmConversion(null);
     naviguer('chantiers', { chantierActif: newId, modeCompleter: true });
   };
@@ -175,10 +296,10 @@ function Devis() {
           ? Math.round(enAttente.reduce((s, d) => { const dt = d.dateEmission || d.date; return dt ? s + Math.floor((now - new Date(dt)) / 86400000) : s; }, 0) / enAttente.length)
           : null;
         const kpiItems = [
-          { label: 'CA SIGNÉ',            val: `CHF ${fmtN(caSigné)}`, sous: `${devisAcceptes.length} accepté${devisAcceptes.length !== 1 ? 's' : ''} / ${devisPeriode.length} ce ${periodeGlobale === 'semaine' ? 'sem.' : periodeGlobale === 'mois' ? 'mois' : 'an'}`, Icon: DollarSign, ...DS.kpi.green },
-          { label: "TAUX D'ACCEPTATION",  val: `${tauxAcceptation}%`, sous: `sur ${devisPeriode.length} devis (période)`, Icon: TrendingUp, ...DS.kpi.blue },
-          { label: 'EN ATTENTE RÉPONSE',  val: enAttente.length, sous: montantAttente > 0 ? `CHF ${fmtN(montantAttente)} en jeu` : 'Aucun en cours', Icon: Clock, ...DS.kpi.amber },
-          { label: 'DÉLAI MOYEN',         val: delaisMoyen !== null ? `${delaisMoyen}j` : '—', sous: 'depuis envoi', Icon: FileText, ...DS.kpi.purple },
+          { label: 'CA SIGNÉ',            val: `CHF ${fmtN(caSigné)}`, sous: `${devisAcceptes.length} accepté${devisAcceptes.length !== 1 ? 's' : ''} / ${devisPeriode.length} ce ${periodeGlobale === 'semaine' ? 'sem.' : periodeGlobale === 'mois' ? 'mois' : 'an'}`, desc: 'Σ montantHT des devis acceptés sur la période', Icon: DollarSign, ...DS.kpi.green },
+          { label: "TAUX D'ACCEPTATION",  val: `${tauxAcceptation}%`, sous: `sur ${devisPeriode.length} devis (période)`, desc: 'Devis acceptés / total envoyés × 100', Icon: TrendingUp, ...DS.kpi.blue },
+          { label: 'EN ATTENTE RÉPONSE',  val: enAttente.length, sous: montantAttente > 0 ? `CHF ${fmtN(montantAttente)} en jeu` : 'Aucun en cours', desc: 'Devis envoyés sans réponse client', Icon: Clock, ...DS.kpi.amber },
+          { label: 'DÉLAI MOYEN',         val: delaisMoyen !== null ? `${delaisMoyen}j` : '—', sous: 'depuis envoi', desc: 'Moy. jours depuis date d\'envoi (en attente)', Icon: FileText, ...DS.kpi.purple },
         ];
         return (
           <div className="kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'var(--g4)', gap: 16, marginBottom: 20 }}>
@@ -192,6 +313,7 @@ function Devis() {
                 <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.7)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 5, position: 'relative' }}>{k.label}</div>
                 <div className="kpi-val" style={{ fontSize: 26, fontWeight: 900, color: '#fff', letterSpacing: '-0.8px', lineHeight: 1, position: 'relative' }}>{k.val}</div>
                 {k.sous && <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.62)', marginTop: 5, position: 'relative' }}>{k.sous}</div>}
+                {k.desc && <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.45)', marginTop: 3, fontStyle: 'italic', position: 'relative' }}>{k.desc}</div>}
               </div>
             ))}
           </div>
@@ -202,14 +324,14 @@ function Devis() {
       {(() => {
         const STATUTS_DEVIS = ['Tous', 'brouillon', 'envoyé', 'accepté', 'refusé'];
         return (
-          <div style={{ display: 'flex', gap: '6px', marginBottom: '16px', overflowX: 'auto', WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none', paddingBottom: 2 }}>
+          <div style={{ display: 'flex', gap: '6px', marginBottom: '20px', flexWrap: 'wrap' }}>
             {STATUTS_DEVIS.map(s => (
               <button key={s} onClick={() => setFiltreDevis(s)} style={{
                 background: filtreDevis === s ? DS.brand.soft : 'transparent',
                 color: filtreDevis === s ? DS.brand.secondary : 'var(--text-muted)',
-                border: '1px solid transparent', flexShrink: 0,
-                padding: '8px 14px', borderRadius: '20px', cursor: 'pointer', fontSize: '13px',
-                fontWeight: filtreDevis === s ? 600 : 400, fontFamily: 'inherit', minHeight: 36,
+                border: '1px solid transparent',
+                padding: '5px 14px', borderRadius: '20px', cursor: 'pointer', fontSize: '13px',
+                fontWeight: filtreDevis === s ? 600 : 400, fontFamily: 'inherit',
                 textTransform: 'capitalize',
               }}>{s}</button>
             ))}
@@ -260,6 +382,7 @@ function Devis() {
               onChange={e => { const raw = e.target.value.replace(/'/g, '').replace(/[^0-9.]/g, ''); setForm({ ...form, montantHT: raw }); }}
               style={{ ...inputStyle, fontSize: '22px', fontWeight: 800, borderColor: '#10b98160', letterSpacing: '-0.5px' }}
             />
+            {erreurs.montantHT && <div style={{ marginTop: 6, fontSize: 12, color: '#ef4444' }}>{erreurs.montantHT}</div>}
             {form.montantHT && parseFloat(form.montantHT) > 0 && (
               <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
                 <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>CA enregistré :</span>
@@ -272,13 +395,13 @@ function Devis() {
           <div style={{ background: 'rgba(59,130,246,0.04)', border: '1px solid rgba(59,130,246,0.15)', borderRadius: 12, padding: '16px 20px', marginBottom: 20 }}>
             <div style={{ display: 'flex', alignItems: 'flex-end', gap: 24, flexWrap: 'wrap' }}>
               <div>
-                <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: '#3b82f6', marginBottom: 6 }}>Durée estimée (jours ouvrables)</div>
+                <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: '#0d3d6e', marginBottom: 6 }}>Durée estimée (jours ouvrables)</div>
                 <input
                   type="number" min="1" step="1"
                   placeholder="Ex : 15"
                   value={form.dureeEstimee}
                   onChange={e => setForm({ ...form, dureeEstimee: e.target.value })}
-                  style={{ ...inputStyle, width: 120, fontSize: 18, fontWeight: 700, borderColor: '#3b82f660' }}
+                  style={{ ...inputStyle, width: 120, fontSize: 18, fontWeight: 700, borderColor: '#0d3d6e60' }}
                 />
               </div>
               <div>
@@ -291,9 +414,19 @@ function Devis() {
                   style={{ ...inputStyle, width: 100, fontSize: 18, fontWeight: 700, borderColor: '#f59e0b60' }}
                 />
               </div>
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: '#8b5cf6', marginBottom: 6 }}>Surface (m²)</div>
+                <input
+                  type="number" min="0" step="1"
+                  placeholder="Ex : 250"
+                  value={form.surface || ''}
+                  onChange={e => setForm(f => ({ ...f, surface: parseFloat(e.target.value) || 0 }))}
+                  style={{ ...inputStyle, width: 110, fontSize: 18, fontWeight: 700, borderColor: '#8b5cf660' }}
+                />
+              </div>
               {form.dureeEstimee && parseInt(form.dureeEstimee) > 0 && (
                 <div style={{ fontSize: 13, color: 'var(--text-muted)', paddingBottom: 6 }}>
-                  ≈ <strong style={{ color: '#3b82f6' }}>{Math.ceil(parseInt(form.dureeEstimee) / 5)} semaine{Math.ceil(parseInt(form.dureeEstimee) / 5) > 1 ? 's' : ''}</strong> de travail
+                  ≈ <strong style={{ color: '#0d3d6e' }}>{Math.ceil(parseInt(form.dureeEstimee) / 5)} semaine{Math.ceil(parseInt(form.dureeEstimee) / 5) > 1 ? 's' : ''}</strong> de travail
                   {parseInt(form.nombrePersonnes) > 0 && (
                     <span style={{ marginLeft: 12, color: '#f59e0b', fontWeight: 700 }}>
                       · {parseInt(form.dureeEstimee) * parseInt(form.nombrePersonnes)} jours-homme
@@ -304,8 +437,40 @@ function Devis() {
                   )}
                 </div>
               )}
+              {(() => {
+                const montant = parseFloat(form.montantHT) || 0;
+                const surf = parseFloat(form.surface) || 0;
+                if (montant <= 0 || surf <= 0) return null;
+                const prixActuel = montant / surf;
+                const prixMoyen = prixMoyenM2Historique?.moyenne ?? null;
+                const count = prixMoyenM2Historique?.count ?? 0;
+                const isOk = prixMoyen !== null ? prixActuel >= prixMoyen * 0.95 : null;
+                const couleur = isOk === null ? '#8b5cf6' : isOk ? '#10b981' : '#f59e0b';
+                return (
+                  <div style={{ width: '100%', marginTop: 6, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', paddingBottom: 4 }}>
+                    <span style={{ fontSize: 14, color: couleur, fontWeight: 800 }}>
+                      {fmtN(Math.round(prixActuel))} CHF/m²
+                    </span>
+                    {prixMoyen !== null ? (
+                      <span style={{ fontSize: 11, background: couleur + '18', color: couleur, border: `1px solid ${couleur}40`, borderRadius: 20, padding: '2px 10px', fontWeight: 700 }}>
+                        {isOk ? '✓ Au-dessus de la moyenne' : '⚠ En dessous de la moyenne'}
+                      </span>
+                    ) : null}
+                    {prixMoyen !== null ? (
+                      <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                        · Moyenne : {fmtN(Math.round(prixMoyen))} CHF/m² ({count} chantier{count > 1 ? 's' : ''})
+                      </span>
+                    ) : (
+                      <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>· Aucun historique m² — premier chantier de référence</span>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
           </div>
+
+          {/* ── Calculateur MO (ratios productivite-cyna) ── */}
+          {(parseFloat(form.surface) || 0) > 0 && <CalculateurMO surface={parseFloat(form.surface) || 0} onApply={({ duree, personnes }) => setForm(f => ({ ...f, dureeEstimee: duree, nombrePersonnes: personnes }))} />}
 
           {/* ── Avenants ── */}
           <div style={{ background: 'rgba(139,92,246,0.04)', border: '1px solid rgba(139,92,246,0.2)', borderRadius: 12, padding: '20px', marginBottom: 20 }}>
@@ -425,9 +590,14 @@ function Devis() {
         </div>
       )}
 
-      {/* ── Liste des devis ── */}
+      {/* ── Liste des devis — tous les devis sans filtre période (KPIs seuls sont filtrés) ── */}
       {(() => {
-        const devisFiltres = filtreDevis === 'Tous' ? devis : devis.filter(d => d.statut?.trim().toLowerCase() === filtreDevis.toLowerCase());
+        const devisBase = [...devis].sort((a, b) => {
+          const da = a.dateEmission || a.date || '';
+          const db = b.dateEmission || b.date || '';
+          return db.localeCompare(da); // plus récents en premier
+        });
+        const devisFiltres = filtreDevis === 'Tous' ? devisBase : devisBase.filter(d => d.statut?.trim().toLowerCase() === filtreDevis.toLowerCase());
         const totalPages = Math.ceil(devisFiltres.length / PAGE_SIZE);
         const devisPage = devisFiltres.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
         return (
@@ -435,78 +605,6 @@ function Devis() {
         {devisFiltres.length === 0 ? (
           <div style={{ padding: '40px 24px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 14 }}>
             Aucun devis à afficher
-          </div>
-        ) : isMobile ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-            {devisPage.map(d => {
-              const client = clients.find(c => String(c.id) === String(d.clientId));
-              const montant = parseFloat(d.montantHT || d.prixPropose) || 0;
-              const totalRegie = Array.isArray(d.heuresRegie) ? d.heuresRegie.reduce((s, r) => s + (parseFloat(r.heures) || 0) * (parseFloat(r.tarifHeure) || 0), 0) : 0;
-              const totalAvenants = Array.isArray(d.avenants) ? d.avenants.reduce((s, a) => s + (parseFloat(a.montant) || 0), 0) : 0;
-              const chantierLie = chantiers.find(ch => String(ch.devisId) === String(d.id));
-              const isAccepte = d.statut?.toLowerCase() === 'accepté';
-              const statutStyle = DS.statuts[d.statut] || { bg: '#F1F5F9', color: '#475569' };
-              const factureExistante = factures.some(f => String(f.devisId) === String(d.id) && f.statut !== 'annulee');
-              return (
-                <div key={d.id} style={{ padding: '14px 16px', borderBottom: '1px solid var(--border)' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-                    <div>
-                      <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.4px' }}>{d.numero}</span>
-                      <span style={{ fontSize: 11, color: 'var(--text-muted)', marginLeft: 8 }}>{formatDateCH(d.date)}</span>
-                    </div>
-                    <span style={{ fontSize: 11, fontWeight: 700, color: statutStyle.color, background: statutStyle.bg, borderRadius: 20, padding: '4px 10px' }}>{d.statut}</span>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-                    <div>
-                      <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>{client?.entreprise || 'Client inconnu'}</div>
-                      {chantierLie && (
-                        <span onClick={() => naviguer('chantiers', { chantierActif: chantierLie.id })} style={{ fontSize: 11, fontWeight: 700, background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.3)', color: '#10b981', padding: '2px 8px', borderRadius: 20, cursor: 'pointer', display: 'inline-block', marginTop: 3 }}>
-                          {chantierLie.numero} →
-                        </span>
-                      )}
-                    </div>
-                    <span style={{ fontSize: 15, fontWeight: 800, color: isAccepte ? '#10b981' : 'var(--text-primary)' }}>
-                      CHF {fmtN(montant + totalRegie + totalAvenants)}
-                    </span>
-                  </div>
-                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                    {!chantierLie && isAccepte && (
-                      <button onClick={() => ouvrirConfirmConversion(d)} style={{ ...DS.btnSuccess, padding: '8px 12px', fontSize: 12, gap: 4, flex: 1 }}>
-                        <HardHat size={13} /> Créer chantier
-                      </button>
-                    )}
-                    {isAccepte && !factureExistante && (
-                      <button
-                        onClick={async () => {
-                          if (!chantierLie) { if (!await confirmer('Ce devis n\'a pas de chantier lié.\nContinuer quand même ?', { labelOui: 'Continuer', danger: false })) return; }
-                          const nouvelleFacture = creerFactureDepuisDevis(d, chantierLie || null, factures, parseFloat(d.tva) || 8.1);
-                          setFactures([...factures, nouvelleFacture]);
-                          naviguer('finances');
-                        }}
-                        style={{ background: 'rgba(139,92,246,0.12)', color: '#8b5cf6', border: '1px solid rgba(139,92,246,0.3)', borderRadius: 8, padding: '8px 12px', cursor: 'pointer', fontSize: 12, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 4, fontFamily: 'inherit', flex: 1 }}
-                      ><Receipt size={13} /> Facture</button>
-                    )}
-                    {client && <button onClick={() => exportDevis(d, clients, parametres)} style={{ ...DS.iconBtn }} title="PDF"><FileDown size={14} /></button>}
-                    <button onClick={() => { setForm({ ...d, montantHT: d.montantHT || d.prixPropose || '' }); setAjout(true); }} style={DS.iconBtn} title="Modifier"><Pencil size={14} /></button>
-                    <button
-                      onClick={async () => {
-                        const chantiersLies = chantiers.filter(ch => String(ch.devisId) === String(d.id));
-                        const facturesLiees = factures.filter(f => chantiersLies.some(ch => String(ch.id) === String(f.chantierId)) || String(f.devisId) === String(d.id));
-                        const lignes = [`Supprimer le devis "${d.numero}" ?`];
-                        if (chantiersLies.length > 0) lignes.push(`→ ${chantiersLies.length} chantier(s) lié(s) seront aussi supprimé(s)`);
-                        if (facturesLiees.length > 0) lignes.push(`→ ${facturesLiees.length} facture(s) liée(s) seront aussi supprimée(s)`);
-                        lignes.push('Cette action est irréversible.');
-                        if (!await confirmer(lignes.join('\n'), { labelOui: 'Supprimer' })) return;
-                        const idsChantiers = new Set(chantiersLies.map(ch => String(ch.id)));
-                        setDevis(devis.filter(dv => String(dv.id) !== String(d.id)));
-                        if (idsChantiers.size > 0) setChantiers(chantiers.filter(ch => !idsChantiers.has(String(ch.id))));
-                        if (facturesLiees.length > 0) { const idsFactures = new Set(facturesLiees.map(f => String(f.id))); setFactures(factures.filter(f => !idsFactures.has(String(f.id)))); }
-                      }}
-                      style={{ ...DS.iconBtn, color: '#EF4444' }} title="Supprimer"><Trash2 size={14} /></button>
-                  </div>
-                </div>
-              );
-            })}
           </div>
         ) : (
           <div style={{ overflowX: 'auto' }}>
@@ -591,7 +689,8 @@ function Devis() {
                                   if (!chantierLie) {
                                     if (!await confirmer('Ce devis n\'a pas de chantier lié.\nLa facture sera créée sans chantierId — elle n\'apparaîtra pas dans le suivi de facturation des chantiers.\n\nContinuer quand même ?', { labelOui: 'Continuer', danger: false })) return;
                                   }
-                                  const nouvelleFacture = creerFactureDepuisDevis(d, chantierLie || null, factures, parseFloat(d.tva) || 8.1);
+                                  const tauxTVA = parseFloat(d.tva) || parseFloat(parametres?.parametres?.tauxTVA) || 8.1;
+                                  const nouvelleFacture = creerFactureDepuisDevis(d, chantierLie || null, factures, tauxTVA);
                                   setFactures([...factures, nouvelleFacture]);
                                   naviguer('finances');
                                 }}
@@ -690,7 +789,7 @@ function Devis() {
                 </div>
                 <div>
                   <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 3 }}>Durée estimée</div>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: d.dureeEstimee ? '#3b82f6' : 'var(--text-muted)' }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: d.dureeEstimee ? '#0d3d6e' : 'var(--text-muted)' }}>
                     {d.dureeEstimee ? `${d.dureeEstimee}j ouvrables` : 'Non renseignée'}
                   </div>
                   {d.nombrePersonnes && parseInt(d.nombrePersonnes) > 0 && (

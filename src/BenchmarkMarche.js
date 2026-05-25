@@ -132,7 +132,7 @@ export default function BenchmarkMarche({ chantiers = [], devis = [], parametres
       {/* KPIs résumé */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 24 }}>
         {[
-          { label: 'Chantiers analysés', val: termines.length, couleur: '#3b82f6' },
+          { label: 'Chantiers analysés', val: termines.length, couleur: '#0d3d6e' },
           { label: 'CA total réalisé', val: `CHF ${fmtN(Math.round(termines.reduce((s, c) => s + (calculerCA(c, devis) || 0), 0) / 1000))}k`, couleur: '#10b981' },
           { label: 'Marge max (type)', val: meilleurMarge > -999 ? `${Math.round(meilleurMarge * 10) / 10}%` : '—', couleur: '#10b981' },
           { label: 'Marge min (type)', val: piresMarge < 999 ? `${Math.round(piresMarge * 10) / 10}%` : '—', couleur: piresMarge < 0 ? '#ef4444' : '#f59e0b' },

@@ -149,7 +149,7 @@ function Tresorerie({ factures = [], chantiers = [], clients = [], devis = [], p
   const urgenceConfig = {
     retard:  { couleur: '#ef4444', bg: '#ef444410', label: 'En retard',    dot: 'red' },
     urgent:  { couleur: '#f59e0b', bg: '#f59e0b10', label: '≤ 7 jours',   dot: 'yellow' },
-    proche:  { couleur: '#3b82f6', bg: '#3b82f610', label: '≤ 30 jours',  dot: '●' },
+    proche:  { couleur: '#0d3d6e', bg: '#0d3d6e10', label: '≤ 30 jours',  dot: '●' },
     normal:  { couleur: '#6b7280', bg: '#6b728010', label: '> 30 jours',  dot: '○' },
   };
 
@@ -171,7 +171,7 @@ function Tresorerie({ factures = [], chantiers = [], clients = [], devis = [], p
       {/* ── KPIs ── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 14, marginBottom: 28 }}>
         {[
-          { label: 'À encaisser (total)', val: `CHF ${fmt(data.totalAEncaisser)}`, couleur: '#3b82f6', Icon: Clock,       sub: `${data.impayees.length} facture${data.impayees.length !== 1 ? 's' : ''} impayée${data.impayees.length !== 1 ? 's' : ''} en cours`, desc: 'Solde restant à recevoir sur toutes les factures ouvertes' },
+          { label: 'À encaisser (total)', val: `CHF ${fmt(data.totalAEncaisser)}`, couleur: '#0d3d6e', Icon: Clock,       sub: `${data.impayees.length} facture${data.impayees.length !== 1 ? 's' : ''} impayée${data.impayees.length !== 1 ? 's' : ''} en cours`, desc: 'Solde restant à recevoir sur toutes les factures ouvertes' },
           { label: 'En retard',           val: `CHF ${fmt(data.totalRetard)}`,     couleur: '#ef4444', Icon: AlertTriangle, sub: data.totalRetard > 0 ? 'Action immédiate requise' : 'Aucun retard', desc: 'Factures dont la date d\'échéance est dépassée' },
           { label: 'Cette semaine',       val: `CHF ${fmt(data.totalCetteSemaine)}`,couleur: '#f59e0b', Icon: Zap,          sub: 'Échéances dans les 7 prochains jours', desc: 'Montant à encaisser d\'ici 7 jours' },
           { label: 'À facturer (potentiel)',val: `CHF ${fmt(data.totalAFacturer)}`,couleur: '#10b981', Icon: TrendingUp,   sub: `${data.aFacturer.length} chantier${data.aFacturer.length !== 1 ? 's' : ''} — selon avancement`, desc: 'CA × avancement% − déjà facturé, sur chantiers actifs' },
@@ -193,7 +193,7 @@ function Tresorerie({ factures = [], chantiers = [], clients = [], devis = [], p
       {/* ── Timeline 8 semaines ── */}
       <div style={{ background: 'var(--surface-glass)', border: '1px solid var(--border-glass)', borderRadius: 16, padding: '22px 24px', marginBottom: 24 }}>
         <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 8 }}>
-          <Calendar size={15} style={{ color: '#3b82f6' }} />
+          <Calendar size={15} style={{ color: '#0d3d6e' }} />
           Encaissements prévus — 8 semaines
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', height: 100 }}>
@@ -203,10 +203,10 @@ function Tresorerie({ factures = [], chantiers = [], clients = [], devis = [], p
             return (
               <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
                 {hasData && (
-                  <div style={{ fontSize: 9, fontWeight: 700, color: '#3b82f6' }}>{fmtK(s.montant)}</div>
+                  <div style={{ fontSize: 9, fontWeight: 700, color: '#0d3d6e' }}>{fmtK(s.montant)}</div>
                 )}
                 <div style={{ width: '100%', flex: 1, display: 'flex', alignItems: 'flex-end' }}>
-                  <div style={{ width: '100%', height: hasData ? `${Math.max(pct, 6)}%` : '4px', background: hasData ? `linear-gradient(180deg, #3b82f6, #1d4ed8)` : 'var(--border-glass)', borderRadius: '4px 4px 0 0', transition: 'height 0.3s', minHeight: 4 }} />
+                  <div style={{ width: '100%', height: hasData ? `${Math.max(pct, 6)}%` : '4px', background: hasData ? `linear-gradient(180deg, #0d3d6e, #082d52)` : 'var(--border-glass)', borderRadius: '4px 4px 0 0', transition: 'height 0.3s', minHeight: 4 }} />
                 </div>
                 <div style={{ fontSize: 9, color: 'var(--text-muted)', textAlign: 'center', fontWeight: 600, whiteSpace: 'nowrap' }}>{s.label}</div>
               </div>
@@ -298,7 +298,7 @@ function Tresorerie({ factures = [], chantiers = [], clients = [], devis = [], p
       {data.nbFactures > 0 && (
         <div style={{ marginTop: 24 }}>
           <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
-            <TrendingUp size={15} style={{ color: '#3b82f6' }} />
+            <TrendingUp size={15} style={{ color: '#0d3d6e' }} />
             Performance globale
             <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 500 }}>(toutes périodes confondues)</span>
           </div>
@@ -306,10 +306,10 @@ function Tresorerie({ factures = [], chantiers = [], clients = [], devis = [], p
           {/* KPIs cumulés */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 14, marginBottom: 20 }}>
             {[
-              { label: 'CA facturé total',    val: `CHF ${fmt(data.caTotalFacture)}`,  couleur: '#3b82f6', Icon: FileText,   sub: `${data.nbFactures} facture${data.nbFactures !== 1 ? 's' : ''}` },
-              { label: 'Encaissé total',      val: `CHF ${fmt(data.encaisseTotal)}`,    couleur: '#10b981', Icon: DollarSign, sub: `Taux ${data.tauxEncaissement}%` },
-              { label: 'Ticket moyen',        val: `CHF ${fmt(data.ticketMoyen)}`,      couleur: '#8b5cf6', Icon: TrendingUp, sub: 'par facture' },
-              { label: 'Délai paiement moyen', val: data.delaiMoyen !== null ? `${data.delaiMoyen} j` : '—', couleur: '#f59e0b', Icon: Clock, sub: data.delaiMoyen !== null ? 'sur factures payées' : 'pas encore de données' },
+              { label: 'CA facturé total',    val: `CHF ${fmt(data.caTotalFacture)}`,  couleur: '#0d3d6e', Icon: FileText,   sub: `${data.nbFactures} facture${data.nbFactures !== 1 ? 's' : ''}`, desc: 'Σ montantTTC de toutes les factures émises' },
+              { label: 'Encaissé total',      val: `CHF ${fmt(data.encaisseTotal)}`,    couleur: '#10b981', Icon: DollarSign, sub: `Taux ${data.tauxEncaissement}%`, desc: 'Σ paiements reçus / CA facturé × 100' },
+              { label: 'Ticket moyen',        val: `CHF ${fmt(data.ticketMoyen)}`,      couleur: '#8b5cf6', Icon: TrendingUp, sub: 'par facture', desc: 'CA total ÷ nombre de factures émises' },
+              { label: 'Délai paiement moyen', val: data.delaiMoyen !== null ? `${data.delaiMoyen} j` : '—', couleur: '#f59e0b', Icon: Clock, sub: data.delaiMoyen !== null ? 'sur factures payées' : 'pas encore de données', desc: 'Moy. jours entre émission et encaissement' },
             ].map(k => (
               <div key={k.label} style={{ background: 'var(--ds-card-bg)', border: '1px solid var(--ds-card-border)', borderRadius: 14, padding: '18px 20px', boxShadow: 'var(--ds-card-shadow)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
@@ -320,6 +320,7 @@ function Tresorerie({ factures = [], chantiers = [], clients = [], devis = [], p
                 </div>
                 <div style={{ fontSize: 22, fontWeight: 900, color: 'var(--text-primary)', letterSpacing: '-0.5px', lineHeight: 1.1 }}>{k.val}</div>
                 <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 5 }}>{k.sub}</div>
+                {k.desc && <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 3, fontStyle: 'italic', opacity: 0.75 }}>{k.desc}</div>}
               </div>
             ))}
           </div>
@@ -328,7 +329,7 @@ function Tresorerie({ factures = [], chantiers = [], clients = [], devis = [], p
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
             <div style={{ background: 'var(--surface-glass)', border: '1px solid var(--border-glass)', borderRadius: 16, padding: '20px 22px' }}>
               <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
-                <DollarSign size={14} style={{ color: '#3b82f6' }} />
+                <DollarSign size={14} style={{ color: '#0d3d6e' }} />
                 Top clients par CA
               </div>
               {data.topClients.length === 0 ? (
@@ -342,17 +343,17 @@ function Tresorerie({ factures = [], chantiers = [], clients = [], devis = [], p
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8, marginBottom: 6 }}>
                           <div style={{ minWidth: 0, flex: 1 }}>
                             <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                              <span style={{ color: '#3b82f6', fontWeight: 800, marginRight: 6 }}>#{i + 1}</span>{cl.nom}
+                              <span style={{ color: '#0d3d6e', fontWeight: 800, marginRight: 6 }}>#{i + 1}</span>{cl.nom}
                             </div>
                             <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{cl.nb} facture{cl.nb > 1 ? 's' : ''}</div>
                           </div>
                           <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                            <div style={{ fontSize: 13, fontWeight: 800, color: '#3b82f6' }}>CHF {fmt(cl.ca)}</div>
+                            <div style={{ fontSize: 13, fontWeight: 800, color: '#0d3d6e' }}>CHF {fmt(cl.ca)}</div>
                             <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>{Math.round(pct)}% du CA</div>
                           </div>
                         </div>
                         <div style={{ height: 4, background: 'var(--border-glass)', borderRadius: 4 }}>
-                          <div style={{ height: '100%', width: `${pct}%`, background: 'linear-gradient(90deg, #3b82f6, #1d4ed8)', borderRadius: 4 }} />
+                          <div style={{ height: '100%', width: `${pct}%`, background: 'linear-gradient(90deg, #0d3d6e, #082d52)', borderRadius: 4 }} />
                         </div>
                       </div>
                     );
@@ -508,10 +509,10 @@ export default function Finances({
       {/* ── KPIs résumé — gradients saturés (identiques Dashboard) ── */}
       <div className="kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'var(--g4)', gap: 14, marginBottom: 28 }}>
         {[
-          { label: 'Total facturé',  val: `CHF ${fmt(kpis.totalFacture)}`,  sub: 'Toutes factures émises', gradient: 'linear-gradient(135deg, #1E40AF 0%, #3B82F6 100%)', glow: 'rgba(59,130,246,0.32)',   Icon: FileText },
-          { label: 'Total encaissé', val: `CHF ${fmt(kpis.totalPaye)}`,     sub: 'Paiements reçus des clients',  gradient: 'linear-gradient(135deg, #065F46 0%, #10B981 100%)', glow: 'rgba(16,185,129,0.32)',  Icon: DollarSign },
-          { label: 'En attente',     val: `CHF ${fmt(kpis.enAttente)}`,     sub: 'Pas encore échu',              gradient: 'linear-gradient(135deg, #92400E 0%, #F59E0B 100%)', glow: 'rgba(245,158,11,0.32)', Icon: Clock },
-          { label: 'En retard',      val: `CHF ${fmt(kpis.enRetard)}`,      sub: 'Échéance dépassée — à relancer', gradient: 'linear-gradient(135deg, #991B1B 0%, #EF4444 100%)', glow: 'rgba(239,68,68,0.32)',   Icon: AlertTriangle },
+          { label: 'Total facturé',  val: `CHF ${fmt(kpis.totalFacture)}`,  sub: 'Toutes factures émises', desc: 'Σ montantTTC hors annulées', gradient: 'linear-gradient(135deg, #1E40AF 0%, #3B82F6 100%)', glow: 'rgba(59,130,246,0.32)',   Icon: FileText },
+          { label: 'Total encaissé', val: `CHF ${fmt(kpis.totalPaye)}`,     sub: 'Paiements reçus des clients', desc: 'Σ montantPaye sur toutes les factures', gradient: 'linear-gradient(135deg, #065F46 0%, #10B981 100%)', glow: 'rgba(16,185,129,0.32)',  Icon: DollarSign },
+          { label: 'En attente',     val: `CHF ${fmt(kpis.enAttente)}`,     sub: 'Pas encore échu', desc: 'Factures envoyées/partielles — échéance future', gradient: 'linear-gradient(135deg, #92400E 0%, #F59E0B 100%)', glow: 'rgba(245,158,11,0.32)', Icon: Clock },
+          { label: 'En retard',      val: `CHF ${fmt(kpis.enRetard)}`,      sub: 'Échéance dépassée — à relancer', desc: 'Factures impayées dont l\'échéance est passée', gradient: 'linear-gradient(135deg, #991B1B 0%, #EF4444 100%)', glow: 'rgba(239,68,68,0.32)',   Icon: AlertTriangle },
         ].map(k => (
           <div key={k.label} className="kpi-card" style={{
             background: k.gradient, borderRadius: 16, padding: '22px 20px', minHeight: 130,
@@ -527,6 +528,7 @@ export default function Finances({
             <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.72)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 6 }}>{k.label}</div>
             <div className="kpi-val" style={{ fontSize: 26, fontWeight: 900, color: '#ffffff', letterSpacing: '-0.8px', lineHeight: 1, position: 'relative' }}>{k.val}</div>
             <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.6)', marginTop: 8, position: 'relative' }}>{k.sub}</div>
+            {k.desc && <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.42)', marginTop: 3, fontStyle: 'italic', position: 'relative' }}>{k.desc}</div>}
           </div>
         ))}
       </div>
@@ -551,7 +553,7 @@ export default function Finances({
           <button key={t.id} onClick={() => setOnglet(t.id)} style={{
             background: 'transparent', border: 'none',
             borderBottom: `2px solid ${onglet === t.id ? 'rgba(59,130,246,0.8)' : 'transparent'}`,
-            color: onglet === t.id ? '#60a5fa' : 'var(--text-secondary)',
+            color: onglet === t.id ? '#0d3d6e' : 'var(--text-secondary)',
             padding: '10px 22px', fontSize: 14,
             fontWeight: onglet === t.id ? 700 : 500,
             cursor: 'pointer', transition: 'all 0.18s',

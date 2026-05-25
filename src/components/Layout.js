@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Plus, Sun, Moon, Menu, X, ChevronRight, LogOut, Bell, CheckCircle, AlertTriangle, Info } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { calculerAlertes } from '../alertes';
+import GlobalSearch from './GlobalSearch';
 
 export function Sidebar({ sidebarOuvert, setSidebarOuvert, navAutorisees, page, naviguer, darkMode, toggleDarkMode, profil, deconnecter }) {
   return (
@@ -41,13 +42,6 @@ export function Sidebar({ sidebarOuvert, setSidebarOuvert, navAutorisees, page, 
         </nav>
         <button className="sidebar-cta" onClick={() => { naviguer('devis', { ouvrirNouveau: true }); setSidebarOuvert(false); }}>
           <Plus size={16} strokeWidth={2.6} /> Nouveau devis
-        </button>
-        <button className="sidebar-theme-toggle" onClick={toggleDarkMode} title={darkMode ? 'Mode clair' : 'Mode sombre'}>
-          <div className={`sidebar-toggle-track${darkMode ? ' on' : ''}`}>
-            <div className="sidebar-toggle-thumb" />
-          </div>
-          {darkMode ? <Sun size={14} strokeWidth={2} /> : <Moon size={14} strokeWidth={2} />}
-          <span>{darkMode ? 'Mode clair' : 'Mode sombre'}</span>
         </button>
         <div className="sidebar-profile" style={{ cursor: 'default' }}>
           <div style={{
@@ -102,7 +96,7 @@ function dateRelative(dateStr) {
 function IconeNiveau({ niveau }) {
   if (niveau === 'critique') return <AlertTriangle size={15} style={{ color: '#ef4444', flexShrink: 0 }} />;
   if (niveau === 'warning')  return <AlertTriangle size={15} style={{ color: '#f59e0b', flexShrink: 0 }} />;
-  return <Info size={15} style={{ color: '#3b82f6', flexShrink: 0 }} />;
+  return <Info size={15} style={{ color: '#0d3d6e', flexShrink: 0 }} />;
 }
 
 // ── Centre de notifications ──────────────────────────────────────────────────
@@ -161,12 +155,12 @@ function NotificationBell({ naviguer }) {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          color: ouvert ? '#60a5fa' : 'var(--text-secondary)',
+          color: ouvert ? '#0d3d6e' : 'var(--text-secondary)',
           position: 'relative',
           transition: 'all 0.15s',
           flexShrink: 0,
         }}
-        onMouseEnter={e => { if (!ouvert) { e.currentTarget.style.background = 'rgba(59,130,246,0.08)'; e.currentTarget.style.borderColor = 'rgba(59,130,246,0.2)'; } }}
+        onMouseEnter={e => { if (!ouvert) { e.currentTarget.style.background = 'rgba(13,61,110,0.10)'; e.currentTarget.style.borderColor = 'rgba(13,61,110,0.25)'; } }}
         onMouseLeave={e => { if (!ouvert) { e.currentTarget.style.background = 'var(--bg-glass-2)'; e.currentTarget.style.borderColor = 'var(--border)'; } }}
       >
         <Bell size={16} strokeWidth={2} />
@@ -229,7 +223,7 @@ function NotificationBell({ naviguer }) {
                   fontFamily: 'inherit', padding: '2px 6px', borderRadius: 6,
                   transition: 'color 0.15s',
                 }}
-                onMouseEnter={e => e.currentTarget.style.color = '#3b82f6'}
+                onMouseEnter={e => e.currentTarget.style.color = '#0d3d6e'}
                 onMouseLeave={e => e.currentTarget.style.color = 'var(--text-secondary)'}
               >
                 Tout marquer lu
@@ -287,7 +281,7 @@ function NotificationBell({ naviguer }) {
                         lineHeight: 1.4,
                         whiteSpace: 'normal',
                       }}>
-                        {a.message || '—'}
+                        {typeof a.message === 'string' ? a.message : '—'}
                       </div>
                       <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 3 }}>
                         {dateRelative(a.date)}
@@ -296,7 +290,7 @@ function NotificationBell({ naviguer }) {
                     {!estLue && (
                       <span style={{
                         width: 7, height: 7, borderRadius: '50%',
-                        background: '#3b82f6', flexShrink: 0, marginTop: 4,
+                        background: '#0d3d6e', flexShrink: 0, marginTop: 4,
                       }} />
                     )}
                   </button>
@@ -327,7 +321,7 @@ const PERIODES = [
 ];
 
 // Pages où le filtre période a du sens (données temporelles)
-const PAGES_AVEC_PERIODE = ['finances', 'rapport', 'chantiers', 'devis', 'heures'];
+const PAGES_AVEC_PERIODE = ['dashboard', 'finances', 'rapport', 'chantiers', 'devis', 'heures'];
 
 export function Topbar({ setSidebarOuvert, canGoBack, page, revenirArriere, navAutorisees, darkMode, toggleDarkMode, profil, naviguer }) {
   const { periodeGlobale, setPeriodeGlobale } = useApp();
@@ -335,10 +329,7 @@ export function Topbar({ setSidebarOuvert, canGoBack, page, revenirArriere, navA
 
   return (
     <header className="topbar">
-      <div className="topbar-left">
-        <button className="burger-btn" onClick={() => setSidebarOuvert(v => !v)}>
-          <Menu size={20} strokeWidth={1.8} />
-        </button>
+      <div className="topbar-left" style={{ flex: 1 }}>
         {canGoBack && page !== 'dashboard' && (
           <button
             onClick={revenirArriere}
@@ -351,16 +342,15 @@ export function Topbar({ setSidebarOuvert, canGoBack, page, revenirArriere, navA
               fontSize: 13, fontWeight: 600, fontFamily: 'inherit',
               transition: 'all 0.15s',
             }}
-            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(59,130,246,0.12)'; e.currentTarget.style.color = '#60a5fa'; e.currentTarget.style.borderColor = 'rgba(59,130,246,0.3)'; }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(13,61,110,0.10)'; e.currentTarget.style.color = '#0d3d6e'; e.currentTarget.style.borderColor = 'rgba(13,61,110,0.25)'; }}
             onMouseLeave={e => { e.currentTarget.style.background = 'var(--bg-glass-2)'; e.currentTarget.style.color = 'var(--text-secondary)'; e.currentTarget.style.borderColor = 'var(--border-hover)'; }}
           >
             <ChevronRight size={14} style={{ transform: 'rotate(180deg)' }} />
             Retour
           </button>
         )}
-        <span className="topbar-title">{navAutorisees.find(n => n.id === page)?.label || 'Dashboard'}</span>
       </div>
-      <div className="topbar-right" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+      <div className="topbar-right" style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
         {/* Sélecteur de période — visible sur toutes les pages financières */}
         {montrerPeriode && (
           <div style={{ display: 'flex', background: 'var(--bg-glass-2)', border: '1px solid var(--border)', borderRadius: 8, padding: 3, gap: 2 }}>
@@ -373,12 +363,13 @@ export function Topbar({ setSidebarOuvert, canGoBack, page, revenirArriere, navA
                   color: periodeGlobale === p.id ? '#fff' : 'var(--text-muted)',
                   border: 'none',
                   borderRadius: 6,
-                  padding: '4px 12px',
+                  padding: '4px 9px',
                   cursor: 'pointer',
                   fontSize: 12,
                   fontWeight: 600,
                   fontFamily: 'inherit',
                   transition: 'all 0.15s',
+                  whiteSpace: 'nowrap',
                 }}
               >
                 {p.label}
@@ -386,6 +377,7 @@ export function Topbar({ setSidebarOuvert, canGoBack, page, revenirArriere, navA
             ))}
           </div>
         )}
+        <GlobalSearch naviguer={naviguer} />
         <NotificationBell naviguer={naviguer} />
         <button
           onClick={toggleDarkMode}
@@ -402,6 +394,7 @@ export function Topbar({ setSidebarOuvert, canGoBack, page, revenirArriere, navA
             alignItems: 'center',
             justifyContent: 'center',
             color: 'var(--text-secondary)',
+            transition: 'all 0.15s',
           }}
         >
           {darkMode ? <Sun size={16} strokeWidth={2} /> : <Moon size={16} strokeWidth={2} />}

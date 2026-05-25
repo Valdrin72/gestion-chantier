@@ -2,10 +2,10 @@ import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react'
 import {
   LayoutDashboard, HardHat, FileText, Calendar,
   ClipboardList, Settings, DollarSign, Clock, Bot,
-  Users, UserCog, ChevronRight, Sparkles,
+  Users, UserCog, ChevronRight, Sparkles, Calculator,
 } from 'lucide-react';
 import { Sidebar, Topbar, MobileNav } from './components/Layout';
-import { migrerDevisId } from './donnees';
+import { migrerDevisId, donneesInitiales, migrerJournal } from './donnees';
 import Finances from './pages/FinancesPage';
 import Login from './Login';
 import useAuth from './hooks/useAuth';
@@ -22,9 +22,12 @@ import PlanningPage from './pages/PlanningPage';
 import RapportsPage from './pages/RapportsPage';
 import CentreIA from './pages/CentreIA';
 import Parametres from './pages/ParametresPage';
+import CalculsPage from './pages/CalculsPage';
 import { AppProvider } from './context/AppContext';
 import InstallPWA from './components/InstallPWA';
+import OfflineBanner from './components/OfflineBanner';
 import ConfirmModal from './components/ui/ConfirmModal';
+import ErrorBoundary from './components/ErrorBoundary';
 
 // Fallback par page quand l'historique est vide
 const NAV_FALLBACK = {
@@ -55,7 +58,7 @@ function App() {
     return <Login />;
   }
 
-  return <AppInner profil={profilAuth} deconnecter={deconnecter} userId={session.user.id} />;
+  return <AppInner key={session.user.id} profil={profilAuth} deconnecter={deconnecter} userId={session.user.id} />;
 }
 
 function AppInner({ profil, deconnecter, userId }) {
@@ -68,6 +71,20 @@ function AppInner({ profil, deconnecter, userId }) {
     loading: dataLoading,
     syncing,
   } = useSupabaseData(userId);
+
+  // Filet de sécurité : si après chargement tout est vide, injecter les données initiales
+  const injectedRef = useRef(false);
+  useEffect(() => {
+    if (dataLoading || injectedRef.current) return;
+    if (chantiers.length === 0 && devis.length === 0) {
+      injectedRef.current = true;
+      setChantiers(donneesInitiales.chantiers.map(ch => ({ ...ch, journal: migrerJournal(ch.journal || []) })));
+      setDevis(donneesInitiales.devis);
+      setFactures(donneesInitiales.factures || []);
+      setClients(donneesInitiales.clients);
+      setParametres({ ...donneesInitiales, demoVersion: 5 });
+    }
+  }, [dataLoading, chantiers.length, devis.length, setChantiers, setDevis, setFactures, setClients, setParametres]);
 
   const [page, setPage] = useState('dashboard');
   const [contexte, setContexte] = useState({});
@@ -123,7 +140,13 @@ function AppInner({ profil, deconnecter, userId }) {
     setContexte(precedent.contexte);
   }, []);
 
-  const [periodeGlobale, setPeriodeGlobale] = useState('mois');
+  const [periodeGlobale, setPeriodeGlobaleState] = useState(() => {
+    try { return localStorage.getItem('cyna_periode') || 'annee'; } catch { return 'annee'; }
+  });
+  const setPeriodeGlobale = useCallback((v) => {
+    try { localStorage.setItem('cyna_periode', v); } catch {}
+    setPeriodeGlobaleState(v);
+  }, []);
   const [paiementsData, setPaiementsDataState] = useState(() => {
     try { const r = localStorage.getItem('cyna_paiements'); return r ? JSON.parse(r) : {}; } catch { return {}; }
   });
@@ -209,6 +232,7 @@ function AppInner({ profil, deconnecter, userId }) {
     { id: 'planning',   label: 'Planning',    Icon: Calendar,        labelCourt: 'Planning' },
     { id: 'rapport',    label: 'Rapports',    Icon: ClipboardList,   labelCourt: 'Rapports' },
     { id: 'agents',     label: 'Centre IA',   Icon: Bot,             labelCourt: 'Centre IA' },
+    { id: 'calculs',    label: 'Calculs',     Icon: Calculator,      labelCourt: 'Calculs' },
     { id: 'parametres', label: 'Paramètres',  Icon: Settings,        labelCourt: 'Config' },
   ];
 
@@ -264,6 +288,7 @@ function AppInner({ profil, deconnecter, userId }) {
           </div>
         )}
         <main className="app-main">
+          <ErrorBoundary key={page}>
           {page === 'dashboard'    && <Dashboard />}
           {page === 'chantiers'    && pagesAutorisees.includes('chantiers')  && <Chantiers />}
           {page === 'devis'        && pagesAutorisees.includes('devis')      && <Devis />}
@@ -273,10 +298,11 @@ function AppInner({ profil, deconnecter, userId }) {
           {page === 'planning'     && pagesAutorisees.includes('planning')   && <PlanningPage chantiers={chantiers} setChantiers={setChantiers} clients={clients} devis={devis} factures={factures} parametres={parametres} naviguer={naviguer} />}
           {page === 'rapport'      && pagesAutorisees.includes('rapport')    && <RapportsPage chantiers={chantiers} clients={clients} devis={devis} factures={factures} parametres={parametres} setParametres={setParametres} paiementsData={paiementsData} periodeGlobale={periodeGlobale} naviguer={naviguer} />}
           {page === 'agents'       && pagesAutorisees.includes('agents')     && <CentreIA />}
+          {page === 'calculs'      && <CalculsPage />}
           {page === 'parametres'   && pagesAutorisees.includes('parametres') && <Parametres parametres={parametres} setParametres={setParametres} clients={clients} setClients={setClients} chantiers={chantiers} setChantiers={setChantiers} devis={devis} setDevis={setDevis} factures={factures} setFactures={setFactures} naviguer={naviguer} />}
           {page === 'heures'       && pagesAutorisees.includes('heures')     && <Heures chantiers={chantiers} parametres={parametres} setChantiers={setChantiers} />}
           {/* Fallback 404 */}
-          {!['dashboard', 'chantiers', 'devis', 'finances', 'clients', 'employes', 'planning', 'rapport', 'agents', 'parametres', 'heures'].includes(page) && (
+          {!['dashboard', 'chantiers', 'devis', 'finances', 'clients', 'employes', 'planning', 'rapport', 'agents', 'calculs', 'parametres', 'heures'].includes(page) && (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', gap: 16, color: 'var(--text-secondary)' }}>
               <div style={{ fontSize: 48 }}>404</div>
               <div style={{ fontSize: 18, fontWeight: 600 }}>Page introuvable</div>
@@ -285,6 +311,7 @@ function AppInner({ profil, deconnecter, userId }) {
               </button>
             </div>
           )}
+          </ErrorBoundary>
         </main>
         {saisieHeuresCtx && (() => {
           const chantierLive = chantiers.find(c => String(c.id) === String(saisieHeuresCtx.chantierId)) || null;
@@ -311,6 +338,7 @@ function AppInner({ profil, deconnecter, userId }) {
         />
       </div>
     </div>
+    <OfflineBanner />
     <InstallPWA />
     {notif && (
       <div style={{
@@ -368,7 +396,7 @@ function AppInner({ profil, deconnecter, userId }) {
           {/* Étapes */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10, margin: '28px 0' }}>
             {[
-              { step: 1, icon: Users, label: 'Créer votre premier client', desc: 'Nom, contact, adresse — la base de chaque projet', dest: 'clients', color: '#3b82f6' },
+              { step: 1, icon: Users, label: 'Créer votre premier client', desc: 'Nom, contact, adresse — la base de chaque projet', dest: 'clients', color: '#0d3d6e' },
               { step: 2, icon: FileText, label: 'Établir un devis', desc: 'Postes de travaux, montant HT, TVA 8.1%', dest: 'devis', color: '#8b5cf6' },
               { step: 3, icon: HardHat, label: 'Ouvrir un chantier', desc: 'Liez le devis signé, suivez l\'avancement et les heures', dest: 'chantiers', color: '#10b981' },
             ].map(({ step, icon: Icon, label, desc, dest, color }) => (

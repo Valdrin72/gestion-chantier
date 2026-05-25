@@ -23,7 +23,11 @@ function addDays(date, n) {
 }
 
 function isoDate(d) {
-  return d.toISOString().slice(0, 10);
+  // Utilise les composantes locales (pas UTC) pour éviter le décalage UTC+2 (Genève)
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
 }
 
 const DAY_LABELS_SHORT = ['LUN', 'MAR', 'MER', 'JEU', 'VEN', 'SAM', 'DIM'];
@@ -68,7 +72,7 @@ export default function Heures({ chantiers = [], parametres = {}, setChantiers }
     if (h > 16) { alert('Maximum 16h par jour.'); return; }
     // Règle CYNA stricte : pas de saisie dans le futur.
     // Exception : samedi de la semaine courante uniquement si chantier.inclusSamedi=true.
-    const todayStr = new Date().toISOString().split('T')[0];
+    const todayStr = isoDate(new Date());
     const samSemaineCourante = isoDate(addDays(getWeekStart(new Date()), 5));
     const isSam = new Date(date + 'T00:00:00').getDay() === 6;
     const chantierCible = chantiers.find(c => String(c.id) === String(chantierId));
@@ -86,10 +90,10 @@ export default function Heures({ chantiers = [], parametres = {}, setChantiers }
         const employes2 = entry.employes ? [...entry.employes] : [];
         const ei = employes2.findIndex(e => String(e.employeId) === String(employeId));
         if (ei >= 0) employes2[ei] = { ...employes2[ei], heuresTravaillees: String(h) };
-        else employes2.push({ employeId, heuresTravaillees: String(h) });
+        else employes2.push({ employeId: parseInt(employeId), heuresTravaillees: String(h) });
         journal[idx] = { ...entry, employes: employes2 };
       } else {
-        journal.push({ date, employes: [{ employeId, heuresTravaillees: String(h) }] });
+        journal.push({ date, employes: [{ employeId: parseInt(employeId), heuresTravaillees: String(h) }] });
       }
       return { ...c, journal };
     }));
@@ -121,15 +125,18 @@ export default function Heures({ chantiers = [], parametres = {}, setChantiers }
     let total = 0, supp = 0, nsSaisis = 0, samH = false;
 
     if (periodeGlobale === 'semaine') {
-      const weekDayIsos = weekDays.slice(0, 6).map(isoDate); // Lun–Sam
+      // Inclure les 7 jours (lun–dim) pour cohérence avec la colonne TOTAL et le TOTAL row du tableau
+      // Le dimanche est possible en heures supplémentaires (CCT ×1.50)
+      const weekDayIsos = weekDays.map(isoDate);
       actifs.forEach(e => {
         const empHours = hoursMap[e.id] || {};
         weekDayIsos.forEach((d, i) => {
           const h = empHours[d] || 0;
           total += h;
           if (h > 8) supp += (h - 8);
-          if (i === 5 && h > 0) samH = true;
+          if (i === 5 && h > 0) samH = true; // index 5 = SAM
         });
+        // "Non saisies" = aucune heure lun–ven (jours standard)
         const hasSaisie = weekDayIsos.slice(0, 5).some(d => (empHours[d] || 0) > 0);
         if (!hasSaisie) nsSaisis++;
       });
@@ -169,7 +176,7 @@ export default function Heures({ chantiers = [], parametres = {}, setChantiers }
     if (periodeGlobale === 'semaine') {
       return employes.filter(e => {
         const m = hoursMap[e.id] || {};
-        return weekDays.slice(0, 6).some(d => (m[isoDate(d)] || 0) > 8);
+        return weekDays.some(d => (m[isoDate(d)] || 0) > 8); // 7 jours pour cohérence avec KPI
       }).length;
     }
     const { debut, fin } = getIntervallesPeriode(periodeGlobale);
@@ -196,7 +203,7 @@ export default function Heures({ chantiers = [], parametres = {}, setChantiers }
     if (dayIndex === 5) return { background: '#ede9fe', color: '#4c1d95' }; // Sam
     if (dayIndex === 6) return { background: '#ede9fe', color: '#4c1d95' }; // Dim
     if (hours > 8) return { background: '#fef3c7', color: '#92400e' }; // Supp
-    return { background: '#dbeafe', color: '#1e40af' }; // Normal
+    return { background: '#e8f0f9', color: '#0d3d6e' }; // Normal
   };
 
   return (
@@ -227,7 +234,7 @@ export default function Heures({ chantiers = [], parametres = {}, setChantiers }
           <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--text-primary)' }}>Saisie hebdomadaire</div>
           <div style={{ display: 'flex', gap: 8 }}>
             <button onClick={prevWeek} style={btnStyle}>← Sem. préc.</button>
-            <button onClick={thisWeek} style={{ ...btnStyle, background: isCurrentWeek ? 'rgba(59,130,246,0.1)' : undefined, color: isCurrentWeek ? '#3b82f6' : undefined }}>Cette semaine</button>
+            <button onClick={thisWeek} style={{ ...btnStyle, background: isCurrentWeek ? 'rgba(13,61,110,0.1)' : undefined, color: isCurrentWeek ? '#0d3d6e' : undefined }}>Cette semaine</button>
             <button onClick={nextWeek} style={btnStyle}>Sem. suiv. →</button>
           </div>
         </div>
@@ -248,7 +255,7 @@ export default function Heures({ chantiers = [], parametres = {}, setChantiers }
                     const isWe = i >= 5;
                     const isDToday = isoDate(d) === isoDate(today);
                     return (
-                      <th key={i} style={{ ...DS.th, textAlign: 'center', minWidth: 72, background: isDToday ? 'rgba(59,130,246,0.08)' : isWe ? 'var(--bg-glass)' : 'var(--ds-th-bg)', color: isDToday ? '#3b82f6' : isWe ? 'var(--text-muted)' : 'var(--text-muted)' }}>
+                      <th key={i} style={{ ...DS.th, textAlign: 'center', minWidth: 72, background: isDToday ? 'rgba(13,61,110,0.08)' : isWe ? 'var(--bg-glass)' : 'var(--ds-th-bg)', color: isDToday ? '#0d3d6e' : isWe ? 'var(--text-muted)' : 'var(--text-muted)' }}>
                         <div>{DAY_LABELS_SHORT[i]}</div>
                         <div style={{ fontWeight: 400, fontSize: 10 }}>{d.getDate()}/{d.getMonth() + 1}</div>
                       </th>
@@ -266,7 +273,7 @@ export default function Heures({ chantiers = [], parametres = {}, setChantiers }
                     <tr key={emp.id}>
                       <td style={{ ...DS.td, fontWeight: 600 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                          <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: '#fff', flexShrink: 0 }}>
+                          <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#0d3d6e', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: '#fff', flexShrink: 0 }}>
                             {((emp.nom || 'NN').trim().split(' ').filter(Boolean).map(w => w[0]).join('').substring(0, 2) || 'NN').toUpperCase()}
                           </div>
                           <div>
@@ -314,8 +321,11 @@ export default function Heures({ chantiers = [], parametres = {}, setChantiers }
                       </td>
                     );
                   })}
-                  <td style={{ ...DS.td, textAlign: 'center', fontWeight: 900, fontSize: 14, color: '#3b82f6' }}>
-                    {Math.round(totalHeures * 10) / 10}h
+                  <td style={{ ...DS.td, textAlign: 'center', fontWeight: 900, fontSize: 14, color: '#0d3d6e' }}>
+                    {(() => {
+                      const weekTotal = actifs.reduce((t, e) => t + weekDays.reduce((ws, d) => ws + ((hoursMap[e.id] || {})[isoDate(d)] || 0), 0), 0);
+                      return weekTotal > 0 ? `${Math.round(weekTotal * 10) / 10}h` : '—';
+                    })()}
                   </td>
                 </tr>
               </tbody>
@@ -369,7 +379,7 @@ export default function Heures({ chantiers = [], parametres = {}, setChantiers }
               <div>
                 <label style={DS.label}>Date</label>
                 {(() => {
-                  const todayStr = new Date().toISOString().split('T')[0];
+                  const todayStr = isoDate(new Date());
                   const samSemaine = isoDate(addDays(getWeekStart(new Date()), 5));
                   const maxDate = samSemaine > todayStr ? samSemaine : todayStr;
                   const futur = modal.form.date && modal.form.date > maxDate;
@@ -388,7 +398,7 @@ export default function Heures({ chantiers = [], parametres = {}, setChantiers }
 
             {/* Alerte date vraiment future (au-delà du samedi courant) */}
             {(() => {
-              const todayStr = new Date().toISOString().split('T')[0];
+              const todayStr = isoDate(new Date());
               const samSemaine = isoDate(addDays(getWeekStart(new Date()), 5));
               const vraimantFutur = modal.form.date && modal.form.date > todayStr && modal.form.date > samSemaine;
               if (!vraimantFutur) return null;
@@ -447,7 +457,7 @@ export default function Heures({ chantiers = [], parametres = {}, setChantiers }
               <div style={{ display: 'flex', gap: 10, marginLeft: 'auto' }}>
               <button onClick={() => setModal(null)} style={DS.btnGhost}>Annuler</button>
               {(() => {
-                const todayStr = new Date().toISOString().split('T')[0];
+                const todayStr = isoDate(new Date());
                 const samSemaine = isoDate(addDays(getWeekStart(new Date()), 5));
                 const futur = modal.form.date && modal.form.date > todayStr && modal.form.date > samSemaine;
                 const manque = !modal.form.employeId || !modal.form.chantierId || !modal.form.date || !modal.form.heures;

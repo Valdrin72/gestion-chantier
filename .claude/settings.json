@@ -1,5 +1,17 @@
 {
   "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cat /home/user/gestion-chantier/.claude/skills/cyna-business-math/SKILL.md 2>/dev/null | jq -Rs '{hookSpecificOutput: {hookEventName: \"SessionStart\", additionalContext: (\"# CYNA Business Math — Actif automatiquement\\n\" + .)}}' 2>/dev/null || true",
+            "timeout": 10,
+            "statusMessage": "Chargement formules BTP CYNA..."
+          }
+        ]
+      }
+    ],
     "Stop": [
       {
         "hooks": [

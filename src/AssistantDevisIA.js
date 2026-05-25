@@ -3,7 +3,7 @@ import { Sparkles, ChevronDown, ChevronUp, Check, Award } from 'lucide-react';
 import { DS } from './ds';
 import { fmtN, calculerCoutsChantier, SEUILS } from './donnees';
 
-function StatBarre({ label, val, min, max, couleur = '#3b82f6', unite = '' }) {
+function StatBarre({ label, val, min, max, couleur = '#0d3d6e', unite = '' }) {
   const pct = max > min ? Math.min(100, Math.max(0, ((val - min) / (max - min)) * 100)) : 50;
   return (
     <div style={{ marginBottom: 10 }}>
@@ -151,7 +151,7 @@ export default function AssistantDevisIA({ chantiers = [], devis = [], parametre
                     val={suggestionActive.duree.avg}
                     min={suggestionActive.duree.min}
                     max={suggestionActive.duree.max}
-                    couleur="#3b82f6" unite="j"
+                    couleur="#0d3d6e" unite="j"
                   />
                 )}
                 {suggestionActive.marge && (

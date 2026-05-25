@@ -8,21 +8,27 @@ import {
   fmtN, calculerDateFinOuvrables, estRetardJustifie,
   calculerCoutsChantier, statutRentabilite, C, getIntervallesPeriode,
   facturesInPeriode, calculerRentabiliteReelle, calculerEtatChantier,
-  calculerCA, isChantierActif, isChantierComptable,
+  calculerCA, isChantierActif, isChantierComptable, SEUILS,
 } from '../donnees';
 import { DS } from '../ds';
 import { STATUTS_CLOS } from '../constants/statuts';
 import { useApp } from '../context/AppContext';
 import useIsMobile from '../hooks/useIsMobile';
 import { calculerAlertes } from '../alertes';
+import SaisieRapideDashboard from '../components/SaisieRapideDashboard';
+
+// Protège le rendu contre les valeurs non-string (données localStorage corrompues)
+function safeStr(v) {
+  if (v == null) return '';
+  if (typeof v === 'string') return v;
+  if (typeof v === 'object') return v.label || v.action || v.message || JSON.stringify(v);
+  return String(v);
+}
 
 function Dashboard() {
   const isMobile = useIsMobile();
-  const { chantiers, clients, factures, devis = [], parametres, naviguer, actionsLog = [], periodeGlobale = 'mois', setPeriodeGlobale = () => {}, agentState, profil } = useApp();
+  const { chantiers, setChantiers, clients, factures, devis = [], parametres, naviguer, actionsLog = [], periodeGlobale = 'mois', setPeriodeGlobale = () => {}, agentState, profil, afficherNotif } = useApp();
   const agentAlertes = agentState?.alertes || [];
-  const nbAgentAlertes = agentState?.nbNonLues || 0;
-  const marquerLu = agentState?.marquerLu || (() => {});
-  const naviguerAgents = () => naviguer('agents');
   const facturesSafe = useMemo(() => factures || [], [factures]);
   const [insightsFerme, setInsightsFerme] = useState(false);
 
@@ -64,7 +70,7 @@ function Dashboard() {
 
     // 2. CASH EN ATTENTE — factures non encaissées
     const cashEnAttente = facturesPeriode
-      .filter(f => ['envoyee', 'partielle', 'retard'].includes(f.statut))
+      .filter(f => ['envoyee', 'partielle', 'retard'].includes((f.statut || '').toLowerCase()))
       .reduce((t, f) => t + Math.max(0, (parseFloat(f.montantTTC) || 0) - (parseFloat(f.montantPaye) || 0)), 0);
 
     // 3. RENTABILITÉ MOYENNE — même moteur que la fiche chantier (coefficient + FG inclus)
@@ -77,19 +83,21 @@ function Dashboard() {
       : null;
     const nbChantiersRenta = chantiersRenta.length;
 
-    // 4. HEURES ENGAGÉES — depuis journal, filtrées sur le mois en cours
-    const maintenant = new Date();
-    const moisCourant = `${maintenant.getFullYear()}-${String(maintenant.getMonth() + 1).padStart(2, '0')}`;
+    // 4. HEURES ENGAGÉES — depuis journal, filtrées par periodeGlobale
+    const { debut: hDebut, fin: hFin } = getIntervallesPeriode(periodeGlobale);
+    const hDebutStr = `${hDebut.getFullYear()}-${String(hDebut.getMonth()+1).padStart(2,'0')}-${String(hDebut.getDate()).padStart(2,'0')}`;
+    const hFinStr   = `${hFin.getFullYear()}-${String(hFin.getMonth()+1).padStart(2,'0')}-${String(hFin.getDate()).padStart(2,'0')}`;
     const heuresEngagees = actifs.reduce((t, c) =>
-      t + (c.journal || []).filter(entry => (entry.date || '').startsWith(moisCourant)).reduce((s, entry) =>
+      t + (c.journal || []).filter(entry => { const d = entry.date || ''; return d >= hDebutStr && d <= hFinStr; }).reduce((s, entry) =>
         s + (entry.employes || []).reduce((es, e) => es + (parseFloat(e.heuresTravaillees) || 0), 0)
       , 0)
     , 0);
 
-    const nbFacturesEnAttente = facturesPeriode.filter(f => ['envoyee', 'partielle', 'retard'].includes(f.statut)).length;
-    const nbFacturesRetard    = facturesPeriode.filter(f =>
-      f.statut === 'retard' || (f.statut === 'envoyee' && f.dateEcheance && new Date(f.dateEcheance) < new Date())
-    ).length;
+    const nbFacturesEnAttente = facturesPeriode.filter(f => ['envoyee', 'partielle', 'retard'].includes((f.statut || '').toLowerCase())).length;
+    const nbFacturesRetard    = facturesPeriode.filter(f => {
+      const s = (f.statut || '').toLowerCase();
+      return s === 'retard' || (s === 'envoyee' && f.dateEcheance && new Date(f.dateEcheance) < new Date());
+    }).length;
     const nbEmployes = actifs.reduce((set, c) => {
       (c.equipe || []).forEach(m => { if (m.employeId) set.add(String(m.employeId)); });
       return set;
@@ -97,7 +105,7 @@ function Dashboard() {
 
     return { caEnCours, cashEnAttente, rentaMoyenne, nbChantiersRenta, heuresEngagees, nbFacturesEnAttente, nbFacturesRetard, nbEmployes, nbChantiersActifs, nbActifsSansDevis };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [actifs, facturesPeriode, devis, chantiers, parametres.employes, parametres.localites, coutsMap]);
+  }, [actifs, facturesPeriode, devis, chantiers, parametres.employes, parametres.localites, coutsMap, periodeGlobale]);
 
   // ── Prévision trésorerie 30 jours ───────────────────────────
   const previsionTreso30j = useMemo(() => {
@@ -109,7 +117,7 @@ function Dashboard() {
       const avancement = etat?.avancementPct ?? 0;
       const montantFacture = (factures || [])
         .filter(f => String(f.chantierId) === String(c.id))
-        .reduce((s, f) => s + (parseFloat(f.montantTTC) || 0), 0);
+        .reduce((s, f) => s + (parseFloat(f.montantHT) || 0), 0);
       const facturationPotentielle = (avancement / 100) * devisTotal;
       const resteAFacturer = Math.max(0, facturationPotentielle - montantFacture);
       const encaissementPrevu = Math.round(resteAFacturer * 0.5);
@@ -169,7 +177,7 @@ function Dashboard() {
     const caActifTotal = activesAvecDevis.reduce((s, r) => s + r.montantDevis, 0);
     const margeReellePct = caActifTotal > 0 ? Math.round((margeReelleTotale / caActifTotal) * 100) : null;
     return {
-      nbRentables:       actives.filter(r => r.rentabilitePct !== null && r.rentabilitePct >= 15).length,
+      nbRentables:       actives.filter(r => r.rentabilitePct !== null && r.rentabilitePct >= SEUILS.margeRentable).length,
       nbDepassement:     nbEnRetard,
       nbSansSaisie:      vals.filter(r => r.aucuneSaisie).length,
       margeReelleTotale,
@@ -223,10 +231,10 @@ function Dashboard() {
     });
 
     // Factures en retard
-    const fRetard = facturesSafe.filter(f =>
-      f.statut === 'retard' ||
-      (f.statut === 'envoyee' && f.dateEcheance && new Date(f.dateEcheance) < new Date())
-    );
+    const fRetard = facturesSafe.filter(f => {
+      const s = (f.statut || '').toLowerCase();
+      return s === 'retard' || (s === 'envoyee' && f.dateEcheance && new Date(f.dateEcheance) < new Date());
+    });
     if (fRetard.length > 0) {
       const montant = fRetard.reduce((t, f) =>
         t + Math.max(0, (parseFloat(f.montantTTC) || 0) - (parseFloat(f.montantPaye) || 0)), 0);
@@ -278,7 +286,7 @@ function Dashboard() {
     });
 
     // Alertes métier complémentaires (types non couverts par les calculs ci-dessus)
-    const TYPES_ADDITIFS = new Set(['devis_attente', 'factures_brouillon', 'chantier_sans_devis', 'chantier_sans_facture', 'rappel_a_envoyer']);
+    const TYPES_ADDITIFS = new Set(['devis_attente', 'factures_brouillon', 'chantier_sans_devis', 'chantier_sans_facture', 'rappel_a_envoyer', 'facture_retard']);
     const existingIds = new Set(list.map(a => a.id));
     calculerAlertes(
       { chantiers, devis, factures, clients, paiements: {} },
@@ -322,8 +330,8 @@ function Dashboard() {
     const joursRealisesC = new Set((c.journal || []).map(e => e.date).filter(Boolean)).size;
     const joursPlannedC = c.nombreJours || 0;
     const avancementRetard = joursPlannedC > 0 && joursRealisesC > joursPlannedC * 0.5 && avancement < 30;
-    if (retardJ >= 1 || (r !== null && r < 10) || avancementRetard ||
-        (reel && reel.enDepassement) || (reel && !reel.aucuneSaisie && Number.isFinite(reel.rentabilitePct) && reel.rentabilitePct < 15))
+    if (retardJ >= 1 || (r !== null && r < SEUILS.margeLimite) || avancementRetard ||
+        (reel && reel.enDepassement) || (reel && !reel.aucuneSaisie && Number.isFinite(reel.rentabilitePct) && reel.rentabilitePct < SEUILS.margeLimite))
       return { niveau: 'attention', score: 1 };
 
     return { niveau: 'ok', score: 0 };
@@ -337,24 +345,11 @@ function Dashboard() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [actifs, joursParChantier, rentaParChantier, rentaReelleParChantier]);
 
-  // Calculé une seule fois, partagé par les deux sections pour garantir l'exclusivité
-  // Mémoïsé pour éviter un sort O(n log n) + new Set à chaque render
-  const { top3, top3Ids } = useMemo(() => {
-    const sorted = [...actifs]
-      .sort((a, b) => (prioriteMap.get(b.id) || { score: 0 }).score - (prioriteMap.get(a.id) || { score: 0 }).score)
-      .filter(c => (prioriteMap.get(c.id) || { niveau: 'ok' }).niveau !== 'ok')
-      .slice(0, 3);
-    return { top3: sorted, top3Ids: new Set(sorted.map(c => c.id)) };
-  }, [actifs, prioriteMap]);
 
   // ── Chart data : aperçu financier (4 dernières semaines) ──
   const donneesMensuelles = useMemo(() => {
     const now = new Date();
-    const totalCoutsActifs = actifs.reduce((sum, c) => {
-      const r = calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis);
-      return sum + (r.totalCoutsReel || 0);
-    }, 0);
-    const coutsParSemaine = Math.round(totalCoutsActifs / 4);
+    const employes = parametres.employes || [];
     return Array.from({ length: 4 }, (_, i) => {
       const w = 4 - i;
       const deb = new Date(now); deb.setDate(now.getDate() - w * 7);
@@ -364,9 +359,25 @@ function Dashboard() {
       const enc = (factures || []).flatMap(f => f.paiementsHistorique || [])
         .filter(p => { const d = p.date ? new Date(p.date) : null; return d && d >= deb && d < fin; })
         .reduce((s, p) => s + (parseFloat(p.montant) || 0), 0);
-      return { semaine: deb.toLocaleDateString('fr-CH', { day: '2-digit', month: '2-digit' }), CA: Math.round(ca), Couts: coutsParSemaine, Encaissements: Math.round(enc) };
+      let couts = 0;
+      actifs.forEach(c => {
+        (c.journal || []).forEach(entry => {
+          if (!entry.date) return;
+          const d = new Date(entry.date);
+          if (d >= deb && d < fin) {
+            (entry.employes || []).forEach(e => {
+              const emp = employes.find(em => String(em.id) === String(e.employeId));
+              const tarifBrut = emp ? (parseFloat(emp.tarifJour) || 0) : 0;
+              const coeff = emp?.tarifDejaCharge ? 1 : (parseFloat(parametres.parametres?.coefficientMainOeuvre) || 1.35);
+              const heures = parseFloat(e.heuresTravaillees) || 0;
+              couts += (heures / 8) * tarifBrut * coeff;
+            });
+          }
+        });
+      });
+      return { semaine: deb.toLocaleDateString('fr-CH', { day: '2-digit', month: '2-digit' }), CA: Math.round(ca), Couts: Math.round(couts), Encaissements: Math.round(enc) };
     });
-  }, [factures, actifs, parametres, devis]);
+  }, [factures, actifs, parametres.employes, parametres.parametres]);
 
   // ── Répartition des coûts (donut) ──────────────────────────
   const repartitionCouts = useMemo(() => {
@@ -382,7 +393,7 @@ function Dashboard() {
     const total = mo + mat + st + dep + autres;
     if (total === 0) return { total: 0, segments: [] };
     return { total, segments: [
-      { name: "Main d'œuvre", value: (mo / total) * 100, couleur: '#3b82f6' },
+      { name: "Main d'œuvre", value: (mo / total) * 100, couleur: '#0d3d6e' },
       { name: 'Matériaux',    value: (mat / total) * 100, couleur: '#8b5cf6' },
       { name: 'Sous-traitance', value: (st / total) * 100, couleur: '#10b981' },
       { name: 'Déplacement',  value: (dep / total) * 100, couleur: '#f59e0b' },
@@ -400,8 +411,7 @@ function Dashboard() {
       return s + pct;
     }, 0);
     return sum / actifs.length;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [actifs, parametres.employes, devis]);
+  }, [actifs, parametres, devis]);
 
   const BADGE_STATUT_DASH = {
     ok:        { label: 'En cours',  bg: '#D1FAE5', color: '#065F46' },
@@ -419,9 +429,9 @@ function Dashboard() {
         {/* HEADER compact */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
           <div>
-            <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}>
+            <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 8 }}>
               Bonjour,
-              <img src={`${process.env.PUBLIC_URL}/logo-cyna-tech.png`} alt="CYNA Tech" className="logo-cyna-tech-inline" style={{ height: 16, width: 'auto', objectFit: 'contain', verticalAlign: 'middle' }} />
+              <img src={`${process.env.PUBLIC_URL}/logo-cyna-tech.png`} alt="CYNA Tech" className="logo-cyna-tech-inline" style={{ height: 18, width: 'auto', objectFit: 'contain', verticalAlign: 'middle' }} />
             </div>
             <p style={{ color: 'var(--text-muted)', fontSize: 12, margin: '2px 0 0' }}>
               {new Date().toLocaleDateString('fr-CH', { weekday: 'long', day: 'numeric', month: 'long' })} · {actifs.length} chantier{actifs.length !== 1 ? 's' : ''} actif{actifs.length !== 1 ? 's' : ''}
@@ -430,7 +440,7 @@ function Dashboard() {
           <div style={{ display: 'flex', gap: 1, background: 'var(--bg-glass-2)', border: '1px solid var(--border)', borderRadius: 8, padding: '2px' }}>
             {[{ id: 'semaine', label: 'S' }, { id: 'mois', label: 'M' }, { id: 'annee', label: 'A' }].map(p => (
               <button key={p.id} onClick={() => setPeriodeGlobale(p.id)}
-                style={{ background: periodeGlobale === p.id ? '#2563eb' : 'transparent', border: 'none', color: periodeGlobale === p.id ? '#fff' : 'var(--text-muted)', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', fontSize: 11, fontWeight: 600, fontFamily: 'inherit' }}
+                style={{ background: periodeGlobale === p.id ? '#0d3d6e' : 'transparent', border: 'none', color: periodeGlobale === p.id ? '#fff' : 'var(--text-muted)', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', fontSize: 11, fontWeight: 600, fontFamily: 'inherit' }}
               >{p.label}</button>
             ))}
           </div>
@@ -440,14 +450,18 @@ function Dashboard() {
         <div className="kpi-grid" style={{ display: 'flex', overflowX: 'auto', gap: 10, marginBottom: 14, paddingBottom: 4 }}>
           {[
             { label: "CA actif", Icon: DollarSign, valeur: `CHF ${fmtN(kpi.caEnCours)}`, sous: `En cours + Planifié · ${kpi.nbChantiersActifs} chantier${kpi.nbChantiersActifs !== 1 ? 's' : ''}`, ...DS.kpi.blue, page: 'devis' },
-            { label: 'Marge moy.', Icon: TrendingUp, valeur: kpi.rentaMoyenne !== null ? `${Math.round(kpi.rentaMoyenne)}%` : '—', sous: `${kpi.nbChantiersRenta} analysé${kpi.nbChantiersRenta !== 1 ? 's' : ''}`, ...(kpi.rentaMoyenne === null || kpi.rentaMoyenne >= 15 ? DS.kpi.green : kpi.rentaMoyenne >= 0 ? DS.kpi.amber : DS.kpi.red), page: 'analyse' },
-            { label: 'Chantiers', Icon: HardHat, valeur: `${kpi.nbChantiersActifs}`, sous: kpiReel.nbDepassement > 0 ? `${kpiReel.nbDepassement} en retard` : 'Tous OK', ...DS.kpi.amber, page: 'chantiers' },
+            { label: 'Marge moy.', Icon: TrendingUp, valeur: kpi.rentaMoyenne !== null ? `${Math.round(kpi.rentaMoyenne)}%` : '—', sous: `${kpi.nbChantiersRenta} analysé${kpi.nbChantiersRenta !== 1 ? 's' : ''}`, ...(kpi.rentaMoyenne === null || kpi.rentaMoyenne >= 15 ? DS.kpi.green : kpi.rentaMoyenne >= 0 ? DS.kpi.amber : DS.kpi.red), page: 'rapport', ctx: { onglet: 'analyse' } },
+            { label: 'Chantiers', Icon: HardHat, valeur: `${kpi.nbChantiersActifs}`, sous: kpiReel.nbDepassement > 0 ? `${kpiReel.nbDepassement} en retard` : 'Tous OK', ...DS.kpi.green, page: 'chantiers' },
             { label: 'Heures', Icon: Clock, valeur: kpi.heuresEngagees > 0 ? `${fmtN(kpi.heuresEngagees)}h` : '—', sous: `${kpi.nbEmployes} employé${kpi.nbEmployes !== 1 ? 's' : ''}`, ...DS.kpi.purple, page: 'heures' },
-          ].map(({ label, Icon, valeur, sous, gradient, glow, page: dest }) => (
-            <div key={label} onClick={() => naviguer(dest)} className="kpi-card"
+          ].map(({ label, Icon, valeur, sous, gradient, glow, page: dest, ctx }) => (
+            <div key={label} onClick={() => naviguer(dest, ctx || {})} className="kpi-card"
               style={{ background: gradient, borderRadius: 14, padding: '14px 12px', cursor: 'pointer', boxShadow: `0 4px 16px ${glow}`, border: '1px solid rgba(255,255,255,0.15)', flex: '0 0 130px', position: 'relative', overflow: 'hidden' }}
             >
               <div style={{ position: 'absolute', right: -10, top: -10, width: 60, height: 60, borderRadius: '50%', background: 'rgba(255,255,255,0.08)' }} />
+              <div style={{ position: 'absolute', top: 7, right: 7, background: 'rgba(255,255,255,0.15)', borderRadius: 4, padding: '1px 4px', display: 'flex', alignItems: 'center', gap: 1 }}>
+                <span style={{ fontSize: 8, color: 'rgba(255,255,255,0.7)', fontWeight: 600 }}>VOIR</span>
+                <ChevronRight size={8} color="rgba(255,255,255,0.7)" strokeWidth={3} />
+              </div>
               <div style={{ background: 'rgba(255,255,255,0.18)', borderRadius: 8, width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 10 }}>
                 <Icon size={14} strokeWidth={2} style={{ color: '#fff' }} />
               </div>
@@ -481,7 +495,7 @@ function Dashboard() {
         <div style={{ ...CARD, marginBottom: 12 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
             <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-primary)' }}>Mes chantiers</div>
-            <button onClick={() => naviguer('chantiers')} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: '#2563eb', fontWeight: 600, fontFamily: 'inherit', padding: 0 }}>Voir tous →</button>
+            <button onClick={() => naviguer('chantiers')} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: '#0d3d6e', fontWeight: 600, fontFamily: 'inherit', padding: 0 }}>Voir tous →</button>
           </div>
           {actifs.length === 0
             ? <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: 0, textAlign: 'center', padding: '16px 0' }}>Aucun chantier actif</p>
@@ -495,7 +509,7 @@ function Dashboard() {
                   const avancementVal = joursTotal === 0 ? 0 : Math.min(Math.round((joursRealises / joursTotal) * 100), 100);
                   const mPct = couts.montantTotal > 0 && couts.totalCoutsReel > 0 && couts.margeReelPct !== null ? Math.round(couts.margeReelPct) : null;
                   const statBadge = joursRealises === 0 ? BADGE_STATUT_DASH.neutre : BADGE_STATUT_DASH[priorite.niveau];
-                  const couleurBarre = !mPct ? '#CBD5E1' : mPct > 20 ? '#10B981' : mPct > 10 ? '#F59E0B' : '#EF4444';
+                  const couleurBarre = !mPct ? '#CBD5E1' : mPct >= SEUILS.margeRentable ? '#10B981' : mPct >= SEUILS.margeLimite ? '#F59E0B' : '#EF4444';
                   return (
                     <div key={c.id} onClick={() => naviguer('chantiers', { chantierActif: c.id })}
                       style={{ display: 'flex', flexDirection: 'column', gap: 6, borderRadius: 12, border: '1px solid var(--dash-border)', padding: '10px 12px', cursor: 'pointer', background: 'var(--ds-card-bg)' }}
@@ -538,7 +552,7 @@ function Dashboard() {
           {/* Trésorerie 30j */}
           <div style={{ ...CARD, cursor: 'pointer' }} onClick={() => naviguer('finances')}>
             <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 8 }}>Tréso. 30j</div>
-            <div style={{ fontSize: 20, fontWeight: 900, color: previsionTreso30j.interpretation?.couleur || '#3b82f6', letterSpacing: '-0.5px', marginBottom: 6, lineHeight: 1 }}>
+            <div style={{ fontSize: 20, fontWeight: 900, color: previsionTreso30j.interpretation?.couleur || '#0d3d6e', letterSpacing: '-0.5px', marginBottom: 6, lineHeight: 1 }}>
               CHF {fmtN(previsionTreso30j.total)}
             </div>
             {previsionTreso30j.interpretation && (
@@ -581,7 +595,7 @@ function Dashboard() {
           <div style={{ ...CARD, cursor: 'pointer' }} onClick={() => naviguer('chantiers')}>
             <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 8 }}>Avancement</div>
             <div style={{ display: 'flex', alignItems: 'flex-end', gap: 4, marginBottom: 8 }}>
-              <div style={{ fontSize: 28, fontWeight: 900, color: '#3b82f6', letterSpacing: '-1px', lineHeight: 1 }}>{Math.round(avancementMoyen)}%</div>
+              <div style={{ fontSize: 28, fontWeight: 900, color: '#0d3d6e', letterSpacing: '-1px', lineHeight: 1 }}>{Math.round(avancementMoyen)}%</div>
               <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 2 }}>moy.</div>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -601,7 +615,7 @@ function Dashboard() {
           </div>
 
           {/* Répartition coûts */}
-          <div style={{ ...CARD, cursor: 'pointer' }} onClick={() => naviguer('analyse')}>
+          <div style={{ ...CARD, cursor: 'pointer' }} onClick={() => naviguer('rapport', { onglet: 'analyse' })}>
             <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 8 }}>Coûts réels</div>
             {repartitionCouts.total > 0 ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -612,7 +626,7 @@ function Dashboard() {
                       <span style={{ width: 6, height: 6, borderRadius: '50%', background: s.couleur, display: 'inline-block' }} />
                       <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{s.name.split(' ')[0]}</span>
                     </div>
-                    <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-primary)' }}>{s.value.toFixed(0)}%</span>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-primary)' }}>{Math.round(s.value)}%</span>
                   </div>
                 ))}
               </div>
@@ -637,7 +651,7 @@ function Dashboard() {
                   style={{ display: 'flex', alignItems: 'flex-start', gap: 8, padding: '8px 10px', borderRadius: 8, background: a.critique ? 'rgba(239,68,68,0.06)' : 'var(--bg-glass-2)', border: `1px solid ${a.critique ? 'rgba(239,68,68,0.2)' : 'var(--border)'}`, cursor: 'pointer' }}
                 >
                   <div style={{ width: 6, height: 6, borderRadius: '50%', background: a.critique ? '#ef4444' : '#f59e0b', marginTop: 4, flexShrink: 0 }} />
-                  <span style={{ fontSize: 12, color: 'var(--text-primary)', flex: 1, lineHeight: 1.4 }}>{a.message}</span>
+                  <span style={{ fontSize: 12, color: 'var(--text-primary)', flex: 1, lineHeight: 1.4 }}>{safeStr(a.message)}</span>
                   <ChevronRight size={11} style={{ color: 'var(--text-muted)', flexShrink: 0, marginTop: 2 }} />
                 </div>
               ))}
@@ -665,67 +679,216 @@ function Dashboard() {
     <div>
 
       {/* ── HEADER ──────────────────────────────────────────────── */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: isMobile ? 14 : 28, flexWrap: 'wrap', gap: 10 }}>
-        <div>
-          <div style={{ fontSize: isMobile ? 20 : 26, fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.5px', lineHeight: 1.2, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-            Bonjour, {profil?.nom || 'CYNA'}
-            <img
-              src={`${process.env.PUBLIC_URL}/logo-cyna-tech.png`}
-              alt="CYNA Tech"
-              className="logo-cyna-tech-inline"
-              style={{ height: 20, width: 'auto', objectFit: 'contain', verticalAlign: 'middle' }}
-            />
-          </div>
-          <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: '4px 0 0' }}>
-            {new Date().toLocaleDateString('fr-CH', { weekday: 'long', day: 'numeric', month: 'long' })} · {actifs.length} chantier{actifs.length !== 1 ? 's' : ''} actif{actifs.length !== 1 ? 's' : ''}
-          </p>
+      <div style={{ marginBottom: isMobile ? 14 : 28 }}>
+        <div style={{ fontSize: isMobile ? 20 : 26, fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.5px', lineHeight: 1.2, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          Bonjour,
+          <img
+            src={`${process.env.PUBLIC_URL}/logo-cyna-tech.png`}
+            alt="CYNA Tech"
+            className="logo-cyna-tech-inline"
+            style={{ height: 20, width: 'auto', objectFit: 'contain', verticalAlign: 'middle' }}
+          />
         </div>
-        <div style={{ display: 'flex', gap: 2, background: 'var(--bg-glass-2)', border: '1px solid var(--border)', borderRadius: 10, padding: '3px' }}>
-          {[{ id: 'semaine', label: 'Semaine' }, { id: 'mois', label: 'Mois' }, { id: 'annee', label: 'Année' }].map(p => (
-            <button key={p.id} onClick={() => setPeriodeGlobale(p.id)}
-              style={{ background: periodeGlobale === p.id ? '#2563eb' : 'transparent', border: 'none', color: periodeGlobale === p.id ? '#fff' : 'var(--text-muted)', borderRadius: 8, padding: '5px 14px', cursor: 'pointer', fontSize: 12, fontWeight: 600, transition: 'all 0.15s', fontFamily: 'inherit' }}
-            >{p.label}</button>
-          ))}
-        </div>
+        <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: '4px 0 0' }}>
+          {new Date().toLocaleDateString('fr-CH', { weekday: 'long', day: 'numeric', month: 'long' })} · {actifs.length} chantier{actifs.length !== 1 ? 's' : ''} actif{actifs.length !== 1 ? 's' : ''}
+        </p>
       </div>
 
+      {/* ── BRIEFING IA DU DIRECTEUR ─────────────────────────── */}
+      {(() => {
+        const scoreDirecteur = agentState?.scoreGlobal ?? null;
+        const prioritesIA = agentState?.priorites || [];
+        const alertesIA = agentState?.alertes || [];
+
+        // Ne pas afficher si aucune donnée agent disponible
+        if (scoreDirecteur === null && prioritesIA.length === 0 && alertesIA.length === 0) return null;
+
+        const scoreColor = scoreDirecteur === null ? '#94a3b8'
+          : scoreDirecteur >= 75 ? '#10b981'
+          : scoreDirecteur >= 50 ? '#f59e0b'
+          : '#ef4444';
+
+        const scoreBgColor = scoreDirecteur === null ? '#94a3b820'
+          : scoreDirecteur >= 75 ? '#10b98120'
+          : scoreDirecteur >= 50 ? '#f59e0b20'
+          : '#ef444420';
+
+        // Top 3 actions : priorites en premier, sinon alertes critiques
+        const top3 = prioritesIA.length > 0
+          ? prioritesIA.slice(0, 3)
+          : alertesIA.filter(a => ['critique', 'danger'].includes((a.niveau || '').toLowerCase())).slice(0, 3);
+
+        // Première alerte critique ou danger
+        const alerteCritique = alertesIA.find(a => ['critique', 'danger'].includes((a.niveau || '').toLowerCase())) || null;
+
+        return (
+          <div style={{
+            background: 'linear-gradient(135deg, #0d3d6e, #1a5c8a)',
+            borderRadius: 16,
+            padding: '18px 22px',
+            marginBottom: 20,
+            boxShadow: '0 8px 32px rgba(13,61,110,0.35), 0 2px 8px rgba(0,0,0,0.15)',
+            border: '1px solid rgba(255,255,255,0.12)',
+            backdropFilter: 'blur(12px)',
+            position: 'relative',
+            overflow: 'hidden',
+          }}>
+            {/* Décor arrière-plan */}
+            <div style={{ position: 'absolute', right: -40, top: -40, width: 180, height: 180, borderRadius: '50%', background: 'rgba(255,255,255,0.04)', pointerEvents: 'none' }} />
+            <div style={{ position: 'absolute', left: -20, bottom: -30, width: 120, height: 120, borderRadius: '50%', background: 'rgba(255,255,255,0.03)', pointerEvents: 'none' }} />
+
+            {/* En-tête */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+              <Bot size={14} color="rgba(255,255,255,0.7)" />
+              <span style={{ fontSize: 10, fontWeight: 800, color: 'rgba(255,255,255,0.55)', textTransform: 'uppercase', letterSpacing: '1.2px' }}>Briefing IA du Directeur</span>
+              <span style={{ marginLeft: 'auto', fontSize: 10, color: 'rgba(255,255,255,0.4)', cursor: 'pointer', fontWeight: 600 }} onClick={() => naviguer('agents')}>Voir Centre IA →</span>
+            </div>
+
+            {/* 3 colonnes */}
+            <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'stretch' }}>
+
+              {/* COL 1 — Score santé (30%) */}
+              <div style={{ flex: '0 0 auto', minWidth: 120, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                <div style={{
+                  width: 80, height: 80, borderRadius: '50%',
+                  background: scoreBgColor,
+                  border: `3px solid ${scoreColor}`,
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                  boxShadow: `0 0 20px ${scoreColor}40`,
+                }}>
+                  {scoreDirecteur !== null ? (
+                    <>
+                      <span style={{ fontSize: 24, fontWeight: 900, color: scoreColor, lineHeight: 1, letterSpacing: '-1px' }}>{scoreDirecteur}</span>
+                      <span style={{ fontSize: 9, fontWeight: 700, color: scoreColor, opacity: 0.8 }}>/100</span>
+                    </>
+                  ) : (
+                    <span style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.4)' }}>—</span>
+                  )}
+                </div>
+                <div style={{ fontSize: 9, fontWeight: 800, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '0.8px', textAlign: 'center' }}>Sante Entreprise</div>
+                {scoreDirecteur !== null && (
+                  <div style={{ fontSize: 10, color: scoreColor, fontWeight: 700, textAlign: 'center' }}>
+                    {scoreDirecteur >= 75 ? 'Excellent' : scoreDirecteur >= 50 ? 'A surveiller' : 'Critique'}
+                  </div>
+                )}
+              </div>
+
+              {/* Separateur vertical */}
+              <div style={{ width: 1, background: 'rgba(255,255,255,0.1)', flexShrink: 0, alignSelf: 'stretch', minHeight: 60 }} />
+
+              {/* COL 2 — 3 actions (45%) */}
+              <div style={{ flex: '1 1 180px', minWidth: 160 }}>
+                <div style={{ fontSize: 9, fontWeight: 800, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 8 }}>3 Actions Aujourd'hui</div>
+                {top3.length === 0 ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <CheckCircle size={12} color="#10b981" />
+                    <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)', fontStyle: 'italic' }}>Aucune action urgente — entreprise sur les rails</span>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    {top3.map((item, idx) => {
+                      const titre = safeStr(item.titre || item.action || item.message || item.description || '—');
+                      const impact = typeof item.impact === 'string' || typeof item.impact === 'number' ? item.impact : null;
+                      return (
+                        <div key={idx} style={{ display: 'flex', alignItems: 'flex-start', gap: 7 }}>
+                          <span style={{ fontSize: 9, fontWeight: 900, color: 'rgba(255,255,255,0.4)', background: 'rgba(255,255,255,0.08)', borderRadius: '50%', width: 16, height: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1 }}>{idx + 1}</span>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.85)', lineHeight: 1.3, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{titre}</span>
+                            {impact && <span style={{ fontSize: 10, color: '#f59e0b', fontWeight: 700 }}>CHF {impact}</span>}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Separateur vertical */}
+              <div style={{ width: 1, background: 'rgba(255,255,255,0.1)', flexShrink: 0, alignSelf: 'stretch', minHeight: 60 }} />
+
+              {/* COL 3 — Alerte critique (25%) */}
+              <div style={{ flex: '0 1 160px', minWidth: 130, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                <div style={{ fontSize: 9, fontWeight: 800, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 8 }}>Alerte Critique</div>
+                {alerteCritique ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span style={{
+                        display: 'inline-block', width: 8, height: 8, borderRadius: '50%',
+                        background: '#ef4444',
+                        boxShadow: '0 0 8px #ef4444',
+                        animation: 'pulse 1.5s ease-in-out infinite',
+                        flexShrink: 0,
+                      }} />
+                      <span style={{ fontSize: 10, fontWeight: 800, color: '#ef4444', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                        {(alerteCritique.niveau || 'CRITIQUE').toUpperCase()}
+                      </span>
+                    </div>
+                    <p style={{ margin: 0, fontSize: 12, color: 'rgba(255,255,255,0.75)', lineHeight: 1.4, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                      {safeStr(alerteCritique.titre || alerteCritique.message || '—')}
+                    </p>
+                    {alerteCritique.agent && (
+                      <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', fontStyle: 'italic' }}>via {alerteCritique.agent}</span>
+                    )}
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                    <ShieldCheck size={16} color="#10b981" strokeWidth={2} />
+                    <span style={{ fontSize: 12, color: '#10b981', fontWeight: 700 }}>Aucun risque critique</span>
+                  </div>
+                )}
+              </div>
+
+            </div>
+          </div>
+        );
+      })()}
+
       {/* ── KPI CARDS ────────────────────────────────────────── */}
-      <div className="kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'var(--g4)', gap: 16, marginBottom: 24 }}>
+      <div className="kpi-grid" style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'var(--g4)', gap: isMobile ? 10 : 16, marginBottom: 24 }}>
         {[
           { label: "CA actif", Icon: DollarSign, page: 'devis',
-            valeur: `CHF ${fmtN(kpi.caEnCours)}`,
+            valeur: `CHF ${fmtN(kpi.caEnCours)} HT`,
             sous: kpi.nbChantiersActifs > 0 ? `${kpi.nbChantiersActifs} chantier${kpi.nbChantiersActifs !== 1 ? 's' : ''} · En cours + Planifiés` : 'Aucun chantier en cours',
+            desc: 'Σ montantHT des devis liés aux chantiers actifs',
             ...DS.kpi.blue },
-          { label: 'Marge moyenne', Icon: TrendingUp, page: 'analyse',
-            valeur: kpi.rentaMoyenne !== null ? `${Math.round(kpi.rentaMoyenne)}%` : '—',
-            sous: kpi.nbChantiersRenta > 0 ? `${kpi.nbChantiersRenta} chantier${kpi.nbChantiersRenta > 1 ? 's' : ''} analysé${kpi.nbChantiersRenta > 1 ? 's' : ''}` : 'Aucun coût saisi',
-            ...(kpi.rentaMoyenne === null || kpi.rentaMoyenne >= 15 ? DS.kpi.green : kpi.rentaMoyenne >= 0 ? DS.kpi.amber : DS.kpi.red) },
+          { label: 'Marge moyenne', Icon: TrendingUp, page: 'rapport', ctx: { onglet: 'analyse' },
+            valeur: kpiReel.margeReellePct !== null ? `${kpiReel.margeReellePct}%` : '—',
+            sous: kpiReel.nbActives > 0 ? `${kpiReel.nbActives} chantier${kpiReel.nbActives > 1 ? 's' : ''} analysé${kpiReel.nbActives > 1 ? 's' : ''}` : 'Aucun coût saisi',
+            desc: 'Σ marge réelle / Σ CA (pondérée, hors chantiers sans saisie)',
+            ...(kpiReel.margeReellePct === null || kpiReel.margeReellePct >= 15 ? DS.kpi.green : kpiReel.margeReellePct >= 0 ? DS.kpi.amber : DS.kpi.red) },
           { label: 'Chantiers actifs', Icon: HardHat, page: 'chantiers',
             valeur: `${kpi.nbChantiersActifs}`,
             sous: kpiReel.nbDepassement > 0 ? `${kpiReel.nbDepassement} en retard` : 'Tous dans les temps',
-            ...DS.kpi.amber,
+            desc: 'Statut "En cours" — chantiers avec heures en cours',
+            ...DS.kpi.green,
             badge: kpiReel.nbDepassement > 0 ? `${kpiReel.nbDepassement} en retard` : null },
-          { label: 'Heures ce mois', Icon: Clock, page: 'heures',
+          { label: periodeGlobale === 'semaine' ? 'Heures semaine' : periodeGlobale === 'annee' ? 'Heures année' : 'Heures ce mois', Icon: Clock, page: 'heures',
             valeur: kpi.heuresEngagees > 0 ? `${fmtN(kpi.heuresEngagees)}h` : '—',
             sous: kpi.nbEmployes > 0 ? `${kpi.nbEmployes} employé${kpi.nbEmployes > 1 ? 's' : ''} mobilisé${kpi.nbEmployes > 1 ? 's' : ''}` : 'Équipes non renseignées',
+            desc: 'Σ heures saisies dans le journal (mois courant)',
             ...DS.kpi.purple },
-        ].map(({ label, Icon, page: dest, valeur, sous, gradient, glow, badge }) => (
-          <div key={label} onClick={() => naviguer(dest)} className="kpi-card"
+        ].map(({ label, Icon, page: dest, ctx, valeur, sous, desc, gradient, glow, badge }) => (
+          <div key={label} onClick={() => naviguer(dest, ctx || {})} className="kpi-card"
             style={{ background: gradient, borderRadius: 16, padding: '22px 20px', minHeight: 130, cursor: 'pointer', boxShadow: `0 4px 20px ${glow}, 0 1px 4px rgba(0,0,0,0.12)`, border: '1px solid rgba(255,255,255,0.15)', transition: 'transform 0.18s, box-shadow 0.18s', position: 'relative', overflow: 'hidden' }}
             onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = `0 10px 30px ${glow}, 0 2px 8px rgba(0,0,0,0.18)`; }}
             onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = `0 4px 20px ${glow}, 0 1px 4px rgba(0,0,0,0.12)`; }}
           >
             <div style={{ position: 'absolute', right: -18, top: -18, width: 80, height: 80, borderRadius: '50%', background: 'rgba(255,255,255,0.1)' }} />
             <div style={{ position: 'absolute', right: -32, bottom: -32, width: 100, height: 100, borderRadius: '50%', background: 'rgba(255,255,255,0.06)' }} />
-            <div style={{ background: 'rgba(255,255,255,0.18)', borderRadius: 10, width: 38, height: 38, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16, position: 'relative' }}>
-              <Icon size={18} strokeWidth={2} style={{ color: '#ffffff' }} />
+            <div style={{ position: 'absolute', top: 10, right: 10, background: 'rgba(255,255,255,0.15)', borderRadius: 6, padding: '2px 5px', display: 'flex', alignItems: 'center', gap: 2 }}>
+              <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.7)', fontWeight: 600, letterSpacing: '0.3px' }}>VOIR</span>
+              <ChevronRight size={9} color="rgba(255,255,255,0.7)" strokeWidth={3} />
             </div>
-            <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.72)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 6 }}>{label}</div>
-            <div className="kpi-val" style={{ fontSize: 30, fontWeight: 900, color: '#ffffff', letterSpacing: '-1px', lineHeight: 1, marginBottom: 8 }}>{valeur}</div>
+            <div style={{ background: 'rgba(255,255,255,0.18)', borderRadius: 12, width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 18, position: 'relative' }}>
+              <Icon size={22} strokeWidth={2} style={{ color: '#ffffff' }} />
+            </div>
+            <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.65)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: 8 }}>{label}</div>
+            <div className="kpi-val" style={{ fontSize: 34, fontWeight: 900, color: '#ffffff', letterSpacing: '-1.5px', lineHeight: 1, marginBottom: 10 }}>{valeur}</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
               <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.62)', fontWeight: 500 }}>{sous}</span>
               {badge && <span style={{ background: 'rgba(239,68,68,0.85)', color: 'white', borderRadius: 20, padding: '1px 7px', fontSize: 12, fontWeight: 700 }}>{badge}</span>}
             </div>
+            {desc && <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.4)', marginTop: 5, fontStyle: 'italic' }}>{desc}</div>}
           </div>
         ))}
       </div>
@@ -777,12 +940,18 @@ function Dashboard() {
         <div style={CARD}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
             <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--text-primary)' }}>Mes chantiers</div>
-            <button onClick={() => naviguer('chantiers')} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: '#2563eb', fontWeight: 600, fontFamily: 'inherit', padding: 0 }}>Voir tous →</button>
+            <button onClick={() => naviguer('chantiers')} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: '#0d3d6e', fontWeight: 600, fontFamily: 'inherit', padding: 0 }}>Voir tous →</button>
           </div>
           {actifs.length === 0
             ? <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: 0, textAlign: 'center', padding: '24px 0' }}>Aucun chantier actif</p>
-            : <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                {[...actifs].sort((a, b) => (prioriteMap.get(b.id) || { score: 0 }).score - (prioriteMap.get(a.id) || { score: 0 }).score).slice(0, isMobile ? 2 : 3).map(c => {
+            : (() => {
+                const sorted = [...actifs].sort((a, b) => (prioriteMap.get(b.id) || { score: 0 }).score - (prioriteMap.get(a.id) || { score: 0 }).score);
+                const max = isMobile ? 2 : 3;
+                const enDifficulte = sorted.filter(c => (prioriteMap.get(c.id) || { niveau: 'ok' }).niveau !== 'ok');
+                const autresCount = Math.max(0, enDifficulte.length - max);
+                return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                {sorted.slice(0, max).map(c => {
                   const priorite = prioriteMap.get(c.id) || { niveau: 'ok', score: 0 };
                   const montantCA = calculerCA(c, devis);
                   const couts = coutsMap.get(c.id) || {};
@@ -796,12 +965,12 @@ function Dashboard() {
                     : BADGE_STATUT_DASH[priorite.niveau];
                   const joursRestants = joursTotal > 0 ? Math.max(0, joursTotal - joursRealises) : null;
                   const margeVal = parseFloat(couts?.margeReelPct) || 0;
-                  const sansCouts = !couts?.margeReelPct;
+                  const sansCouts = couts?.margeReelPct == null;
                   const avancementVal = joursTotal === 0 ? 0 : Math.min(Math.round((joursRealises / joursTotal) * 100), 100);
                   const couleurBarre = joursRealises === 0 ? '#CBD5E1'
                     : sansCouts ? '#CBD5E1'
-                    : margeVal > 20 ? '#10B981'
-                    : margeVal > 10 ? '#F59E0B'
+                    : margeVal >= SEUILS.margeRentable ? '#10B981'
+                    : margeVal >= SEUILS.margeLimite ? '#F59E0B'
                     : '#EF4444';
                   const depasse = joursTotal > 0 && joursRealises > joursTotal;
                   const statutJours = depasse
@@ -815,18 +984,17 @@ function Dashboard() {
                           : { label: '—', couleur: 'var(--text-muted)' };
                   return (
                     <div key={c.id} onClick={() => naviguer('chantiers', { chantierActif: c.id })}
-                      style={{ display: 'flex', alignItems: 'center', gap: 0, borderRadius: 14, border: '1px solid var(--dash-border)', cursor: 'pointer', background: 'var(--ds-card-bg)', overflow: 'hidden', transition: 'all 0.15s' }}
-                      onMouseEnter={e => { e.currentTarget.style.borderColor = '#3b82f6'; e.currentTarget.style.boxShadow = '0 2px 12px rgba(59,130,246,0.1)'; }}
+                      style={{ display: 'flex', alignItems: 'center', gap: 0, borderRadius: 14, border: '1px solid var(--dash-border)', cursor: 'pointer', background: 'var(--ds-card-bg)', overflow: 'hidden', transition: 'all 0.15s', position: 'relative' }}
+                      onMouseEnter={e => { e.currentTarget.style.borderColor = '#0d3d6e'; e.currentTarget.style.boxShadow = '0 2px 12px rgba(13,61,110,0.1)'; }}
                       onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--dash-border)'; e.currentTarget.style.boxShadow = 'none'; }}
                     >
+                      {/* Badge statut — intégré dans le layout, plus d'absolute pour éviter le chevauchement */}
+
                       {/* Contenu */}
                       <div className="dash-chantier-row" style={{ flex: 1, padding: '14px 16px', minWidth: 0, display: 'flex', alignItems: 'center', gap: 16 }}>
-                        {/* Nom + badge */}
-                        <div style={{ flex: '0 1 180px', minWidth: 0 }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, flexWrap: 'wrap' }}>
-                            <span style={{ fontWeight: 700, fontSize: 13, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.nom || c.numero}</span>
-                            <span style={{ background: statBadge.bg, color: statBadge.color, borderRadius: 20, padding: '2px 8px', fontSize: 12, fontWeight: 700, flexShrink: 0, whiteSpace: 'nowrap' }}>{statBadge.label}</span>
-                          </div>
+                        {/* Nom + CA + Coût */}
+                        <div style={{ flex: '1 1 220px', minWidth: 0, paddingRight: 70 }}>
+                          <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-primary)', marginBottom: 6, lineHeight: 1.3 }}>{c.nom || c.numero}</div>
                           <div style={{ display: 'flex', gap: 16 }}>
                             <div>
                               <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>CA</div>
@@ -857,8 +1025,11 @@ function Dashboard() {
                         {/* Séparateur */}
                         <div className="dash-sep" style={{ width: 1, alignSelf: 'stretch', background: 'var(--dash-border)', flexShrink: 0 }} />
 
-                        {/* Jours + barre */}
+                        {/* Jours + barre + badge statut (badge aligné à droite de la carte) */}
                         <div style={{ flex: '0 0 120px' }}>
+                          <div style={{ textAlign: 'right', marginBottom: 4 }}>
+                            <span style={{ display: 'inline-block', background: statBadge.bg, color: statBadge.color, borderRadius: 20, padding: '1px 8px', fontSize: 10, fontWeight: 700, whiteSpace: 'nowrap' }}>{statBadge.label}</span>
+                          </div>
                           <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 6 }}>
                             {joursTotal > 0 ? `${joursRealises} / ${joursTotal} jours` : `${progress}%`}
                           </div>
@@ -871,7 +1042,14 @@ function Dashboard() {
                     </div>
                   );
                 })}
+                {autresCount > 0 && (
+                  <div onClick={() => naviguer('chantiers')} style={{ textAlign: 'center', fontSize: 12, color: '#ef4444', fontWeight: 600, cursor: 'pointer', padding: '4px 0' }}>
+                    +{autresCount} autre{autresCount > 1 ? 's' : ''} chantier{autresCount > 1 ? 's' : ''} en difficulté →
+                  </div>
+                )}
               </div>
+              );
+            })()
           }
         </div>
 
@@ -888,7 +1066,7 @@ function Dashboard() {
                 <XAxis dataKey="semaine" tick={{ fill: 'var(--text-muted)', fontSize: 12 }} />
                 <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 12 }} tickFormatter={v => v >= 1000 ? `${(v/1000).toFixed(0)}k` : v} />
                 <Tooltip contentStyle={{ background: 'var(--dash-card)', border: '1px solid var(--dash-border)', borderRadius: 10, fontSize: 12 }} labelStyle={{ color: 'var(--text-primary)', fontWeight: 700 }} formatter={(val, name) => [`CHF ${fmtN(val)}`, name]} />
-                <Line type="monotone" dataKey="CA" stroke="#3b82f6" strokeWidth={2.5} dot={{ r: 3, fill: '#3b82f6' }} name="Chiffre d'affaires" />
+                <Line type="monotone" dataKey="CA" stroke="#0d3d6e" strokeWidth={2.5} dot={{ r: 3, fill: '#0d3d6e' }} name="Chiffre d'affaires" />
                 <Line type="monotone" dataKey="Couts" stroke="#94a3b8" strokeWidth={2} dot={{ r: 3, fill: '#94a3b8' }} strokeDasharray="5 3" name="Coûts estimés" />
                 <Line type="monotone" dataKey="Encaissements" stroke="#10b981" strokeWidth={2} dot={{ r: 3, fill: '#10b981' }} name="Encaissements" />
               </LineChart>
@@ -897,7 +1075,7 @@ function Dashboard() {
             <div style={{ height: isMobile ? 140 : 210, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: 13 }}>Aucune donnée disponible</div>
           )}
           <div style={{ display: 'flex', gap: 20, marginTop: 12, justifyContent: 'center' }}>
-            {[['#3b82f6', "Chiffre d'affaires"], ['#94a3b8', 'Coûts estimés'], ['#10b981', 'Encaissements']].map(([col, lbl]) => (
+            {[['#0d3d6e', "Chiffre d'affaires"], ['#94a3b8', 'Coûts estimés'], ['#10b981', 'Encaissements']].map(([col, lbl]) => (
               <div key={lbl} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--text-secondary)' }}>
                 <span style={{ width: 20, height: 2.5, background: col, borderRadius: 2, display: 'inline-block' }} />{lbl}
               </div>
@@ -905,7 +1083,7 @@ function Dashboard() {
           </div>
           {(() => {
             const { total, top3, interpretation, dateLimite, couverture } = previsionTreso30j; // alerteFaible unused
-            const couleurTotal = interpretation?.couleur || '#3b82f6';
+            const couleurTotal = interpretation?.couleur || '#0d3d6e';
             return (
               <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px solid var(--border)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
@@ -926,7 +1104,7 @@ function Dashboard() {
                 )}
                 {interpretation?.action && (
                   <div style={{ fontSize: 11, color: interpretation.couleur, background: interpretation.couleur + '10', border: `1px solid ${interpretation.couleur}25`, borderRadius: 8, padding: '6px 10px', marginBottom: 10 }}>
-                    {interpretation.action}
+                    {safeStr(interpretation.action)}
                   </div>
                 )}
                 {top3.length > 0 && (
@@ -934,7 +1112,7 @@ function Dashboard() {
                     {top3.map(x => (
                       <div key={x.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-glass-2)', border: '1px solid var(--border)', borderRadius: 8, padding: '6px 10px' }}>
                         <span style={{ fontSize: 12, color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, marginRight: 8 }}>{x.nom}</span>
-                        <span style={{ fontSize: 12, fontWeight: 700, color: '#3b82f6', whiteSpace: 'nowrap' }}>CHF {fmtN(x.encaissementPrevu)}</span>
+                        <span style={{ fontSize: 12, fontWeight: 700, color: '#0d3d6e', whiteSpace: 'nowrap' }}>CHF {fmtN(x.encaissementPrevu)}</span>
                       </div>
                     ))}
                   </div>
@@ -954,7 +1132,7 @@ function Dashboard() {
               <Bot size={15} strokeWidth={2} style={{ color: '#8b5cf6' }} />
               Alertes intelligentes
             </div>
-            <button onClick={naviguerAgents} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 11, color: '#2563eb', fontWeight: 600, padding: 0, fontFamily: 'inherit' }}>Tout voir →</button>
+            <button onClick={() => naviguer('agents')} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 11, color: '#0d3d6e', fontWeight: 600, padding: 0, fontFamily: 'inherit' }}>Tout voir →</button>
           </div>
           {agentAlertes.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '28px 16px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
@@ -967,7 +1145,7 @@ function Dashboard() {
               {agentAlertes.slice(0, 7).map((a) => {
                 const DOTS = { DANGER: '#EF4444', CRITIQUE: '#ef4444', ATTENTION: '#F59E0B', INFO: '#3B82F6' };
                 const dot = DOTS[a.niveau] || '#3B82F6';
-                const handleClick = () => { marquerLu(a.id); if (a.action?.page) naviguer(a.action.page, a.action.ctx); else naviguerAgents(); };
+                const handleClick = () => { if (a.actionPage) naviguer(a.actionPage, a.actionCtx || {}); else naviguer('agents'); };
                 return (
                   <div key={a.id} onClick={handleClick}
                     style={{ padding: '9px 11px', borderRadius: 10, border: `1px solid ${a.lu ? 'var(--dash-border)' : dot + '40'}`, cursor: 'pointer', background: a.lu ? 'var(--bg-glass)' : dot + '08', transition: 'all 0.15s', display: 'flex', alignItems: 'flex-start', gap: 9 }}
@@ -976,8 +1154,8 @@ function Dashboard() {
                   >
                     <div style={{ width: 7, height: 7, borderRadius: '50%', background: dot, marginTop: 4, flexShrink: 0 }} />
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontWeight: a.lu ? 500 : 700, fontSize: 12, color: 'var(--text-primary)', marginBottom: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.message}</div>
-                      {a.detail && <div style={{ fontSize: 11, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.detail}</div>}
+                      <div style={{ fontWeight: a.lu ? 500 : 700, fontSize: 12, color: 'var(--text-primary)', marginBottom: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{safeStr(a.message)}</div>
+                      {a.detail && <div style={{ fontSize: 11, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{safeStr(a.detail)}</div>}
                     </div>
                     <ChevronRight size={12} style={{ color: 'var(--text-muted)', flexShrink: 0, marginTop: 2 }} />
                   </div>
@@ -993,72 +1171,114 @@ function Dashboard() {
 
         {/* Répartition des coûts (donut) */}
         <div style={CARD}>
-          <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--text-primary)', marginBottom: 16 }}>Répartition des coûts</div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+            <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--text-primary)' }}>Répartition des coûts</div>
+            {repartitionCouts.total > 0 && (
+              <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', background: 'var(--bg-glass-2)', border: '1px solid var(--border)', borderRadius: 8, padding: '3px 10px' }}>
+                CHF {fmtN(Math.round(repartitionCouts.total))}
+              </div>
+            )}
+          </div>
           {repartitionCouts.total > 0 ? (
             <>
-              <div style={{ display: 'flex', justifyContent: 'center' }}>
-                <PieChart width={isMobile ? 110 : 156} height={isMobile ? 110 : 156}>
-                  <Pie data={repartitionCouts.segments} cx={isMobile ? 55 : 78} cy={isMobile ? 55 : 78} innerRadius={isMobile ? 32 : 48} outerRadius={isMobile ? 48 : 70} dataKey="value" paddingAngle={3}>
+              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 4 }}>
+                <PieChart width={isMobile ? 130 : 190} height={isMobile ? 130 : 190}>
+                  <Pie data={repartitionCouts.segments} cx={isMobile ? 65 : 95} cy={isMobile ? 65 : 95} innerRadius={isMobile ? 38 : 58} outerRadius={isMobile ? 58 : 85} dataKey="value" paddingAngle={3}>
                     {repartitionCouts.segments.map((entry, i) => <Cell key={i} fill={entry.couleur} />)}
                   </Pie>
-                  <Tooltip contentStyle={{ background: 'var(--dash-card)', border: '1px solid var(--dash-border)', borderRadius: 8, fontSize: 11 }} formatter={v => [`${v.toFixed(0)}%`, '']} />
+                  <Tooltip contentStyle={{ background: 'var(--dash-card)', border: '1px solid var(--dash-border)', borderRadius: 8, fontSize: 11 }} formatter={v => [`${Math.round(v)}%`, '']} />
                 </PieChart>
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 7, marginTop: 8 }}>
-                {repartitionCouts.segments.map(s => (
-                  <div key={s.name} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <span style={{ width: 8, height: 8, borderRadius: '50%', background: s.couleur, flexShrink: 0, display: 'inline-block' }} />
-                      <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{s.name}</span>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {repartitionCouts.segments.map(s => {
+                  const montantCHF = Math.round(repartitionCouts.total * s.value / 100);
+                  return (
+                    <div key={s.name}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <span style={{ width: 10, height: 10, borderRadius: 3, background: s.couleur, flexShrink: 0, display: 'inline-block' }} />
+                          <span style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 500 }}>{s.name}</span>
+                        </div>
+                        <div style={{ textAlign: 'right' }}>
+                          <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>{Math.round(s.value)}%</span>
+                          <span style={{ fontSize: 11, color: 'var(--text-muted)', marginLeft: 6 }}>CHF {fmtN(montantCHF)}</span>
+                        </div>
+                      </div>
+                      <div style={{ height: 4, background: 'var(--border)', borderRadius: 2 }}>
+                        <div style={{ height: '100%', width: `${s.value}%`, background: s.couleur, borderRadius: 2 }} />
+                      </div>
                     </div>
-                    <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)' }}>{s.value.toFixed(0)}%</span>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </>
           ) : (
-            <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-muted)', fontSize: 13 }}>Aucun coût saisi</div>
+            <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--text-muted)', fontSize: 13 }}>Aucun coût saisi</div>
           )}
         </div>
 
         {/* Avancement global (circle progress) */}
-        <div style={{ ...CARD, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-          <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--text-primary)', marginBottom: 20, width: '100%' }}>Avancement global</div>
+        <div style={{ ...CARD, display: 'flex', flexDirection: 'column' }}>
+          <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--text-primary)', marginBottom: 16 }}>Avancement global</div>
           {actifs.length > 0 ? (
             <>
-              <div style={{ position: 'relative', width: isMobile ? 100 : 140, height: isMobile ? 100 : 140, marginBottom: 12 }}>
-                <svg width={isMobile ? 100 : 140} height={isMobile ? 100 : 140} viewBox="0 0 140 140">
-                  <circle cx="70" cy="70" r="58" fill="none" stroke="var(--border)" strokeWidth="10" />
-                  <circle cx="70" cy="70" r="58" fill="none" stroke="#3b82f6" strokeWidth="10"
-                    strokeDasharray={`${2 * Math.PI * 58}`}
-                    strokeDashoffset={`${2 * Math.PI * 58 * (1 - avancementMoyen / 100)}`}
-                    strokeLinecap="round" transform="rotate(-90 70 70)"
-                    style={{ transition: 'stroke-dashoffset 0.6s ease' }}
-                  />
-                </svg>
-                <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', textAlign: 'center' }}>
-                  <div style={{ fontSize: 28, fontWeight: 900, color: 'var(--text-primary)', lineHeight: 1 }}>{Math.round(avancementMoyen)}%</div>
-                  <div style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600, marginTop: 2, textTransform: 'uppercase' }}>moy.</div>
+              {/* Cercle + stats côte à côte */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 20, marginBottom: 20 }}>
+                <div style={{ position: 'relative', flexShrink: 0, width: isMobile ? 110 : 150, height: isMobile ? 110 : 150 }}>
+                  <svg width={isMobile ? 110 : 150} height={isMobile ? 110 : 150} viewBox="0 0 150 150">
+                    <circle cx="75" cy="75" r="62" fill="none" stroke="var(--border)" strokeWidth="12" />
+                    <circle cx="75" cy="75" r="62" fill="none" stroke="#0d3d6e" strokeWidth="12"
+                      strokeDasharray={`${2 * Math.PI * 62}`}
+                      strokeDashoffset={`${2 * Math.PI * 62 * (1 - avancementMoyen / 100)}`}
+                      strokeLinecap="round" transform="rotate(-90 75 75)"
+                      style={{ transition: 'stroke-dashoffset 0.6s ease' }}
+                    />
+                  </svg>
+                  <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', textAlign: 'center' }}>
+                    <div style={{ fontSize: 32, fontWeight: 900, color: 'var(--text-primary)', lineHeight: 1, letterSpacing: '-1px' }}>{Math.round(avancementMoyen)}%</div>
+                    <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600, marginTop: 2, textTransform: 'uppercase', letterSpacing: '0.5px' }}>moy.</div>
+                  </div>
+                </div>
+                {/* KPIs rapides à droite du cercle */}
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  {[
+                    { label: 'Rentables', val: kpiReel.nbRentables, total: actifs.length, dot: '#10b981' },
+                    { label: 'Dans les temps', val: Math.max(0, actifs.length - kpiReel.nbDepassement - kpiReel.nbSansSaisie), total: actifs.length, dot: '#0d3d6e' },
+                    { label: 'En retard', val: kpiReel.nbDepassement, total: actifs.length, dot: '#ef4444' },
+                  ].map(l => (
+                    <div key={l.label}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <span style={{ width: 8, height: 8, borderRadius: '50%', background: l.dot, display: 'inline-block', flexShrink: 0 }} />
+                          <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{l.label}</span>
+                        </div>
+                        <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>{l.val} / {l.total}</span>
+                      </div>
+                      <div style={{ height: 3, background: 'var(--border)', borderRadius: 2 }}>
+                        <div style={{ height: '100%', width: l.total > 0 ? `${Math.round(l.val / l.total * 100)}%` : '0%', background: l.dot, borderRadius: 2 }} />
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, width: '100%' }}>
-                {[
-                  { label: 'En avance', count: kpiReel.nbRentables, dot: '#10b981' },
-                  { label: 'Dans les temps', count: Math.max(0, actifs.length - kpiReel.nbDepassement - kpiReel.nbSansSaisie), dot: '#3b82f6' },
-                  { label: 'En retard', count: kpiReel.nbDepassement, dot: '#ef4444' },
-                ].map(l => (
-                  <div key={l.label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <span style={{ width: 8, height: 8, borderRadius: '50%', background: l.dot, display: 'inline-block' }} />
-                      <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{l.label}</span>
-                    </div>
-                    <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>{l.count}</span>
+              {/* Ligne stats supplémentaires */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, borderTop: '1px solid var(--border)', paddingTop: 14 }}>
+                <div style={{ background: 'var(--bg-glass-2)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 14px' }}>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>Marge réelle moy.</div>
+                  <div style={{ fontSize: 20, fontWeight: 800, color: kpiReel.margeReellePct !== null && kpiReel.margeReellePct >= 15 ? '#10b981' : kpiReel.margeReellePct !== null && kpiReel.margeReellePct >= 0 ? '#f59e0b' : '#ef4444', letterSpacing: '-0.5px' }}>
+                    {kpiReel.margeReellePct !== null ? `${kpiReel.margeReellePct}%` : '—'}
                   </div>
-                ))}
+                </div>
+                <div style={{ background: 'var(--bg-glass-2)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 14px' }}>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>Écart jours moy.</div>
+                  <div style={{ fontSize: 20, fontWeight: 800, letterSpacing: '-0.5px', color: kpiReel.moyenneEcartJours === null ? 'var(--text-muted)' : kpiReel.moyenneEcartJours > 0 ? '#ef4444' : '#10b981' }}>
+                    {kpiReel.moyenneEcartJours !== null ? `${kpiReel.moyenneEcartJours > 0 ? '+' : ''}${kpiReel.moyenneEcartJours}j` : '—'}
+                  </div>
+                </div>
               </div>
             </>
           ) : (
-            <div style={{ padding: '40px 0', color: 'var(--text-muted)', fontSize: 13, textAlign: 'center' }}>Aucun chantier actif</div>
+            <div style={{ padding: '60px 0', color: 'var(--text-muted)', fontSize: 13, textAlign: 'center' }}>Aucun chantier actif</div>
           )}
         </div>
 
@@ -1070,7 +1290,7 @@ function Dashboard() {
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               {actionsLog.slice(0, 5).map((a) => {
-                const typeConf = { urgence: { I: AlertTriangle, c: '#ef4444' }, ressource: { I: Users, c: '#f59e0b' }, relance: { I: Bell, c: '#8b5cf6' }, analyse: { I: TrendingUp, c: '#3b82f6' } };
+                const typeConf = { urgence: { I: AlertTriangle, c: '#ef4444' }, ressource: { I: Users, c: '#f59e0b' }, relance: { I: Bell, c: '#8b5cf6' }, analyse: { I: TrendingUp, c: '#0d3d6e' } };
                 const tc = typeConf[a.type] || { I: CheckCircle, c: '#10b981' };
                 const AIcon = tc.I;
                 const joursDiff = Math.floor((Date.now() - a.date) / 86400000);
@@ -1090,6 +1310,16 @@ function Dashboard() {
             </div>
           )}
         </div>
+      </div>
+
+      {/* ── SAISIE RAPIDE HEURES ─────────────────────────────────── */}
+      <div style={{ marginBottom: 20 }}>
+        <SaisieRapideDashboard
+          chantiersActifs={actifs}
+          parametres={parametres}
+          setChantiers={setChantiers}
+          afficherNotif={afficherNotif}
+        />
       </div>
 
       {/* ── IA INSIGHTS BAR ──────────────────────────────────────── */}

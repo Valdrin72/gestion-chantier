@@ -165,7 +165,7 @@ export default function Qualite({ chantiers, setChantiers, qualiteData, setQuali
                   <div style={{ fontSize: '22px', fontWeight: 'bold', color: couleurScore(s.pct) }}>{s.pct}%</div>
                   <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>{s.coches}/{s.total} points</div>
                   <div style={{ marginTop: '6px', background: 'var(--border)', borderRadius: '10px', height: '6px' }}>
-                    <div style={{ background: `linear-gradient(90deg, #3b82f6, #6366f1)`, width: `${s.pct}%`, height: '6px', borderRadius: '10px', boxShadow: '0 0 6px rgba(59,130,246,0.4)' }} />
+                    <div style={{ background: `linear-gradient(90deg, #0d3d6e, #1557a0)`, width: `${s.pct}%`, height: '6px', borderRadius: '10px', boxShadow: '0 0 6px rgba(13,61,110,0.4)' }} />
                   </div>
                 </div>
               );
@@ -195,7 +195,7 @@ export default function Qualite({ chantiers, setChantiers, qualiteData, setQuali
               <span style={{ fontWeight: 'bold', color: couleurScore(scoreType.pct) }}>{scoreType.coches}/{scoreType.total} — {scoreType.pct}%</span>
             </div>
             <div style={{ background: 'var(--border)', borderRadius: '10px', height: '10px' }}>
-              <div style={{ background: 'linear-gradient(90deg, #3b82f6, #6366f1)', width: `${scoreType.pct}%`, height: '10px', borderRadius: '10px', transition: 'width 0.3s', boxShadow: '0 0 10px rgba(59,130,246,0.45)' }} />
+              <div style={{ background: 'linear-gradient(90deg, #0d3d6e, #1557a0)', width: `${scoreType.pct}%`, height: '10px', borderRadius: '10px', transition: 'width 0.3s', boxShadow: '0 0 10px rgba(13,61,110,0.45)' }} />
             </div>
           </div>
 
@@ -207,11 +207,11 @@ export default function Qualite({ chantiers, setChantiers, qualiteData, setQuali
               {items.map(item => (
                 <div key={item.id} onClick={() => toggleItem(c.id, typeActif, item.id)}
                   style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 12px', borderRadius: '8px', marginBottom: '5px', cursor: 'pointer', background: data[item.id] ? 'rgba(16,185,129,0.1)' : 'var(--surface-glass)', border: `1px solid ${data[item.id] ? 'rgba(16,185,129,0.35)' : 'var(--border-glass)'}`, transition: 'all 0.2s' }}>
-                  <div style={{ width: '22px', height: '22px', borderRadius: '50%', border: `2px solid ${data[item.id] ? '#3b82f6' : 'var(--border)'}`, background: data[item.id] ? '#3b82f6' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <div style={{ width: '22px', height: '22px', borderRadius: '50%', border: `2px solid ${data[item.id] ? '#0d3d6e' : 'var(--border)'}`, background: data[item.id] ? '#0d3d6e' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                     {data[item.id] && <span style={{ color: 'white', fontSize: '12px' }}>✓</span>}
                   </div>
                   <span style={{ fontSize: '14px', color: data[item.id] ? '#10b981' : 'var(--text-primary)' }}>{item.texte}</span>
-                  {data[item.id] && <span style={{ marginLeft: 'auto', fontSize: '12px', color: '#3b82f6' }}>Validé</span>}
+                  {data[item.id] && <span style={{ marginLeft: 'auto', fontSize: '12px', color: '#0d3d6e' }}>Validé</span>}
                 </div>
               ))}
             </div>
@@ -308,7 +308,7 @@ export default function Qualite({ chantiers, setChantiers, qualiteData, setQuali
                           <div style={{ fontSize: '11px', color: 'var(--text-secondary)', textTransform: 'uppercase' }}>{t.label}</div>
                           <div style={{ fontSize: '15px', fontWeight: 'bold', color: couleurScore(t.score.pct) }}>{t.score.pct}%</div>
                           <div style={{ background: 'var(--border)', borderRadius: '10px', height: '4px', width: '60px', marginTop: '3px' }}>
-                            <div style={{ background: 'linear-gradient(90deg, #3b82f6, #6366f1)', width: `${t.score.pct}%`, height: '4px', borderRadius: '10px', boxShadow: '0 0 5px rgba(59,130,246,0.4)' }} />
+                            <div style={{ background: 'linear-gradient(90deg, #0d3d6e, #1557a0)', width: `${t.score.pct}%`, height: '4px', borderRadius: '10px', boxShadow: '0 0 5px rgba(13,61,110,0.4)' }} />
                           </div>
                         </div>
                       ))}
@@ -322,7 +322,7 @@ export default function Qualite({ chantiers, setChantiers, qualiteData, setQuali
                         {scoreGlobal >= 80 ? 'Bon' : scoreGlobal >= 50 ? 'À améliorer' : 'Critique'}
                       </span>
                     </div>
-                    <div style={{ marginTop: '8px', fontSize: '12px', color: '#3b82f6' }}>Voir détail →</div>
+                    <div style={{ marginTop: '8px', fontSize: '12px', color: '#0d3d6e' }}>Voir détail →</div>
                     <div style={{ marginTop: '8px' }}>
                       <button
                         onClick={(e) => supprimerChantier(e, c)}

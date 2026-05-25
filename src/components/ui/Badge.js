@@ -1,7 +1,7 @@
 import React from 'react';
 
 const STYLES = {
-  'En cours':     { bg: '#dbeafe', color: '#1e40af' },
+  'En cours':     { bg: '#e8f0f9', color: '#0d3d6e' },
   'Terminé':      { bg: '#d1fae5', color: '#065f46' },
   'Planifié':     { bg: '#e0e7ff', color: '#3730a3' },
   'Suspendu':     { bg: '#fee2e2', color: '#991b1b' },
@@ -9,7 +9,7 @@ const STYLES = {
   'Clôturé':      { bg: '#f3f4f6', color: '#374151' },
   'À chiffrer':   { bg: '#f3f4f6', color: '#4b5563' },
   'Brouillon':    { bg: '#f3f4f6', color: '#4b5563' },
-  'Envoyé':       { bg: '#dbeafe', color: '#1e40af' },
+  'Envoyé':       { bg: '#e8f0f9', color: '#0d3d6e' },
   'Accepté':      { bg: '#d1fae5', color: '#065f46' },
   'Refusé':       { bg: '#fee2e2', color: '#991b1b' },
   'Payée':        { bg: '#d1fae5', color: '#065f46' },
@@ -26,7 +26,7 @@ const STYLES = {
   'Fiscal':       { bg: '#fef3c7', color: '#92400e' },
   'Annuel':       { bg: '#ede9fe', color: '#5b21b6' },
   'RENTABLE':     { bg: '#d1fae5', color: '#065f46' },
-  'EN COURS':     { bg: '#dbeafe', color: '#1e40af' },
+  'EN COURS':     { bg: '#e8f0f9', color: '#0d3d6e' },
   'ATTENTION':    { bg: '#fed7aa', color: '#9a3412' },
   'DANGER':       { bg: '#fee2e2', color: '#991b1b' },
   'TERMINÉ':      { bg: '#d1fae5', color: '#065f46' },
@@ -35,7 +35,7 @@ const STYLES = {
   'EN ATTENTE':   { bg: '#fef3c7', color: '#92400e' },
   'EN RETARD':    { bg: '#fee2e2', color: '#991b1b' },
   'BROUILLON':    { bg: '#f3f4f6', color: '#4b5563' },
-  'ENVOYÉ':       { bg: '#dbeafe', color: '#1e40af' },
+  'ENVOYÉ':       { bg: '#e8f0f9', color: '#0d3d6e' },
   'ACCEPTÉ':      { bg: '#d1fae5', color: '#065f46' },
   'REFUSÉ':       { bg: '#fee2e2', color: '#991b1b' },
 };

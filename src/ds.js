@@ -1,19 +1,16 @@
 // ============================================================
-// CYNA — DESIGN SYSTEM TOKENS
-// Source de vérité : CYNA App.html
+// CYNA — DESIGN SYSTEM 2026
+// Clean Light · Brand Blue #0d3d6e
 // ============================================================
 
 export const DS = {
   // ── Cartes ──────────────────────────────────────────────────
-  // Card = { background:'#fff', borderRadius:16, padding:20,
-  //          border:'1px solid #E2E8F0',
-  //          boxShadow:'0 1px 3px rgba(15,23,42,0.04), 0 1px 2px rgba(15,23,42,0.06)' }
   card: {
     background: 'var(--ds-card-bg)',
     backdropFilter: 'var(--ds-card-blur)',
     WebkitBackdropFilter: 'var(--ds-card-blur)',
     padding: 'var(--ds-card-padding, 20px)',
-    borderRadius: '16px',
+    borderRadius: '14px',
     marginBottom: 'var(--ds-card-mb, 20px)',
     boxShadow: 'var(--ds-card-shadow)',
     border: '1px solid var(--ds-card-border)',
@@ -24,7 +21,7 @@ export const DS = {
     backdropFilter: 'var(--ds-card-blur)',
     WebkitBackdropFilter: 'var(--ds-card-blur)',
     padding: 'var(--ds-card-compact-padding, 16px 18px)',
-    borderRadius: '14px',
+    borderRadius: '12px',
     marginBottom: 'var(--ds-card-compact-mb, 16px)',
     boxShadow: 'var(--ds-card-compact-shadow)',
     border: '1px solid var(--ds-card-compact-border)',
@@ -32,19 +29,19 @@ export const DS = {
   },
   cardInset: {
     background: 'var(--ds-card-inset-bg)',
-    borderRadius: '12px',
+    borderRadius: '10px',
     padding: 'var(--ds-card-inset-padding, 14px 16px)',
     border: '1px solid var(--ds-card-inset-border)',
     boxShadow: 'var(--ds-card-inset-shadow)',
   },
 
   // ── Boutons ─────────────────────────────────────────────────
-  // btnPrimary = gradient blue→indigo, shadow rgba(59,130,246,0.32)
+  // Primary — CYNA bleu profond
   btnPrimary: {
-    background: 'linear-gradient(135deg, #3B82F6 0%, #4F46E5 100%)',
+    background: '#0d3d6e',
     color: '#fff',
     border: 'none',
-    borderRadius: '10px',
+    borderRadius: '9px',
     padding: '9px 16px',
     fontSize: '13px',
     fontWeight: 700,
@@ -52,16 +49,17 @@ export const DS = {
     display: 'inline-flex',
     alignItems: 'center',
     gap: '7px',
-    boxShadow: '0 4px 14px rgba(59,130,246,0.32)',
+    boxShadow: '0 2px 8px rgba(13,61,110,0.28)',
     fontFamily: 'inherit',
     whiteSpace: 'nowrap',
+    transition: 'background 0.14s ease, box-shadow 0.14s ease',
   },
-  // btnSuccess = gradient green
+  // Success — vert
   btnSuccess: {
-    background: 'linear-gradient(135deg, #065F46 0%, #10B981 100%)',
+    background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)',
     color: '#fff',
     border: 'none',
-    borderRadius: '10px',
+    borderRadius: '9px',
     padding: '9px 16px',
     fontSize: '13px',
     fontWeight: 700,
@@ -69,15 +67,16 @@ export const DS = {
     display: 'inline-flex',
     alignItems: 'center',
     gap: '7px',
-    boxShadow: '0 4px 14px rgba(16,185,129,0.32)',
+    boxShadow: '0 2px 8px rgba(16,185,129,0.28)',
     fontFamily: 'inherit',
     whiteSpace: 'nowrap',
   },
+  // Danger — rouge subtil
   btnDanger: {
     background: 'var(--red-bg)',
-    color: '#EF4444',
-    border: '1px solid rgba(239,68,68,0.3)',
-    borderRadius: '10px',
+    color: '#ef4444',
+    border: '1px solid rgba(239,68,68,0.28)',
+    borderRadius: '9px',
     padding: '8px 14px',
     fontSize: '13px',
     fontWeight: 600,
@@ -88,13 +87,13 @@ export const DS = {
     fontFamily: 'inherit',
     whiteSpace: 'nowrap',
   },
-  // btnGhost = { background:'#fff', color:'#475569', border:'1px solid #E2E8F0' }
+  // Ghost — blanc avec bordure
   btnGhost: {
     background: 'var(--ds-btn-ghost-bg)',
     color: 'var(--text-secondary)',
     border: '1px solid var(--ds-btn-ghost-border)',
-    borderRadius: '10px',
-    padding: '9px 14px',
+    borderRadius: '9px',
+    padding: '8px 14px',
     fontSize: '13px',
     fontWeight: 600,
     cursor: 'pointer',
@@ -104,11 +103,12 @@ export const DS = {
     fontFamily: 'inherit',
     whiteSpace: 'nowrap',
   },
+  // Warning — ambre
   btnWarning: {
     background: 'var(--orange-bg)',
-    color: '#F59E0B',
-    border: '1px solid rgba(245,158,11,0.3)',
-    borderRadius: '10px',
+    color: '#f59e0b',
+    border: '1px solid rgba(245,158,11,0.28)',
+    borderRadius: '9px',
     padding: '8px 14px',
     fontSize: '13px',
     fontWeight: 600,
@@ -119,7 +119,7 @@ export const DS = {
     fontFamily: 'inherit',
     whiteSpace: 'nowrap',
   },
-  // iconBtn = petits boutons action dans les tableaux (36×36)
+  // Icon button — petits boutons action (tables, topbar)
   iconBtn: {
     background: 'var(--bg-hover)',
     border: '1px solid var(--border)',
@@ -130,27 +130,28 @@ export const DS = {
     alignItems: 'center',
     justifyContent: 'center',
     cursor: 'pointer',
-    color: '#64748B',
+    color: 'var(--text-muted)',
+    transition: 'background 0.12s ease, border-color 0.12s ease',
   },
-  // btnIconWhite = boutons icône topbar/header (38×38)
+  // Icon button topbar
   btnIconWhite: {
-    width: '38px',
-    height: '38px',
-    borderRadius: '10px',
-    background: 'var(--ds-btn-ghost-bg)',
-    border: '1px solid var(--ds-btn-ghost-border)',
+    width: '36px',
+    height: '36px',
+    borderRadius: '9px',
+    background: 'transparent',
+    border: '1px solid transparent',
     cursor: 'pointer',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    color: '#64748B',
+    color: 'var(--text-muted)',
+    transition: 'background 0.12s ease, border-color 0.12s ease',
   },
 
   // ── Inputs ──────────────────────────────────────────────────
-  // input = { background:'#F8FAFC', border:'1px solid #E2E8F0', borderRadius:9, fontSize:13.5 }
   input: {
     width: '100%',
-    padding: '10px 13px',
+    padding: '9px 13px',
     borderRadius: '9px',
     border: '1px solid var(--ds-input-border)',
     background: 'var(--ds-input-bg)',
@@ -159,10 +160,11 @@ export const DS = {
     fontFamily: 'inherit',
     boxSizing: 'border-box',
     outline: 'none',
+    transition: 'border-color 0.15s ease, box-shadow 0.15s ease',
   },
   label: {
     display: 'block',
-    fontSize: '10.5px',
+    fontSize: '11px',
     fontWeight: 700,
     textTransform: 'uppercase',
     letterSpacing: '0.6px',
@@ -171,23 +173,20 @@ export const DS = {
   },
 
   // ── Tables ──────────────────────────────────────────────────
-  // th = { padding:'12px 16px', fontSize:10.5, fontWeight:700, color:'#64748B',
-  //        textTransform:'uppercase', letterSpacing:'0.6px', background:'#F8FAFC' }
   th: {
-    padding: '12px 16px',
+    padding: '11px 14px',
     fontSize: '10.5px',
     fontWeight: 700,
     textTransform: 'uppercase',
-    letterSpacing: '0.6px',
+    letterSpacing: '0.7px',
     color: 'var(--text-muted)',
     background: 'var(--ds-th-bg)',
     borderBottom: '1px solid var(--ds-th-border)',
     textAlign: 'left',
     whiteSpace: 'nowrap',
   },
-  // td = { padding:'14px 16px', fontSize:13, color:'#0F172A', whiteSpace:'nowrap' }
   td: {
-    padding: '14px 16px',
+    padding: '13px 14px',
     fontSize: '13px',
     color: 'var(--text-primary)',
     fontWeight: 500,
@@ -200,7 +199,7 @@ export const DS = {
     fontSize: '10px',
     fontWeight: 700,
     textTransform: 'uppercase',
-    letterSpacing: '1.4px',
+    letterSpacing: '1.2px',
     color: 'var(--ds-section-label-color)',
     marginBottom: '14px',
     paddingBottom: '10px',
@@ -210,98 +209,95 @@ export const DS = {
     gap: '6px',
   },
 
-  // ── Brand tokens ────────────────────────────────────────────
+  // ── Brand CYNA ──────────────────────────────────────────────
   brand: {
-    primary:      '#3B82F6',
-    primaryDeep:  '#1E40AF',
-    secondary:    '#4F46E5',
-    soft:         '#EEF2FF',
-    tint:         '#EFF6FF',
-    gradient:     'linear-gradient(135deg, #3B82F6 0%, #4F46E5 100%)',
-    gradientDeep: 'linear-gradient(135deg, #1E40AF 0%, #3B82F6 100%)',
+    primary:      '#0d3d6e',
+    primaryDeep:  '#082d52',
+    secondary:    '#1557a0',
+    soft:         '#e8f0f9',
+    tint:         '#f0f6ff',
+    gradient:     'linear-gradient(135deg, #0d3d6e 0%, #1557a0 100%)',
+    gradientDeep: 'linear-gradient(135deg, #082d52 0%, #0d3d6e 100%)',
   },
 
-  // ── KPI Gradients (source: CYNA App.html KpiCard) ───────────
+  // ── KPI Cards ───────────────────────────────────────────────
   kpi: {
-    blue:   { gradient: 'linear-gradient(135deg, #1E40AF 0%, #3B82F6 100%)', glow: 'rgba(59,130,246,0.32)' },
-    green:  { gradient: 'linear-gradient(135deg, #065F46 0%, #10B981 100%)', glow: 'rgba(16,185,129,0.32)' },
-    amber:  { gradient: 'linear-gradient(135deg, #92400E 0%, #F59E0B 100%)', glow: 'rgba(245,158,11,0.32)' },
-    purple: { gradient: 'linear-gradient(135deg, #4C1D95 0%, #8B5CF6 100%)', glow: 'rgba(139,92,246,0.32)' },
-    red:    { gradient: 'linear-gradient(135deg, #991B1B 0%, #EF4444 100%)', glow: 'rgba(239,68,68,0.32)' },
+    blue:   { gradient: 'linear-gradient(135deg, #0d3d6e 0%, #1557a0 100%)', glow: 'rgba(13,61,110,0.28)' },
+    green:  { gradient: 'linear-gradient(135deg, #047857 0%, #10b981 100%)', glow: 'rgba(16,185,129,0.28)' },
+    amber:  { gradient: 'linear-gradient(135deg, #b45309 0%, #f59e0b 100%)', glow: 'rgba(245,158,11,0.28)' },
+    purple: { gradient: 'linear-gradient(135deg, #5b21b6 0%, #7c3aed 100%)', glow: 'rgba(124,58,237,0.28)' },
+    red:    { gradient: 'linear-gradient(135deg, #b91c1c 0%, #ef4444 100%)', glow: 'rgba(239,68,68,0.28)' },
   },
 
-  // ── Badges sémantiques (Section 9 DESIGN_TOKENS.md) ─────────
+  // ── Badges sémantiques ───────────────────────────────────────
   badges: {
-    success : { bg: '#D1FAE5', color: '#065F46' },
-    warning : { bg: '#FEF3C7', color: '#92400E' },
-    danger  : { bg: '#FEE2E2', color: '#991B1B' },
-    info    : { bg: '#DBEAFE', color: '#1E40AF' },
-    neutral : { bg: '#F1F5F9', color: '#475569' },
-    purple  : { bg: '#EDE9FE', color: '#5B21B6' },
-    indigo  : { bg: '#E0E7FF', color: '#3730A3' },
+    success : { bg: '#d1fae5', color: '#047857' },
+    warning : { bg: '#fef3c7', color: '#b45309' },
+    danger  : { bg: '#fee2e2', color: '#b91c1c' },
+    info    : { bg: '#dbeafe', color: '#1e40af' },
+    neutral : { bg: '#f1f5f9', color: '#475569' },
+    purple  : { bg: '#ede9fe', color: '#5b21b6' },
+    brand   : { bg: '#e8f0f9', color: '#0d3d6e' },
   },
 
-  // ── Statuts badges (source: CYNA App.html STATUT_COL) ───────
+  // ── Statuts badges ───────────────────────────────────────────
   statuts: {
-    'En cours':   { bg: '#DBEAFE', color: '#1E40AF' },
-    'Terminé':    { bg: '#D1FAE5', color: '#065F46' },
-    'Planifié':   { bg: '#E0E7FF', color: '#3730A3' },
-    'Suspendu':   { bg: '#FEE2E2', color: '#991B1B' },
-    'Facturé':    { bg: '#EDE9FE', color: '#5B21B6' },
-    'Brouillon':  { bg: '#F1F5F9', color: '#475569' },
-    'Envoyé':     { bg: '#DBEAFE', color: '#1E40AF' },
-    'Accepté':    { bg: '#D1FAE5', color: '#065F46' },
-    'Refusé':     { bg: '#FEE2E2', color: '#991B1B' },
-    'Payée':      { bg: '#D1FAE5', color: '#065F46' },
-    'En retard':  { bg: '#FEE2E2', color: '#991B1B' },
-    'En attente': { bg: '#FEF3C7', color: '#92400E' },
-    'Partielle':  { bg: '#FEF3C7', color: '#92400E' },
-    // Alias minuscules — normalisés par LEGACY_STATUTS dans DevisPage
-    'en cours':   { bg: '#DBEAFE', color: '#1E40AF' },
-    'terminé':    { bg: '#D1FAE5', color: '#065F46' },
-    'planifié':   { bg: '#E0E7FF', color: '#3730A3' },
-    'suspendu':   { bg: '#FEE2E2', color: '#991B1B' },
-    'facturé':    { bg: '#EDE9FE', color: '#5B21B6' },
-    'brouillon':  { bg: '#F1F5F9', color: '#475569' },
-    'envoyé':     { bg: '#DBEAFE', color: '#1E40AF' },
-    'accepté':    { bg: '#D1FAE5', color: '#065F46' },
-    'refusé':     { bg: '#FEE2E2', color: '#991B1B' },
-    'payée':      { bg: '#D1FAE5', color: '#065F46' },
-    'en retard':  { bg: '#FEE2E2', color: '#991B1B' },
-    'en attente': { bg: '#FEF3C7', color: '#92400E' },
-    'partielle':  { bg: '#FEF3C7', color: '#92400E' },
+    'En cours':   { bg: '#dbeafe', color: '#1e40af' },
+    'Terminé':    { bg: '#d1fae5', color: '#047857' },
+    'Planifié':   { bg: '#e8f0f9', color: '#0d3d6e' },
+    'Suspendu':   { bg: '#fee2e2', color: '#b91c1c' },
+    'Facturé':    { bg: '#ede9fe', color: '#5b21b6' },
+    'Brouillon':  { bg: '#f1f5f9', color: '#475569' },
+    'Envoyé':     { bg: '#dbeafe', color: '#1e40af' },
+    'Accepté':    { bg: '#d1fae5', color: '#047857' },
+    'Refusé':     { bg: '#fee2e2', color: '#b91c1c' },
+    'Payée':      { bg: '#d1fae5', color: '#047857' },
+    'En retard':  { bg: '#fee2e2', color: '#b91c1c' },
+    'En attente': { bg: '#fef3c7', color: '#b45309' },
+    'Partielle':  { bg: '#fef3c7', color: '#b45309' },
+    // Alias minuscules
+    'en cours':   { bg: '#dbeafe', color: '#1e40af' },
+    'terminé':    { bg: '#d1fae5', color: '#047857' },
+    'planifié':   { bg: '#e8f0f9', color: '#0d3d6e' },
+    'suspendu':   { bg: '#fee2e2', color: '#b91c1c' },
+    'facturé':    { bg: '#ede9fe', color: '#5b21b6' },
+    'brouillon':  { bg: '#f1f5f9', color: '#475569' },
+    'envoyé':     { bg: '#dbeafe', color: '#1e40af' },
+    'accepté':    { bg: '#d1fae5', color: '#047857' },
+    'refusé':     { bg: '#fee2e2', color: '#b91c1c' },
+    'payée':      { bg: '#d1fae5', color: '#047857' },
+    'en retard':  { bg: '#fee2e2', color: '#b91c1c' },
+    'en attente': { bg: '#fef3c7', color: '#b45309' },
+    'partielle':  { bg: '#fef3c7', color: '#b45309' },
   },
 
-  // ── Couleurs palette (source: CYNA App.html) ────────────────
+  // ── Palette complète ─────────────────────────────────────────
   colors: {
-    textPrimary:   '#0F172A',
-    textSecondary: '#475569',
-    textMuted:     '#64748B',
-    textFaint:     '#94A3B8',
-    bgApp:         '#F8FAFC',
-    bgCard:        '#FFFFFF',
-    border:        '#E2E8F0',
-    borderLight:   '#F1F5F9',
-    activeNavBg:   '#EEF2FF',
-    activeNavText: '#4F46E5',
-    blue:          '#3B82F6',
-    blueDark:      '#1E40AF',
-    green:         '#10B981',
-    greenDark:     '#065F46',
-    amber:         '#F59E0B',
-    amberDark:     '#92400E',
-    purple:        '#8B5CF6',
-    purpleDark:    '#4C1D95',
-    red:           '#EF4444',
-    redDark:       '#991B1B',
-    indigo:        '#4F46E5',
-    indigoDark:    '#3730A3',
+    textPrimary:   '#0d1b2e',
+    textSecondary: '#4a5568',
+    textMuted:     '#7c8fa1',
+    textFaint:     '#a8b8c8',
+    bgApp:         '#f0f4f8',
+    bgCard:        '#ffffff',
+    border:        '#dce4ef',
+    borderLight:   '#e8ecf2',
+    activeNavBg:   '#e8f0f9',
+    activeNavText: '#0d3d6e',
+    brand:         '#0d3d6e',
+    brandMid:      '#1557a0',
+    brandLight:    '#2979d0',
+    green:         '#10b981',
+    greenDark:     '#047857',
+    amber:         '#f59e0b',
+    amberDark:     '#b45309',
+    purple:        '#7c3aed',
+    purpleDark:    '#5b21b6',
+    red:           '#ef4444',
+    redDark:       '#b91c1c',
   },
 };
 
-// ── Helpers statuts (source unique = DS.statuts) ────────────────
-// Lookup insensible à la casse : tente d'abord la valeur exacte,
-// puis la valeur en minuscules (normalisation LEGACY_STATUTS).
+// ── Helpers statuts ─────────────────────────────────────────────
 const _lookupStatut = (s) => DS.statuts[s] || DS.statuts[s?.trim().toLowerCase()] || null;
-export const couleurStatut = (s) => _lookupStatut(s)?.color || '#3B82F6';
-export const badgeStatut   = (s) => _lookupStatut(s) || { bg: '#F1F5F9', color: '#475569' };
+export const couleurStatut = (s) => _lookupStatut(s)?.color || '#0d3d6e';
+export const badgeStatut   = (s) => _lookupStatut(s) || { bg: '#f1f5f9', color: '#475569' };

@@ -1,6 +1,6 @@
 /**
  * CYNA — Agent Engine v2
- * 20 agents autonomes en 3 tiers :
+ * Agents autonomes en 3 tiers :
  *   Tier 1 (9) — analyse pure, pas de dépendance inter-agents
  *   Tier 2 (6) — intelligence croisée, lit les résultats Tier 1
  *   Tier 3 (5) — synthèse, lit tout + accumule la mémoire long-terme
@@ -22,7 +22,7 @@ const isDev = process.env.NODE_ENV !== 'production';
 // ═══════════════════════════════════════════════════════════════
 
 // ─── T1-A1 : AlerteChantier ───────────────────────────────────
-export function runAlerteChantier({ chantiers, devis, factures = [], parametres }) {
+export function runAlerteChantier({ chantiers, devis, factures = [], parametres, getCouts }) {
   const alertes = [];
   const actifs = chantiers.filter(isChantierActif);
   const cfg = parametres?.agentsConfig?.alerteChantier || {
@@ -34,7 +34,7 @@ export function runAlerteChantier({ chantiers, devis, factures = [], parametres 
 
   actifs.forEach(c => {
     try {
-      const couts = calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis);
+      const couts = getCouts ? getCouts(c) : calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis);
       const joursR = new Set((c.journal || []).map(e => e.date).filter(Boolean)).size;
       const joursRestants = c.nombreJours > 0 ? c.nombreJours - joursR : null;
       // Retard calendaire : date de fin prévue dépassée ET chantier toujours "en cours"
@@ -239,17 +239,269 @@ export function runRapportAuto({ chantiers, factures, devis, parametres, dernier
   } catch (e) { return { alertes: [], data: null }; }
 }
 
-// ─── T1-A5 : MémoireChantier ─────────────────────────────────
-export function runMemoireChantier({ chantiers, devis, parametres }) {
+// ─── SIMULATION INTELLIGENTE : Briefing lundi matin ─────────
+// Apprend des semaines passées, anticipe les risques, recommande
+// les actions prioritaires avant lundi.
+export function simulerRapportLundi({ chantiers, factures, devis, parametres, clients = [], rapports = [], agentData = {}, alertes = [] }) {
   try {
-    const STATUTS_TERMINES = ['terminé', 'facturé', 'clôturé'];
+    const now = new Date();
+    const jourActuel = now.getDay();
+    const joursJusquaLundi = jourActuel === 0 ? 1 : jourActuel === 1 ? 7 : 8 - jourActuel;
+    const prochainLundi = new Date(now);
+    prochainLundi.setDate(now.getDate() + joursJusquaLundi);
+    prochainLundi.setHours(7, 30, 0, 0);
+
+    const debutSemaine = new Date(now);
+    debutSemaine.setDate(now.getDate() - 7);
+
+    // ── Données de base ──────────────────────────────────────
+    const actifs = chantiers.filter(isChantierActif);
+    const enRetard = actifs.filter(c => {
+      const r = new Set((c.journal || []).map(e => e.date).filter(Boolean)).size;
+      return c.nombreJours > 0 && c.nombreJours - r < 0;
+    });
+
+    let heuresSemaine = 0;
+    actifs.forEach(c => {
+      (c.journal || []).forEach(entry => {
+        if (!entry.date || new Date(entry.date) < debutSemaine) return;
+        (entry.employes || []).forEach(e => { heuresSemaine += parseFloat(e.heuresTravaillees) || 0; });
+      });
+    });
+
+    const caFactureSemaine = (factures || [])
+      .filter(f => f.dateEmission && new Date(f.dateEmission) >= debutSemaine)
+      .reduce((s, f) => s + (parseFloat(f.montantTTC) || 0), 0);
+
+    const joursEcoules = Math.max(1, jourActuel === 0 ? 7 : jourActuel);
+    const projectionHeures = Math.round(heuresSemaine + (heuresSemaine / joursEcoules) * joursJusquaLundi);
+    const projectionCA    = Math.round(caFactureSemaine + (caFactureSemaine / joursEcoules) * joursJusquaLundi);
+
+    // ── APPRENTISSAGE : historique des rapports passés ───────
+    const rapportsValides = (rapports || []).filter(r => r && r.heuresSaisies >= 0);
+    const moyenneHeures = rapportsValides.length > 0
+      ? Math.round(rapportsValides.reduce((s, r) => s + r.heuresSaisies, 0) / rapportsValides.length) : null;
+    const moyenneCA = rapportsValides.length > 0
+      ? Math.round(rapportsValides.reduce((s, r) => s + r.caFacture, 0) / rapportsValides.length) : null;
+    const tendanceHeures = moyenneHeures > 0 ? Math.round(((projectionHeures - moyenneHeures) / moyenneHeures) * 100) : null;
+    const tendanceCA     = moyenneCA > 0     ? Math.round(((projectionCA - moyenneCA) / moyenneCA) * 100) : null;
+
+    // ── ERREURS À ÉVITER (patterns historiques) ──────────────
+    const erreursAEviter = [];
+
+    // Chantiers chroniquement en retard sur plusieurs semaines
+    const compteurRetard = new Map();
+    rapportsValides.forEach(r => {
+      (r.chantierRetard || []).forEach(nom => compteurRetard.set(nom, (compteurRetard.get(nom) || 0) + 1));
+    });
+    [...compteurRetard.entries()]
+      .filter(([, n]) => n >= 2)
+      .sort((a, b) => b[1] - a[1])
+      .forEach(([nom, n]) => {
+        erreursAEviter.push({
+          type: 'retard_chronique',
+          message: `"${nom}" en retard ${n} semaine${n > 1 ? 's' : ''} d'affilée`,
+          conseil: 'Revoir le planning ou renforcer l\'équipe sur ce chantier',
+        });
+      });
+
+    // Semaines sans saisie d'heures
+    const semainesVides = rapportsValides.filter(r => r.heuresSaisies === 0).length;
+    if (semainesVides >= 1) {
+      erreursAEviter.push({
+        type: 'heures_oubliees',
+        message: `${semainesVides} semaine${semainesVides > 1 ? 's' : ''} sans aucune heure saisie dans l'historique`,
+        conseil: 'Saisir les heures avant le vendredi soir — le rapport lundi sera vide sinon',
+      });
+    }
+
+    // CA anormalement bas (< 50% moyenne) dans l'historique
+    const semainesBasses = rapportsValides.filter(r => moyenneCA && r.caFacture < moyenneCA * 0.5).length;
+    if (semainesBasses >= 2) {
+      erreursAEviter.push({
+        type: 'ca_faible',
+        message: `${semainesBasses} semaines avec CA < 50% de la moyenne historique`,
+        conseil: 'Anticiper la facturation en fin de semaine — ne pas attendre lundi',
+      });
+    }
+
+    // ── RISQUES DÉTECTÉS (depuis RadarPrécoce) ───────────────
+    const risques = (agentData?.RadarPrecoce?.risques || [])
+      .filter(r => r.score >= 30)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 4)
+      .map(r => ({ chantier: r.nom, score: r.score, niveau: r.niveau, facteurs: r.facteurs || [] }));
+
+    // ── ACTIONS AVANT LUNDI ───────────────────────────────────
+    const actionsAvantLundi = [];
+
+    // Factures impayées > 30j
+    const now_ts = now.getTime();
+    (factures || [])
+      .filter(f => {
+        const st = (f.statut || '').toLowerCase();
+        if (!['envoyee', 'partielle', 'retard'].includes(st) || !f.dateEmission) return false;
+        return (now_ts - new Date(f.dateEmission).getTime()) / 86400000 > 30;
+      })
+      .map(f => {
+        const cl = (clients || []).find(c => String(c.id) === String(f.clientId));
+        const age = Math.round((now_ts - new Date(f.dateEmission).getTime()) / 86400000);
+        return { nom: f.numero || '—', client: cl ? `${cl.prenom} ${cl.nom}` : '—', age, montant: parseFloat(f.montantTTC) || 0 };
+      })
+      .sort((a, b) => b.age - a.age)
+      .slice(0, 3)
+      .forEach(f => actionsAvantLundi.push({
+        priorite: f.age > 60 ? 'URGENT' : 'IMPORTANT',
+        icone: '💰',
+        action: `Relancer ${f.client} — ${f.nom}`,
+        detail: `Impayée depuis ${f.age} jours · CHF ${fmtN(f.montant)}`,
+      }));
+
+    // Employés sans saisie d'heures cette semaine
+    const employes = (parametres?.employes || []).filter(e => e.actif !== false);
+    const sansSaisie = employes.filter(emp =>
+      !actifs.some(c =>
+        (c.journal || []).some(entry =>
+          entry.date && new Date(entry.date) >= debutSemaine &&
+          (entry.employes || []).some(e => String(e.employeId || e.id) === String(emp.id) && (parseFloat(e.heuresTravaillees) || 0) > 0)
+        )
+      )
+    );
+    if (sansSaisie.length > 0) {
+      actionsAvantLundi.push({
+        priorite: 'IMPORTANT',
+        icone: '⏱️',
+        action: `Compléter les heures manquantes avant lundi`,
+        detail: `${sansSaisie.map(e => e.prenom || e.nom).slice(0, 4).join(', ')} — aucune heure cette semaine`,
+      });
+    }
+
+    // Devis en attente de réponse > 14 jours
+    (devis || [])
+      .filter(d => (d.statut || '').toLowerCase() === 'envoyé' && d.date && (now_ts - new Date(d.date).getTime()) / 86400000 > 14)
+      .map(d => {
+        const cl = (clients || []).find(c => String(c.id) === String(d.clientId));
+        return { numero: d.numero, client: cl ? `${cl.prenom} ${cl.nom}` : '—', age: Math.round((now_ts - new Date(d.date).getTime()) / 86400000) };
+      })
+      .sort((a, b) => b.age - a.age)
+      .slice(0, 2)
+      .forEach(d => actionsAvantLundi.push({
+        priorite: d.age > 30 ? 'URGENT' : 'NOTE',
+        icone: '📋',
+        action: `Relancer devis ${d.numero} — ${d.client}`,
+        detail: `Sans réponse depuis ${d.age} jours`,
+      }));
+
+    // Opportunités de facturation (depuis OptimisationFacturation)
+    (agentData?.OptimisationFacturation?.opportunites || []).slice(0, 2).forEach(op => {
+      actionsAvantLundi.push({
+        priorite: 'IMPORTANT',
+        icone: '📄',
+        action: `Émettre facture — ${op.nomChantier || op.nom || ''}`,
+        detail: `Potentiel CHF ${fmtN(op.potentiel || 0)} · avancement ${op.avancement || '?'}%`,
+      });
+    });
+
+    const ordPriorite = { URGENT: 0, IMPORTANT: 1, NOTE: 2 };
+    actionsAvantLundi.sort((a, b) => (ordPriorite[a.priorite] ?? 3) - (ordPriorite[b.priorite] ?? 3));
+
+    // ── ANTICIPATIONS semaine suivante ────────────────────────
+    const anticipations = [];
+
+    const soldeJ30 = agentData?.TresoreriePredictor?.solde30;
+    if (soldeJ30 != null) {
+      anticipations.push({
+        icone: soldeJ30 >= 0 ? '✅' : '⚠️',
+        label: 'Trésorerie J+30',
+        valeur: `CHF ${fmtN(soldeJ30)}`,
+        couleur: soldeJ30 >= 0 ? '#10b981' : '#ef4444',
+        detail: soldeJ30 < 0 ? 'Solde négatif prévu — accélérer les encaissements' : 'Trésorerie saine prévue',
+      });
+    }
+
+    if (projectionCA > 0) {
+      anticipations.push({
+        icone: tendanceCA === null ? '📊' : tendanceCA >= 0 ? '📈' : '📉',
+        label: 'CA projeté lundi',
+        valeur: `CHF ${fmtN(projectionCA)}`,
+        couleur: tendanceCA === null ? '#8b5cf6' : tendanceCA >= 0 ? '#10b981' : '#f59e0b',
+        detail: tendanceCA !== null ? `${tendanceCA >= 0 ? '+' : ''}${tendanceCA}% vs moyenne historique` : 'Première référence — pas encore de baseline',
+      });
+    }
+
+    if (enRetard.length > 0) {
+      anticipations.push({
+        icone: '🔴',
+        label: 'Chantiers à risque',
+        valeur: `${enRetard.length} en retard`,
+        couleur: '#ef4444',
+        detail: enRetard.slice(0, 3).map(c => c.nom || c.numero).join(', '),
+      });
+    }
+
+    const caProjectionAnnuelle = agentData?.ProjectionAnnuelle?.caProjecte;
+    if (caProjectionAnnuelle) {
+      anticipations.push({
+        icone: '🎯',
+        label: 'Projection annuelle',
+        valeur: `CHF ${fmtN(caProjectionAnnuelle)}`,
+        couleur: '#0d3d6e',
+        detail: `Taux d'atteinte objectif : ${agentData.ProjectionAnnuelle?.txAtteinte ?? '—'}%`,
+      });
+    }
+
+    // ── SCORE DE SANTÉ SEMAINE (/100) ─────────────────────────
+    let score = 100;
+    score -= Math.min(25, enRetard.length * 10);
+    score -= Math.min(20, (factures || []).filter(f => {
+      const st = (f.statut || '').toLowerCase();
+      return ['envoyee', 'partielle', 'retard'].includes(st) && f.dateEmission && (now_ts - new Date(f.dateEmission).getTime()) / 86400000 > 30;
+    }).length * 7);
+    score -= Math.min(15, sansSaisie.length * 5);
+    if (risques.some(r => r.niveau === 'CRITIQUE')) score -= 15;
+    if (tendanceCA !== null && tendanceCA < -20) score -= 10;
+    if (semainesVides > 0) score -= 5;
+    score = Math.max(0, Math.min(100, score));
+
+    return {
+      simulation: true,
+      dateLundi: prochainLundi.toLocaleDateString('fr-CH', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' }),
+      semaine: `Semaine du ${debutSemaine.toLocaleDateString('fr-CH', { day: '2-digit', month: '2-digit' })} au ${now.toLocaleDateString('fr-CH', { day: '2-digit', month: '2-digit' })}`,
+      heuresSaisies: Math.round(heuresSemaine),
+      caFacture: Math.round(caFactureSemaine),
+      nbActifs: actifs.length,
+      nbEnRetard: enRetard.length,
+      chantierRetard: enRetard.map(c => c.nom || c.numero),
+      projectionHeures,
+      projectionCA,
+      joursRestants: joursJusquaLundi,
+      moyenneHeures,
+      moyenneCA,
+      tendanceHeures,
+      tendanceCA,
+      nbRapportsHistoriques: rapportsValides.length,
+      risques,
+      actionsAvantLundi,
+      erreursAEviter,
+      anticipations,
+      scoreSemaine: score,
+    };
+  } catch (e) {
+    return null;
+  }
+}
+
+// ─── T1-A5 : MémoireChantier ─────────────────────────────────
+export function runMemoireChantier({ chantiers, devis, parametres, getCouts }) {
+  try {
+    const STATUTS_TERMINES = ['terminé', 'termine', 'terminée', 'terminee', 'facturé', 'facture', 'clôturé', 'cloture'];
     const termines = chantiers.filter(c => STATUTS_TERMINES.includes((c.statut || '').toLowerCase()));
     const patterns = {};
 
     termines.forEach(c => {
       try {
         const type = c.typeChantier || (c.typesTravaux?.[0]) || 'Autre';
-        const couts = calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis);
+        const couts = getCouts ? getCouts(c) : calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis);
         if (couts.totalCoutsPrevu <= 0 || couts.totalCoutsReel <= 0) return;
         const ecartPct = ((couts.totalCoutsReel - couts.totalCoutsPrevu) / couts.totalCoutsPrevu) * 100;
         const ca = calculerCA(c, devis);
@@ -628,7 +880,7 @@ export function runPlanningCoherence({ chantiers, devis, parametres }) {
 }
 
 // ─── T2-A11 : ApprentissageMarge ─────────────────────────────
-export function runApprentissageMarge({ chantiers, devis, parametres, agentContext, memoire = {} }) {
+export function runApprentissageMarge({ chantiers, devis, parametres, agentContext, memoire = {}, getCouts }) {
   const alertes = [];
   const patterns = agentContext?.MemoireChantier || {};
   const predictions = [];
@@ -638,7 +890,7 @@ export function runApprentissageMarge({ chantiers, devis, parametres, agentConte
     const pattern = patterns[type];
     if (!pattern || pattern.count < 2) return;
 
-    const couts = calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis);
+    const couts = getCouts ? getCouts(c) : calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis);
     if (couts.totalCoutsPrevu <= 0) return;
 
     // Prédiction basée sur l'écart historique moyen
@@ -664,7 +916,7 @@ export function runApprentissageMarge({ chantiers, devis, parametres, agentConte
 }
 
 // ─── T2-A12 : SantéClient ─────────────────────────────────────
-export function runSanteClient({ chantiers, clients, devis, factures, parametres, agentContext }) {
+export function runSanteClient({ chantiers, clients, devis, factures, parametres, agentContext, getCouts }) {
   const alertes = [];
   const dsoData = agentContext?.RelancePaiements?.dsoParClient || {};
   const statsClients = [];
@@ -675,7 +927,7 @@ export function runSanteClient({ chantiers, clients, devis, factures, parametres
 
     const avecCA = mesChantiers.filter(c => calculerCA(c, devis) !== null);
     const caTotal = avecCA.reduce((s, c) => s + calculerCA(c, devis), 0);
-    const coutTotal = avecCA.reduce((s, c) => s + calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis).totalCoutsReel, 0);
+    const coutTotal = avecCA.reduce((s, c) => s + (getCouts ? getCouts(c) : calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis)).totalCoutsReel, 0);
     const marge = caTotal > 0 ? ((caTotal - coutTotal) / caTotal) * 100 : null;
     const facturesClient = (factures || []).filter(f => String(f.clientId) === String(cl.id));
     const totalFacture = facturesClient.reduce((s, f) => s + (parseFloat(f.montantTTC) || 0), 0);
@@ -707,7 +959,7 @@ export function runSanteClient({ chantiers, clients, devis, factures, parametres
 }
 
 // ─── T2-A13 : ProjectionAnnuelle ──────────────────────────────
-export function runProjectionAnnuelle({ chantiers, factures, devis, parametres, agentContext, memoire = {} }) {
+export function runProjectionAnnuelle({ chantiers, factures, devis, parametres, agentContext, memoire = {}, getCouts }) {
   try {
     const now = new Date();
     const annee = now.getFullYear();
@@ -729,7 +981,7 @@ export function runProjectionAnnuelle({ chantiers, factures, devis, parametres, 
     const caPipeline = devisEnAttente.reduce((s, d) => s + (parseFloat(d.montantHT || d.prixPropose) || 0), 0);
 
     // Coûts réels year-to-date
-    const coutsRealises = chantiersAnnee.reduce((s, c) => s + calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis).totalCoutsReel, 0);
+    const coutsRealises = chantiersAnnee.reduce((s, c) => s + (getCouts ? getCouts(c) : calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis)).totalCoutsReel, 0);
     const margeYTD = caRealise > 0 ? ((caRealise - coutsRealises) / caRealise) * 100 : null;
 
     // Chargement objectif depuis localStorage
@@ -761,7 +1013,7 @@ export function runProjectionAnnuelle({ chantiers, factures, devis, parametres, 
 }
 
 // ─── T2-A14 : BenchmarkTypeTravaux ────────────────────────────
-export function runBenchmarkTypeTravaux({ chantiers, devis, parametres, agentContext }) {
+export function runBenchmarkTypeTravaux({ chantiers, devis, parametres, agentContext, getCouts }) {
   const alertes = [];
   const patterns = agentContext?.MemoireChantier || {};
   const benchmark = [];
@@ -771,7 +1023,7 @@ export function runBenchmarkTypeTravaux({ chantiers, devis, parametres, agentCon
     if (chantiersDuType.length === 0) return;
 
     const caTotal = chantiersDuType.reduce((s, c) => s + calculerCA(c, devis), 0);
-    const coutTotal = chantiersDuType.reduce((s, c) => s + calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis).totalCoutsReel, 0);
+    const coutTotal = chantiersDuType.reduce((s, c) => s + (getCouts ? getCouts(c) : calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis)).totalCoutsReel, 0);
     const marge = caTotal > 0 ? ((caTotal - coutTotal) / caTotal) * 100 : null;
     const pattern = patterns[t.nom];
 
@@ -831,18 +1083,19 @@ export function runConformiteBTP({ chantiers, parametres, agentContext }) {
 }
 
 // ─── T2-A17b : DerivePredictor ────────────────────────────────────
-export function runDerivePredictor({ chantiers, devis, parametres, agentContext }) {
+export function runDerivePredictor({ chantiers, devis, parametres, agentContext, getCouts }) {
   const resultats = [];
 
   chantiers.filter(isChantierActif).forEach(c => {
-    const couts = calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis);
+    const couts = getCouts ? getCouts(c) : calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis);
     const joursRealises = new Set((c.journal || []).map(e => e.date).filter(Boolean)).size;
     const avancement = c.nombreJours > 0
       ? Math.min(100, Math.round((joursRealises / c.nombreJours) * 100))
       : Math.min(100, Math.max(0, parseFloat(c.avancement) || 0));
-    const CA = couts.montantTotal || 0;
+    const CA = couts.montantTotal;
+    if (!CA || CA <= 0) return;
 
-    if (avancement < 15 || joursRealises === 0 || CA === 0) return;
+    if (avancement < 15 || joursRealises === 0) return;
     const coutActuel = couts.totalCoutsReel || 0;
     if (coutActuel === 0) return;
 
@@ -918,7 +1171,7 @@ export function runDerivePredictor({ chantiers, devis, parametres, agentContext 
 // ═══════════════════════════════════════════════════════════════
 
 // ─── T3-A16 : RadarPrécoce ────────────────────────────────────
-export function runRadarPrecoce({ chantiers, devis, parametres, agentContext }) {
+export function runRadarPrecoce({ chantiers, devis, parametres, agentContext, getCouts }) {
   const alertes = [];
   const risques = [];
 
@@ -927,7 +1180,7 @@ export function runRadarPrecoce({ chantiers, devis, parametres, agentContext }) 
     const facteurs = [];
 
     // Facteur 1 : marge faible
-    const couts = calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis);
+    const couts = getCouts ? getCouts(c) : calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis);
     if (couts.montantTotal > 0 && couts.totalCoutsReel > 0 && Number.isFinite(couts.margeReelPct)) {
       const marge = couts.margeReelPct;
       if (marge < 0) { score += 40; facteurs.push(`marge à perte (${Math.round(marge * 10) / 10}%)`); }
@@ -952,9 +1205,10 @@ export function runRadarPrecoce({ chantiers, devis, parametres, agentContext }) 
     if (Number.isFinite(pred?.margePredictive) && pred.margePredictive < SEUILS.margeLimite) { score += 15; facteurs.push(`prédiction historique : ${Math.round(pred.margePredictive * 10) / 10}%`); }
 
     if (score >= 30) {
-      risques.push({ chantierId: c.id, nom: c.nom || c.numero, score, facteurs, niveau: score >= 60 ? 'CRITIQUE' : score >= 40 ? 'DANGER' : 'ATTENTION' });
-      alertes.push({ id: uid('rp-radar'), agent: 'RadarPrecoce', type: 'radar', niveau: score >= 60 ? 'CRITIQUE' : score >= 40 ? 'DANGER' : 'ATTENTION',
-        message: `${c.nom || c.numero} — score de risque : ${score}/100`,
+      const scoreCapped = Math.min(100, score);
+      risques.push({ chantierId: c.id, nom: c.nom || c.numero, score: scoreCapped, facteurs, niveau: scoreCapped >= 60 ? 'CRITIQUE' : scoreCapped >= 40 ? 'DANGER' : 'ATTENTION' });
+      alertes.push({ id: uid('rp-radar'), agent: 'RadarPrecoce', type: 'radar', niveau: scoreCapped >= 60 ? 'CRITIQUE' : scoreCapped >= 40 ? 'DANGER' : 'ATTENTION',
+        message: `${c.nom || c.numero} — score de risque : ${scoreCapped}/100`,
         detail: `Facteurs : ${facteurs.join(' · ')}`,
         chantier_id: c.id, timestamp: Date.now(), lu: false, action: { page: 'chantiers', ctx: { chantierActif: c.id } } });
     }
@@ -1043,32 +1297,32 @@ export function runSaisonnierte({ chantiers, devis, memoire = {} }) {
 }
 
 // ─── T3-A19 : CoûtMOAnalyse ───────────────────────────────────
-export function runCoutMOAnalyse({ chantiers, devis, parametres, agentContext }) {
+export function runCoutMOAnalyse({ chantiers, devis, parametres, agentContext, getCouts }) {
   const alertes = [];
   const analyse = [];
 
   chantiers.forEach(c => {
     const ca = calculerCA(c, devis);
     if (!ca || ca <= 0) return;
-    const couts = calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis);
+    const couts = getCouts ? getCouts(c) : calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis);
     if (couts.totalCoutsReel <= 0) return;
 
-    const pctMO = couts.totalCoutsReel > 0 ? (couts.coutMOReel / couts.totalCoutsReel) * 100 : 0;
-    const pctMOSurCA = ca > 0 ? (couts.coutMOReel / ca) * 100 : 0;
+    const pctMO = couts.totalCoutsReel > 0 ? (couts.coutEquipeReel / couts.totalCoutsReel) * 100 : 0;
+    const pctMOSurCA = ca > 0 ? (couts.coutEquipeReel / ca) * 100 : 0;
 
     const margeReel = parseFloat(couts.margeReelPct);
     analyse.push({
       id: c.id, nom: c.nom || c.numero,
-      coutMO: Math.round(couts.coutMOReel), ca: Math.round(ca),
+      coutMO: Math.round(couts.coutEquipeReel), ca: Math.round(ca),
       pctMO: Math.round(pctMO * 10) / 10, pctMOSurCA: Math.round(pctMOSurCA * 10) / 10,
       margeReel: isNaN(margeReel) ? null : margeReel,
     });
 
     // Alerte si MO > 70% des coûts totaux
-    if (pctMO > 70 && couts.coutMOReel > 5000) {
+    if (pctMO > 70 && couts.coutEquipeReel > 5000) {
       alertes.push({ id: uid('mo-fort'), agent: 'CoutMOAnalyse', type: 'couts', niveau: 'INFO',
         message: `${c.nom || c.numero} — MO à ${Math.round(pctMO)}% des coûts`,
-        detail: `CHF ${fmtN(Math.round(couts.coutMOReel))} en main-d'œuvre · vérifier coefficient charges`,
+        detail: `CHF ${fmtN(Math.round(couts.coutEquipeReel))} en main-d'œuvre · vérifier coefficient charges`,
         chantier_id: c.id, timestamp: Date.now(), lu: false, action: { page: 'chantiers', ctx: { chantierActif: c.id } } });
     }
   });
@@ -1274,7 +1528,7 @@ export function runOptimisationEquipe({ chantiers, parametres, agentContext }) {
 
     const sousUtilises = employes.filter(emp => {
       const stat = statsEmployes[String(emp.id)];
-      return stat && stat.heuresMoyParJour < 4 && stat.joursActifs > 3;
+      return stat && stat.moyenneHeuresJour < 4 && stat.joursActifs > 3;
     });
 
     const chantiersActifs = chantiers.filter(isChantierActif);
@@ -1384,7 +1638,8 @@ export function runScoreOffre({ devis, chantiers, parametres, agentContext }) {
 // ─── T3-A26 : AnalyseCycles ───────────────────────────────────
 export function runAnalyseCycles({ chantiers, devis, agentContext, memoire = {} }) {
   try {
-    const termines = chantiers.filter(c => ['terminé', 'termine', 'terminée', 'terminee'].includes((c.statut || '').toLowerCase()));
+    const STATUTS_TERMINES_CYCLES = ['terminé', 'termine', 'terminée', 'terminee', 'facturé', 'facture', 'clôturé', 'cloture'];
+    const termines = chantiers.filter(c => STATUTS_TERMINES_CYCLES.includes((c.statut || '').toLowerCase()));
     const cyclesParType = {};
 
     termines.forEach(c => {
@@ -1422,8 +1677,219 @@ export function runAnalyseCycles({ chantiers, devis, agentContext, memoire = {} 
   } catch (e) { return { alertes: [], data: {}, memoire }; }
 }
 
+// ─── T3-A27 : DiagnosticRaison ────────────────────────────────
+// Pour chaque chantier actif problématique, identifie la cause
+// principale (MO, matériel, sous-tarification, délai, multi)
+// et propose une action corrective chiffrée en CHF.
+export function runDiagnosticRaison({ chantiers, devis, parametres, agentContext, getCouts }) {
+  const alertes = [];
+  const diagnostics = [];
+
+  chantiers.filter(isChantierActif).forEach(c => {
+    try {
+      const couts = getCouts
+        ? getCouts(c)
+        : calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis);
+
+      const ca = couts.montantTotal;
+      if (!ca || ca <= 0) return;
+
+      // Avancement depuis le journal (source unique)
+      const joursRealises = new Set((c.journal || []).map(e => e.date).filter(Boolean)).size;
+      const avancement = c.nombreJours > 0
+        ? Math.min(100, Math.round((joursRealises / c.nombreJours) * 100))
+        : Math.min(100, Math.max(0, parseFloat(c.avancement) || 0));
+
+      if (avancement === 0 || couts.totalCoutsReel <= 0) return;
+
+      // EAC projeté (coût à l'achèvement)
+      const eac = avancement > 0 ? couts.totalCoutsReel / (avancement / 100) : null;
+      const margeReelPct = Number.isFinite(couts.margeReelPct) ? couts.margeReelPct : null;
+
+      // Retard calendaire en jours
+      const joursRestants = c.nombreJours > 0 ? c.nombreJours - joursRealises : null;
+      let retardJours = joursRestants !== null && joursRestants < 0 ? Math.abs(joursRestants) : 0;
+      if (retardJours === 0 && c.dateDebut && c.nombreJours > 0) {
+        const finPrevue = new Date(c.dateDebut);
+        finPrevue.setDate(finPrevue.getDate() + Math.round(c.nombreJours * 7 / 5));
+        const today = new Date(); today.setHours(0, 0, 0, 0);
+        if (finPrevue < today) {
+          retardJours = Math.max(retardJours, Math.floor((today - finPrevue) / 86400000));
+        }
+      }
+
+      // Seuil de déclenchement du diagnostic
+      const eacDepasseCA = eac !== null && eac > ca;
+      const margeTropFaible = margeReelPct !== null && margeReelPct < 20;
+      const retardSignificatif = retardJours > 3;
+
+      if (!eacDepasseCA && !margeTropFaible && !retardSignificatif) return;
+
+      // ── Calcul des pourcentages par poste de coût ──────────
+      const moReel = ca > 0 ? (couts.coutEquipeReel / ca) * 100 : 0;
+      const moBudget = ca > 0 ? (couts.coutEquipePrevu / ca) * 100 : 0;
+      const moEcart = couts.coutEquipeReel - couts.coutEquipePrevu;
+
+      const materielReel = ca > 0 ? (couts.coutMaterielReel / ca) * 100 : 0;
+      const materielBudget = ca > 0 ? (couts.coutMaterielPrevu / ca) * 100 : 0;
+      const materielEcart = couts.coutMaterielReel - couts.coutMaterielPrevu;
+
+      const sousTraitanceEcart = couts.coutSousTraitanceReel - couts.coutSousTraitancePrevu;
+
+      // Taux horaire réel constaté (coût MO / total heures travaillées toutes équipes)
+      const totalHeures = (c.journal || []).reduce((s, entry) =>
+        s + (entry.employes || []).reduce((ss, ej) => ss + (parseFloat(ej.heuresTravaillees) || 0), 0), 0);
+      const tarifHoraireReel = totalHeures > 0 ? couts.coutEquipeReel / totalHeures : null;
+
+      // EAC vs CA dépassement %
+      const eacVsCA = eac !== null && ca > 0 ? Math.round(((eac - ca) / ca) * 1000) / 10 : 0;
+
+      // ── Identification de la cause principale ──────────────
+      const moEcartAbs = Math.abs(moEcart);
+      const materielEcartAbs = Math.abs(materielEcart);
+      const sousTraitanceEcartAbs = Math.abs(sousTraitanceEcart);
+      const maxEcart = Math.max(moEcartAbs, materielEcartAbs, sousTraitanceEcartAbs);
+
+      // Sous-tarification : marge budgétée initiale < 10%
+      const margeBudgetPct = couts.margePrevuPct !== null && Number.isFinite(couts.margePrevuPct) ? couts.margePrevuPct : null;
+      const sousTarifie = margeBudgetPct !== null && margeBudgetPct < 10;
+
+      // Nombre de postes dépassant leur budget de >10%
+      const nbPostesEnDepassement = [
+        moEcart > ca * 0.05,
+        materielEcart > ca * 0.03,
+        sousTraitanceEcart > ca * 0.03,
+        retardJours > 7,
+      ].filter(Boolean).length;
+
+      let causePrincipale;
+      if (sousTarifie && margeBudgetPct < 10) {
+        causePrincipale = 'underpriced';
+      } else if (nbPostesEnDepassement >= 3) {
+        causePrincipale = 'multi';
+      } else if (retardJours > 7 && retardJours * (couts.coutEquipeReel / Math.max(1, joursRealises)) > moEcartAbs && retardJours * (couts.coutEquipeReel / Math.max(1, joursRealises)) > materielEcartAbs) {
+        causePrincipale = 'delays';
+      } else if (maxEcart > 0 && moEcartAbs >= materielEcartAbs && moEcartAbs >= sousTraitanceEcartAbs) {
+        causePrincipale = 'main_overrun';
+      } else if (maxEcart > 0 && materielEcartAbs > moEcartAbs) {
+        causePrincipale = 'materials';
+      } else {
+        causePrincipale = retardJours > 3 ? 'delays' : 'main_overrun';
+      }
+
+      // ── Score de gravité 0–100 ─────────────────────────────
+      let scoreGravite = 0;
+      if (eacDepasseCA) scoreGravite += Math.min(40, Math.round(Math.abs(eacVsCA) * 0.8));
+      if (margeTropFaible) {
+        const ecartMarge = 20 - (margeReelPct ?? 20);
+        scoreGravite += Math.min(35, Math.round(ecartMarge * 1.5));
+      }
+      if (retardSignificatif) scoreGravite += Math.min(25, Math.round(retardJours * 2));
+      scoreGravite = Math.min(100, Math.max(0, scoreGravite));
+
+      // ── Explication lisible patron BTP ─────────────────────
+      const moReelFmt = Math.round(moReel * 10) / 10;
+      const moBudgetFmt = Math.round(moBudget * 10) / 10;
+      const materielReelFmt = Math.round(materielReel * 10) / 10;
+      const materielBudgetFmt = Math.round(materielBudget * 10) / 10;
+
+      let explication = '';
+      if (causePrincipale === 'main_overrun') {
+        explication = `MO réel : ${moReelFmt}% du CA vs budget ${moBudgetFmt}% → écart +CHF ${fmtN(Math.round(moEcart))}`;
+        if (tarifHoraireReel !== null) explication += ` · Coût horaire constaté : CHF ${Math.round(tarifHoraireReel * 10) / 10}/h`;
+      } else if (causePrincipale === 'materials') {
+        explication = `Matériel réel : ${materielReelFmt}% du CA vs budget ${materielBudgetFmt}% → écart +CHF ${fmtN(Math.round(materielEcart))}`;
+      } else if (causePrincipale === 'underpriced') {
+        explication = `Sous-tarification : marge budgétée initiale de ${Math.round(margeBudgetPct * 10) / 10}% (< 10%) — le devis ne couvrait pas les charges`;
+      } else if (causePrincipale === 'delays') {
+        const coutJourMoyen = joursRealises > 0 ? Math.round(couts.coutEquipeReel / joursRealises) : 0;
+        explication = `Retard de ${retardJours} jours ouvrables · coût journalier MO moyen CHF ${fmtN(coutJourMoyen)}`;
+        if (eacVsCA !== 0) explication += ` → EAC dépasse le CA de ${Math.abs(eacVsCA)}%`;
+      } else {
+        // multi
+        const postes = [];
+        if (moEcart > 0) postes.push(`MO +CHF ${fmtN(Math.round(moEcart))}`);
+        if (materielEcart > 0) postes.push(`Matériel +CHF ${fmtN(Math.round(materielEcart))}`);
+        if (sousTraitanceEcart > 0) postes.push(`Sous-trait. +CHF ${fmtN(Math.round(sousTraitanceEcart))}`);
+        explication = `Dépassements multiples : ${postes.join(', ')}`;
+        if (retardJours > 0) explication += ` · retard ${retardJours}j`;
+      }
+
+      // ── Action corrective + impact CHF estimé ──────────────
+      let actionCorrective = '';
+      let impactCHF = 0;
+
+      if (causePrincipale === 'main_overrun') {
+        const economiePossible = Math.min(moEcartAbs, ca * 0.05);
+        actionCorrective = `Revoir l'affectation des heures : réduire la présence de ${Math.ceil(economiePossible / Math.max(1, parseFloat(parametres?.parametres?.tarifJourMoyen) || 600))} jour(s) sur ce chantier`;
+        impactCHF = Math.round(economiePossible);
+      } else if (causePrincipale === 'materials') {
+        actionCorrective = `Renégocier les achats matériaux ou chercher des fournisseurs alternatifs pour les ${Math.round(materielEcartAbs / Math.max(1, ca / 100))}% de dépassement`;
+        impactCHF = Math.round(materielEcartAbs * 0.5);
+      } else if (causePrincipale === 'underpriced') {
+        const margeManquante = ca * 0.15 - (couts.margeReel ?? 0);
+        actionCorrective = `Émettre un avenant pour récupérer les surcoûts — marge cible 15% requiert +CHF ${fmtN(Math.round(Math.max(0, margeManquante)))}`;
+        impactCHF = Math.round(Math.max(0, margeManquante));
+      } else if (causePrincipale === 'delays') {
+        const coutJourMoyen = joursRealises > 0 ? couts.coutEquipeReel / joursRealises : 0;
+        const economieAcceleration = retardJours * coutJourMoyen * 0.3;
+        actionCorrective = `Renforcer l'équipe pour rattraper ${Math.round(retardJours * 0.5)} jours de retard — économie nette estimée CHF ${fmtN(Math.round(economieAcceleration))}`;
+        impactCHF = Math.round(economieAcceleration);
+      } else {
+        const prioritePoste = moEcartAbs >= materielEcartAbs && moEcartAbs >= sousTraitanceEcartAbs
+          ? `réduire la MO (économie estimée CHF ${fmtN(Math.round(moEcartAbs * 0.4))})`
+          : `renégocier le matériel (économie estimée CHF ${fmtN(Math.round(materielEcartAbs * 0.5))})`;
+        actionCorrective = `Action prioritaire : ${prioritePoste}`;
+        impactCHF = Math.round(Math.max(moEcartAbs, materielEcartAbs) * 0.4);
+      }
+
+      // ── Alerte diagnostic si impact > 5000 CHF ────────────
+      if (impactCHF > 5000) {
+        alertes.push({
+          id: uid('dr-diag'),
+          agent: 'DiagnosticRaison',
+          type: 'diagnostic',
+          niveau: scoreGravite >= 60 ? 'DANGER' : 'ATTENTION',
+          message: `${c.nom || c.numero} — ${causePrincipale === 'main_overrun' ? 'MO excessif' : causePrincipale === 'materials' ? 'Matériaux dépassés' : causePrincipale === 'underpriced' ? 'Sous-tarification' : causePrincipale === 'delays' ? 'Retard coûteux' : 'Dépassements multiples'} · impact CHF ${fmtN(impactCHF)}`,
+          detail: explication,
+          chantier_id: c.id,
+          timestamp: Date.now(),
+          lu: false,
+          action: { page: 'chantiers', ctx: { chantierActif: c.id } },
+        });
+      }
+
+      diagnostics.push({
+        chantierId: c.id,
+        nom: c.nom || c.numero,
+        causePrincipale,
+        score: scoreGravite,
+        details: {
+          moReel: Math.round(moReel * 10) / 10,
+          moBudget: Math.round(moBudget * 10) / 10,
+          moEcart: Math.round(moEcart),
+          materielReel: Math.round(materielReel * 10) / 10,
+          materielBudget: Math.round(materielBudget * 10) / 10,
+          materielEcart: Math.round(materielEcart),
+          tarifHoraire: tarifHoraireReel !== null ? Math.round(tarifHoraireReel * 10) / 10 : null,
+          nbJoursEcart: retardJours,
+          eacVsCA: Math.round(eacVsCA * 10) / 10,
+        },
+        explication,
+        actionCorrective,
+        impactCHF,
+      });
+    } catch (e) {
+      console.warn('[T3-DiagnosticRaison]', c.id, e);
+    }
+  });
+
+  diagnostics.sort((a, b) => b.score - a.score);
+  return { alertes, data: { diagnostics } };
+}
+
 // ─── T3-A20 : CoachDirecteur ──────────────────────────────────
-export function runCoachDirecteur({ chantiers, devis, factures, parametres, agentContext, memoire = {} }) {
+export function runCoachDirecteur({ chantiers, devis, factures, parametres, agentContext, memoire = {}, alertes = [] }) {
   try {
     const priorites = [];
 
@@ -1484,7 +1950,7 @@ export function runCoachDirecteur({ chantiers, devis, factures, parametres, agen
     }
 
     // Résumé global
-    const nbAlertesTotal = Object.values(agentContext || {}).reduce((s, d) => s + (d?.alertes?.length || 0), 0);
+    const nbAlertesTotal = alertes.length;
     const scoreGlobal = Math.max(0, 100 - critiqueRisque.length * 20 - (relances?.nb90 || 0) * 10 - (anomalies?.nbAnomalies || 0) * 5);
 
     const hist = memoire.coachHistorique || [];
@@ -1520,6 +1986,7 @@ const AGENT_SCHEMAS = {
   OptimisationEquipe:     { suggestions: 'array', sousUtilises: 'array' },
   ScoreOffre:             { scoresOffres: 'array' },
   AnalyseCycles:          { cycles: 'array', nbTermines: 'number' },
+  DiagnosticRaison:       { diagnostics: 'array' },
 };
 
 function validateAgentOutput(name, data) {
@@ -1546,7 +2013,7 @@ function sanitizeData(obj, depth = 0) {
   if (Array.isArray(obj)) return obj.map(v => sanitizeData(v, depth + 1));
   return Object.fromEntries(
     Object.entries(obj).map(([k, v]) => {
-      if (typeof v === 'number' && isNaN(v)) return [k, null];
+      if (typeof v === 'number' && !isFinite(v)) return [k, null];
       if (v && typeof v === 'object') return [k, sanitizeData(v, depth + 1)];
       return [k, v];
     })
@@ -1559,9 +2026,15 @@ function sanitizeData(obj, depth = 0) {
 //   2. Passe agentContext en revue pour repérer des incohérences résiduelles
 //   3. Corrige automatiquement ce qui peut l'être
 //   4. Log uniquement en console — l'utilisateur ne voit rien
-export function runSentinelAgent({ agentContext, violations = [], agentsStatuts = {} }) {
+export function runSentinelAgent({ agentContext, violations = [], agentsStatuts = {}, agentsInactifs = [] }) {
   try {
     let nbCorrections = 0;
+
+    // Agents inactifs détectés — signalés pour réactivation immédiate par useAgents
+    if (agentsInactifs.length > 0) {
+      if (isDev) console.info(`[SENTINEL] ${agentsInactifs.length} agent(s) inactif(s) → réactivation : ${agentsInactifs.join(', ')}`);
+      nbCorrections += agentsInactifs.length;
+    }
 
     // Dépendances inter-agents : log si provider vide
     const deps = [
@@ -1571,6 +2044,8 @@ export function runSentinelAgent({ agentContext, violations = [], agentsStatuts 
       { consumer: 'DSOAnalyse',         needs: 'RelancePaiements' },
       { consumer: 'AlerteRisqueClient', needs: 'SanteClient' },
       { consumer: 'OptimisationEquipe', needs: 'ProductiviteEquipe' },
+      { consumer: 'OptimisationEquipe', needs: 'ConflitsPlanning' },
+      { consumer: 'ScoreOffre',         needs: 'BenchmarkTypeTravaux' },
     ];
     deps.forEach(({ consumer, needs }) => {
       if (agentsStatuts[consumer]?.actif && (!agentContext[needs] || Object.keys(agentContext[needs]).length === 0)) {
@@ -1600,8 +2075,8 @@ export function runSentinelAgent({ agentContext, violations = [], agentsStatuts 
       console.info(`[SENTINEL] Cycle terminé — ${nbCorrections} correction(s) appliquée(s) silencieusement`);
     }
 
-    // Aucune alerte, aucun affichage utilisateur
-    return { alertes: [], data: null };
+    // Retourne les agents à réactiver pour useAgents (aucune alerte visible utilisateur)
+    return { alertes: [], data: agentsInactifs.length > 0 ? { agentsAReactiver: agentsInactifs } : null };
   } catch (e) {
     console.error('[SENTINEL]', e);
     return { alertes: [], data: null };
@@ -1614,6 +2089,22 @@ export function runSentinelAgent({ agentContext, violations = [], agentsStatuts 
 export function runAllAgents({ chantiers, devis, factures, clients, parametres, dernierRapport, agentsActifs, memoire = {} }) {
   const enabled = agentsActifs || {};
   const isEnabled = (name) => enabled[name] !== false; // actif par défaut
+
+  // ── Cache partagé calculerCoutsChantier — calculé une seule fois pour tous les agents ──
+  // Évite 80–200 recalculs redondants par cycle sur les mêmes données.
+  const coutsCache = new Map();
+  const getCouts = (chantier) => {
+    if (!coutsCache.has(chantier.id)) {
+      coutsCache.set(chantier.id, calculerCoutsChantier(
+        chantier,
+        parametres.employes,
+        parametres.localites,
+        parametres.parametres,
+        devis
+      ));
+    }
+    return coutsCache.get(chantier.id);
+  };
 
   const result = {
     alertes: [], predictions: {}, patterns: {}, rapport: null,
@@ -1656,13 +2147,13 @@ export function runAllAgents({ chantiers, devis, factures, clients, parametres, 
   };
 
   // ── TIER 1 ──
-  runAgent('AlerteChantier',          (m) => runAlerteChantier({ chantiers, devis, factures, parametres }));
+  runAgent('AlerteChantier',          (m) => runAlerteChantier({ chantiers, devis, factures, parametres, getCouts }));
   runAgent('SuiviDevis',              (m) => runSuiviDevis({ devis, factures, clients }));
   const a3 = runAgent('TresoreriePredictor', (m) => runTresoreriePredictor({ chantiers, factures, devis, parametres }));
   if (a3?.data) result.predictions = a3.data;
   const a4 = runAgent('RapportAuto',  (m) => runRapportAuto({ chantiers, factures, devis, parametres, dernierRapport }));
   if (a4?.data) result.rapport = a4.data;
-  const a5 = runAgent('MemoireChantier', (m) => runMemoireChantier({ chantiers, devis, parametres }));
+  const a5 = runAgent('MemoireChantier', (m) => runMemoireChantier({ chantiers, devis, parametres, getCouts }));
   if (a5?.data) result.patterns = a5.data;
   runAgent('ProductiviteEquipe',      (m) => runProductiviteEquipe({ chantiers, parametres, memoire: m }));
   runAgent('RelancePaiements',        (m) => runRelancePaiements({ factures, clients, memoire: m }));
@@ -1672,28 +2163,30 @@ export function runAllAgents({ chantiers, devis, factures, clients, parametres, 
   // ── TIER 2 (reçoit agentContext Tier 1) ──
   runAgent('ConflitsPlanning',     (m) => runConflitsPlanning({ chantiers, parametres, agentContext }));
   runAgent('PlanningCoherence',    (m) => runPlanningCoherence({ chantiers, devis, parametres }));
-  runAgent('ApprentissageMarge',   (m) => runApprentissageMarge({ chantiers, devis, parametres, agentContext, memoire: m }));
-  runAgent('SanteClient',          (m) => runSanteClient({ chantiers, clients, devis, factures, parametres, agentContext }));
-  runAgent('ProjectionAnnuelle',   (m) => runProjectionAnnuelle({ chantiers, factures, devis, parametres, agentContext, memoire: m }));
-  runAgent('BenchmarkTypeTravaux', (m) => runBenchmarkTypeTravaux({ chantiers, devis, parametres, agentContext }));
+  runAgent('ApprentissageMarge',   (m) => runApprentissageMarge({ chantiers, devis, parametres, agentContext, memoire: m, getCouts }));
+  runAgent('SanteClient',          (m) => runSanteClient({ chantiers, clients, devis, factures, parametres, agentContext, getCouts }));
+  runAgent('ProjectionAnnuelle',   (m) => runProjectionAnnuelle({ chantiers, factures, devis, parametres, agentContext, memoire: m, getCouts }));
+  runAgent('BenchmarkTypeTravaux', (m) => runBenchmarkTypeTravaux({ chantiers, devis, parametres, agentContext, getCouts }));
   runAgent('ConformiteBTP',        (m) => runConformiteBTP({ chantiers, parametres, agentContext }));
-  runAgent('DerivePredictor',      (m) => runDerivePredictor({ chantiers, devis, parametres, agentContext }));
+  runAgent('DerivePredictor',      (m) => runDerivePredictor({ chantiers, devis, parametres, agentContext, getCouts }));
   runAgent('PipelineCommercial',   (m) => runPipelineCommercial({ devis, chantiers, clients, agentContext, memoire: m }));
   runAgent('AlerteRisqueClient',   (m) => runAlerteRisqueClient({ chantiers, clients, factures, agentContext }));
   runAgent('OptimisationEquipe',   (m) => runOptimisationEquipe({ chantiers, parametres, agentContext }));
   runAgent('ScoreOffre',           (m) => runScoreOffre({ devis, chantiers, parametres, agentContext }));
 
   // ── TIER 3 (reçoit agentContext Tier 1 + 2) ──
-  runAgent('RadarPrecoce',    (m) => runRadarPrecoce({ chantiers, devis, parametres, agentContext }));
+  runAgent('RadarPrecoce',    (m) => runRadarPrecoce({ chantiers, devis, parametres, agentContext, getCouts }));
   runAgent('DSOAnalyse',      (m) => runDSOAnalyse({ agentContext, memoire: m }));
   runAgent('Saisonnierte',    (m) => runSaisonnierte({ chantiers, devis, memoire: m }));
-  runAgent('CoutMOAnalyse',   (m) => runCoutMOAnalyse({ chantiers, devis, parametres, agentContext }));
+  runAgent('CoutMOAnalyse',   (m) => runCoutMOAnalyse({ chantiers, devis, parametres, agentContext, getCouts }));
   runAgent('AnalyseCycles',   (m) => runAnalyseCycles({ chantiers, devis, agentContext, memoire: m }));
-  runAgent('RapportNaturel',   (m) => runRapportNaturel({ chantiers, factures, agentContext, memoire: m }));
-  runAgent('CoachDirecteur',  (m) => runCoachDirecteur({ chantiers, devis, factures, parametres, agentContext, memoire: m }));
+  runAgent('DiagnosticRaison', (m) => runDiagnosticRaison({ chantiers, devis, parametres, agentContext, getCouts }));
+  runAgent('CoachDirecteur',  (m) => runCoachDirecteur({ chantiers, devis, factures, parametres, agentContext, memoire: m, alertes: result.alertes }));
+  runAgent('RapportNaturel',  (m) => runRapportNaturel({ chantiers, factures, agentContext, memoire: m }));
 
-  // ── SENTINEL (toujours le dernier — scanne tout) ──
-  runAgent('SentinelAgent', () => runSentinelAgent({ agentContext, violations: schemaViolations, agentsStatuts: result.statuts }));
+  // ── SENTINEL (toujours le dernier — scanne tout + détecte agents inactifs) ──
+  const agentsInactifs = Object.entries(enabled).filter(([, v]) => v === false).map(([k]) => k);
+  runAgent('SentinelAgent', () => runSentinelAgent({ agentContext, violations: schemaViolations, agentsStatuts: result.statuts, agentsInactifs }));
 
   if (process.env.NODE_ENV !== 'production') console.log(`[ORCHESTRATEUR] ${result.alertes.length} alerte(s) · ${Object.keys(result.statuts).length} agents exécutés · ${schemaViolations.length} violation(s) schéma`);
   return result;

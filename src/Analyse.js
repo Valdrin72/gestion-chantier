@@ -3,6 +3,7 @@ import { fmtN, calculerCoutsChantier, calculerCA, statutRentabilite, isChantierA
 import { DS } from './ds';
 import Statistiques from './Statistiques';
 import Rapport from './Rapport';
+import Marges from './Marges';
 
 const carteStyle = DS.card;
 
@@ -26,13 +27,25 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
   }, [chantiers, periodeGlobale]);
 
   // ===== CALCULS GLOBAUX (uniquement chantiers avec devis pour CA et marges) =====
-  const chantiersAvecDevis = chantiersPeriode.filter(c => calculerCA(c, devis) !== null);
-  const caTotal = chantiersAvecDevis.reduce((t, c) => t + calculerCA(c, devis), 0);
-  const coutsTotal = chantiersAvecDevis.reduce((t, c) => t + calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis).totalCoutsReel, 0);
+  const chantiersAvecDevis = useMemo(
+    () => chantiersPeriode.filter(c => calculerCA(c, devis) !== null),
+    [chantiersPeriode, devis]
+  );
+  const caTotal = useMemo(
+    () => chantiersAvecDevis.reduce((t, c) => t + calculerCA(c, devis), 0),
+    [chantiersAvecDevis, devis]
+  );
+  const coutsTotal = useMemo(
+    () => chantiersAvecDevis.reduce((t, c) => t + calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis).totalCoutsReel, 0),
+    [chantiersAvecDevis, parametres.employes, parametres.localites, parametres.parametres, devis]
+  );
   const margeAvantCharges = caTotal - coutsTotal;
-  const chargesSociales = coutsTotal * (tauxChargesSociales / 100);
+  // Les coûts MO incluent déjà le coefficient 1.35 (charges employeur).
+  // chargesSociales ici = estimation des charges non-MO (impôts, FG hors MO) — indicatif seulement.
+  const chargesSocialesIndic = caTotal * (tauxChargesSociales / 100) * 0.3; // ~30% du CA en MO × taux → estimation
+  const chargesSociales = chargesSocialesIndic; // affiché comme indicateur, non déduit doublement
   const fraisGeneraux = caTotal * (tauxFraisGeneraux / 100);
-  const margeAvantImpots = margeAvantCharges - chargesSociales - fraisGeneraux;
+  const margeAvantImpots = margeAvantCharges - fraisGeneraux;
   const impots = margeAvantImpots > 0 ? margeAvantImpots * (tauxImpots / 100) : 0;
   const margeNette = margeAvantImpots - impots;
   const margeNettePct = caTotal > 0 ? Math.round((margeNette / caTotal) * 1000) / 10 : 0;
@@ -43,23 +56,25 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
   const seuilRentabilite = (caTotal > 0 && tauxMargeContribution > 0) ? chargesFixes / tauxMargeContribution : 0;
 
   // PROJECTION CA
-  const moisActuel = new Date().getMonth();
-  const caRealise = chantiers.filter(c => {
-    const d = new Date(c.dateDebut);
-    return d.getFullYear() === new Date().getFullYear() && d.getMonth() <= moisActuel && calculerCA(c, devis) !== null;
-  }).reduce((t, c) => t + calculerCA(c, devis), 0);
-  const moyenneMensuelle = moisActuel > 0 ? caRealise / (moisActuel + 1) : caRealise;
-  const projectionAnnuelle = moyenneMensuelle * 12;
-  const moisRestants = 11 - moisActuel;
-  const caPrevisionnel = caRealise + (moyenneMensuelle * moisRestants);
+  const { caRealise, moyenneMensuelle, projectionAnnuelle, moisRestants, caPrevisionnel, moisActuel } = useMemo(() => {
+    const mois = new Date().getMonth();
+    const annee = new Date().getFullYear();
+    const ca = chantiers.filter(c => {
+      const d = new Date(c.dateDebut);
+      return d.getFullYear() === annee && d.getMonth() <= mois && calculerCA(c, devis) !== null;
+    }).reduce((t, c) => t + calculerCA(c, devis), 0);
+    const moy = mois > 0 ? ca / (mois + 1) : ca;
+    const restants = 11 - mois;
+    return { caRealise: ca, moyenneMensuelle: moy, projectionAnnuelle: moy * 12, moisRestants: restants, caPrevisionnel: ca + moy * restants, moisActuel: mois };
+  }, [chantiers, devis]);
 
   // ===== DONNÉES PAR CHANTIER (filtrés par période) =====
-  const donneesChantiers = chantiersPeriode.map(c => {
+  const donneesChantiers = useMemo(() => chantiersPeriode.map(c => {
     const couts = calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis);
     const montantTotal = calculerCA(c, devis); // null si aucun devis lié
     const caDisponible = montantTotal !== null;
-    const heuresPrevu = parseFloat(c.heuresPrevu) || 0;
-    const heuresRealise = parseFloat(c.heuresRealise) || 0;
+    const heuresPrevu = (c.equipe || []).reduce((s, m) => s + (parseFloat(m.joursPlannifies) || 0) * 8, 0);
+    const heuresRealise = (c.journal || []).flatMap(e => e.employes || []).reduce((s, e) => s + (parseFloat(e.heuresTravaillees) || 0), 0);
     const surface = parseFloat(c.surface) || 0;
     const joursPrevu = parseInt(c.nombreJours) || 0;
     const joursReelJournal = new Set((c.journal || []).map(e => e.date).filter(Boolean)).size;
@@ -83,17 +98,18 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
     if (couts.margeReelPct !== null && Number.isFinite(couts.margeReelPct) && couts.margeReelPct < SEUILS.margeLimite) depassements.push(`Marge critique ${couts.margeReelPct}%`);
 
     return { ...c, couts, montantTotal, ecartBudget, coutParHeure, caParHeure, coutParM2, caParM2, margeParM2, ecartJours, tauxFacturation, heuresPrevu, heuresRealise, joursPrevu, joursReel, depassements };
-  });
+  }), [chantiersPeriode, parametres.employes, parametres.localites, parametres.parametres, devis]);
 
   // ===== DONNÉES PAR EMPLOYÉ (filtrés par période) =====
-  const donneesEmployes = (parametres.employes || []).map(emp => {
+  const donneesEmployes = useMemo(() => (parametres.employes || []).map(emp => {
     // Source unique : journal (cohérent avec calculerCoutsChantier)
     const joursTotal = chantiersPeriode.reduce((t, c) => {
       const heures = heuresEmploye(c.journal || [], emp.id);
       return t + heures / 8;
     }, 0);
     const heuresTotal = joursTotal * 8;
-    const coutTotal = joursTotal * emp.tarifJour;
+    const coeff = emp.tarifDejaCharge ? 1 : (parseFloat(parametres.parametres?.coefficientMainOeuvre) || 1.35);
+    const coutTotal = joursTotal * (parseFloat(emp.tarifJour) || 0) * coeff;
     const caGenere = chantiersPeriode.reduce((t, c) => {
       const heures = heuresEmploye(c.journal || [], emp.id);
       if (heures === 0) return t;
@@ -103,14 +119,15 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
     }, 0);
     const coutHoraire = heuresTotal > 0 ? Math.round(coutTotal / heuresTotal) : 0;
     const productivite = coutTotal > 0 ? Math.round((caGenere / coutTotal) * 100) : 0;
-    const chargesSoc = coutTotal * (tauxChargesSociales / 100);
-    const coutReel = coutTotal + chargesSoc;
+    // chargesSoc = portion charges incluse dans le coefficient (pas ajoutée en plus — coeff déjà intègre les charges)
+    const chargesSoc = emp.tarifDejaCharge ? 0 : joursTotal * (parseFloat(emp.tarifJour) || 0) * (coeff - 1);
+    const coutReel = coutTotal; // coutTotal = brut × coeff inclut déjà les charges sociales
 
     return { ...emp, joursTotal, heuresTotal, coutTotal, caGenere, coutHoraire, productivite, chargesSoc, coutReel };
-  }).filter(e => e.joursTotal > 0);
+  }).filter(e => e.joursTotal > 0), [chantiersPeriode, parametres.employes, parametres.parametres, devis]);
 
   // ===== RENTABILITÉ PAR MÉTRÉ (uniquement chantiers avec devis, période filtrée) =====
-  const donneesMetres = parametres.typesTravaux.map(t => {
+  const donneesMetres = useMemo(() => parametres.typesTravaux.map(t => {
     const tous = chantiersPeriode.filter(c => (c.typesTravaux || []).includes(t.nom));
     const avecDevis = tous.filter(c => calculerCA(c, devis) !== null);
     const surface = avecDevis.reduce((s, c) => s + (parseFloat(c.surface) || 0), 0);
@@ -122,7 +139,7 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
     const margeParM2 = surface > 0 ? Math.round(marge / surface) : 0;
     const margePct = ca > 0 ? Math.round((marge / ca) * 1000) / 10 : 0;
     return { nom: t.nom, count: tous.length, nbAvecDevis: avecDevis.length, surface, ca, couts, marge, caParM2, coutParM2, margeParM2, margePct };
-  }).filter(t => t.count > 0);
+  }).filter(t => t.count > 0), [chantiersPeriode, parametres.typesTravaux, parametres.employes, parametres.localites, parametres.parametres, devis]);
 
   // ===== DONNÉES PAR CLIENT (uniquement chantiers avec devis pour CA/marge, période filtrée) =====
   const donneesClients = useMemo(() => clients.map(cl => {
@@ -196,16 +213,18 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
   }).filter(Boolean).sort((a, b) => (b.ecartCoutMoyen ?? 0) - (a.ecartCoutMoyen ?? 0)), [chantiersPeriode, devis, parametres]);
 
   const onglets = [
-    { id: 'rentabilite', label: 'Rentabilité nette' },
-    { id: 'derive',      label: 'Dérive devis' },
-    { id: 'chantiers',   label: 'Prévu vs Réel' },
-    { id: 'clients',     label: 'Clients' },
-    { id: 'employes',    label: 'Coût horaire' },
-    { id: 'corps',       label: 'Corps de métier' },
-    { id: 'projection',  label: 'Projections' },
-    { id: 'objectifs',   label: 'Objectifs' },
-    { id: 'statistiques',label: 'Statistiques' },
-    { id: 'rapport',     label: 'Rapport hebdo' },
+    { id: 'marges',       label: 'Marges' },
+    { id: 'rentabilite',  label: 'Rentabilité nette' },
+    { id: 'derive',       label: 'Dérive devis' },
+    { id: 'chantiers',    label: 'Prévu vs Réel' },
+    { id: 'clients',      label: 'Clients' },
+    { id: 'employes',     label: 'Coût horaire' },
+    { id: 'corps',        label: 'Corps de métier' },
+    { id: 'projection',   label: 'Projections' },
+    { id: 'objectifs',    label: 'Objectifs' },
+    { id: 'metres2',      label: 'Analyse m²' },
+    { id: 'statistiques', label: 'Statistiques' },
+    { id: 'rapport',      label: 'Rapport hebdo' },
   ];
 
   return (
@@ -217,9 +236,9 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
         {onglets.map(o => (
           <button key={o.id} onClick={() => setOnglet(o.id)} style={{
             background: 'transparent',
-            color: onglet === o.id ? '#3b82f6' : 'var(--text-secondary)',
+            color: onglet === o.id ? '#0d3d6e' : 'var(--text-secondary)',
             border: 'none',
-            borderBottom: onglet === o.id ? '2px solid rgba(59,130,246,0.8)' : '2px solid transparent',
+            borderBottom: onglet === o.id ? '2px solid rgba(13,61,110,0.8)' : '2px solid transparent',
             padding: '10px 18px',
             marginBottom: '-1px',
             borderRadius: '0', cursor: 'pointer', fontSize: '14px', fontWeight: onglet === o.id ? '600' : 'normal'
@@ -242,7 +261,7 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
                 <div key={s.label}>
                   <label style={{ fontSize: '13px', color: 'var(--text-secondary)', display: 'block', marginBottom: '5px' }}>{s.label}</label>
                   <input type="number" value={s.val} onChange={e => { s.set(parseFloat(e.target.value) || 0); setTaxSaved(false); }}
-                    style={{ padding: '10px', borderRadius: '8px', border: '2px solid #3b82f6', fontSize: '16px', fontWeight: 'bold', width: '100%', color: '#3b82f6', background: 'var(--bg-input)' }} />
+                    style={{ padding: '10px', borderRadius: '8px', border: '2px solid #0d3d6e', fontSize: '16px', fontWeight: 'bold', width: '100%', color: '#0d3d6e', background: 'var(--bg-input)' }} />
                 </div>
               ))}
             </div>
@@ -331,7 +350,7 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
                 return (
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 14, marginBottom: 24 }}>
                     {[
-                      { label: 'Types analysés', val: donneesDerive.length, couleur: '#3b82f6', sub: `${donneesDerive.reduce((s,d) => s + d.count, 0)} chantiers` },
+                      { label: 'Types analysés', val: donneesDerive.length, couleur: '#0d3d6e', sub: `${donneesDerive.reduce((s,d) => s + d.count, 0)} chantiers` },
                       { label: 'Sous-estimés', val: sousEstimes.length, couleur: '#ef4444', sub: sousEstimes.length > 0 ? sousEstimes.map(d => d.nom).join(', ') : 'Aucun' },
                       { label: 'Plus grande dérive', val: pireType.nom, couleur: '#f59e0b', sub: Number.isFinite(pireType.ecartCoutMoyen) ? `+${Math.round(pireType.ecartCoutMoyen)}% coût réel` : '—' },
                       { label: 'Perte de marge moy.', val: Number.isFinite(pireType.perteMarge) ? `${Math.round(pireType.perteMarge * 10) / 10}%` : '—', couleur: Number.isFinite(pireType.perteMarge) && pireType.perteMarge < -3 ? '#ef4444' : '#10b981', sub: 'sur le type le + déviant' },
@@ -374,7 +393,7 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
                       {[
                         { label: 'Dérive durée',   val: fmtJours(d.ecartJoursMoyen),  couleur: d.ecartJoursMoyen !== null && d.ecartJoursMoyen > 15 ? '#ef4444' : d.ecartJoursMoyen !== null && d.ecartJoursMoyen > 5 ? '#f59e0b' : '#10b981', sub: 'jours réels vs prévus' },
                         { label: 'Dérive coût',    val: fmtPct(d.ecartCoutMoyen),     couleur: d.ecartCoutMoyen !== null && d.ecartCoutMoyen > 15 ? '#ef4444' : d.ecartCoutMoyen !== null && d.ecartCoutMoyen > 5 ? '#f59e0b' : '#10b981',    sub: 'coût réel vs prévu' },
-                        { label: 'Marge devisée',  val: fmtPct(d.margePrevuMoyenne, false), couleur: '#3b82f6', sub: 'marge prévue moyenne' },
+                        { label: 'Marge devisée',  val: fmtPct(d.margePrevuMoyenne, false), couleur: '#0d3d6e', sub: 'marge prévue moyenne' },
                         { label: 'Marge réelle',   val: fmtPct(d.margeReelMoyenne, false),  couleur: d.margeReelMoyenne !== null && d.margeReelMoyenne < 10 ? '#ef4444' : d.margeReelMoyenne !== null && d.margeReelMoyenne < 20 ? '#f59e0b' : '#10b981', sub: 'marge réelle moyenne' },
                       ].map(m => (
                         <div key={m.label} style={{ ...DS.cardInset, padding: '12px 14px' }}>
@@ -398,7 +417,7 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
                           {d.lignes.map(l => (
                             <div key={l.c.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: 'var(--ds-card-inset-bg)', borderRadius: 8, border: '1px solid var(--ds-card-inset-border)', flexWrap: 'wrap' }}>
                               <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)', flex: 1, minWidth: 120 }}>{l.c.nom || l.c.numero}</span>
-                              <span style={{ fontSize: 11, color: 'var(--text-muted)', minWidth: 80 }}>{l.joursPrevu}j → {l.joursReel}j{l.ecartJours !== null ? <span style={{ color: l.ecartJours > 15 ? '#ef4444' : 'var(--text-muted)', fontWeight: 700 }}> ({l.ecartJours > 0 ? '+' : ''}{l.ecartJours?.toFixed(0)}%)</span> : ''}</span>
+                              <span style={{ fontSize: 11, color: 'var(--text-muted)', minWidth: 80 }}>{l.joursPrevu}j → {l.joursReel}j{l.ecartJours !== null ? <span style={{ color: l.ecartJours > 15 ? '#ef4444' : 'var(--text-muted)', fontWeight: 700 }}> ({l.ecartJours > 0 ? '+' : ''}{Math.round(l.ecartJours)}%)</span> : ''}</span>
                               {l.margeReelPct !== null && (
                                 <span style={{ fontSize: 11, fontWeight: 700, color: l.margeReelPct < 10 ? '#ef4444' : l.margeReelPct < 20 ? '#f59e0b' : '#10b981' }}>
                                   Marge {Math.round(l.margeReelPct * 10) / 10}%
@@ -463,7 +482,7 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
                       </span>
                     </td>
                     <td style={{ padding: '10px 12px', fontSize: '13px', color: 'var(--text-primary)' }}>{c.joursPrevu}j</td>
-                    <td style={{ padding: '10px 12px', fontSize: '13px', color: 'var(--text-primary)' }}>{c.joursReel.toFixed(1)}j</td>
+                    <td style={{ padding: '10px 12px', fontSize: '13px', color: 'var(--text-primary)' }}>{Math.round(c.joursReel * 10) / 10}j</td>
                     <td style={{ padding: '10px 12px' }}>
                       <span style={{ background: couleurEcart(Math.abs(c.ecartJours)) + '18', color: couleurEcart(Math.abs(c.ecartJours)), fontWeight: 600, padding: '3px 10px', borderRadius: '12px', fontSize: '12px' }}>
                         {parseFloat(c.ecartJours) > 0 ? '+' : ''}{c.ecartJours}%
@@ -488,7 +507,7 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
               </thead>
               <tbody>
                 {donneesChantiers.filter(c => c.heuresPrevu > 0 || c.heuresRealise > 0).map((c, i) => {
-                  const margeParHeure = c.heuresRealise > 0 ? Math.round(c.couts.margeReel / c.heuresRealise) : 0;
+                  const margeParHeure = c.heuresRealise > 0 && c.couts.margeReel != null ? Math.round(c.couts.margeReel / c.heuresRealise) : null;
                   return (
                     <tr key={c.id} style={{ borderBottom: '1px solid var(--ds-td-border)' }}>
                       <td style={{ padding: '10px 12px' }}><strong style={{ color: 'var(--text-primary)' }}>{c.nom}</strong></td>
@@ -501,7 +520,7 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
                       </td>
                       <td style={{ padding: '10px 12px', color: 'var(--text-primary)' }}>CHF {c.coutParHeure}/h</td>
                       <td style={{ padding: '10px 12px', color: 'var(--text-primary)', fontWeight: 'bold' }}>CHF {c.caParHeure}/h</td>
-                      <td style={{ padding: '10px 12px', color: parseFloat(margeParHeure) >= 0 ? '#10b981' : '#ef4444', fontWeight: 'bold' }}>CHF {margeParHeure}/h</td>
+                      <td style={{ padding: '10px 12px', color: margeParHeure === null ? 'var(--text-muted)' : margeParHeure >= 0 ? '#10b981' : '#ef4444', fontWeight: 'bold' }}>{margeParHeure === null ? '—' : `CHF ${margeParHeure}/h`}</td>
                     </tr>
                   );
                 })}
@@ -543,7 +562,7 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
                       <td style={{ padding: '10px 12px', fontSize: '13px', color: '#f59e0b' }}>CHF {fmtN(Math.round(e.chargesSoc))}</td>
                       <td style={{ padding: '10px 12px', fontWeight: 'bold', color: '#ef4444' }}>CHF {fmtN(Math.round(e.coutReel))}</td>
                       <td style={{ padding: '10px 12px' }}>
-                        <span style={{ background: '#3b82f618', color: '#3b82f6', fontWeight: 600, padding: '3px 10px', borderRadius: '12px', fontSize: '12px' }}>
+                        <span style={{ background: '#0d3d6e18', color: '#0d3d6e', fontWeight: 600, padding: '3px 10px', borderRadius: '12px', fontSize: '12px' }}>
                           CHF {e.coutHoraire}/h
                         </span>
                       </td>
@@ -646,7 +665,7 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
             <div className="ds-card-title">Projections CA annuel {new Date().getFullYear()}</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '15px', marginBottom: '25px' }}>
               {[
-                { label: 'CA réalisé', val: `CHF ${fmtN(Math.round(caRealise))}`, couleur: '#10b981', desc: `${moisActuel + 1} mois` },
+                { label: 'CA réalisé', val: `CHF ${fmtN(Math.round(caRealise))}`, couleur: '#10b981', desc: `${moisActuel + 1} mois` }, // eslint-disable-line no-undef
                 { label: 'Moyenne/mois', val: `CHF ${fmtN(Math.round(moyenneMensuelle))}`, couleur: '#10b981', desc: 'Tendance actuelle' },
                 { label: 'Projection annuelle', val: `CHF ${fmtN(Math.round(projectionAnnuelle))}`, couleur: '#8b5cf6', desc: 'Sur 12 mois' },
                 { label: 'CA prévisionnel', val: `CHF ${fmtN(Math.round(caPrevisionnel))}`, couleur: '#f59e0b', desc: `Réalisé + ${moisRestants} mois prévus` },
@@ -708,7 +727,7 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
               {/* KPIs clients */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px,1fr))', gap: 14, marginBottom: 24 }}>
                 {[
-                  { label: 'Clients actifs', val: donneesClients.length, couleur: '#3b82f6' },
+                  { label: 'Clients actifs', val: donneesClients.length, couleur: '#0d3d6e' },
                   { label: 'Meilleur CA', val: `CHF ${fmtN(Math.round(donneesClients[0]?.ca || 0))}`, couleur: '#10b981' },
                   { label: 'Marge moy.', val: `${Math.round((donneesClients.reduce((t,c)=>t+parseFloat(c.margePct||0),0)/donneesClients.length) * 10) / 10}%`, couleur: '#8b5cf6' },
                   { label: 'Chantiers total', val: donneesClients.reduce((t,c)=>t+c.nbChantiers,0), couleur: '#f59e0b' },
@@ -854,7 +873,7 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {donneesChantiers
                     .filter(c => statutRentabilite(c.couts.margeReelPct).label !== 'Rentable')
-                    .sort((a, b) => parseFloat(a.couts.margeReelPct) - parseFloat(b.couts.margeReelPct))
+                    .sort((a, b) => (a.couts.margeReelPct ?? -999) - (b.couts.margeReelPct ?? -999))
                     .map(c => {
                       const r = statutRentabilite(c.couts.margeReelPct);
                       return (
@@ -881,6 +900,227 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
             )}
           </div>
         </div>
+      )}
+
+      {/* ===== ANALYSE M² ===== */}
+      {onglet === 'metres2' && (() => {
+        // Chantiers avec surface > 0 ET CA disponible (devis lié)
+        const chantiersM2 = chantiersPeriode.filter(c => {
+          const surface = parseFloat(c.surface);
+          return surface > 0 && calculerCA(c, devis) !== null;
+        });
+
+        if (chantiersM2.length === 0) {
+          return (
+            <div style={{ ...carteStyle, textAlign: 'center', padding: 48, color: 'var(--text-muted)' }}>
+              <div style={{ fontSize: 32, marginBottom: 12 }}>m²</div>
+              <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 8, color: 'var(--text-primary)' }}>Aucune donnée m² disponible</div>
+              <div style={{ fontSize: 13 }}>Renseignez la surface dans vos devis ou chantiers pour activer l'analyse au m².</div>
+            </div>
+          );
+        }
+
+        // Calculs par chantier
+        const lignesM2 = chantiersM2.map(c => {
+          const surface = parseFloat(c.surface);
+          const ca = calculerCA(c, devis);
+          const couts = calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis);
+          const cout = couts.totalCoutsReel || 0;
+          const marge = couts.margeReel !== null ? couts.margeReel : (ca - cout);
+          const caM2 = surface > 0 ? Math.round(ca / surface) : null;
+          const coutM2 = surface > 0 ? Math.round(cout / surface) : null;
+          const margeM2 = surface > 0 ? Math.round(marge / surface) : null;
+          const margePct = ca > 0 ? Math.round((marge / ca) * 1000) / 10 : null;
+          return { ...c, surface, ca, cout, marge, caM2, coutM2, margeM2, margePct };
+        });
+
+        // KPIs globaux
+        const surfaceTotale = lignesM2.reduce((s, c) => s + c.surface, 0);
+        const caTotalM2 = lignesM2.reduce((s, c) => s + c.ca, 0);
+        const coutTotalM2 = lignesM2.reduce((s, c) => s + c.cout, 0);
+        const margeTotaleM2 = lignesM2.reduce((s, c) => s + c.marge, 0);
+        const caM2Moyen = surfaceTotale > 0 ? Math.round(caTotalM2 / surfaceTotale) : null;
+        const coutM2Moyen = surfaceTotale > 0 ? Math.round(coutTotalM2 / surfaceTotale) : null;
+        const margeM2Moyenne = surfaceTotale > 0 ? Math.round(margeTotaleM2 / surfaceTotale) : null;
+        const margePctMoyenne = caTotalM2 > 0 ? Math.round((margeTotaleM2 / caTotalM2) * 1000) / 10 : null;
+
+        const seuilM2Global = coutM2Moyen !== null ? Math.round(coutM2Moyen / (1 - SEUILS.margeLimite / 100)) : null;
+
+        // Par type de travaux
+        const typesAvecM2 = (parametres.typesTravaux || []).map(t => {
+          const chantiersDuType = lignesM2.filter(c => (c.typesTravaux || []).includes(t.nom));
+          if (chantiersDuType.length === 0) return null;
+          const surf = chantiersDuType.reduce((s, c) => s + c.surface, 0);
+          const caT = chantiersDuType.reduce((s, c) => s + c.ca, 0);
+          const coutT = chantiersDuType.reduce((s, c) => s + c.cout, 0);
+          const margeT = chantiersDuType.reduce((s, c) => s + c.marge, 0);
+          const caM2T = surf > 0 ? Math.round(caT / surf) : null;
+          const coutM2T = surf > 0 ? Math.round(coutT / surf) : null;
+          const margeM2T = surf > 0 ? Math.round(margeT / surf) : null;
+          const margePctT = caT > 0 ? Math.round((margeT / caT) * 1000) / 10 : null;
+          const seuilM2T = coutM2T !== null ? Math.round(coutM2T / (1 - SEUILS.margeLimite / 100)) : null;
+          const rentable = margePctT !== null && margePctT >= SEUILS.margeRentable;
+          const limite = margePctT !== null && margePctT >= SEUILS.margeLimite && margePctT < SEUILS.margeRentable;
+          return { nom: t.nom, count: chantiersDuType.length, surf, caM2: caM2T, coutM2: coutM2T, margeM2: margeM2T, margePct: margePctT, seuilM2: seuilM2T, rentable, limite };
+        }).filter(Boolean);
+
+        // Couleur statut marge
+        const couleurStatut = (pct) => {
+          if (pct === null || !Number.isFinite(pct)) return '#6b7280';
+          if (pct >= SEUILS.margeRentable) return '#10b981';
+          if (pct >= SEUILS.margeLimite)   return '#f59e0b';
+          return '#ef4444';
+        };
+        const labelStatut = (pct) => {
+          if (pct === null || !Number.isFinite(pct)) return '—';
+          if (pct >= SEUILS.margeRentable) return 'Rentable';
+          if (pct >= SEUILS.margeLimite)   return 'Limite';
+          if (pct >= 0)                    return 'Non rentable';
+          return 'À perte';
+        };
+
+        return (
+          <div>
+            {/* KPIs globaux */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px,1fr))', gap: 14, marginBottom: 24 }}>
+              {[
+                { label: 'Surface analysée', val: `${fmtN(Math.round(surfaceTotale))} m²`, sub: `${lignesM2.length} chantier${lignesM2.length > 1 ? 's' : ''}`, couleur: '#0d3d6e' },
+                { label: 'CA moyen / m²', val: caM2Moyen !== null ? `CHF ${fmtN(caM2Moyen)}/m²` : '—', sub: `CA total CHF ${fmtN(Math.round(caTotalM2))}`, couleur: '#10b981' },
+                { label: 'Coût moyen / m²', val: coutM2Moyen !== null ? `CHF ${fmtN(coutM2Moyen)}/m²` : '—', sub: `Coût total CHF ${fmtN(Math.round(coutTotalM2))}`, couleur: '#f59e0b' },
+                { label: 'Marge moyenne / m²', val: margeM2Moyenne !== null ? `CHF ${fmtN(margeM2Moyenne)}/m²` : '—', sub: margePctMoyenne !== null ? `${margePctMoyenne}% de marge` : '—', couleur: margePctMoyenne !== null && margePctMoyenne >= 15 ? '#10b981' : '#ef4444' },
+              ].map(k => (
+                <div key={k.label} style={{ background: k.couleur + '10', border: `1px solid ${k.couleur}28`, borderRadius: 14, padding: '18px 20px' }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px', color: 'var(--text-muted)', marginBottom: 8 }}>{k.label}</div>
+                  <div style={{ fontSize: 20, fontWeight: 800, color: k.couleur, letterSpacing: '-0.3px', lineHeight: 1.1 }}>{k.val}</div>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 5 }}>{k.sub}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Seuil de rentabilité global */}
+            {seuilM2Global !== null && (
+              <div style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: 12, padding: '14px 20px', marginBottom: 24, display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+                <div style={{ fontSize: 20, fontWeight: 900, color: '#f59e0b' }}>CHF {fmtN(seuilM2Global)}/m²</div>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>Seuil de rentabilité global (15% marge nette)</div>
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Pour être rentable à 15% de marge nette, facturer minimum <strong style={{ color: '#f59e0b' }}>CHF {fmtN(seuilM2Global)}/m²</strong></div>
+                </div>
+                {caM2Moyen !== null && (
+                  <div style={{ marginLeft: 'auto', textAlign: 'right' }}>
+                    <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>CA moyen actuel</div>
+                    <div style={{ fontSize: 16, fontWeight: 800, color: caM2Moyen >= seuilM2Global ? '#10b981' : '#ef4444' }}>CHF {fmtN(caM2Moyen)}/m² {caM2Moyen >= seuilM2Global ? '✓' : '✗'}</div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Tableau par type de travaux */}
+            {typesAvecM2.length > 0 && (
+              <div style={{ ...carteStyle, marginBottom: 24 }}>
+                <div className="ds-card-title">Par type de travaux</div>
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <thead>
+                      <tr>
+                        {['Type', 'Chantiers', 'Surface', 'Coût/m²', 'CA/m²', 'Marge/m²', 'Seuil rent. 15%', 'Statut'].map(h => (
+                          <th key={h} style={DS.th}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {typesAvecM2.sort((a, b) => (b.margePct || 0) - (a.margePct || 0)).map(t => {
+                        const c = couleurStatut(t.margePct);
+                        return (
+                          <tr key={t.nom} style={{ borderBottom: '1px solid var(--ds-td-border)' }}>
+                            <td style={{ ...DS.td, fontWeight: 700, color: 'var(--text-primary)' }}>{t.nom}</td>
+                            <td style={DS.td}>{t.count}</td>
+                            <td style={DS.td}>{fmtN(Math.round(t.surf))} m²</td>
+                            <td style={DS.td}>CHF {t.coutM2 !== null ? fmtN(t.coutM2) : '—'}/m²</td>
+                            <td style={{ ...DS.td, fontWeight: 700 }}>CHF {t.caM2 !== null ? fmtN(t.caM2) : '—'}/m²</td>
+                            <td style={{ ...DS.td, color: t.margeM2 !== null && t.margeM2 >= 0 ? '#10b981' : '#ef4444', fontWeight: 700 }}>
+                              CHF {t.margeM2 !== null ? fmtN(t.margeM2) : '—'}/m²
+                            </td>
+                            <td style={{ ...DS.td, color: '#f59e0b', fontWeight: 600 }}>
+                              {t.seuilM2 !== null ? `CHF ${fmtN(t.seuilM2)}/m²` : '—'}
+                            </td>
+                            <td style={DS.td}>
+                              <span style={{ background: c + '18', color: c, border: `1px solid ${c}35`, borderRadius: 20, padding: '3px 10px', fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap' }}>
+                                {labelStatut(t.margePct)}{t.margePct !== null ? ` (${t.margePct}%)` : ''}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* Tableau des chantiers individuels */}
+            <div style={carteStyle}>
+              <div className="ds-card-title">Chantiers individuels avec surface renseignée</div>
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr>
+                      {['Chantier', 'Surface', 'CA/m²', 'Coût/m²', 'Marge/m²', 'Marge %', 'vs Moyenne'].map(h => (
+                        <th key={h} style={DS.th}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {lignesM2.sort((a, b) => (b.margePct || 0) - (a.margePct || 0)).map((c, i) => {
+                      const col = couleurStatut(c.margePct);
+                      const vsM2 = (caM2Moyen !== null && c.caM2 !== null) ? c.caM2 - caM2Moyen : null;
+                      const vsPct = (caM2Moyen !== null && caM2Moyen > 0 && c.caM2 !== null) ? Math.round(((c.caM2 - caM2Moyen) / caM2Moyen) * 1000) / 10 : null;
+                      return (
+                        <tr key={c.id} style={{ borderBottom: '1px solid var(--ds-td-border)' }}
+                          onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-hover)'}
+                          onMouseLeave={e => e.currentTarget.style.background = ''}>
+                          <td style={{ ...DS.td, fontWeight: 700, color: 'var(--text-primary)' }}>
+                            {c.nom || c.numero}
+                            <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 400, marginTop: 1 }}>{c.statut}</div>
+                          </td>
+                          <td style={DS.td}>{fmtN(c.surface)} m²</td>
+                          <td style={{ ...DS.td, fontWeight: 700, color: '#10b981' }}>
+                            CHF {c.caM2 !== null ? fmtN(c.caM2) : '—'}/m²
+                          </td>
+                          <td style={DS.td}>CHF {c.coutM2 !== null ? fmtN(c.coutM2) : '—'}/m²</td>
+                          <td style={{ ...DS.td, color: c.margeM2 !== null && c.margeM2 >= 0 ? '#10b981' : '#ef4444', fontWeight: 700 }}>
+                            CHF {c.margeM2 !== null ? fmtN(c.margeM2) : '—'}/m²
+                          </td>
+                          <td style={DS.td}>
+                            <span style={{ background: col + '18', color: col, border: `1px solid ${col}35`, borderRadius: 20, padding: '3px 10px', fontSize: 11, fontWeight: 700 }}>
+                              {c.margePct !== null ? `${c.margePct}%` : '—'}
+                            </span>
+                          </td>
+                          <td style={DS.td}>
+                            {vsM2 !== null ? (
+                              <span style={{
+                                background: vsM2 >= 0 ? 'rgba(16,185,129,0.12)' : 'rgba(239,68,68,0.12)',
+                                color: vsM2 >= 0 ? '#10b981' : '#ef4444',
+                                border: `1px solid ${vsM2 >= 0 ? 'rgba(16,185,129,0.3)' : 'rgba(239,68,68,0.3)'}`,
+                                borderRadius: 20, padding: '3px 10px', fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap',
+                              }}>
+                                {vsM2 >= 0 ? '+' : ''}{fmtN(vsM2)} CHF/m²
+                                {vsPct !== null ? ` (${vsPct >= 0 ? '+' : ''}${vsPct}%)` : ''}
+                              </span>
+                            ) : '—'}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {onglet === 'marges' && (
+        <Marges chantiers={chantiers} clients={clients} devis={devis} parametres={parametres} periodeGlobale={periodeGlobale} />
       )}
 
       {onglet === 'statistiques' && (

@@ -1,6 +1,6 @@
 /**
  * CYNA — useAgents hook v2
- * Orchestre les 20 agents, gère state + mémoire long-terme + timers.
+ * Orchestre les agents IA, gère state + mémoire long-terme + timers.
  *
  * Mémoire : chaque agent peut accumuler des données entre les runs.
  * Stockage : localStorage "cyna_agents_state" (alertes, prédictions, statuts)
@@ -8,11 +8,13 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { runAllAgents } from './AgentEngine';
+import { runAllAgents, simulerRapportLundi } from './AgentEngine';
 
 const STORAGE_KEY   = 'cyna_agents_state';
 const MEMOIRE_KEY   = 'cyna_agents_memoire';
 const INTERVAL_MS   = 60 * 60 * 1000; // toutes les heures
+// Incrémenter pour forcer un reset du cache localStorage si le schéma change
+const SCHEMA_VERSION = 5;
 
 // Tous les agents actifs par défaut
 const AGENTS_PAR_DEFAUT = {
@@ -34,12 +36,102 @@ const AGENTS_PAR_DEFAUT = {
   SentinelAgent: true,
 };
 
+
+function sanitiserAlertes(alertes) {
+  if (!Array.isArray(alertes)) return [];
+  return alertes
+    .filter(a => a && typeof a.message === 'string')
+    .map(a => {
+      const out = {
+        ...a,
+        message: typeof a.message === 'string' ? a.message : '—',
+        detail:  typeof a.detail  === 'string' ? a.detail  : undefined,
+        action:  typeof a.action  === 'string' ? a.action  : undefined,
+      };
+      // Aplatir {page,ctx} → actionPage + actionCtx pour ne jamais stocker d'objet dans action
+      if (a.action && typeof a.action === 'object') {
+        out.actionPage = typeof a.action.page === 'string' ? a.action.page : undefined;
+        out.actionCtx  = (a.action.ctx && typeof a.action.ctx === 'object') ? a.action.ctx : {};
+        out.action     = undefined;
+      }
+      return out;
+    });
+}
+
+function sanitiserPriorites(priorites) {
+  if (!Array.isArray(priorites)) return [];
+  return priorites.map(p => ({
+    ...p,
+    action:   typeof p.action   === 'string' ? p.action   : '',
+    detail:   typeof p.detail   === 'string' ? p.detail   : '',
+    impact:   typeof p.impact   === 'string' ? p.impact   : '',
+    categorie:typeof p.categorie=== 'string' ? p.categorie: '',
+  }));
+}
+
+function sanitiserAgentData(agentData) {
+  if (!agentData || typeof agentData !== 'object') return {};
+  const out = { ...agentData };
+  // RapportNaturel : paras et actionPrincipale
+  if (out.RapportNaturel) {
+    const rn = { ...out.RapportNaturel };
+    if (Array.isArray(rn.paras)) rn.paras = rn.paras.map(p => typeof p === 'string' ? p : '');
+    if (rn.actionPrincipale) {
+      rn.actionPrincipale = {
+        ...rn.actionPrincipale,
+        action: typeof rn.actionPrincipale.action === 'string' ? rn.actionPrincipale.action : '',
+        detail: typeof rn.actionPrincipale.detail === 'string' ? rn.actionPrincipale.detail : '',
+      };
+    }
+    out.RapportNaturel = rn;
+  }
+  // CoachDirecteur : priorités
+  if (out.CoachDirecteur?.priorites) {
+    out.CoachDirecteur = {
+      ...out.CoachDirecteur,
+      priorites: sanitiserPriorites(out.CoachDirecteur.priorites),
+    };
+  }
+  return out;
+}
+
+function sanitiserRapports(rapports) {
+  if (!Array.isArray(rapports)) return [];
+  return rapports.map(r => {
+    if (!r) return r;
+    const out = { ...r };
+    if (Array.isArray(out.paras)) out.paras = out.paras.map(p => typeof p === 'string' ? p : '');
+    if (out.actionPrincipale) {
+      out.actionPrincipale = {
+        ...out.actionPrincipale,
+        action: typeof out.actionPrincipale.action === 'string' ? out.actionPrincipale.action : '',
+        detail: typeof out.actionPrincipale.detail === 'string' ? out.actionPrincipale.detail : '',
+      };
+    }
+    return out;
+  });
+}
+
 function loadState() {
-  try { const raw = localStorage.getItem(STORAGE_KEY); return raw ? JSON.parse(raw) : null; } catch { return null; }
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    // Purge automatique si version de schéma obsolète
+    if ((parsed?.schemaVersion ?? 0) < SCHEMA_VERSION) {
+      localStorage.removeItem(STORAGE_KEY);
+      return null;
+    }
+    if (parsed?.alertes)   parsed.alertes   = sanitiserAlertes(parsed.alertes);
+    if (parsed?.rapports)  parsed.rapports  = sanitiserRapports(parsed.rapports);
+    if (parsed?.agentData) parsed.agentData = sanitiserAgentData(parsed.agentData);
+    return parsed;
+  } catch { return null; }
 }
 function saveState(state) {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      schemaVersion: SCHEMA_VERSION,
       agentsActifs: state.agentsActifs,
       alertes: state.alertes.slice(0, 100),
       predictions: state.predictions,
@@ -60,17 +152,23 @@ function saveMemoire(memoire) {
 }
 
 export default function useAgents({ chantiers, devis, factures, clients, parametres }) {
-  const persisted = loadState();
+  // Lecture localStorage unique au mount — partagée entre tous les useState initialiseurs
+  const _initStateRef = useRef(undefined);
+  const _getInitState = () => {
+    if (_initStateRef.current === undefined) _initStateRef.current = loadState();
+    return _initStateRef.current;
+  };
 
-  const [agentsActifs, setAgentsActifs] = useState(persisted?.agentsActifs || AGENTS_PAR_DEFAUT);
-  const [alertes, setAlertes] = useState(persisted?.alertes || []);
-  const [predictions, setPredictions] = useState(persisted?.predictions || {});
-  const [patterns, setPatterns] = useState(persisted?.patterns || {});
-  const [rapports, setRapports] = useState(persisted?.rapports || []);
-  const [agentsStatuts, setAgentsStatuts] = useState(persisted?.agentsStatuts || {});
-  const [agentsLogs, setAgentsLogs] = useState(persisted?.agentsLogs || {});
-  const [agentData, setAgentData] = useState(persisted?.agentData || {});
-  const [dernierRun, setDernierRun] = useState(persisted?.dernierRun || null);
+  // Agents toujours actifs — pas de désactivation possible
+  const agentsActifs = AGENTS_PAR_DEFAUT;
+  const [alertes, setAlertes] = useState(() => _getInitState()?.alertes || []);
+  const [predictions, setPredictions] = useState(() => _getInitState()?.predictions || {});
+  const [patterns, setPatterns] = useState(() => _getInitState()?.patterns || {});
+  const [rapports, setRapports] = useState(() => _getInitState()?.rapports || []);
+  const [agentsStatuts, setAgentsStatuts] = useState(() => _getInitState()?.agentsStatuts || {});
+  const [agentsLogs, setAgentsLogs] = useState(() => _getInitState()?.agentsLogs || {});
+  const [agentData, setAgentData] = useState(() => _getInitState()?.agentData || {});
+  const [dernierRun, setDernierRun] = useState(() => _getInitState()?.dernierRun || null);
   const [running, setRunning] = useState(false);
   const memoireRef = useRef(loadMemoire());
 
@@ -94,18 +192,18 @@ export default function useAgents({ chantiers, devis, factures, clients, paramet
 
       const now = Date.now();
 
-      // Déduplique les alertes par type+entité
+      // Déduplique les alertes par type+entité — sanitise avant d'entrer dans le state
       setAlertes(prev => {
         const lues = prev.filter(a => a.lu);
         const cles = new Set(result.alertes.map(a => `${a.agent}_${a.type}_${a.chantier_id || a.devis_id || ''}`));
         const filtrees = lues.filter(a => !cles.has(`${a.agent}_${a.type}_${a.chantier_id || a.devis_id || ''}`));
-        return [...result.alertes, ...filtrees].slice(0, 100);
+        return sanitiserAlertes([...result.alertes, ...filtrees].slice(0, 100));
       });
 
       setPredictions(result.predictions);
       setPatterns(result.patterns);
       setAgentsStatuts(result.statuts);
-      setAgentData(result.agentData || {});
+      setAgentData(sanitiserAgentData(result.agentData || {}));
       setDernierRun(now);
 
       // Logs par agent (10 dernières exécutions)
@@ -190,18 +288,35 @@ export default function useAgents({ chantiers, devis, factures, clients, paramet
     // Re-run des agents (avec debounce de 600 ms si plusieurs suppressions en rafale)
     if (rerunTimerRef.current) clearTimeout(rerunTimerRef.current);
     rerunTimerRef.current = setTimeout(() => executerRef.current(true), 600);
+    return () => { if (rerunTimerRef.current) clearTimeout(rerunTimerRef.current); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chantiers, devis, factures]);
 
-  // Persistence de l'état courant
+  // Persistence de l'état courant (debounced 800ms) — agentsActifs non persisté (toujours actifs)
+  const saveTimerRef = useRef(null);
   useEffect(() => {
-    saveState({ agentsActifs, alertes, predictions, patterns, rapports, agentsStatuts, agentsLogs, agentData, dernierRun });
-  }, [agentsActifs, alertes, predictions, patterns, rapports, agentsStatuts, agentsLogs, agentData, dernierRun]);
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => {
+      saveState({ agentsActifs: AGENTS_PAR_DEFAUT, alertes, predictions, patterns, rapports, agentsStatuts, agentsLogs, agentData, dernierRun });
+    }, 800);
+    return () => clearTimeout(saveTimerRef.current);
+  }, [alertes, predictions, patterns, rapports, agentsStatuts, agentsLogs, agentData, dernierRun]);
 
   const marquerLu = useCallback((id) => setAlertes(prev => prev.map(a => a.id === id ? { ...a, lu: true } : a)), []);
   const marquerTousLus = useCallback(() => setAlertes(prev => prev.map(a => ({ ...a, lu: true }))), []);
-  const toggleAgent = useCallback((name) => setAgentsActifs(prev => ({ ...prev, [name]: !prev[name] })), []);
   const forcerExecution = useCallback(() => executer(true), [executer]);
+  const simulerRapport = useCallback(() =>
+    simulerRapportLundi({
+      chantiers: chantiers || [],
+      factures: factures || [],
+      devis: devis || [],
+      clients: clients || [],
+      parametres: parametres || {},
+      rapports,
+      agentData,
+      alertes,
+    }),
+  [chantiers, factures, devis, clients, parametres, rapports, agentData, alertes]);
 
   const nbNonLues = alertes.filter(a => !a.lu).length;
   const hasNouveauRapport = rapports.some(r => r.nouveau);
@@ -213,6 +328,6 @@ export default function useAgents({ chantiers, devis, factures, clients, paramet
     agentsActifs, agentsStatuts, agentsLogs, agentData,
     dernierRun, running, nbNonLues, hasNouveauRapport,
     scoreGlobal, priorites, memoire: memoireRef.current,
-    marquerLu, marquerTousLus, toggleAgent, forcerExecution,
+    marquerLu, marquerTousLus, forcerExecution, simulerRapport,
   };
 }

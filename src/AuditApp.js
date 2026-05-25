@@ -6,13 +6,13 @@ import { fmtN, calculerCA, calculerCoutsChantier, SEUILS } from './donnees';
 // ── Niveaux ──────────────────────────────────────────────────
 const NIV = { ok: 'ok', warn: 'warn', err: 'err', info: 'info' };
 const NIV_POIDS = { err: -15, warn: -5, ok: 0, info: 0 };
-const NIV_COULEUR = { ok: '#10b981', warn: '#f59e0b', err: '#ef4444', info: '#3b82f6' };
+const NIV_COULEUR = { ok: '#10b981', warn: '#f59e0b', err: '#ef4444', info: '#0d3d6e' };
 const NIV_BG = { ok: '#f0fdf4', warn: '#fffbeb', err: '#fef2f2', info: '#eff6ff' };
 function NIV_ICON({ niv, size = 14 }) {
   if (niv === 'ok')   return <CheckCircle  size={size} color="#10b981" />;
   if (niv === 'warn') return <AlertTriangle size={size} color="#f59e0b" />;
   if (niv === 'err')  return <XCircle      size={size} color="#ef4444" />;
-  return <Info size={size} color="#3b82f6" />;
+  return <Info size={size} color="#0d3d6e" />;
 }
 
 function runCheck({ id, categorie, titre, description, fn, data }) {

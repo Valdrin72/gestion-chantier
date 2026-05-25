@@ -1,14 +1,46 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef, Component } from 'react';
 import {
   Bot, AlertTriangle, FileText, TrendingUp, TrendingDown, FileBarChart2, Brain,
-  ToggleLeft, ToggleRight, CheckCircle, Clock, RefreshCw,
+  CheckCircle, Clock, RefreshCw,
   ChevronDown, ChevronRight, Activity, Zap, Users, Shield,
   BarChart2, Target, Layers, AlertCircle, Star, Eye,
 } from 'lucide-react';
 import { fmtN } from './donnees';
 import { DS } from './ds';
 
-// ── Métadonnées des 20 agents (3 tiers) ──────────────────────
+// Protège contre les valeurs non-string (action:{page,ctx}, detail:objet...)
+function safeStr(v) {
+  if (v == null) return '';
+  if (typeof v === 'string') return v;
+  if (typeof v === 'object') return v.label || v.action || v.message || '';
+  return String(v);
+}
+
+// ErrorBoundary local qui affiche le crash inline (composant + stack) sans crasher toute la page
+class TabBoundary extends Component {
+  constructor(props) { super(props); this.state = { err: null, stack: null }; }
+  static getDerivedStateFromError(err) { return { err }; }
+  componentDidCatch(err, info) {
+    this.setState({ stack: info?.componentStack });
+    console.error('[TabBoundary]', err, info?.componentStack);
+  }
+  reset = () => this.setState({ err: null, stack: null });
+  render() {
+    if (this.state.err) {
+      return (
+        <div style={{ padding: 16, background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 10 }}>
+          <div style={{ fontWeight: 700, color: '#991b1b', marginBottom: 6 }}>⚠ Erreur dans l'onglet "{this.props.label}"</div>
+          <pre style={{ fontSize: 10, color: '#991b1b', whiteSpace: 'pre-wrap', margin: '0 0 8px' }}>{String(this.state.err?.message || this.state.err)}</pre>
+          {this.state.stack && <pre style={{ fontSize: 9, color: '#6b7280', whiteSpace: 'pre-wrap', margin: '0 0 8px', maxHeight: 200, overflow: 'auto' }}>{this.state.stack.trim()}</pre>}
+          <button onClick={this.reset} style={{ fontSize: 12, padding: '4px 12px', background: '#ef4444', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer' }}>Réessayer</button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+// ── Métadonnées des agents (3 tiers) ─────────────────────────
 const AGENTS_META = [
   // ── TIER 1 — ANALYSE PURE ──────────────────────────────────
   {
@@ -18,7 +50,7 @@ const AGENTS_META = [
     frequence: 'Toutes les heures', apprentissage: false,
   },
   {
-    id: 'SuiviDevis', tier: 1, nom: 'Suivi Devis', Icon: FileText, couleur: '#3b82f6',
+    id: 'SuiviDevis', tier: 1, nom: 'Suivi Devis', Icon: FileText, couleur: '#0d3d6e',
     description: 'Détecte les devis acceptés sans facture liée après 3 jours',
     details: ['INFO < 7j sans facture', 'ATTENTION > 7j sans facture', 'Calcule le CA potentiel en attente'],
     frequence: 'Toutes les heures', apprentissage: false,
@@ -164,10 +196,35 @@ const AGENTS_META = [
     details: ['Durée moyenne réelle par type', 'Ratio durée réelle / prévue', 'Alerte si dépassement systématique > 15%'],
     frequence: 'Toutes les heures', apprentissage: true,
   },
+  // ── AGENTS SYSTÈME (invisibles dans les tiers — exécutés en interne) ────
+  {
+    id: 'PlanningCoherence', tier: 2, nom: 'Cohérence Planning', Icon: CheckCircle, couleur: '#0d9488',
+    description: 'Vérifie la cohérence des plannings : dates manquantes, durées incohérentes, équipes non affectées',
+    details: ['Chantiers "En cours" sans date de début', 'Durée 0 jour sur chantier actif', 'Équipe vide sur chantier planifié'],
+    frequence: 'Toutes les heures', apprentissage: false,
+  },
+  {
+    id: 'DerivePredictor', tier: 2, nom: 'Dérive Predictor', Icon: TrendingUp, couleur: '#7c3aed',
+    description: 'Prédit la dérive budgétaire et temporelle de chaque chantier actif grâce à l\'EAC et au RAD',
+    details: ['EAC = coût actuel / (avancement/100) × calibration historique', 'Alerte si dépassement budget projeté > 20%', 'Délai restant estimé par vitesse réelle'],
+    frequence: 'Toutes les heures', apprentissage: true,
+  },
+  {
+    id: 'RapportNaturel', tier: 3, nom: 'Rapport Naturel', Icon: FileText, couleur: '#8b5cf6',
+    description: 'Génère un résumé exécutif en langage naturel en synthétisant tous les agents Tier 1+2+3',
+    details: ['3 à 5 paragraphes automatiques', 'Action prioritaire recommandée', 'Score entreprise /100'],
+    frequence: 'Toutes les heures', apprentissage: true,
+  },
+  {
+    id: 'SentinelAgent', tier: 3, nom: 'Sentinel', Icon: Shield, couleur: '#64748b',
+    description: 'Surveillant système — vérifie les dépendances inter-agents, les violations de schéma, réactive les agents inactifs',
+    details: ['Détecte les agents inactifs → réactivation immédiate', 'Vérifie les schémas de sortie de chaque agent', 'Log silencieux — aucune alerte visible'],
+    frequence: 'Chaque cycle (dernier)', apprentissage: false,
+  },
 ];
 
 const TIER_META = {
-  1: { label: 'Tier 1 — Analyse pure', couleur: '#3b82f6', bg: '#eff6ff' },
+  1: { label: 'Tier 1 — Analyse pure', couleur: '#0d3d6e', bg: '#e8f0f9' },
   2: { label: 'Tier 2 — Intelligence croisée', couleur: '#8b5cf6', bg: '#f5f3ff' },
   3: { label: 'Tier 3 — Synthèse & Anticipation', couleur: '#10b981', bg: '#f0fdf4' },
 };
@@ -178,16 +235,32 @@ const NIVEAU_CONFIG = {
   ATTENTION: { bg: '#FEF3C7', color: '#92400E', border: '#FDE68A' },
   INFO:      { bg: '#EFF6FF', color: '#1E40AF', border: '#BFDBFE' },
 };
+const NIVEAU_ORDRE = { CRITIQUE: 0, DANGER: 1, ATTENTION: 2, INFO: 3 };
 
 export default function Agents({
-  agentsActifs, agentsStatuts, agentsLogs, alertes, predictions,
-  patterns, rapports, dernierRun, running, nbNonLues, agentData = {},
-  scoreGlobal, priorites = [], memoire = {},
-  toggleAgent, forcerExecution, marquerLu, marquerTousLus,
+  agentsActifs = {}, agentsStatuts = {}, agentsLogs = {}, alertes = [], predictions = {},
+  patterns = {}, rapports = [], dernierRun = null, running = false, nbNonLues = 0, agentData = {},
+  scoreGlobal = null, priorites = [], memoire = {},
+  forcerExecution, marquerLu, marquerTousLus, simulerRapport,
 }) {
   const [onglet, setOnglet] = useState('coach');
   const [expanded, setExpanded] = useState({});
   const [tierVisible, setTierVisible] = useState({ 1: true, 2: true, 3: true });
+  const [simRapport, setSimRapport] = useState(null);
+  const [filtreAlerte, setFiltreAlerte] = useState('TOUS');
+  const [simRunning, setSimRunning] = useState(false);
+  const simTimerRef = useRef(null);
+
+  useEffect(() => () => { if (simTimerRef.current) clearTimeout(simTimerRef.current); }, []);
+
+  const lancerSimulation = () => {
+    if (!simulerRapport) return;
+    setSimRunning(true);
+    simTimerRef.current = setTimeout(() => {
+      setSimRapport(simulerRapport());
+      setSimRunning(false);
+    }, 600);
+  };
 
   const toggleExpand = (id) => setExpanded(prev => ({ ...prev, [id]: !prev[id] }));
   const fmtDate = (ts) => ts ? new Date(ts).toLocaleString('fr-CH', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—';
@@ -200,7 +273,7 @@ export default function Agents({
     return `il y a ${Math.floor(diff / 1440)}j`;
   };
 
-  const nbActifs = AGENTS_META.filter(m => (agentsActifs || {})[m.id]).length;
+  const nbActifs = AGENTS_META.length; // Tous les agents sont toujours actifs
   const alertesNonLues = alertes.filter(a => !a.lu);
 
   return (
@@ -209,7 +282,7 @@ export default function Agents({
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
         <div>
           <div className="page-title-main" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <Bot size={24} strokeWidth={1.8} style={{ color: '#3b82f6' }} />
+            <Bot size={24} strokeWidth={1.8} style={{ color: '#0d3d6e' }} />
             Agents IA — Système Multi-Agents
           </div>
           <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: '4px 0 0' }}>
@@ -245,13 +318,14 @@ export default function Agents({
         {[
           ['coach', `Coach Directeur${priorites.length > 0 ? ` (${priorites.length})` : ''}`],
           ['alertes', `Alertes ${alertesNonLues.length > 0 ? `(${alertesNonLues.length})` : ''}`],
-          ['agents', 'Agents (20)'],
+          ['diagnostics', `Diagnostics${(agentData?.diagnostics?.length) > 0 ? ` (${agentData.diagnostics.length})` : ''}`],
+          ['agents', `Agents (${AGENTS_META.length})`],
           ['predictions', 'Prédictions'],
           ['memoire', 'Mémoire'],
           ['rapports', 'Rapports'],
         ].map(([id, label]) => (
           <button key={id} onClick={() => setOnglet(id)}
-            style={{ background: onglet === id ? '#2563eb' : 'transparent', border: 'none', color: onglet === id ? '#fff' : 'var(--text-muted)', borderRadius: 8, padding: '6px 14px', cursor: 'pointer', fontSize: 12, fontWeight: 600, fontFamily: 'inherit' }}>
+            style={{ background: onglet === id ? '#0d3d6e' : 'transparent', border: 'none', color: onglet === id ? '#fff' : 'var(--text-muted)', borderRadius: 8, padding: '6px 14px', cursor: 'pointer', fontSize: 12, fontWeight: 600, fontFamily: 'inherit' }}>
             {label}
           </button>
         ))}
@@ -261,7 +335,7 @@ export default function Agents({
           ONGLET COACH DIRECTEUR
       ══════════════════════════════════════════════════════ */}
       {onglet === 'coach' && (
-        <div>
+        <TabBoundary label="Coach Directeur"><div>
           {priorites.length === 0 ? (
             <div style={{ ...DS.card, textAlign: 'center', padding: '48px 20px', color: 'var(--text-muted)', fontSize: 13 }}>
               <Bot size={40} strokeWidth={1.2} style={{ marginBottom: 12, opacity: 0.4, display: 'block', margin: '0 auto 12px' }} />
@@ -283,7 +357,7 @@ export default function Agents({
                       {scoreGlobal >= 80 ? 'Bonne santé d\'entreprise' : scoreGlobal >= 60 ? 'Situation à surveiller' : 'Intervention requise'}
                     </div>
                     <div style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-                      Basé sur l'analyse de 20 agents · {alertes.filter(a => !a.lu).length} alertes non traitées · Synthèse en temps réel
+                      Basé sur l'analyse de {AGENTS_META.length} agents · {alertes.filter(a => !a.lu).length} alertes non traitées · Synthèse en temps réel
                     </div>
                   </div>
                 </div>
@@ -293,17 +367,17 @@ export default function Agents({
               <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', color: 'var(--text-muted)', marginBottom: 12 }}>Vos {priorites.length} priorités d'action</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                 {priorites.map((p, i) => (
-                  <div key={i} style={{ ...DS.card, padding: '16px 20px', display: 'flex', gap: 16, alignItems: 'flex-start', borderLeft: `4px solid ${i === 0 ? '#ef4444' : i === 1 ? '#f59e0b' : '#3b82f6'}` }}>
-                    <div style={{ width: 32, height: 32, borderRadius: '50%', background: i === 0 ? '#fee2e2' : i === 1 ? '#fef3c7' : '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                      {i === 0 ? <AlertTriangle size={15} color="#ef4444" /> : i === 1 ? <AlertCircle size={15} color="#f59e0b" /> : <Target size={15} color="#3b82f6" />}
+                  <div key={i} style={{ ...DS.card, padding: '16px 20px', display: 'flex', gap: 16, alignItems: 'flex-start', borderLeft: `4px solid ${i === 0 ? '#ef4444' : i === 1 ? '#f59e0b' : '#0d3d6e'}` }}>
+                    <div style={{ width: 32, height: 32, borderRadius: '50%', background: i === 0 ? '#fee2e2' : i === 1 ? '#fef3c7' : '#e8f0f9', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      {i === 0 ? <AlertTriangle size={15} color="#ef4444" /> : i === 1 ? <AlertCircle size={15} color="#f59e0b" /> : <Target size={15} color="#0d3d6e" />}
                     </div>
                     <div style={{ flex: 1 }}>
                       <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 5, flexWrap: 'wrap' }}>
-                        <span style={{ background: i === 0 ? '#fee2e2' : i === 1 ? '#fef3c7' : '#eff6ff', color: i === 0 ? '#991b1b' : i === 1 ? '#92400e' : '#1e40af', borderRadius: 20, padding: '2px 10px', fontSize: 10, fontWeight: 700 }}>{p.categorie}</span>
-                        <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Impact : {p.impact}</span>
+                        <span style={{ background: i === 0 ? '#fee2e2' : i === 1 ? '#fef3c7' : '#e8f0f9', color: i === 0 ? '#991b1b' : i === 1 ? '#92400e' : '#0d3d6e', borderRadius: 20, padding: '2px 10px', fontSize: 10, fontWeight: 700 }}>{safeStr(p.categorie)}</span>
+                        <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Impact : {safeStr(p.impact)}</span>
                       </div>
-                      <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-primary)', marginBottom: 4 }}>{p.action}</div>
-                      <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{p.detail}</div>
+                      <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-primary)', marginBottom: 4 }}>{safeStr(p.action)}</div>
+                      <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{safeStr(p.detail)}</div>
                     </div>
                     <div style={{ fontSize: 18, fontWeight: 900, color: 'var(--text-muted)', flexShrink: 0 }}>#{i + 1}</div>
                   </div>
@@ -314,7 +388,7 @@ export default function Agents({
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginTop: 20 }}>
                 {[
                   { label: 'Trésorerie J+30', val: agentData?.TresoreriePredictor?.solde30 !== undefined ? `CHF ${fmtN(agentData.TresoreriePredictor.solde30)}` : '—', couleur: (agentData?.TresoreriePredictor?.solde30 || 0) >= 0 ? '#10b981' : '#ef4444', sub: 'Solde net prévu' },
-                  { label: 'CA Projeté Année', val: agentData?.ProjectionAnnuelle?.caProjecte ? `CHF ${fmtN(agentData.ProjectionAnnuelle.caProjecte)}` : '—', couleur: '#3b82f6', sub: `${agentData?.ProjectionAnnuelle?.txAtteinte || '—'}% de l'objectif` },
+                  { label: 'CA Projeté Année', val: agentData?.ProjectionAnnuelle?.caProjecte ? `CHF ${fmtN(agentData.ProjectionAnnuelle.caProjecte)}` : '—', couleur: '#0d3d6e', sub: `${agentData?.ProjectionAnnuelle?.txAtteinte || '—'}% de l'objectif` },
                   { label: 'À Facturer Maintenant', val: agentData?.OptimisationFacturation?.totalFacturable ? `CHF ${fmtN(agentData.OptimisationFacturation.totalFacturable)}` : '—', couleur: '#10b981', sub: `${agentData?.OptimisationFacturation?.opportunites?.length || 0} chantier(s)` },
                   { label: 'DSO Moyen', val: agentData?.DSOAnalyse?.dsoMoyen !== undefined ? `${agentData.DSOAnalyse.dsoMoyen} jours` : '—', couleur: (agentData?.DSOAnalyse?.dsoMoyen || 0) <= 30 ? '#10b981' : '#ef4444', sub: 'Standard BTP : 30j' },
                   { label: 'Qualité Données', val: agentData?.AnomaliesDonnees?.score !== undefined ? `${agentData.AnomaliesDonnees.score}/100` : '—', couleur: (agentData?.AnomaliesDonnees?.score || 0) >= 80 ? '#10b981' : '#f59e0b', sub: `${agentData?.AnomaliesDonnees?.nbAnomalies || 0} anomalie(s)` },
@@ -322,36 +396,74 @@ export default function Agents({
                 ].map(item => (
                   <div key={item.label} style={{ ...DS.card, padding: '14px 16px' }}>
                     <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 5 }}>{item.label}</div>
-                    <div style={{ fontSize: 20, fontWeight: 900, color: item.couleur, letterSpacing: '-0.5px', marginBottom: 2 }}>{item.val}</div>
-                    <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{item.sub}</div>
+                    <div style={{ fontSize: 20, fontWeight: 900, color: item.couleur, letterSpacing: '-0.5px', marginBottom: 2 }}>{safeStr(item.val)}</div>
+                    <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{safeStr(item.sub)}</div>
                   </div>
                 ))}
               </div>
             </>
           )}
-        </div>
+        </div></TabBoundary>
       )}
 
       {/* ══════════════════════════════════════════════════════
           ONGLET ALERTES
       ══════════════════════════════════════════════════════ */}
       {onglet === 'alertes' && (
-        <div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 8 }}>
+        <TabBoundary label="Alertes"><div>
+          {/* Header : compteur + bouton tout lire */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
             <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>{alertes.length} alerte{alertes.length !== 1 ? 's' : ''} · {alertesNonLues.length} non lue{alertesNonLues.length !== 1 ? 's' : ''}</span>
             {alertesNonLues.length > 0 && (
               <button onClick={marquerTousLus} style={{ ...DS.btnGhost, fontSize: 12, padding: '5px 12px' }}>Tout marquer comme lu</button>
             )}
           </div>
+          {/* Filtres par niveau */}
+          {alertes.length > 0 && (
+            <div style={{ display: 'flex', gap: 6, marginBottom: 16, flexWrap: 'wrap' }}>
+              {['TOUS', 'CRITIQUE', 'DANGER', 'ATTENTION', 'INFO'].map(niv => {
+                const count = niv === 'TOUS' ? alertes.length : alertes.filter(a => a.niveau === niv).length;
+                const cfg = niv === 'TOUS' ? null : NIVEAU_CONFIG[niv];
+                const actif = filtreAlerte === niv;
+                return (
+                  <button key={niv} onClick={() => setFiltreAlerte(niv)}
+                    style={{
+                      fontSize: 11, fontWeight: 700, padding: '4px 12px', borderRadius: 20, cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s',
+                      background: actif ? (cfg ? cfg.bg : DS.brand.soft) : 'transparent',
+                      color: actif ? (cfg ? cfg.color : DS.brand.secondary) : 'var(--text-muted)',
+                      border: actif ? `1px solid ${cfg ? cfg.border : 'transparent'}` : '1px solid var(--border)',
+                    }}>
+                    {niv}{count > 0 && niv !== 'TOUS' ? ` (${count})` : niv === 'TOUS' ? ` (${count})` : ''}
+                  </button>
+                );
+              })}
+            </div>
+          )}
           {alertes.length === 0 ? (
             <div style={{ ...DS.card, textAlign: 'center', padding: '40px 20px' }}>
               <CheckCircle size={32} strokeWidth={1.5} style={{ color: '#10b981', display: 'block', margin: '0 auto 12px' }} />
               <div style={{ fontWeight: 600, marginBottom: 4 }}>Aucune alerte active</div>
               <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Tous vos chantiers sont dans les normes</div>
             </div>
-          ) : (
+          ) : (() => {
+            const alertesFiltrees = (filtreAlerte === 'TOUS' ? alertes : alertes.filter(a => a.niveau === filtreAlerte))
+              .slice()
+              .sort((a, b) => {
+                const oa = NIVEAU_ORDRE[a.niveau] ?? 99;
+                const ob = NIVEAU_ORDRE[b.niveau] ?? 99;
+                if (oa !== ob) return oa - ob;
+                return (b.timestamp || 0) - (a.timestamp || 0);
+              });
+            if (alertesFiltrees.length === 0) {
+              return (
+                <div style={{ ...DS.card, textAlign: 'center', padding: '32px 20px', color: 'var(--text-muted)', fontSize: 13 }}>
+                  Aucune alerte de niveau <strong>{filtreAlerte}</strong>
+                </div>
+              );
+            }
+            return (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {alertes.map(a => {
+              {alertesFiltrees.map(a => {
                 const niv = NIVEAU_CONFIG[a.niveau] || NIVEAU_CONFIG.INFO;
                 const agentMeta = AGENTS_META.find(m => m.id === a.agent);
                 return (
@@ -362,24 +474,111 @@ export default function Agents({
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
                         <span style={{ background: niv.bg, color: niv.color, borderRadius: 20, padding: '2px 8px', fontSize: 10, fontWeight: 700 }}>{a.niveau}</span>
                         {agentMeta && <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{agentMeta.nom}</span>}
+                        {a.montant && <span style={{ fontSize: 10, background: '#fef3c7', color: '#92400e', border: '1px solid #fde68a', borderRadius: 20, padding: '1px 8px', fontWeight: 700 }}>CHF {fmtN(Math.abs(Math.round(a.montant)))}</span>}
                         <span style={{ fontSize: 11, color: 'var(--text-muted)', marginLeft: 'auto' }}>{fmtDiff(a.timestamp)}</span>
                       </div>
-                      <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--text-primary)', marginBottom: 2 }}>{a.message}</div>
-                      {a.detail && <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{a.detail}</div>}
+                      <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--text-primary)', marginBottom: 2 }}>{safeStr(a.message)}</div>
+                      {a.detail && <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: a.action ? 6 : 0 }}>{safeStr(a.detail)}</div>}
+                      {a.action && typeof a.action === 'string' && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6 }}>
+                          <Zap size={11} style={{ color: niv.color, flexShrink: 0 }} />
+                          <span style={{ fontSize: 11, fontWeight: 600, color: niv.color, fontStyle: 'italic' }}>{a.action}</span>
+                        </div>
+                      )}
+                      {a.causePrincipale && (
+                        <div style={{ display: 'flex', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
+                          {a.causePrincipale === 'main_overrun' && <span style={{ fontSize: 10, background: '#fee2e2', color: '#991b1b', border: '1px solid #fecaca', borderRadius: 20, padding: '1px 8px', fontWeight: 600 }}>MO dépassé</span>}
+                          {a.causePrincipale === 'underpriced' && <span style={{ fontSize: 10, background: '#fef3c7', color: '#92400e', border: '1px solid #fde68a', borderRadius: 20, padding: '1px 8px', fontWeight: 600 }}>Sous-tarifé</span>}
+                          {a.causePrincipale === 'delays' && <span style={{ fontSize: 10, background: '#eff6ff', color: '#1e40af', border: '1px solid #bfdbfe', borderRadius: 20, padding: '1px 8px', fontWeight: 600 }}>Retard planning</span>}
+                          {a.causePrincipale === 'materials' && <span style={{ fontSize: 10, background: '#f0fdf4', color: '#065f46', border: '1px solid #bbf7d0', borderRadius: 20, padding: '1px 8px', fontWeight: 600 }}>Matériaux dépassés</span>}
+                          {a.causePrincipale === 'multi' && <span style={{ fontSize: 10, background: '#fdf2f8', color: '#701a75', border: '1px solid #f5d0fe', borderRadius: 20, padding: '1px 8px', fontWeight: 600 }}>Causes multiples</span>}
+                        </div>
+                      )}
                     </div>
                   </div>
                 );
               })}
             </div>
-          )}
-        </div>
+            );
+          })()}
+        </div></TabBoundary>
       )}
 
       {/* ══════════════════════════════════════════════════════
-          ONGLET AGENTS (20 agents organisés par tiers)
+          ONGLET DIAGNOSTICS — Analyse racine par chantier
+      ══════════════════════════════════════════════════════ */}
+      {onglet === 'diagnostics' && (
+        <TabBoundary label="Diagnostics"><div>
+          {!(agentData?.diagnostics?.length) ? (
+            <div style={{ ...DS.card, textAlign: 'center', padding: '40px 20px' }}>
+              <CheckCircle size={32} strokeWidth={1.5} style={{ color: '#10b981', display: 'block', margin: '0 auto 12px' }} />
+              <div style={{ fontWeight: 600, marginBottom: 4 }}>Aucun chantier en difficulté</div>
+              <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>L'agent DiagnosticRaison analysera les chantiers à problème lors de la prochaine exécution</div>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {(agentData.diagnostics || []).map(d => {
+                const gravColor = d.score >= 70 ? '#991b1b' : d.score >= 40 ? '#92400e' : '#065f46';
+                const gravBg = d.score >= 70 ? '#fee2e2' : d.score >= 40 ? '#fef3c7' : '#f0fdf4';
+                return (
+                  <div key={d.chantierId} style={{ ...DS.card, padding: '18px 20px', borderLeft: `4px solid ${gravColor}` }}>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 10, gap: 12, flexWrap: 'wrap' }}>
+                      <div>
+                        <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-primary)', marginBottom: 3 }}>{d.nom}</div>
+                        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                          {d.causePrincipale === 'main_overrun' && <span style={{ fontSize: 10, background: '#fee2e2', color: '#991b1b', border: '1px solid #fecaca', borderRadius: 20, padding: '1px 8px', fontWeight: 700 }}>MO dépassé</span>}
+                          {d.causePrincipale === 'underpriced' && <span style={{ fontSize: 10, background: '#fef3c7', color: '#92400e', border: '1px solid #fde68a', borderRadius: 20, padding: '1px 8px', fontWeight: 700 }}>Sous-tarifé</span>}
+                          {d.causePrincipale === 'delays' && <span style={{ fontSize: 10, background: '#eff6ff', color: '#1e40af', border: '1px solid #bfdbfe', borderRadius: 20, padding: '1px 8px', fontWeight: 700 }}>Retard planning</span>}
+                          {d.causePrincipale === 'materials' && <span style={{ fontSize: 10, background: '#f0fdf4', color: '#065f46', border: '1px solid #bbf7d0', borderRadius: 20, padding: '1px 8px', fontWeight: 700 }}>Matériaux dépassés</span>}
+                          {d.causePrincipale === 'multi' && <span style={{ fontSize: 10, background: '#fdf2f8', color: '#701a75', border: '1px solid #f5d0fe', borderRadius: 20, padding: '1px 8px', fontWeight: 700 }}>Causes multiples</span>}
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                        <div style={{ background: gravBg, color: gravColor, borderRadius: 12, padding: '6px 14px', textAlign: 'center' }}>
+                          <div style={{ fontSize: 20, fontWeight: 900 }}>{d.score}</div>
+                          <div style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase' }}>Gravité</div>
+                        </div>
+                        {d.impactCHF > 0 && (
+                          <div style={{ background: '#fff7ed', color: '#92400e', border: '1px solid #fed7aa', borderRadius: 12, padding: '6px 14px', textAlign: 'center' }}>
+                            <div style={{ fontSize: 16, fontWeight: 900 }}>CHF {fmtN(Math.round(d.impactCHF))}</div>
+                            <div style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase' }}>Impact potentiel</div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    {d.explication && (
+                      <div style={{ fontSize: 12, color: 'var(--text-secondary)', background: 'var(--bg-glass-2)', borderRadius: 8, padding: '8px 12px', marginBottom: 10, lineHeight: 1.5 }}>{safeStr(d.explication)}</div>
+                    )}
+                    {d.details && (
+                      <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: d.actionCorrective ? 10 : 0 }}>
+                        {d.details.moReel != null && <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>MO réel: <strong style={{ color: d.details.moReel > (d.details.moBudget || 50) ? '#ef4444' : '#10b981' }}>{Math.round(d.details.moReel)}%</strong> du CA {d.details.moBudget != null ? `(budget: ${Math.round(d.details.moBudget)}%)` : ''}</div>}
+                        {d.details.moEcart != null && d.details.moEcart !== 0 && <div style={{ fontSize: 11, color: '#ef4444', fontWeight: 600 }}>Écart MO: CHF {fmtN(Math.abs(Math.round(d.details.moEcart)))}</div>}
+                        {d.details.nbJoursEcart != null && d.details.nbJoursEcart !== 0 && <div style={{ fontSize: 11, color: '#f59e0b', fontWeight: 600 }}>Retard: {d.details.nbJoursEcart}j</div>}
+                        {d.details.eacVsCA != null && d.details.eacVsCA > 0 && <div style={{ fontSize: 11, color: '#ef4444', fontWeight: 600 }}>EAC: +{Math.round(d.details.eacVsCA)}% vs CA</div>}
+                      </div>
+                    )}
+                    {d.actionCorrective && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8, padding: '8px 12px', background: `${gravColor}10`, borderRadius: 8, border: `1px solid ${gravColor}25` }}>
+                        <Zap size={13} style={{ color: gravColor, flexShrink: 0 }} />
+                        <div>
+                          <div style={{ fontSize: 10, fontWeight: 700, color: gravColor, textTransform: 'uppercase', letterSpacing: '0.3px' }}>Action recommandée</div>
+                          <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)', marginTop: 2 }}>{safeStr(d.actionCorrective)}</div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div></TabBoundary>
+      )}
+
+      {/* ══════════════════════════════════════════════════════
+          ONGLET AGENTS ({AGENTS_META.length} agents organisés par tiers)
       ══════════════════════════════════════════════════════ */}
       {onglet === 'agents' && (
-        <div>
+        <TabBoundary label="Agents"><div>
           {[1, 2, 3].map(tier => {
             const agentsDuTier = AGENTS_META.filter(a => a.tier === tier);
             const meta = TIER_META[tier];
@@ -398,7 +597,6 @@ export default function Agents({
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                     {agentsDuTier.map(agent => {
                       const statut = agentsStatuts[agent.id] || {};
-                      const actif = (agentsActifs || {})[agent.id] !== false;
                       const logs = agentsLogs[agent.id] || [];
                       const isExpanded = expanded[agent.id];
                       const nbRes = (alertes || []).filter(a => a.agent === agent.id).length;
@@ -413,7 +611,6 @@ export default function Agents({
                               <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 3 }}>
                                 <span style={{ fontWeight: 700, fontSize: 14 }}>{agent.nom}</span>
                                 {agent.apprentissage && <span style={{ background: '#f0fdf4', color: '#15803d', border: '1px solid #bbf7d0', borderRadius: 20, padding: '1px 8px', fontSize: 10, fontWeight: 700 }}>APPREND</span>}
-                                {!actif && <span style={{ background: 'var(--bg-glass-2)', color: 'var(--text-muted)', borderRadius: 20, padding: '1px 8px', fontSize: 10, fontWeight: 700 }}>DÉSACTIVÉ</span>}
                                 {statut.erreur && <span style={{ background: '#fee2e2', color: '#991b1b', borderRadius: 20, padding: '1px 8px', fontSize: 10, fontWeight: 700 }}>ERREUR</span>}
                                 {nbRes > 0 && <span style={{ background: agent.couleur + '18', color: agent.couleur, borderRadius: 20, padding: '1px 8px', fontSize: 10, fontWeight: 700 }}>{nbRes} alerte{nbRes > 1 ? 's' : ''}</span>}
                               </div>
@@ -425,10 +622,6 @@ export default function Agents({
                               </div>
                             </div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-                              <button onClick={() => toggleAgent(agent.id)} title={actif ? 'Désactiver' : 'Activer'}
-                                style={{ background: 'none', border: 'none', cursor: 'pointer', color: actif ? agent.couleur : 'var(--text-muted)', padding: 0, display: 'flex', alignItems: 'center' }}>
-                                {actif ? <ToggleRight size={28} strokeWidth={1.5} /> : <ToggleLeft size={28} strokeWidth={1.5} />}
-                              </button>
                               <button onClick={() => toggleExpand(agent.id)}
                                 style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 4 }}>
                                 {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
@@ -458,8 +651,8 @@ export default function Agents({
                                   <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', color: 'var(--text-muted)', marginBottom: 8 }}>10 dernières exécutions</div>
                                   {logs.length === 0 ? (
                                     <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0 }}>Aucune exécution</p>
-                                  ) : logs.map((log, i) => (
-                                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0', borderBottom: '1px solid var(--border)', fontSize: 11 }}>
+                                  ) : logs.map((log) => (
+                                    <div key={log.timestamp} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0', borderBottom: '1px solid var(--border)', fontSize: 11 }}>
                                       {log.erreur ? <AlertTriangle size={10} style={{ color: '#ef4444' }} /> : <CheckCircle size={10} style={{ color: '#10b981' }} />}
                                       <span style={{ color: 'var(--text-secondary)', flex: 1 }}>{fmtDate(log.timestamp)}</span>
                                       <span style={{ color: 'var(--text-muted)' }}>{log.dureeMs}ms</span>
@@ -480,14 +673,14 @@ export default function Agents({
               </div>
             );
           })}
-        </div>
+        </div></TabBoundary>
       )}
 
       {/* ══════════════════════════════════════════════════════
           ONGLET PRÉDICTIONS
       ══════════════════════════════════════════════════════ */}
       {onglet === 'predictions' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+        <TabBoundary label="Prédictions"><div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
           {/* Trésorerie */}
           {Object.keys(predictions).length > 0 && (
             <div>
@@ -517,7 +710,7 @@ export default function Agents({
               <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 12 }}>Projection Annuelle</div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
                 {[
-                  { label: 'CA Réalisé YTD', val: `CHF ${fmtN(agentData.ProjectionAnnuelle.caRealise || 0)}`, couleur: '#3b82f6', sub: `Marge : ${Number.isFinite(agentData.ProjectionAnnuelle.margeYTD) ? `${Math.round(agentData.ProjectionAnnuelle.margeYTD * 10) / 10}` : '—'}%` },
+                  { label: 'CA Réalisé YTD', val: `CHF ${fmtN(agentData.ProjectionAnnuelle.caRealise || 0)}`, couleur: '#0d3d6e', sub: `Marge : ${Number.isFinite(agentData.ProjectionAnnuelle.margeYTD) ? `${Math.round(agentData.ProjectionAnnuelle.margeYTD * 10) / 10}` : '—'}%` },
                   { label: 'CA Projeté Fin Année', val: `CHF ${fmtN(agentData.ProjectionAnnuelle.caProjecte || 0)}`, couleur: '#10b981', sub: `Moyenne mensuelle CHF ${fmtN(agentData.ProjectionAnnuelle.moyenneMensuelle || 0)}` },
                   { label: 'Atteinte Objectif', val: agentData.ProjectionAnnuelle.txAtteinte !== null ? `${agentData.ProjectionAnnuelle.txAtteinte}%` : 'N/A', couleur: (agentData.ProjectionAnnuelle.txAtteinte || 0) >= 100 ? '#10b981' : '#f59e0b', sub: agentData.ProjectionAnnuelle.objectifCA ? `Objectif CHF ${fmtN(agentData.ProjectionAnnuelle.objectifCA)}` : 'Définir dans Analyse' },
                 ].map(item => (
@@ -538,7 +731,7 @@ export default function Agents({
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
                 {agentData.Saisonnierte.prochainsMois.map((m, i) => (
                   <div key={i} style={{ ...DS.card, padding: '16px 18px', borderTop: `3px solid ${m.intensite === 'fort' ? '#10b981' : m.intensite === 'moyen' ? '#f59e0b' : '#ef4444'}` }}>
-                    <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 6 }}>{m.mois}</div>
+                    <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 6 }}>{safeStr(m.mois)}</div>
                     <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 4 }}>{m.count} chantier(s) historiquement</div>
                     <div style={{ fontSize: 11, fontWeight: 700, color: m.intensite === 'fort' ? '#10b981' : m.intensite === 'moyen' ? '#f59e0b' : '#6b7280', textTransform: 'uppercase' }}>
                       {m.intensite === 'fort' ? <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><TrendingUp size={11} /> Période forte</span> : m.intensite === 'creux' ? <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><TrendingDown size={11} /> Période creuse</span> : <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><BarChart2 size={11} /> Période normale</span>}
@@ -563,7 +756,7 @@ export default function Agents({
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                           <div style={{ width: 8, height: 8, borderRadius: '50%', background: couleur, flexShrink: 0 }} />
                           <span style={{ fontWeight: 700, fontSize: 13, color: 'var(--text-primary)' }}>{r.nom}</span>
-                          <span style={{ fontSize: 11, fontWeight: 700, color: couleur, background: `${couleur}18`, padding: '2px 8px', borderRadius: 20 }}>{r.statutTexte}</span>
+                          <span style={{ fontSize: 11, fontWeight: 700, color: couleur, background: `${couleur}18`, padding: '2px 8px', borderRadius: 20 }}>{safeStr(r.statutTexte)}</span>
                         </div>
                         <div style={{ display: 'flex', gap: 16, fontSize: 12, color: 'var(--text-muted)', flexWrap: 'wrap' }}>
                           <span>Avancement <strong style={{ color: 'var(--text-primary)' }}>{r.avancement != null ? r.avancement : '—'}%</strong></span>
@@ -577,7 +770,7 @@ export default function Agents({
                               <Brain size={9} /> Calibré mémoire ({r.nbHistorique} chantiers)
                             </span>
                           )}
-                          <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>Confiance {r.confiance}</span>
+                          <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>Confiance {safeStr(r.confiance)}</span>
                         </div>
                       </div>
                       {/* Barre EAC vs CA */}
@@ -593,14 +786,14 @@ export default function Agents({
               </div>
             </div>
           )}
-        </div>
+        </div></TabBoundary>
       )}
 
       {/* ══════════════════════════════════════════════════════
           ONGLET MÉMOIRE
       ══════════════════════════════════════════════════════ */}
       {onglet === 'memoire' && (
-        <div>
+        <TabBoundary label="Mémoire"><div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20, padding: '12px 16px', background: 'linear-gradient(135deg,#f0fdf4,#dcfce7)', border: '1px solid #86efac', borderRadius: 12 }}>
             <Brain size={18} color="#15803d" />
             <div>
@@ -683,14 +876,14 @@ export default function Agents({
               );
             })}
           </div>
-        </div>
+        </div></TabBoundary>
       )}
 
       {/* ══════════════════════════════════════════════════════
           ONGLET RAPPORTS
       ══════════════════════════════════════════════════════ */}
       {onglet === 'rapports' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+        <TabBoundary label="Rapports"><div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
 
           {/* ── Rapport IA en langage naturel ── */}
           {agentData?.RapportNaturel?.paras?.length > 0 ? (
@@ -701,7 +894,7 @@ export default function Agents({
                   <Bot size={20} color="#8b5cf6" />
                   <div>
                     <div style={{ fontWeight: 800, fontSize: 14, color: 'var(--text-primary)' }}>Résumé exécutif</div>
-                    <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{agentData.RapportNaturel.date}</div>
+                    <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{typeof agentData.RapportNaturel.date === 'string' ? agentData.RapportNaturel.date : ''}</div>
                   </div>
                   {agentData.RapportNaturel.scoreEntreprise !== null && (
                     <div style={{ marginLeft: 'auto', textAlign: 'center' }}>
@@ -718,15 +911,15 @@ export default function Agents({
                       <div style={{ width: 24, height: 24, borderRadius: '50%', background: '#8b5cf614', border: '1px solid #8b5cf630', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: '#8b5cf6', flexShrink: 0 }}>
                         {i + 1}
                       </div>
-                      <p style={{ margin: 0, fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.7 }}>{para}</p>
+                      <p style={{ margin: 0, fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.7 }}>{typeof para === 'string' ? para : ''}</p>
                     </div>
                   ))}
                 </div>
                 {agentData.RapportNaturel.actionPrincipale && (
                   <div style={{ marginTop: 20, padding: '12px 16px', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 10 }}>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: '#1d4ed8', textTransform: 'uppercase', marginBottom: 4 }}>Action prioritaire recommandée</div>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: '#1e40af' }}>{agentData.RapportNaturel.actionPrincipale.icone} {agentData.RapportNaturel.actionPrincipale.action}</div>
-                    <div style={{ fontSize: 12, color: '#3b82f6', marginTop: 2 }}>{agentData.RapportNaturel.actionPrincipale.detail}</div>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: '#0d3d6e', textTransform: 'uppercase', marginBottom: 4 }}>Action prioritaire recommandée</div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: '#0d3d6e' }}>{safeStr(agentData.RapportNaturel.actionPrincipale.icone)} {safeStr(agentData.RapportNaturel.actionPrincipale.action)}</div>
+                    <div style={{ fontSize: 12, color: '#0d3d6e', marginTop: 2 }}>{safeStr(agentData.RapportNaturel.actionPrincipale.detail)}</div>
                   </div>
                 )}
               </div>
@@ -736,6 +929,165 @@ export default function Agents({
               Rapport IA non encore généré — forcez une exécution des agents pour obtenir votre résumé exécutif
             </div>
           )}
+
+          {/* ── Briefing intelligent lundi matin ── */}
+          <div style={{ ...DS.card, padding: '22px 26px', borderLeft: '4px solid #8b5cf6' }}>
+            {/* En-tête */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: simRapport ? 22 : 0 }}>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <FileBarChart2 size={18} color="#8b5cf6" />
+                  <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-primary)' }}>Briefing intelligent — Lundi matin</span>
+                  <span style={{ background: '#f3e8ff', color: '#7c3aed', border: '1px solid #ddd6fe', borderRadius: 20, padding: '1px 8px', fontSize: 10, fontWeight: 700 }}>IA · PRÉDICTIF</span>
+                </div>
+                <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--text-muted)' }}>
+                  Apprend de l'historique · anticipe les risques · recommande les actions prioritaires
+                </p>
+              </div>
+              <button onClick={lancerSimulation} disabled={simRunning}
+                style={{ ...DS.btnPrimary, display: 'flex', alignItems: 'center', gap: 7, opacity: simRunning ? 0.7 : 1, fontSize: 13 }}>
+                <RefreshCw size={13} style={{ animation: simRunning ? 'spin 1s linear infinite' : 'none' }} />
+                {simRunning ? 'Analyse en cours...' : simRapport ? 'Actualiser' : 'Lancer l\'analyse'}
+              </button>
+            </div>
+
+            {simRapport && (() => {
+              const s = simRapport;
+              const scoreCouleur = s.scoreSemaine >= 75 ? '#10b981' : s.scoreSemaine >= 50 ? '#f59e0b' : '#ef4444';
+              const scoreLabel  = s.scoreSemaine >= 75 ? 'Semaine favorable' : s.scoreSemaine >= 50 ? 'Vigilance requise' : 'Semaine difficile';
+              const fmtTendance = (pct) => pct === null ? null : pct >= 0 ? `+${pct}%` : `${pct}%`;
+              const couleurTendance = (pct) => pct === null ? 'var(--text-muted)' : pct >= 0 ? '#10b981' : '#ef4444';
+              return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+
+                  {/* Score + date */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '14px 18px', background: scoreCouleur + '0d', border: `1px solid ${scoreCouleur}30`, borderRadius: 12 }}>
+                    <div style={{ textAlign: 'center', minWidth: 64 }}>
+                      <div style={{ fontSize: 38, fontWeight: 900, color: scoreCouleur, lineHeight: 1 }}>{s.scoreSemaine}</div>
+                      <div style={{ fontSize: 9, fontWeight: 700, color: scoreCouleur, textTransform: 'uppercase', letterSpacing: '0.6px' }}>/100</div>
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--text-primary)' }}>{scoreLabel}</div>
+                      <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
+                        {s.dateLundi} à 7h30 · dans {s.joursRestants} jour{s.joursRestants > 1 ? 's' : ''}
+                        {s.nbRapportsHistoriques > 0 && <span style={{ marginLeft: 8 }}>· Basé sur {s.nbRapportsHistoriques} semaine{s.nbRapportsHistoriques > 1 ? 's' : ''} d'historique</span>}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* KPIs avec tendances */}
+                  <div>
+                    <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', color: 'var(--text-muted)', marginBottom: 10 }}>Cette semaine → Projection lundi</div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10 }}>
+                      {[
+                        { label: 'Heures saisies', val: `${s.heuresSaisies}h`, proj: `→ ${s.projectionHeures}h`, tendance: s.tendanceHeures, moy: s.moyenneHeures ? `Moy. ${s.moyenneHeures}h` : null, couleur: '#0d3d6e' },
+                        { label: 'CA facturé', val: `CHF ${fmtN(s.caFacture)}`, proj: `→ CHF ${fmtN(s.projectionCA)}`, tendance: s.tendanceCA, moy: s.moyenneCA ? `Moy. CHF ${fmtN(s.moyenneCA)}` : null, couleur: '#10b981' },
+                        { label: 'Chantiers actifs', val: s.nbActifs, proj: null, tendance: null, moy: null, couleur: '#f59e0b' },
+                        { label: 'En retard', val: s.nbEnRetard, proj: null, tendance: null, moy: null, couleur: s.nbEnRetard > 0 ? '#ef4444' : '#10b981' },
+                      ].map(m => (
+                        <div key={m.label} style={{ background: 'var(--bg-glass)', border: '1px solid var(--border)', borderRadius: 10, padding: '12px 14px' }}>
+                          <div style={{ fontSize: 9, color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', marginBottom: 5 }}>{m.label}</div>
+                          <div style={{ fontSize: 20, fontWeight: 800, color: m.couleur, lineHeight: 1 }}>{m.val}</div>
+                          {m.proj && <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 3 }}>{m.proj}</div>}
+                          {m.tendance !== null && m.tendance !== undefined && (
+                            <div style={{ fontSize: 10, fontWeight: 700, color: couleurTendance(m.tendance), marginTop: 2 }}>
+                              {fmtTendance(m.tendance)} vs historique
+                            </div>
+                          )}
+                          {m.moy && <div style={{ fontSize: 9, color: 'var(--text-muted)', marginTop: 2 }}>{m.moy}</div>}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Actions avant lundi */}
+                  {s.actionsAvantLundi?.length > 0 && (
+                    <div>
+                      <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', color: 'var(--text-muted)', marginBottom: 10 }}>Actions prioritaires avant lundi</div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+                        {s.actionsAvantLundi.map((a, i) => {
+                          const pColors = { URGENT: { bg: '#fef2f2', border: '#fecaca', text: '#991b1b', badge: '#ef4444' }, IMPORTANT: { bg: '#fffbeb', border: '#fde68a', text: '#92400e', badge: '#f59e0b' }, NOTE: { bg: '#f0fdf4', border: '#bbf7d0', text: '#166534', badge: '#10b981' } };
+                          const c = pColors[a.priorite] || pColors.NOTE;
+                          return (
+                            <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 12px', background: c.bg, border: `1px solid ${c.border}`, borderRadius: 8 }}>
+                              <span style={{ fontSize: 14, flexShrink: 0 }}>{safeStr(a.icone)}</span>
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                                  <span style={{ fontSize: 12, fontWeight: 700, color: c.text }}>{safeStr(a.action)}</span>
+                                  <span style={{ fontSize: 9, fontWeight: 700, background: c.badge, color: '#fff', borderRadius: 20, padding: '1px 7px' }}>{a.priorite}</span>
+                                </div>
+                                <div style={{ fontSize: 11, color: c.text, opacity: 0.8, marginTop: 1 }}>{safeStr(a.detail)}</div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Risques détectés */}
+                  {s.risques?.length > 0 && (
+                    <div>
+                      <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', color: 'var(--text-muted)', marginBottom: 10 }}>Risques détectés — RadarPrécoce</div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+                        {s.risques.map((r, i) => {
+                          const nColors = { CRITIQUE: '#ef4444', DANGER: '#f59e0b', ATTENTION: '#3b82f6' };
+                          const nc = nColors[r.niveau] || '#6b7280';
+                          return (
+                            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', background: nc + '0d', border: `1px solid ${nc}30`, borderRadius: 8 }}>
+                              <div style={{ width: 36, height: 36, borderRadius: 8, background: nc + '18', border: `1px solid ${nc}30`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: 13, color: nc, flexShrink: 0 }}>{r.score}</div>
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)' }}>{safeStr(r.chantier)}</div>
+                                {r.facteurs?.length > 0 && <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 1 }}>{r.facteurs.slice(0, 2).map(f => typeof f === 'string' ? f : '').join(' · ')}</div>}
+                              </div>
+                              <span style={{ fontSize: 9, fontWeight: 700, background: nc, color: '#fff', borderRadius: 20, padding: '2px 8px', flexShrink: 0 }}>{safeStr(r.niveau)}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Erreurs à éviter */}
+                  {s.erreursAEviter?.length > 0 && (
+                    <div>
+                      <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', color: 'var(--text-muted)', marginBottom: 10 }}>Erreurs historiques à éviter</div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+                        {s.erreursAEviter.map((e, i) => (
+                          <div key={i} style={{ padding: '10px 12px', background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.2)', borderRadius: 8 }}>
+                            <div style={{ fontSize: 12, fontWeight: 600, color: '#92400e' }}>⚠ {safeStr(e.message)}</div>
+                            <div style={{ fontSize: 11, color: '#78350f', marginTop: 3 }}>{safeStr(e.conseil)}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Anticipations */}
+                  {s.anticipations?.length > 0 && (
+                    <div>
+                      <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', color: 'var(--text-muted)', marginBottom: 10 }}>Anticipations — Semaine à venir</div>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 10 }}>
+                        {s.anticipations.map((a, i) => (
+                          <div key={i} style={{ padding: '12px 14px', background: a.couleur + '0d', border: `1px solid ${a.couleur}30`, borderRadius: 10 }}>
+                            <div style={{ fontSize: 13, marginBottom: 4 }}>{safeStr(a.icone)} <span style={{ fontWeight: 700, color: a.couleur }}>{safeStr(a.valeur)}</span></div>
+                            <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: 3 }}>{safeStr(a.label)}</div>
+                            <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>{safeStr(a.detail)}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Note de bas */}
+                  <div style={{ padding: '8px 14px', background: 'rgba(139,92,246,0.04)', border: '1px solid rgba(139,92,246,0.15)', borderRadius: 8, fontSize: 10, color: 'var(--text-muted)' }}>
+                    Le rapport réel sera généré automatiquement dès votre première connexion lundi après 7h. Les projections extrapolent le rythme actuel sur {s.joursRestants} jour{s.joursRestants > 1 ? 's' : ''} restants.
+                    {s.nbRapportsHistoriques === 0 && ' Aucun historique disponible — la précision augmente semaine après semaine.'}
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
 
           {/* ── Rapports hebdomadaires RapportAuto ── */}
           <div>
@@ -755,7 +1107,7 @@ export default function Agents({
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10 }}>
                     {[
-                      { label: 'Heures saisies', val: `${r.heuresSaisies}h`, couleur: '#3b82f6' },
+                      { label: 'Heures saisies', val: `${r.heuresSaisies}h`, couleur: '#0d3d6e' },
                       { label: 'CA facturé', val: `CHF ${fmtN(r.caFacture)}`, couleur: '#10b981' },
                       { label: 'Chantiers actifs', val: r.nbActifs, couleur: '#f59e0b' },
                       { label: 'En retard', val: r.nbEnRetard, couleur: r.nbEnRetard > 0 ? '#ef4444' : '#10b981' },
@@ -776,7 +1128,7 @@ export default function Agents({
             </div>
             )}
           </div>
-        </div>
+        </div></TabBoundary>
       )}
 
       <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>

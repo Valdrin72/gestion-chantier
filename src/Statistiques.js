@@ -8,10 +8,11 @@ import { calculerCoutsChantier, calculerCA, C, fmtN, getIntervallesPeriode, getP
 import { DS } from './ds';
 
 const carteStyle = DS.card;
-const COULEURS_GRAPHIQUE = ['#3b82f6', '#10b981', '#f97316', '#8b5cf6', '#06b6d4', '#f59e0b'];
+const COULEURS_GRAPHIQUE = ['#0d3d6e', '#10b981', '#f97316', '#8b5cf6', '#06b6d4', '#f59e0b'];
+const MOIS_LABELS = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc'];
 
 // Palette sémantique : CA = bleu, Coûts = violet, Marge = vert
-const COL_CA    = '#3b82f6';
+const COL_CA    = '#0d3d6e';
 const COL_COUT  = '#8b5cf6';
 const COL_MARGE = '#10b981';
 
@@ -26,23 +27,21 @@ export default function Statistiques({ chantiers, clients, devis = [], parametre
   }, [chantiers, periodeGlobale]);
 
   // ===== CALCULS GLOBAUX (sur chantiers filtrés, uniquement ceux avec devis) =====
-  const { filtresAvecDevis, nbSansDevis, caTotal, coutsTotaux, rentabilite, margeGlobale, margeNettePct } = useMemo(() => {
+  const { filtresAvecDevis, nbSansDevis, caTotal, rentabilite, margeNettePct } = useMemo(() => {
     const filtresAvecDevis = chantiersFiltres.filter(c => calculerCA(c, devis) !== null);
     const nbSansDevis = chantiersFiltres.length - filtresAvecDevis.length;
     const caTotal = filtresAvecDevis.reduce((t, c) => t + calculerCA(c, devis), 0);
     const coutsTotaux = filtresAvecDevis.reduce((t, c) => t + calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis).totalCoutsReel, 0);
     const rentabilite = caTotal - coutsTotaux;
-    const margeGlobale = caTotal > 0 ? Math.round((rentabilite / caTotal) * 1000) / 10 : 0;
     const tauxFG = parseFloat(parametres?.parametres?.fraisGeneraux || parametres?.fraisGeneraux) || 12;
     const margeNettePct = caTotal > 0 ? Math.round(((caTotal - coutsTotaux - caTotal * tauxFG / 100) / caTotal) * 1000) / 10 : 0;
-    return { filtresAvecDevis, nbSansDevis, caTotal, coutsTotaux, rentabilite, margeGlobale, margeNettePct };
+    return { filtresAvecDevis, nbSansDevis, caTotal, rentabilite, margeNettePct };
   }, [chantiersFiltres, devis, parametres]);
 
   // ===== DONNÉES MENSUELLES (sur TOUS les chantiers filtrés par l'année du picker) =====
   // Le picker "année" contrôle le graphique mensuel indépendamment de periodeGlobale.
   // Les KPI globaux en haut restent basés sur periodeGlobale (chantiersFiltres).
-  const mois = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc'];
-  const donneesMensuelles = useMemo(() => mois.map((m, i) => {
+  const donneesMensuelles = useMemo(() => MOIS_LABELS.map((m, i) => {
     const tousMois = chantiers.filter(c => {
       const d = new Date(c.dateDebut);
       return d.getMonth() === i && d.getFullYear() === parseInt(periode);
@@ -79,13 +78,13 @@ export default function Statistiques({ chantiers, clients, devis = [], parametre
     .filter(emp => emp.actif !== false)
     .map(emp => {
       const chantiersEmp = chantiersFiltres.filter(c =>
-        (c.equipe || []).some(m => parseInt(m.employeId) === emp.id)
+        (c.equipe || []).some(m => String(m.employeId) === String(emp.id))
       );
       let joursTotaux = 0;
       let coutTotal = 0;
       chantiersEmp.forEach(c => {
         const eq = calculerRentabiliteEquipe(c, parametres);
-        const membre = eq.membres.find(m => parseInt(m.employeId) === emp.id);
+        const membre = eq.membres.find(m => String(m.employeId) === String(emp.id));
         if (membre) {
           joursTotaux += membre.joursRealises;
           coutTotal   += membre.coutTotal;
@@ -398,7 +397,7 @@ export default function Statistiques({ chantiers, clients, devis = [], parametre
                 <YAxis tick={{ fill: 'var(--text-muted)' }} unit="j" />
                 <Tooltip content={() => null} />
                 <Legend wrapperStyle={{ color: 'var(--text-primary)', paddingTop: 8 }} />
-                <Bar dataKey="Prévus"   fill="#3b82f6" name="Prévus (devis)"   radius={[4, 4, 0, 0]} />
+                <Bar dataKey="Prévus"   fill="#0d3d6e" name="Prévus (devis)"   radius={[4, 4, 0, 0]} />
                 <Bar dataKey="Réalisés" name="Réalisés (réel)" radius={[4, 4, 0, 0]}>
                   {donneesEcarts.map((d, i) => (
                     <Cell key={`cell-${i}`} fill={d.statut === 'en_retard' ? '#ef4444' : d.statut === 'en_avance' ? '#10b981' : '#78909c'} />

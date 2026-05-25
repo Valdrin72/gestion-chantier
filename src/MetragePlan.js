@@ -318,7 +318,7 @@ export default function MetragePlan({ parametres, onCreerChantier, onCreerDevis 
                 ))}
               </div>
               <button onClick={() => setAfficherTarifs(!afficherTarifs)}
-                style={{ background: '#3b82f6', color: 'white', border: 'none', padding: '8px 15px', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: 600 }}>
+                style={{ background: '#0d3d6e', color: 'white', border: 'none', padding: '8px 15px', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: 600 }}>
                 Modifier
               </button>
             </div>
@@ -413,7 +413,7 @@ export default function MetragePlan({ parametres, onCreerChantier, onCreerDevis 
 
       {/* RÉCAPITULATIF */}
       {zones.length > 0 && (
-        <div style={{ ...carteStyle, borderLeft: '4px solid #3b82f6' }}>
+        <div style={{ ...carteStyle, borderLeft: '4px solid #0d3d6e' }}>
           <div className="ds-card-title">
             Récapitulatif — {projet.nom || 'Projet'} {projet.niveau}
             <span style={{ fontSize: '13px', fontWeight: 500, color: 'var(--text-muted)', marginLeft: '12px' }}>
@@ -536,7 +536,7 @@ export default function MetragePlan({ parametres, onCreerChantier, onCreerDevis 
                 equipe: [],
               });
             }}
-              style={{ background: '#3b82f6', color: 'white', border: 'none', padding: '18px 30px', borderRadius: '12px', cursor: 'pointer', fontSize: '16px', fontWeight: 'bold', flex: 1 }}>
+              style={{ background: '#0d3d6e', color: 'white', border: 'none', padding: '18px 30px', borderRadius: '12px', cursor: 'pointer', fontSize: '16px', fontWeight: 'bold', flex: 1 }}>
               Créer un chantier avec ces données
             </button>
             <button onClick={() => {

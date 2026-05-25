@@ -52,6 +52,7 @@ function safeDate(val) {
 
 export function adapterContexteAlertes({ chantiers = [], devis = [], factures = [], clients = [], parametres = {} }) {
   const now = new Date();
+  const employesList = Array.isArray(parametres?.employes) ? parametres.employes : [];
 
   const devisMap = new Map(devis.map(d => [String(d.id), d]));
 
@@ -117,6 +118,32 @@ export function adapterContexteAlertes({ chantiers = [], devis = [], factures = 
     derniere_relance: safeDate(d.derniereRelance),
   }));
 
+  // Employes normalisés pour les règles RH
+  const employesAdaptes = employesList.map(e => ({
+    id: String(e.id),
+    prenom: e.prenom || '',
+    nom: e.nom || '',
+    poste: e.poste || '',
+    tarifJour: parseFloat(e.tarifJour) || 0,
+  }));
+
+  // Pointages depuis les journaux de chantiers (heures_sup = heures > 8h/jour)
+  const pointages = [];
+  for (const c of chantiers) {
+    for (const entry of (c.journal || [])) {
+      for (const ej of (entry.employes || [])) {
+        const h = parseFloat(ej.heuresTravaillees) || 0;
+        pointages.push({
+          employe_id: String(ej.employeId),
+          chantier_id: String(c.id),
+          date: entry.date,
+          heures: h,
+          heures_sup: Math.max(0, h - 8),
+        });
+      }
+    }
+  }
+
   // Calcul DSO réel
   const facturesEmises = facturesAdaptees.filter(f => f.statut === 'emise' || f.statut === 'partiellement_payee');
   const totalCreances = facturesEmises.reduce((s, f) => s + (f.total_ttc - f.total_paye), 0);
@@ -137,8 +164,8 @@ export function adapterContexteAlertes({ chantiers = [], devis = [], factures = 
     chantiers: chantiersAdaptes,
     devis: devisAdaptes,
     factures: facturesAdaptees,
-    employes: [],
-    pointages: [],
+    employes: employesAdaptes,
+    pointages,
     clients: clients.map(cl => ({ id: String(cl.id), raison_sociale: cl.nom || cl.raisonSociale || '', type: cl.type ?? 'prive' })),
     photos: [],
     pvs: [],

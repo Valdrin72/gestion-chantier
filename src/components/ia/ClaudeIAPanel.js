@@ -133,6 +133,12 @@ function ConversationSuite({ contexteInitial, memoire, autoSave, placeholder }) 
   const [input, setInput] = useState('');
   const bottomRef = useRef(null);
 
+  // Réinitialiser la conversation à chaque nouvelle analyse
+  useEffect(() => {
+    setMessages([]);
+    setInput('');
+  }, [contexteInitial]);
+
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
@@ -504,7 +510,7 @@ function Anticiper({ memoire, onSauvegarder, autoSave }) {
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
         <span style={{ fontSize: 13, fontWeight: 600 }}>Horizon de prévision :</span>
         {['30', '60', '90'].map(j => (
-          <button key={j} onClick={() => setHorizon(j)}
+          <button key={j} onClick={() => { setHorizon(j); setResultat(''); }}
             style={{ padding: '7px 18px', borderRadius: 20, border: `1px solid ${horizon === j ? DS.brand.secondary : 'var(--border)'}`, background: horizon === j ? DS.brand.soft : 'transparent', color: horizon === j ? DS.brand.secondary : 'var(--text-main)', fontWeight: horizon === j ? 700 : 400, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>
             J+{j}
           </button>

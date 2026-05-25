@@ -91,7 +91,6 @@ function MarkdownSimple({ texte }) {
 
 // ── Bloc résultat IA — mémoire automatique ─────────────────────
 function ResultatIA({ texte, error, loading }) {
-
   if (loading) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '24px 0', color: DS.brand.secondary }}>
@@ -123,6 +122,75 @@ function ResultatIA({ texte, error, loading }) {
         </span>
       </div>
       <MarkdownSimple texte={texte} />
+    </div>
+  );
+}
+
+// ── Suite de conversation après une analyse initiale ───────────
+function ConversationSuite({ contexteInitial, memoire, autoSave, placeholder }) {
+  const { appeler, loading, error } = useClaudeAI();
+  const [messages, setMessages] = useState([]);
+  const [input, setInput] = useState('');
+  const bottomRef = useRef(null);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  const envoyer = async () => {
+    const question = input.trim();
+    if (!question || loading) return;
+    setInput('');
+    const newMessages = [...messages, { role: 'user', content: question }];
+    setMessages(newMessages);
+    const historique = [{ role: 'assistant', content: contexteInitial }, ...newMessages];
+    const reponse = await appeler('chat_libre', {
+      messages: historique.slice(-30),
+      contexte_cyna: memoire,
+    });
+    if (reponse) {
+      setMessages(prev => [...prev, { role: 'assistant', content: reponse }]);
+      if (autoSave) autoSave('Suivi', reponse);
+    }
+  };
+
+  return (
+    <div style={{ borderTop: '1px solid var(--border)', paddingTop: 14, marginTop: 4 }}>
+      <div style={{ fontSize: 12, fontWeight: 700, color: DS.brand.secondary, display: 'flex', alignItems: 'center', gap: 6, marginBottom: messages.length > 0 ? 12 : 10 }}>
+        <MessageSquare size={13} /> Continuer la discussion
+      </div>
+
+      {messages.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 12, maxHeight: 420, overflowY: 'auto', paddingRight: 2 }}>
+          {messages.map((msg, i) => <BulleMessage key={i} msg={msg} />)}
+          {loading && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: DS.brand.secondary, fontSize: 13 }}>
+              <Loader size={14} style={{ animation: 'spin 1s linear infinite' }} /> Claude réfléchit…
+            </div>
+          )}
+          {error && (
+            <div style={{ padding: '10px 14px', background: '#fef2f2', borderRadius: 10, border: '1px solid #fecaca', color: '#dc2626', fontSize: 13 }}>{error}</div>
+          )}
+          <div ref={bottomRef} />
+        </div>
+      )}
+
+      <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
+        <textarea
+          value={input}
+          onChange={e => setInput(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); envoyer(); } }}
+          placeholder={placeholder || 'Posez une question de suivi… (Entrée pour envoyer)'}
+          rows={2}
+          style={{ flex: 1, padding: '10px 14px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-main)', fontSize: 13, resize: 'none', fontFamily: 'inherit', lineHeight: 1.5 }}
+        />
+        <button
+          onClick={envoyer}
+          disabled={!input.trim() || loading}
+          style={{ ...DS.btnPrimary, padding: '10px 14px', borderRadius: 10, display: 'flex', alignItems: 'center', opacity: (!input.trim() || loading) ? 0.5 : 1, flexShrink: 0 }}>
+          <SendHorizontal size={15} />
+        </button>
+      </div>
     </div>
   );
 }
@@ -238,6 +306,7 @@ function AnalyseChantier({ memoire, onSauvegarder, autoSave }) {
         </button>
       </div>
       <ResultatIA texte={resultat} error={error} loading={loading} onSauvegarder={onSauvegarder} />
+      {resultat && <ConversationSuite contexteInitial={resultat} memoire={memoire} autoSave={autoSave} placeholder='Ex: "Que faire pour améliorer cette marge ?" "Quels risques de dépassement ?"…' />}
     </div>
   );
 }
@@ -293,6 +362,7 @@ function SuggestionDevis({ memoire, onSauvegarder, autoSave }) {
         <Sparkles size={14} /> Générer le chiffrage
       </button>
       <ResultatIA texte={resultat} error={error} loading={loading} onSauvegarder={onSauvegarder} />
+      {resultat && <ConversationSuite contexteInitial={resultat} memoire={memoire} autoSave={autoSave} placeholder='Ex: "Ajoute la pose de rails", "Quel délai pour ce chantier ?", "Monte le niveau premium"…' />}
     </div>
   );
 }
@@ -331,6 +401,7 @@ function ExplicationAlertes({ memoire, onSauvegarder, autoSave }) {
         <Sparkles size={14} /> Expliquer les alertes
       </button>
       <ResultatIA texte={resultat} error={error} loading={loading} onSauvegarder={onSauvegarder} />
+      {resultat && <ConversationSuite contexteInitial={resultat} memoire={memoire} autoSave={autoSave} placeholder="Ex: Quelle est la priorité absolue ? Comment résoudre l'alerte sur le chantier X ?" />}
     </div>
   );
 }
@@ -375,6 +446,7 @@ function AnalysePortefeuille({ memoire, onSauvegarder, autoSave }) {
         <Sparkles size={14} /> Analyser le portefeuille
       </button>
       <ResultatIA texte={resultat} error={error} loading={loading} onSauvegarder={onSauvegarder} />
+      {resultat && <ConversationSuite contexteInitial={resultat} memoire={memoire} autoSave={autoSave} placeholder='Ex: "Quel chantier sacrifier en priorité ?", "Comment améliorer la marge globale ?"…' />}
     </div>
   );
 }
@@ -455,6 +527,7 @@ function Anticiper({ memoire, onSauvegarder, autoSave }) {
         <Telescope size={14} /> Anticiper à J+{horizon}
       </button>
       <ResultatIA texte={resultat} error={error} loading={loading} onSauvegarder={onSauvegarder} />
+      {resultat && <ConversationSuite contexteInitial={resultat} memoire={memoire} autoSave={autoSave} placeholder='Ex: "Et si on retarde le chantier X ?", "Comment sécuriser la trésorerie ?", "Quel scénario pessimiste ?"…' />}
     </div>
   );
 }
@@ -702,7 +775,7 @@ function GenererEmail({ memoire, onSauvegarder }) {
 }
 
 // ── Onglet : Comparer devis ────────────────────────────────────
-function ComparerDevis({ memoire, onSauvegarder }) {
+function ComparerDevis({ memoire, onSauvegarder, autoSave }) {
   const { appeler, loading, error } = useClaudeAI();
   const [devis1, setDevis1] = useState({ nom: '', montant: '', description: '' });
   const [devis2, setDevis2] = useState({ nom: '', montant: '', description: '' });
@@ -761,6 +834,7 @@ function ComparerDevis({ memoire, onSauvegarder }) {
         <Sparkles size={14} /> Comparer
       </button>
       <ResultatIA texte={resultat} error={error} loading={loading} onSauvegarder={onSauvegarder} />
+      {resultat && <ConversationSuite contexteInitial={resultat} memoire={memoire} autoSave={autoSave} placeholder="Ex: Lequel choisir si le délai est prioritaire ? Y a-t-il des risques cachés ?" />}
     </div>
   );
 }

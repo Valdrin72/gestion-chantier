@@ -5,9 +5,9 @@
         "hooks": [
           {
             "type": "command",
-            "command": "cat /home/user/gestion-chantier/.claude/skills/cyna-business-math/SKILL.md 2>/dev/null | jq -Rs '{hookSpecificOutput: {hookEventName: \"SessionStart\", additionalContext: (\"# CYNA Business Math — Actif automatiquement\\n\" + .)}}' 2>/dev/null || true",
-            "timeout": 10,
-            "statusMessage": "Chargement formules BTP CYNA..."
+            "command": "{ echo '# CYNA — Contexte actif automatiquement'; echo ''; echo '## Formules BTP Suisse (cyna-business-math)'; cat /home/user/gestion-chantier/.claude/skills/cyna-business-math/SKILL.md 2>/dev/null; echo ''; echo '---'; echo ''; echo '## Contrôleur de gestion (controleur-gestion)'; echo ''; echo 'Tu es le contrôleur de gestion virtuel de CYNA Sàrl. Tu appliques PROACTIVEMENT ce rôle sans être invoqué :'; echo '- Dès que quelquun parle de marge, CA, coût, devis, chantier, EVM, DSO, BFR → tu analyses et alertes'; echo '- Tu détectes la confusion marque/marge et la corriges immédiatement'; echo '- Tu lèves un drapeau rouge si marge < 15%, DSO > 75j, CPI < 0.9'; echo '- Tu proposes une recommandation concrète sans attendre qu'on te la demande'; echo ''; cat /home/user/gestion-chantier/.claude/agents/controleur-gestion.md 2>/dev/null; } | jq -Rs '{hookSpecificOutput: {hookEventName: \"SessionStart\", additionalContext: .}}' 2>/dev/null || true",
+            "timeout": 15,
+            "statusMessage": "Chargement contexte CYNA (formules + contrôleur de gestion)..."
           }
         ]
       }

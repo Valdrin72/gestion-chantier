@@ -131,13 +131,23 @@ function ConversationSuite({ contexteInitial, memoire, autoSave, placeholder }) 
   const { appeler, loading, error } = useClaudeAI();
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
+  const prevContexteRef = useRef('');
   const bottomRef = useRef(null);
 
-  // Réinitialiser la conversation à chaque nouvelle analyse
+  // Quand une nouvelle analyse arrive, l'injecter dans la conversation
+  // sans effacer l'historique — Claude accumule tout pour apprendre
   useEffect(() => {
-    setMessages([]);
-    setInput('');
-  }, [contexteInitial]);
+    if (!contexteInitial || contexteInitial === prevContexteRef.current) return;
+    prevContexteRef.current = contexteInitial;
+    if (messages.length > 0) {
+      // Ajouter un séparateur visuel + la nouvelle analyse dans le fil
+      setMessages(prev => [
+        ...prev,
+        { role: 'system_sep', content: '── Nouvelle analyse ──' },
+        { role: 'assistant', content: contexteInitial },
+      ]);
+    }
+  }, [contexteInitial]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -149,9 +159,14 @@ function ConversationSuite({ contexteInitial, memoire, autoSave, placeholder }) 
     setInput('');
     const newMessages = [...messages, { role: 'user', content: question }];
     setMessages(newMessages);
-    const historique = [{ role: 'assistant', content: contexteInitial }, ...newMessages];
+    // Construire l'historique complet pour l'API : analyse initiale en tête + tout l'historique
+    const historique = [
+      { role: 'assistant', content: contexteInitial },
+      // filtrer les séparateurs visuels — l'API ne les voit pas
+      ...newMessages.filter(m => m.role !== 'system_sep'),
+    ];
     const reponse = await appeler('chat_libre', {
-      messages: historique.slice(-30),
+      messages: historique.slice(-40),
       contexte_cyna: memoire,
     });
     if (reponse) {
@@ -168,7 +183,15 @@ function ConversationSuite({ contexteInitial, memoire, autoSave, placeholder }) 
 
       {messages.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 12, maxHeight: 420, overflowY: 'auto', paddingRight: 2 }}>
-          {messages.map((msg, i) => <BulleMessage key={i} msg={msg} />)}
+          {messages.map((msg, i) =>
+            msg.role === 'system_sep'
+              ? <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '4px 0' }}>
+                  <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
+                  <span style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 600, letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>NOUVELLE ANALYSE</span>
+                  <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
+                </div>
+              : <BulleMessage key={i} msg={msg} />
+          )}
           {loading && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: DS.brand.secondary, fontSize: 13 }}>
               <Loader size={14} style={{ animation: 'spin 1s linear infinite' }} /> Claude réfléchit…
@@ -301,7 +324,7 @@ function AnalyseChantier({ memoire, onSauvegarder, autoSave }) {
         Sélectionne un chantier pour obtenir un diagnostic IA avec recommandations.
       </p>
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-        <select value={chantierId} onChange={e => { setChantierId(e.target.value); setResultat(''); }}
+        <select value={chantierId} onChange={e => setChantierId(e.target.value)}
           style={{ flex: 1, minWidth: 200, padding: '9px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-main)', fontSize: 13 }}>
           <option value="">— Choisir un chantier —</option>
           {actifs.map(c => <option key={c.id} value={c.id}>{c.nom || c.numero} — {c.statut}</option>)}
@@ -510,7 +533,7 @@ function Anticiper({ memoire, onSauvegarder, autoSave }) {
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
         <span style={{ fontSize: 13, fontWeight: 600 }}>Horizon de prévision :</span>
         {['30', '60', '90'].map(j => (
-          <button key={j} onClick={() => { setHorizon(j); setResultat(''); }}
+          <button key={j} onClick={() => setHorizon(j)}
             style={{ padding: '7px 18px', borderRadius: 20, border: `1px solid ${horizon === j ? DS.brand.secondary : 'var(--border)'}`, background: horizon === j ? DS.brand.soft : 'transparent', color: horizon === j ? DS.brand.secondary : 'var(--text-main)', fontWeight: horizon === j ? 700 : 400, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>
             J+{j}
           </button>

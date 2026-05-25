@@ -27,7 +27,10 @@
     "monitor": "node scripts/monitor-continu.js",
     "scan": "node scripts/security-deep-scan.js && node scripts/audit-btp.js",
     "rapport": "node scripts/rapport-securite.js",
-    "check": "npm run scan && npm audit"
+    "check": "npm run scan && npm audit",
+    "test:unit": "vitest run",
+    "test:unit:watch": "vitest",
+    "test:unit:cov": "vitest run --coverage"
   },
   "eslintConfig": {
     "extends": [
@@ -48,6 +51,8 @@
     ]
   },
   "devDependencies": {
-    "playwright": "^1.60.0"
+    "@vitest/coverage-v8": "^4.1.7",
+    "playwright": "^1.60.0",
+    "vitest": "^4.1.7"
   }
 }

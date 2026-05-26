@@ -95,7 +95,7 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
     const depassements = [];
     if (parseFloat(ecartBudget) > 10) depassements.push(`Budget dépassé de ${ecartBudget}%`);
     if (parseFloat(ecartJours) > 10) depassements.push(`Jours dépassés de ${ecartJours}%`);
-    if (couts.margeReelPct !== null && Number.isFinite(couts.margeReelPct) && couts.margeReelPct < SEUILS.margeLimite) depassements.push(`Marge critique ${couts.margeReelPct}%`);
+    if (couts.margeActuellePct !== null && Number.isFinite(couts.margeActuellePct) && couts.margeActuellePct < SEUILS.margeLimite) depassements.push(`Marge critique ${couts.margeActuellePct}%`);
 
     return { ...c, couts, montantTotal, ecartBudget, coutParHeure, caParHeure, coutParM2, caParM2, margeParM2, ecartJours, tauxFacturation, heuresPrevu, heuresRealise, joursPrevu, joursReel, depassements };
   }), [chantiersPeriode, parametres.employes, parametres.localites, parametres.parametres, devis]);
@@ -477,8 +477,8 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
                       </span>
                     </td>
                     <td style={{ padding: '10px 12px' }}>
-                      <span style={{ background: couleurMarge(c.couts.margeReelPct) + '18', color: couleurMarge(c.couts.margeReelPct), fontWeight: 600, padding: '3px 10px', borderRadius: '12px', fontSize: '12px' }}>
-                        {c.couts.margeReelPct !== null ? `${c.couts.margeReelPct}%` : '—'}
+                      <span style={{ background: couleurMarge(c.couts.margeActuellePct) + '18', color: couleurMarge(c.couts.margeActuellePct), fontWeight: 600, padding: '3px 10px', borderRadius: '12px', fontSize: '12px' }}>
+                        {c.couts.margeActuellePct !== null ? `${c.couts.margeActuellePct}%` : '—'}
                       </span>
                     </td>
                     <td style={{ padding: '10px 12px', fontSize: '13px', color: 'var(--text-primary)' }}>{c.joursPrevu}j</td>
@@ -857,7 +857,7 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
             <div className="ds-card-title">Rentabilité par chantier — Vue d'ensemble</div>
             <div style={{ display: 'flex', gap: 10, marginBottom: 20, flexWrap: 'wrap' }}>
               {['Rentable', 'Limite', 'Non rentable'].map(label => {
-                const count = donneesChantiers.filter(c => statutRentabilite(c.couts.margeReelPct).label === label).length;
+                const count = donneesChantiers.filter(c => statutRentabilite(c.couts.margeActuellePct).label === label).length;
                 const couleurs = { Rentable: '#10b981', Limite: '#f59e0b', 'Non rentable': '#ef4444' };
                 return (
                   <div key={label} style={{ background: couleurs[label] + '12', border: `1px solid ${couleurs[label]}30`, borderRadius: 12, padding: '14px 20px', flex: 1, minWidth: 120, textAlign: 'center' }}>
@@ -867,15 +867,15 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
                 );
               })}
             </div>
-            {donneesChantiers.filter(c => statutRentabilite(c.couts.margeReelPct).label !== 'Rentable').length > 0 && (
+            {donneesChantiers.filter(c => statutRentabilite(c.couts.margeActuellePct).label !== 'Rentable').length > 0 && (
               <>
                 <div className="ds-section-label" style={{ marginBottom: 12 }}>Chantiers nécessitant attention</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {donneesChantiers
-                    .filter(c => statutRentabilite(c.couts.margeReelPct).label !== 'Rentable')
-                    .sort((a, b) => (a.couts.margeReelPct ?? -999) - (b.couts.margeReelPct ?? -999))
+                    .filter(c => statutRentabilite(c.couts.margeActuellePct).label !== 'Rentable')
+                    .sort((a, b) => (a.couts.margeActuellePct ?? -999) - (b.couts.margeActuellePct ?? -999))
                     .map(c => {
-                      const r = statutRentabilite(c.couts.margeReelPct);
+                      const r = statutRentabilite(c.couts.margeActuellePct);
                       return (
                         <div key={c.id} className="premium-card" style={{
                           ...DS.cardCompact,
@@ -889,7 +889,7 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
                             {c.depassements.length > 0 && <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{c.depassements.join(' · ')}</div>}
                           </div>
                           <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                            <div style={{ fontSize: 16, fontWeight: 800, color: r.couleur }}>{c.couts.margeReelPct !== null ? `${c.couts.margeReelPct}%` : '—'}</div>
+                            <div style={{ fontSize: 16, fontWeight: 800, color: r.couleur }}>{c.couts.margeActuellePct !== null ? `${c.couts.margeActuellePct}%` : '—'}</div>
                             <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>marge réelle</div>
                           </div>
                         </div>

@@ -260,7 +260,7 @@ function buildChecks({ chantiers, devis, factures, clients, parametres }) {
         const pb = [];
         chantiers.forEach(c => {
           const couts = calculerCoutsChantier(c, employes, parametres.localites, cfg, devis);
-          const m = couts.margeReelPct;
+          const m = couts.margeActuellePct;
           if (m !== null && !isNaN(m) && (m < -100 || m > 200)) {
             pb.push(`${c.nom || c.numero} — marge aberrante : ${Math.round(m * 10) / 10}%`);
           }
@@ -284,7 +284,7 @@ function buildChecks({ chantiers, devis, factures, clients, parametres }) {
           const st = c.statut?.trim().toLowerCase();
           if (!['en cours', 'terminé', 'facturé', 'clôturé'].includes(st)) return false;
           const couts = calculerCoutsChantier(c, employes, parametres.localites, cfg, devis);
-          return couts.margeReelPct !== null && couts.margeReelPct < 0;
+          return couts.margeActuellePct !== null && couts.margeActuellePct < 0;
         });
         if (perdants.length === 0) return { niveau: NIV.ok, detail: 'Aucun chantier à perte détecté' };
         return {
@@ -293,7 +293,7 @@ function buildChecks({ chantiers, devis, factures, clients, parametres }) {
           recommandation: 'Analysez les coûts de ces chantiers et ajustez la facturation ou réduisez les charges',
           items: perdants.map(c => {
             const co = calculerCoutsChantier(c, employes, parametres.localites, cfg, devis);
-            return `${c.nom || c.numero} — marge ${co.margeReelPct != null ? Math.round(co.margeReelPct * 10) / 10 : '?'}%`;
+            return `${c.nom || c.numero} — marge ${co.margeActuellePct != null ? Math.round(co.margeActuellePct * 10) / 10 : '?'}%`;
           }),
         };
       },
@@ -308,7 +308,7 @@ function buildChecks({ chantiers, devis, factures, clients, parametres }) {
           const st = c.statut?.trim().toLowerCase();
           if (!['en cours', 'terminé', 'facturé', 'clôturé'].includes(st)) return false;
           const couts = calculerCoutsChantier(c, employes, parametres.localites, cfg, devis);
-          return couts.margeReelPct !== null && couts.margeReelPct >= 0 && couts.margeReelPct < SEUILS.margeLimite;
+          return couts.margeActuellePct !== null && couts.margeActuellePct >= 0 && couts.margeActuellePct < SEUILS.margeLimite;
         });
         if (faibles.length === 0) return { niveau: NIV.ok, detail: `Tous les chantiers sont au-dessus de ${SEUILS.margeLimite}%` };
         return {
@@ -317,7 +317,7 @@ function buildChecks({ chantiers, devis, factures, clients, parametres }) {
           recommandation: `Visez ≥ ${SEUILS.margeRentable}% de marge nette (seuil cible BTP Genève)`,
           items: faibles.map(c => {
             const co = calculerCoutsChantier(c, employes, parametres.localites, cfg, devis);
-            return `${c.nom || c.numero} — marge ${co.margeReelPct != null ? Math.round(co.margeReelPct * 10) / 10 : '?'}%`;
+            return `${c.nom || c.numero} — marge ${co.margeActuellePct != null ? Math.round(co.margeActuellePct * 10) / 10 : '?'}%`;
           }),
         };
       },

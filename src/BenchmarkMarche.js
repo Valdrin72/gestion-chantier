@@ -44,7 +44,7 @@ export default function BenchmarkMarche({ chantiers = [], devis = [], parametres
       const marge = g.caTotal > 0 ? ((g.caTotal - g.coutTotal) / g.caTotal) * 100 : null;
       const marges = g.chantiers.map(c => {
         const co = calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis);
-        return co.margeReelPct;
+        return co.margeActuellePct;
       }).filter(m => m !== null && !isNaN(m));
       const margeMediane = marges.length > 0
         ? [...marges].sort((a, b) => a - b)[Math.floor(marges.length / 2)]

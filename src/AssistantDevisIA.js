@@ -43,7 +43,7 @@ export default function AssistantDevisIA({ chantiers = [], devis = [], parametre
         const duree = parseInt(c.nombreJours) || 0;
         const personnes = parseInt(c.nombrePersonnes) || 0;
         const couts = calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis);
-        const marge = couts.margeReelPct;
+        const marge = couts.margeActuellePct;
         if (montant > 0) parType[t].push({ montant, duree, personnes, marge, nom: c.nom || c.numero });
       });
     });

@@ -171,8 +171,8 @@ export default function Rapport({ chantiers, clients, devis = [], parametres, pa
                       {al && <div style={{ fontSize: '11px', color: al.couleur }}>{al.texte}</div>}
                     </td>
                     <td style={{ padding: '12px 15px' }}>
-                      <span style={{ background: (parseFloat(couts.margeReelPct) >= 15 ? '#10b98118' : '#ef444418'), color: parseFloat(couts.margeReelPct) >= 15 ? '#10b981' : '#ef4444', fontWeight: 600, padding: '3px 10px', borderRadius: '12px', fontSize: '12px' }}>
-                        {couts.margeReelPct}%
+                      <span style={{ background: (parseFloat(couts.margeActuellePct) >= 15 ? '#10b98118' : '#ef444418'), color: parseFloat(couts.margeActuellePct) >= 15 ? '#10b981' : '#ef4444', fontWeight: 600, padding: '3px 10px', borderRadius: '12px', fontSize: '12px' }}>
+                        {couts.margeActuellePct}%
                       </span>
                     </td>
                   </tr>

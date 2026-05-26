@@ -48,8 +48,8 @@ export function runAlerteChantier({ chantiers, devis, factures = [], parametres,
         }
       }
 
-      if (couts.montantTotal > 0 && couts.totalCoutsReel > 0 && Number.isFinite(couts.margeReelPct)) {
-        const marge = couts.margeReelPct;
+      if (couts.montantTotal > 0 && couts.totalCoutsReel > 0 && Number.isFinite(couts.margeActuellePct)) {
+        const marge = couts.margeActuellePct;
         const margeStr = Math.round(marge * 10) / 10;
         if (marge < cfg.seuilMargeDanger) {
           data.chantiersEnDanger.push({ id: c.id, nom: c.nom || c.numero, marge, deficit: Math.abs(Math.round(couts.margeReel)) });
@@ -1181,8 +1181,8 @@ export function runRadarPrecoce({ chantiers, devis, parametres, agentContext, ge
 
     // Facteur 1 : marge faible
     const couts = getCouts ? getCouts(c) : calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis);
-    if (couts.montantTotal > 0 && couts.totalCoutsReel > 0 && Number.isFinite(couts.margeReelPct)) {
-      const marge = couts.margeReelPct;
+    if (couts.montantTotal > 0 && couts.totalCoutsReel > 0 && Number.isFinite(couts.margeActuellePct)) {
+      const marge = couts.margeActuellePct;
       if (marge < 0) { score += 40; facteurs.push(`marge à perte (${Math.round(marge * 10) / 10}%)`); }
       else if (marge < SEUILS.margeLimite) { score += 20; facteurs.push(`marge faible (${Math.round(marge * 10) / 10}%)`); }
     }
@@ -1310,7 +1310,7 @@ export function runCoutMOAnalyse({ chantiers, devis, parametres, agentContext, g
     const pctMO = couts.totalCoutsReel > 0 ? (couts.coutEquipeReel / couts.totalCoutsReel) * 100 : 0;
     const pctMOSurCA = ca > 0 ? (couts.coutEquipeReel / ca) * 100 : 0;
 
-    const margeReel = parseFloat(couts.margeReelPct);
+    const margeReel = parseFloat(couts.margeActuellePct);
     analyse.push({
       id: c.id, nom: c.nom || c.numero,
       coutMO: Math.round(couts.coutEquipeReel), ca: Math.round(ca),
@@ -1704,7 +1704,7 @@ export function runDiagnosticRaison({ chantiers, devis, parametres, agentContext
 
       // EAC projeté (coût à l'achèvement)
       const eac = avancement > 0 ? couts.totalCoutsReel / (avancement / 100) : null;
-      const margeReelPct = Number.isFinite(couts.margeReelPct) ? couts.margeReelPct : null;
+      const margeReelPct = Number.isFinite(couts.margeActuellePct) ? couts.margeActuellePct : null;
 
       // Retard calendaire en jours
       const joursRestants = c.nombreJours > 0 ? c.nombreJours - joursRealises : null;

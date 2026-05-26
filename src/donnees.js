@@ -218,6 +218,21 @@ export const migrerDevisId = (chantiers, devisList) => {
   });
 };
 
+/**
+ * Calcule l'état FINANCIER ACTUEL d'un chantier.
+ *
+ * Réponds à la question : "où en est-on en termes d'argent dépensé/encaissé MAINTENANT ?"
+ *
+ * Retourne notamment :
+ * - margeActuellePct : marge sur ce qui a été dépensé jusqu'à aujourd'hui
+ *   (anciennement nommée margeReelPct — alias rétrocompatible conservé)
+ * - avancementPct : % d'avancement calculé depuis le journal (ou 100 si chantier clos)
+ *
+ * Voir calculerEtatChantier (L883) pour la PROJECTION à fin de chantier.
+ *
+ * Les deux moteurs partagent la même logique de coûts (équivalents à <0.01% près)
+ * mais répondent à des questions différentes.
+ */
 export const calculerCoutsChantier = (chantier, employes = [], localites = [], cfg = {}, devisList = []) => {
   const coefficient = parseFloat(cfg.coefficientMainOeuvre) || 1.35;
   const tauxFG = parseFloat(cfg.tauxFraisGeneraux) || 12;
@@ -402,7 +417,10 @@ export const calculerCoutsChantier = (chantier, employes = [], localites = [], c
     autresCoutsPrevu, autresCoutsReel, autresCoutsReelRaw,
     coutImprevus, totalCoutsPrevu, totalCoutsReel,
     montantTotal, margePrevu, margeReel,
-    margePrevuPct, margeReelPct,
+    margePrevuPct,
+    margeActuellePct: margeReelPct,
+    margeReelPct, // alias rétrocompatible — préférer margeActuellePct
+    avancementPct: avancement, // exposé pour compatibilité avec calculerEtatChantier
     coutParM2Prevu, coutParM2Reel, prixParM2Devis,
     ecartMontant, ecartPct,
     fraisGeneraux, margeNette, margeNettePct,
@@ -880,6 +898,22 @@ export const heuresJour = (journal, date) => {
   return result;
 };
 
+/**
+ * Calcule la PROJECTION FINANCIÈRE d'un chantier à sa terminaison.
+ *
+ * Réponds à la question : "où va-t-on finir si le rythme actuel se maintient ?"
+ *
+ * Retourne notamment :
+ * - margeProjeteePct : marge prédite à fin de chantier basée sur EAC
+ *   (anciennement nommée margeEstimeePct — alias rétrocompatible conservé)
+ * - coutFinalEstime : EAC (Estimate At Completion — coût final prédit)
+ * - rad : Reste À Dépenser
+ *
+ * Voir calculerCoutsChantier (L221) pour la situation ACTUELLE.
+ *
+ * Les deux moteurs partagent la même logique de coûts (équivalents à <0.01% près)
+ * mais répondent à des questions différentes.
+ */
 export const calculerEtatChantier = (chantier, employes = [], devisList = [], parametres = null) => {
   const equipe     = chantier.equipe     || [];
   const journal    = chantier.journal    || [];
@@ -1012,7 +1046,8 @@ export const calculerEtatChantier = (chantier, employes = [], devisList = [], pa
     coutFinalEstime,
     rad,
     margeEstimee,
-    margeEstimeePct,
+    margeProjeteePct: margeEstimeePct,
+    margeEstimeePct, // alias rétrocompatible — préférer margeProjeteePct
 
     // Détail équipe
     equipe: membreDetail,

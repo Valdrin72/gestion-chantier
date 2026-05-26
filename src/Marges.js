@@ -41,17 +41,17 @@ export default function Marges({ chantiers = [], clients = [], devis = [], param
           coutsReel: hasCouts ? couts.totalCoutsReel : null,
           coutsPrevu: couts.totalCoutsPrevu > 0 ? couts.totalCoutsPrevu : null,
           margeReel: hasCa && hasCouts ? couts.margeReel : null,
-          margeReelPct: hasCa && hasCouts ? couts.margeReelPct : null,
+          margeActuellePct: hasCa && hasCouts ? couts.margeActuellePct : null,
           margePrevu: hasCa && couts.totalCoutsPrevu > 0 ? couts.margePrevu : null,
           margePrevuPct: hasCa && couts.totalCoutsPrevu > 0 ? couts.margePrevuPct : null,
         };
       })
       .sort((a, b) => {
         // Trier : données dispo d'abord, puis par marge croissante (problèmes en haut)
-        if (a.margeReelPct === null && b.margeReelPct !== null) return 1;
-        if (a.margeReelPct !== null && b.margeReelPct === null) return -1;
-        if (a.margeReelPct === null && b.margeReelPct === null) return 0;
-        return a.margeReelPct - b.margeReelPct;
+        if (a.margeActuellePct === null && b.margeActuellePct !== null) return 1;
+        if (a.margeActuellePct !== null && b.margeActuellePct === null) return -1;
+        if (a.margeActuellePct === null && b.margeActuellePct === null) return 0;
+        return a.margeActuellePct - b.margeActuellePct;
       });
   }, [chantiersFiltres, clients, devis, parametres]);
 
@@ -61,8 +61,8 @@ export default function Marges({ chantiers = [], clients = [], devis = [], param
     const coutsTotal = avecDonnees.reduce((s, r) => s + r.coutsReel, 0);
     const margeTotal = caTotal - coutsTotal;
     const margePct = caTotal > 0 ? (margeTotal / caTotal) * 100 : null;
-    const nbRouge = avecDonnees.filter(r => r.margeReelPct < seuils.ok).length;
-    const nbVert  = avecDonnees.filter(r => r.margeReelPct >= seuils.bon).length;
+    const nbRouge = avecDonnees.filter(r => r.margeActuellePct < seuils.ok).length;
+    const nbVert  = avecDonnees.filter(r => r.margeActuellePct >= seuils.bon).length;
     return { caTotal, coutsTotal, margeTotal, margePct, nbRouge, nbVert, nbAvecDonnees: avecDonnees.length };
   }, [rows]);
 
@@ -131,11 +131,11 @@ export default function Marges({ chantiers = [], clients = [], devis = [], param
               </thead>
               <tbody>
                 {rows.map(r => {
-                  const sm = statutMarge(r.margeReelPct);
+                  const sm = statutMarge(r.margeActuellePct);
                   const sp = statutMarge(r.margePrevuPct);
                   const bs = DS.statuts[r.statut] || { bg: '#F1F5F9', color: '#475569' };
                   return (
-                    <tr key={r.id} style={{ background: r.margeReelPct !== null && r.margeReelPct < seuils.ok ? `${sm.bg}44` : 'transparent' }}>
+                    <tr key={r.id} style={{ background: r.margeActuellePct !== null && r.margeActuellePct < seuils.ok ? `${sm.bg}44` : 'transparent' }}>
                       <td style={{ ...DS.td, fontWeight: 700 }}>{r.nom}</td>
                       <td style={{ ...DS.td, color: 'var(--text-secondary)' }}>{r.client}</td>
                       <td style={DS.td}>
@@ -149,7 +149,7 @@ export default function Marges({ chantiers = [], clients = [], devis = [], param
                         {r.margeReel !== null ? `CHF ${fmtN(Math.round(r.margeReel))}` : '—'}
                       </td>
                       <td style={DS.td}>
-                        {r.margeReelPct !== null ? (
+                        {r.margeActuellePct !== null ? (
                           <span style={{ background: sm.bg, color: sm.color, borderRadius: 6, padding: '3px 10px', fontSize: 12, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                             <sm.Icon size={11} strokeWidth={2.5} />
                             {sm.label}

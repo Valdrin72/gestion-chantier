@@ -80,9 +80,9 @@ function PanneauProchaineEtape({ etat, couts, chantier, factures }) {
 
 function DetailProjection({ etat, couts, chantier, factures, fmtK }) {
   const carteStyle = DS.card;
-  const urgence = etat.margeEstimeePct === null ? 'ok'
-    : etat.margeEstimeePct < 0 ? 'critique'
-    : etat.margeEstimeePct <= 10 ? 'surveillance'
+  const urgence = etat.margeProjeteePct === null ? 'ok'
+    : etat.margeProjeteePct < 0 ? 'critique'
+    : etat.margeProjeteePct <= 10 ? 'surveillance'
     : 'ok';
   const urgenceConfig = {
     critique:     { couleur: C.danger,     decision: 'Perte estimée — action immédiate' },
@@ -100,7 +100,7 @@ function DetailProjection({ etat, couts, chantier, factures, fmtK }) {
     </div>
   );
   const margeVal = etat.margeEstimee ?? 0;
-  const margePct = etat.margeEstimeePct ?? 0;
+  const margePct = etat.margeProjeteePct ?? 0;
   return (
     <div style={{ ...carteStyle, borderLeft: `4px solid ${urgenceConfig.couleur}` }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap', gap: 8 }}>

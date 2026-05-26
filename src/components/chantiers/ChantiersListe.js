@@ -51,7 +51,7 @@ function ChantiersListe({
     if (chantiersAvecData.length > 0) {
       const sum = chantiersAvecData.reduce((s, c) => {
         const couts = calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis);
-        return s + (couts.totalCoutsReel > 0 && couts.margeReelPct !== null ? couts.margeReelPct : 0);
+        return s + (couts.totalCoutsReel > 0 && couts.margeActuellePct !== null ? couts.margeActuellePct : 0);
       }, 0);
       margeMoyenne = Math.round(sum / chantiersAvecData.length);
     }
@@ -144,7 +144,7 @@ function ChantiersListe({
         c.nombreJours || 0,
         ca !== null ? Math.round(ca) : '',
         couts.avancementPct !== null ? couts.avancementPct : '',
-        couts.margeReelPct !== null ? couts.margeReelPct : '',
+        couts.margeActuellePct !== null ? couts.margeActuellePct : '',
       ];
     });
     exportCSV(`chantiers_${new Date().toISOString().slice(0,10)}.csv`, entetes, lignes);

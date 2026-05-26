@@ -311,7 +311,7 @@ function AnalyseChantier({ memoire, onSauvegarder, autoSave }) {
     const joursReels = new Set((c.journal || []).map(e => e.date).filter(Boolean)).size;
     const texte = await appeler('analyser_chantier', {
       nom: c.nom || c.numero, ca: couts.montantTotal, coutReel: couts.totalCoutsReel,
-      margePct: couts.margeReelPct, avancement: parseFloat(c.avancement) || 0,
+      margePct: couts.margeActuellePct, avancement: parseFloat(c.avancement) || 0,
       joursPrevus: c.nombreJours, joursReels, statut: c.statut,
       eac: couts.eac, rad: couts.rad, contexte_cyna: memoire,
     });
@@ -445,7 +445,7 @@ function AnalysePortefeuille({ memoire, onSauvegarder, autoSave }) {
     const actifs = chantiers.filter(c => c.statut?.trim().toLowerCase() !== 'annulé');
     const chantiersData = actifs.map(c => {
       const couts = calculerCoutsChantier(c, parametres?.employes || [], parametres?.localites || [], parametres?.parametres || {}, devis);
-      return { nom: c.nom || c.numero, ca: couts.montantTotal, marge: couts.margeReelPct, statut: c.statut };
+      return { nom: c.nom || c.numero, ca: couts.montantTotal, marge: couts.margeActuellePct, statut: c.statut };
     });
     const caTotal = chantiersData.reduce((s, c) => s + (c.ca || 0), 0);
     const margesValides = chantiersData.filter(c => c.marge != null && Number.isFinite(c.marge));
@@ -496,7 +496,7 @@ function Anticiper({ memoire, onSauvegarder, autoSave }) {
           nom: c.nom || c.numero,
           statut: c.statut,
           avancement: parseFloat(c.avancement) || 0,
-          marge: couts.margeReelPct,
+          marge: couts.margeActuellePct,
           ca: couts.montantTotal,
           coutReel: couts.totalCoutsReel,
           eac: couts.eac,

@@ -688,7 +688,6 @@ function TabScoreClient() {
   ]);
 
   const r = useMemo(() => scoreClient(paiements), [paiements]);
-  const catColors = { Fiable: '#10b981', Standard: 'var(--text-primary)', Lent: '#f59e0b', Risque: '#ef4444' };
 
   function upd(id, k, v) {
     setPaiements(ps => ps.map(p => p.id === id ? { ...p, [k]: v } : p));

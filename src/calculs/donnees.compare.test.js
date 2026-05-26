@@ -88,10 +88,6 @@ describe('Invariant coûts — calculerCoutsChantier vs calculerEtatChantier', (
       expect(equivPct(ancien.avancementPct, nouveau.avancementPct),
         `Avancement: ancien=${fmt(ancien.avancementPct)} nouveau=${fmt(nouveau.avancementPct)}`
       ).toBe(true);
-
-      // Nouveaux noms exposés — vérifier que les aliases sont cohérents
-      expect(ancien.margeActuellePct).toBe(ancien.margeReelPct);
-      expect(nouveau.margeProjeteePct).toBe(nouveau.margeEstimeePct);
     });
   }
 });

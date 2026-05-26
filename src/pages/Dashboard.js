@@ -79,7 +79,7 @@ function Dashboard() {
       .map(c => coutsMap.get(c.id))
       .filter(r => r && r.montantTotal > 0 && r.totalCoutsReel > 0 && !r.donneesIncompletes);
     const rentaMoyenne = chantiersRenta.length > 0
-      ? chantiersRenta.reduce((sum, r) => sum + (r.margeReelPct ?? 0), 0) / chantiersRenta.length
+      ? chantiersRenta.reduce((sum, r) => sum + (r.margeActuellePct ?? 0), 0) / chantiersRenta.length
       : null;
     const nbChantiersRenta = chantiersRenta.length;
 
@@ -148,8 +148,8 @@ function Dashboard() {
     const map = {};
     actifs.forEach(c => {
       const couts = coutsMap.get(c.id);
-      map[c.id] = couts && couts.montantTotal > 0 && couts.totalCoutsReel > 0 && couts.margeReelPct !== null
-        ? Math.round(couts.margeReelPct)
+      map[c.id] = couts && couts.montantTotal > 0 && couts.totalCoutsReel > 0 && couts.margeActuellePct !== null
+        ? Math.round(couts.margeActuellePct)
         : null;
     });
     return map;
@@ -212,9 +212,9 @@ function Dashboard() {
     // Chantiers non rentables (calcul complet)
     actifs.forEach(c => {
       const couts = coutsMap.get(c.id);
-      const { montantTotal, totalCoutsReel, margeReel, margeReelPct } = couts;
+      const { montantTotal, totalCoutsReel, margeReel, margeActuellePct } = couts;
       if (montantTotal > 0 && totalCoutsReel > 0) {
-        const pct = margeReelPct;
+        const pct = margeActuellePct;
         if (pct !== null && pct < 15) {
           const s = statutRentabilite(pct);
           const detail = margeReel < 0
@@ -507,7 +507,7 @@ function Dashboard() {
                   const joursTotal = c.nombreJours || 0;
                   const joursRealises = new Set((c.journal || []).map(e => e.date).filter(Boolean)).size;
                   const avancementVal = joursTotal === 0 ? 0 : Math.min(Math.round((joursRealises / joursTotal) * 100), 100);
-                  const mPct = couts.montantTotal > 0 && couts.totalCoutsReel > 0 && couts.margeReelPct !== null ? Math.round(couts.margeReelPct) : null;
+                  const mPct = couts.montantTotal > 0 && couts.totalCoutsReel > 0 && couts.margeActuellePct !== null ? Math.round(couts.margeActuellePct) : null;
                   const statBadge = joursRealises === 0 ? BADGE_STATUT_DASH.neutre : BADGE_STATUT_DASH[priorite.niveau];
                   const couleurBarre = !mPct ? '#CBD5E1' : mPct >= SEUILS.margeRentable ? '#10B981' : mPct >= SEUILS.margeLimite ? '#F59E0B' : '#EF4444';
                   return (
@@ -956,7 +956,7 @@ function Dashboard() {
                   const montantCA = calculerCA(c, devis);
                   const couts = coutsMap.get(c.id) || {};
                   const progress = Math.max(0, Math.min(100, Number(c.avancement ?? 0)));
-                  const mPct = couts.montantTotal > 0 && couts.totalCoutsReel > 0 && couts.margeReelPct !== null ? Math.round(couts.margeReelPct) : null;
+                  const mPct = couts.montantTotal > 0 && couts.totalCoutsReel > 0 && couts.margeActuellePct !== null ? Math.round(couts.margeActuellePct) : null;
                   const joursTotal = c.nombreJours || 0;
                   // Jours réellement travaillés = dates distinctes dans le journal des heures
                   const joursRealises = new Set((c.journal || []).map(e => e.date).filter(Boolean)).size;
@@ -964,8 +964,8 @@ function Dashboard() {
                     ? BADGE_STATUT_DASH.neutre
                     : BADGE_STATUT_DASH[priorite.niveau];
                   const joursRestants = joursTotal > 0 ? Math.max(0, joursTotal - joursRealises) : null;
-                  const margeVal = parseFloat(couts?.margeReelPct) || 0;
-                  const sansCouts = couts?.margeReelPct == null;
+                  const margeVal = parseFloat(couts?.margeActuellePct) || 0;
+                  const sansCouts = couts?.margeActuellePct == null;
                   const avancementVal = joursTotal === 0 ? 0 : Math.min(Math.round((joursRealises / joursTotal) * 100), 100);
                   const couleurBarre = joursRealises === 0 ? '#CBD5E1'
                     : sansCouts ? '#CBD5E1'

@@ -225,7 +225,7 @@ export const migrerDevisId = (chantiers, devisList) => {
  *
  * Retourne notamment :
  * - margeActuellePct : marge sur ce qui a été dépensé jusqu'à aujourd'hui
- *   (anciennement nommée margeReelPct — alias rétrocompatible conservé)
+ *   (anciennement nommée margeReelPct)
  * - avancementPct : % d'avancement calculé depuis le journal (ou 100 si chantier clos)
  *
  * Voir calculerEtatChantier (L883) pour la PROJECTION à fin de chantier.
@@ -318,7 +318,7 @@ export const calculerCoutsChantier = (chantier, employes = [], localites = [], c
   const margePrevu = caDisponible ? montantTotal - totalCoutsPrevu : null;
   const margeReel = caDisponible ? montantTotal - totalCoutsReel : null;
   const margePrevuPct = (caDisponible && montantTotal > 0) ? Math.round((margePrevu / montantTotal) * 1000) / 10 : null;
-  const margeReelPct  = (caDisponible && montantTotal > 0) ? Math.round((margeReel  / montantTotal) * 1000) / 10 : null;
+  const margeActuellePct  = (caDisponible && montantTotal > 0) ? Math.round((margeReel  / montantTotal) * 1000) / 10 : null;
 
   // P7 : coût/m² uniquement si surface renseignée
   const surface = parseFloat(chantier.surface) || 0;
@@ -418,8 +418,7 @@ export const calculerCoutsChantier = (chantier, employes = [], localites = [], c
     coutImprevus, totalCoutsPrevu, totalCoutsReel,
     montantTotal, margePrevu, margeReel,
     margePrevuPct,
-    margeActuellePct: margeReelPct,
-    margeReelPct, // alias rétrocompatible — préférer margeActuellePct
+    margeActuellePct,
     avancementPct: avancement, // exposé pour compatibilité avec calculerEtatChantier
     coutParM2Prevu, coutParM2Reel, prixParM2Devis,
     ecartMontant, ecartPct,
@@ -438,8 +437,8 @@ export const calculerCoutsChantier = (chantier, employes = [], localites = [], c
 };
 
 // ===== STATUT RENTABILITÉ =====
-export const statutRentabilite = (margeReelPct) => {
-  const v = parseFloat(margeReelPct) || 0;
+export const statutRentabilite = (margeActuellePct) => {
+  const v = parseFloat(margeActuellePct) || 0;
   if (v < 0)                     return { label: 'À perte',         couleur: '#7f1d1d' };
   if (v >= SEUILS.margeRentable) return { label: 'Rentable',        couleur: '#10b981' };
   if (v >= SEUILS.margeLimite)   return { label: 'Limite',          couleur: '#f59e0b' };
@@ -905,7 +904,7 @@ export const heuresJour = (journal, date) => {
  *
  * Retourne notamment :
  * - margeProjeteePct : marge prédite à fin de chantier basée sur EAC
- *   (anciennement nommée margeEstimeePct — alias rétrocompatible conservé)
+ *   (anciennement nommée margeEstimeePct)
  * - coutFinalEstime : EAC (Estimate At Completion — coût final prédit)
  * - rad : Reste À Dépenser
  *
@@ -1015,7 +1014,7 @@ export const calculerEtatChantier = (chantier, employes = [], devisList = [], pa
     ? Math.round(devisTotal - coutFinalEstime)
     : null;
 
-  const margeEstimeePct = (projectionDisponible && devisTotal !== null && devisTotal > 0)
+  const margeProjeteePct = (projectionDisponible && devisTotal !== null && devisTotal > 0)
     ? Math.round((margeEstimee / devisTotal) * 1000) / 10
     : null;
 
@@ -1046,8 +1045,7 @@ export const calculerEtatChantier = (chantier, employes = [], devisList = [], pa
     coutFinalEstime,
     rad,
     margeEstimee,
-    margeProjeteePct: margeEstimeePct,
-    margeEstimeePct, // alias rétrocompatible — préférer margeProjeteePct
+    margeProjeteePct,
 
     // Détail équipe
     equipe: membreDetail,

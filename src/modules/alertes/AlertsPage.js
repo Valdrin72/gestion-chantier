@@ -26,7 +26,16 @@ export function AlertsPage({ naviguer }) {
     category: category || undefined,
   });
 
-  const allActive = useAlertsStore(s => s.getActive());
+  // Sélectionner le tableau brut (référence stable) pour éviter boucle infinie
+  const rawAlerts = useAlertsStore(s => s.alerts);
+  const allActive = useMemo(() => {
+    const now = Date.now();
+    return rawAlerts.filter(a => {
+      if (a.state === 'resolved') return false;
+      if (a.state === 'snoozed' && a.snoozedUntil && new Date(a.snoozedUntil).getTime() > now) return false;
+      return true;
+    });
+  }, [rawAlerts]);
   const countBySeverity = useMemo(() => {
     return SEVERITIES.reduce((acc, sev) => {
       acc[sev] = allActive.filter(a => a.severity === sev).length;

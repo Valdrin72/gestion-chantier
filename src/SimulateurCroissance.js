@@ -76,7 +76,7 @@ export default function SimulateurCroissance({ chantiers = [], devis = [], factu
     if (terminés.length > 0) {
       const marges = terminés.map(c => {
         const couts = calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis);
-        return couts.margeReelPct;
+        return couts.margeActuellePct;
       }).filter(m => m !== null && !isNaN(m));
       if (marges.length > 0) margesMoyenne = Math.round(marges.reduce((s, m) => s + m, 0) / marges.length * 10) / 10;
     }

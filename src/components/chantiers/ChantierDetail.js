@@ -100,7 +100,7 @@ function ChantierDetail({ chantier, detailOnglet, setDetailOnglet, modeCompleter
   const perfDetail = `${etat.totalJoursReels} j réalisés sur ${etat.totalJoursPrevus} j prévus`;
 
   const scoreCriticite = (etat.deriveJours * 2)
-    + (etat.projectionDisponible && etat.margeEstimeePct !== null && etat.margeEstimeePct < 0 ? 10 : 0)
+    + (etat.projectionDisponible && etat.margeProjeteePct !== null && etat.margeProjeteePct < 0 ? 10 : 0)
     + (couts.ratioEfficacite !== null && couts.ratioEfficacite < 0.8 ? 5 : 0);
   const criticiteConfig = scoreCriticite >= 15
     ? { icone: 'danger', label: 'Chantier critique — action immédiate', couleur: C.danger, fond: 'radial-gradient(ellipse at 6% 50%, rgba(239,68,68,0.13) 0%, rgba(239,68,68,0.04) 100%)' }
@@ -139,11 +139,11 @@ function ChantierDetail({ chantier, detailOnglet, setDetailOnglet, modeCompleter
     } else if (joursRestants !== null && joursRestants <= 3 && joursRestants >= 0) {
       list.push({ id: 'fin_proche', texte: `Fin imminente — ${joursRestants === 0 ? "dernier jour aujourd'hui" : `${joursRestants} jour${joursRestants > 1 ? 's' : ''} restant${joursRestants > 1 ? 's' : ''}`}`, gravite: 'warning', icone: 'warning' });
     }
-    if (etat.projectionDisponible && etat.margeEstimeePct !== null) {
+    if (etat.projectionDisponible && etat.margeProjeteePct !== null) {
       if (etat.margeEstimee < 0) {
-        list.push({ id: 'perte', texte: `Chantier en perte — déficit estimé CHF ${fmtN(Math.abs(etat.margeEstimee))} (${Math.round(etat.margeEstimeePct * 10) / 10}%)`, gravite: 'critique', icone: 'danger' });
-      } else if (etat.margeEstimeePct < 15) {
-        list.push({ id: 'marge_faible', texte: `Rentabilité faible — marge estimée ${Math.round(etat.margeEstimeePct * 10) / 10}% · seuil cible 15%`, gravite: 'warning', icone: 'warning' });
+        list.push({ id: 'perte', texte: `Chantier en perte — déficit estimé CHF ${fmtN(Math.abs(etat.margeEstimee))} (${Math.round(etat.margeProjeteePct * 10) / 10}%)`, gravite: 'critique', icone: 'danger' });
+      } else if (etat.margeProjeteePct < 15) {
+        list.push({ id: 'marge_faible', texte: `Rentabilité faible — marge estimée ${Math.round(etat.margeProjeteePct * 10) / 10}% · seuil cible 15%`, gravite: 'warning', icone: 'warning' });
       }
     }
     if (etat.coutMOReel > 0 && etat.coutTotalReel > 0) {
@@ -172,12 +172,12 @@ function ChantierDetail({ chantier, detailOnglet, setDetailOnglet, modeCompleter
 
   // ── Tuiles cockpit ──
   const margeTile = (() => {
-    if (etat.projectionDisponible && etat.margeEstimeePct !== null) {
-      const v = etat.margeEstimeePct;
+    if (etat.projectionDisponible && etat.margeProjeteePct !== null) {
+      const v = etat.margeProjeteePct;
       return { val: `${v >= 0 ? '+' : ''}${Math.round(v * 10) / 10}%`, label: 'Marge estimée finale', couleur: v >= 15 ? C.secondaire : v >= 5 ? C.warning : C.danger };
     }
-    if (couts.margeReelPct !== null && etat.coutTotalReel > 0) {
-      const v = couts.margeReelPct;
+    if (couts.margeActuellePct !== null && etat.coutTotalReel > 0) {
+      const v = couts.margeActuellePct;
       return { val: `${v >= 0 ? '+' : ''}${Math.round(v * 10) / 10}%`, label: 'Marge actuelle', couleur: v >= 15 ? C.secondaire : v >= 5 ? C.warning : C.danger };
     }
     return devisTotal !== null
@@ -680,7 +680,7 @@ function ChantierDetail({ chantier, detailOnglet, setDetailOnglet, modeCompleter
         {modeChantier === 'FINAL' && (
         <div style={{ display: 'grid', gridTemplateColumns: 'var(--g4)', gap: '12px', marginBottom: 16 }}>
           {[
-            { label: 'Marge directe (%)', valeur: couts.margeReelPct !== null ? `${couts.margeReelPct}%` : '—', couleur: (couts.margeReelPct ?? 0) >= 15 ? C.secondaire : C.danger },
+            { label: 'Marge directe (%)', valeur: couts.margeActuellePct !== null ? `${couts.margeActuellePct}%` : '—', couleur: (couts.margeActuellePct ?? 0) >= 15 ? C.secondaire : C.danger },
             { label: 'Marge nette', valeur: couts.margeNettePct !== null ? `${couts.margeNettePct}%` : '—', couleur: (couts.margeNettePct ?? 0) >= 10 ? C.secondaire : (couts.margeNettePct ?? 0) >= 0 ? C.warning : C.danger, sub: `FG: CHF ${fmtK(couts.fraisGeneraux)}` },
             { label: 'Coût/m² réel', valeur: couts.coutParM2Reel !== null ? `CHF ${couts.coutParM2Reel}` : '—', couleur: couts.coutParM2Reel !== null ? C.violet : 'var(--text-muted)' },
             { label: 'Prix/m² devis', valeur: couts.prixParM2Devis !== null ? `CHF ${couts.prixParM2Devis}` : '—', couleur: couts.prixParM2Devis !== null ? C.info : 'var(--text-muted)' },

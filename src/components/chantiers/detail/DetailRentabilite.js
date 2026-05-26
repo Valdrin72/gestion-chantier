@@ -22,9 +22,9 @@ function DetailRentabilite({ c, etat, couts, naviguer, fmtN, fmtK }) {
     montantDevis: couts.montantTotal,
     totalCoutsReel: Math.round(couts.totalCoutsReel || 0),
     rentabilite: couts.margeReel !== null ? Math.round(couts.margeReel) : null,
-    rentabilitePct: couts.margeReelPct,
+    rentabilitePct: couts.margeActuellePct,
     rentabiliteProjetee: etat.projectionDisponible && etat.margeEstimee !== null ? Math.round(etat.margeEstimee) : null,
-    rentabiliteProjetee_Pct: etat.projectionDisponible ? etat.margeEstimeePct : null,
+    rentabiliteProjetee_Pct: etat.projectionDisponible ? etat.margeProjeteePct : null,
     coutJournalierEquipe: joursRealises > 0 ? Math.round((couts.coutEquipeReel || 0) / joursRealises) : 0,
   };
 

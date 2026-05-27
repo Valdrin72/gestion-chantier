@@ -2,6 +2,7 @@
 
 > Document généré par `/cartographier-donnees`. Reflète l'état du fichier au moment de la génération.
 > **Date de génération :** `2026-05-26T15:19:55Z`
+> **Dernière mise à jour :** `2026-05-27` — après refactor PR #5–#10 (clarification des deux moteurs de calcul chantier et suppression des aliases `margeReelPct` / `margeEstimeePct`)
 > **Branche :** `main`
 > **Taille du fichier :** `1165` lignes
 
@@ -55,7 +56,7 @@ _(aucune constante technique pure distincte — les couleurs sont regroupées da
 | `sommeAvenants` | 138 | Total CHF des avenants d'un chantier | 0 fichiers | Non | Non | ⚪ Inutilisé |
 | `sommeHeuresRegie` | 169 | Total heures en régie d'un devis | 0 fichiers | Non | Non | ⚪ Inutilisé |
 | `calculerCA` | 189 | **CA = devis.montantHT + avenants + régie** — source unique CA | 11 fichiers | Non | Non | 🚨 Critique |
-| `calculerCoutsChantier` | 221 | Tous les coûts, marges, EAC, RAD (~200 lignes) | 12 fichiers | Non | Non | 🚨 Critique |
+| `calculerCoutsChantier` | 221 | Moteur **"état actuel"** — coûts, marges, RAD. Retourne **`margeActuellePct`** (marge sur ce qui a été dépensé jusqu'à aujourd'hui). ~200 lignes. | 15 fichiers | Non | Non | 🚨 Critique |
 | `calculerDevis` | 432 | Estimatif devis (coût MO + matériaux + marges) | 0 fichiers | `src/calculs/pricing.js:calculerDevisGlobal` ⚠️ | Non | 🟡 Moyen |
 | `calculerDevisClient` | 491 | Marge devis signé (montantHT - coûtMO) | 0 fichiers | Non | Non | ⚪ Inutilisé |
 | `calculerJoursRestants` | 525 | Jours ouvrables restants d'un chantier | 0 fichiers | Non | Non | ⚪ Inutilisé |
@@ -67,7 +68,7 @@ _(aucune constante technique pure distincte — les couleurs sont regroupées da
 | `facturesInPeriode` | 715 | Filtre si facture émise dans une période | 2 fichiers | Non | Non | 🟢 Faible |
 | `genererNumeroFacture` | 725 | Génère le prochain numéro F-YYYY-NNN | 1 fichier | Non | Non | 🟡 Moyen |
 | `calculerStatutFacture` | 736 | Calcule le statut réel (payée/partielle/retard) depuis paiementsHistorique | 2 fichiers | Non | Non | 🟡 Moyen |
-| `calculerEtatChantier` | 883 | **Moteur principal** : avancement, coûts, projection, RAD, EAC | 3 fichiers directs + utilisé via `calculerCoutsChantier` | Non | Non | 🚨 Critique |
+| `calculerEtatChantier` | 883 | Moteur **"projection fin de chantier"** — avancement, coûts, EAC, RAD. Retourne **`margeProjeteePct`** (marge prédite à fin de chantier via EAC). Coexiste délibérément avec `calculerCoutsChantier`. ~140 lignes. | 5 fichiers | Non | Non | 🚨 Critique |
 | `calculerVitesseChantier` | 1135 | Vitesse réelle + simulation +1 ouvrier | 1 fichier | Non | Non | 🟡 Moyen |
 
 ### 2.5 🟣 Fonctions de transformation / migration
@@ -158,23 +159,49 @@ _(aucune constante technique pure distincte — les couleurs sont regroupées da
 | `donneesInitiales` (L808) | `donneesDemo` (import externe) |
 | `creerFactureDepuisDevis` (L753) | `genererNumeroFacture` |
 
-### Remarque importante : deux moteurs de calcul coexistent
+### Remarque importante : deux moteurs coexistent DÉLIBÉRÉMENT
 
-Il existe **deux implémentations** du calcul chantier dans `donnees.js` :
-- `calculerCoutsChantier` (L221) — ancien moteur, ~200 lignes, imbriqué
-- `calculerEtatChantier` (L883) — nouveau moteur "source unique de vérité", ~140 lignes, propre
+Les deux moteurs répondent à des questions différentes et ne sont **pas redondants** :
 
-`calculerCoutsChantier` appelle `calculerCA` et `heuresEmploye` de façon similaire à `calculerEtatChantier`, mais produit un format de retour différent. Les 12 importateurs de `calculerCoutsChantier` n'ont pas encore migré vers le nouveau moteur.
+- **`calculerCoutsChantier` (L221) — moteur "état actuel"**
+  Répond à : _"où en est-on en termes d'argent dépensé MAINTENANT ?"_
+  Retourne `margeActuellePct` (marge calculée sur les coûts réels à date).
+  15 fichiers consommateurs : pilotage quotidien, tableaux de bord, rapports, export PDF.
+
+- **`calculerEtatChantier` (L883) — moteur "projection fin de chantier"**
+  Répond à : _"où va-t-on finir si le rythme actuel se maintient ?"_
+  Retourne `margeProjeteePct` (marge prédite à fin de chantier via EAC).
+  5 fichiers consommateurs : `ChantiersListe.js`, `useChantierCalculs.js`, `contextAdapter.js`, `Dashboard.js`, `FinancesPage.js`.
+
+Un invariant Vitest (`src/calculs/donnees.compare.test.js`) garantit que les coûts de base des deux moteurs sont équivalents à moins de 0.01% près. La divergence sur les marges est intentionnelle : `margeActuellePct ≠ margeProjeteePct` par design.
 
 ---
 
-## 5. Recommandations de l'agent — RIEN
+## 5. Îlots locaux — variables homonymiques (SANS lien avec `donnees.js`)
+
+Ces variables portent des noms similaires à `margeActuellePct` / `margeProjeteePct` mais sont calculées **indépendamment** et n'ont **aucun lien** avec les exports de `donnees.js`. Identifiées et délibérément préservées lors du refactor PR #5–#10.
+
+| Fichier | Ligne(s) | Variable locale | Source réelle |
+|---|---|---|---|
+| `AgentEngine.js` | L1116–1160 | `margeEstimeePct` | `runDerivePredictor` — calcul propre au prédicteur IA |
+| `AgentEngine.js` | L1707, L1723, L1784 | `margeReelPct` | `runDiagnosticRaison` — calcul propre au diagnostic IA |
+| `Analyse.js` | L187–200, L421–423 | `margeReelPct` | `tableauComparatif` — calculé localement dans `Analyse.js` |
+| `Agents.js` | L763 | `r.margeEstimeePct` | Lecture résultat DerivePredictor (via AgentEngine, pas `donnees.js`) |
+| `ChantiersListe.js` | L366 | `derive.margeEstimeePct` | Lecture résultat DerivePredictor (via AgentEngine, pas `donnees.js`) |
+
+> **Règle** : ne pas confondre ces variables avec les champs du retour de `calculerCoutsChantier` ou `calculerEtatChantier`. Modifier l'un n'affecte pas l'autre.
+
+---
+
+## 6. Recommandations de l'agent — RIEN
 
 L'agent ne propose AUCUNE action. La phase de décision/migration viendra ensuite, fonction par fonction.
 
+Refactor de clarification des deux moteurs (PR #5 à #10, 2026-05-26/27) terminé : `margeReelPct` → `margeActuellePct` (calculerCoutsChantier) et `margeEstimeePct` → `margeProjeteePct` (calculerEtatChantier). Aliases supprimés.
+
 ---
 
-## 6. Comment relire ce document
+## 7. Comment relire ce document
 
 1. Section **2.4 (Fonctions de calcul)** — c'est LE point critique. Tu y vois quelles fonctions sont dupliquées avec `src/calculs/`.
 2. Section **3 (Drapeaux)** — la liste prioritaire des fonctions à migrer en premier.

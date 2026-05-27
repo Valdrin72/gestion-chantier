@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { Sidebar, Topbar, MobileNav } from './components/Layout';
 import { migrerDevisId, donneesInitiales, migrerJournal } from './donnees';
+import { migrerJournalVersPointages } from './migration/migrerJournalVersPointages';
 import Finances from './pages/FinancesPage';
 import Login from './Login';
 import useAuth from './hooks/useAuth';
@@ -71,6 +72,7 @@ function AppInner({ profil, deconnecter, userId }) {
     factures, setFactures,
     clients, setClients,
     parametres, setParametres,
+    pointages, setPointages,
     loading: dataLoading,
     syncing,
   } = useSupabaseData(userId);
@@ -207,6 +209,22 @@ function AppInner({ profil, deconnecter, userId }) {
       setChantiers(corriges);
     }
   }, [devis]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Migration Phase 3 — journal → pointages (idempotente via migrationJournalV2Done)
+  useEffect(() => {
+    if (dataLoading) return;
+    if (parametres.migrationJournalV2Done) return;
+    if (pointages.length > 0) return;
+    const migres = migrerJournalVersPointages(chantiers, parametres.employes || []);
+    if (migres.length > 0) {
+      setPointages(migres);
+      setParametres(prev => ({ ...prev, migrationJournalV2Done: true }));
+      if (process.env.NODE_ENV !== 'production') {
+        console.log(`[CYNA] Migration journal → pointages : ${migres.length} pointages créés`);
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dataLoading, parametres.migrationJournalV2Done, pointages.length]);
 
   const agentState = useAgents({ chantiers, devis, factures, clients, parametres });
 

@@ -73,13 +73,14 @@ export default function useSupabaseData(userId) {
   const [factures,    setFacturesState]   = useState(_initFactures);
   const [clients,     setClientsState]    = useState(_initClients);
   const [parametres,  setParametresState] = useState(donneesInitiales);
+  const [pointages,   setPointagesState]  = useState([]);
   const [loading,     setLoading]         = useState(true);
   const [syncing,     setSyncing]         = useState(false);
 
   const rowIdRef    = useRef(null);
   const syncTimer   = useRef(null);
   const pendingRef  = useRef(null);
-  const dataRef     = useRef({ chantiers: _initChantiers, devis: _initDevis, factures: _initFactures, clients: _initClients, parametres: donneesInitiales });
+  const dataRef     = useRef({ chantiers: _initChantiers, devis: _initDevis, factures: _initFactures, clients: _initClients, parametres: donneesInitiales, pointages: [] });
   const mountedRef  = useRef(true);
   useEffect(() => { mountedRef.current = true; return () => { mountedRef.current = false; }; }, []);
 
@@ -116,12 +117,14 @@ export default function useSupabaseData(userId) {
       zones:        (storedParams.zones?.length        > 0) ? storedParams.zones        : donneesInitiales.zones,
     };
 
+    const pointagesBruts = d.pointages || [];
     setChantiersState(chantiersFinaux);
     setDevisState(devisFinaux);
     setFacturesState(facturesFinales);
     setClientsState(clientsFinaux);
     setParametresState(params);
-    dataRef.current = { chantiers: chantiersFinaux, devis: devisFinaux, factures: facturesFinales, clients: clientsFinaux, parametres: params };
+    setPointagesState(pointagesBruts);
+    dataRef.current = { chantiers: chantiersFinaux, devis: devisFinaux, factures: facturesFinales, clients: clientsFinaux, parametres: params, pointages: pointagesBruts };
 
     const needsSync = nettoyage || outdated || c.length === 0 || dv.length === 0 || !storedParams.employes?.length;
     if (needsSync) {
@@ -131,7 +134,7 @@ export default function useSupabaseData(userId) {
       sauvegarderLocal('cyna_factures',   facturesFinales);
       sauvegarderLocal('cyna_clients',    clientsFinaux);
       sauvegarderLocal('cyna_parametres', params);
-      scheduleSync({ chantiers: chantiersFinaux, devis: devisFinaux, factures: facturesFinales, clients: clientsFinaux, parametres: params });
+      scheduleSync({ chantiers: chantiersFinaux, devis: devisFinaux, factures: facturesFinales, clients: clientsFinaux, parametres: params, pointages: pointagesBruts });
     }
   }
 
@@ -286,12 +289,22 @@ export default function useSupabaseData(userId) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
 
+  const setPointages = useCallback((updater) => {
+    setPointagesState(prev => {
+      const next = typeof updater === 'function' ? updater(prev) : updater;
+      scheduleSync({ pointages: next });
+      return next;
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId]);
+
   return {
     chantiers, setChantiers,
     devis, setDevis,
     factures, setFactures,
     clients, setClients,
     parametres, setParametres,
+    pointages, setPointages,
     loading, syncing,
   };
 }

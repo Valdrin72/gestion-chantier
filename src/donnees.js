@@ -3,6 +3,7 @@
 // =============================================
 import { donneesDemo } from './donnees-demo';
 import { calculerMajorationDate, calculerPartSemaine, facteurEffectif } from './calculs/majorations';
+import { COEF_MO_DEFAUT } from './calculs/constants';
 
 // ===== SEUILS DE RENTABILITÉ BTP SUISSE — SOURCE UNIQUE DE VÉRITÉ =====
 // Tous les modules (Dashboard, Marges, Analyse, Statistiques, ChantierDetail)
@@ -227,7 +228,7 @@ export const migrerDevisId = (chantiers, devisList) => {
  * @param {Object} chantier
  * @param {Object[]} employes
  * @param {import('./types/pointage').Pointage[]} pointages - tous les pointages de l'app
- * @param {number} coefficient - coefficient MO (défaut 1.35)
+ * @param {number} coefficient - coefficient MO (défaut 1.0 — tarifs déjà chargés)
  * @returns {{ coutMOSansMajoration: number, coutMajorations: number, heuresMajorees: number,
  *             coutDeplacementFG: number, repartitionCategories: Object }}
  */
@@ -311,7 +312,7 @@ function _surcoutMajorations(chantier, employes, pointages, coefficient) {
  * mais répondent à des questions différentes.
  */
 export const calculerCoutsChantier = (chantier, employes = [], localites = [], cfg = {}, devisList = [], pointages = []) => {
-  const coefficient = parseFloat(cfg.coefficientMainOeuvre) || 1.35;
+  const coefficient = parseFloat(cfg.coefficientMainOeuvre) || COEF_MO_DEFAUT;
   const tauxFG = parseFloat(cfg.tauxFraisGeneraux) || 12;
 
   // Helper : tarif journalier chargé (applique le coefficient si tarif non déjà chargé)
@@ -637,7 +638,7 @@ export const calculerJoursRestants = (chantier) => {
  */
 export const calculerRentabiliteEquipe = (chantier, parametres) => {
   const employes = parametres?.employes || [];
-  const coefficient = parseFloat(parametres?.parametres?.coefficientMainOeuvre) || 1.35;
+  const coefficient = parseFloat(parametres?.parametres?.coefficientMainOeuvre) || COEF_MO_DEFAUT;
   // Source unique : journal (heuresTravaillees) — aucun fallback
   const journalEq = chantier.journal || [];
   const getJoursReelsEq = (m) => heuresEmploye(journalEq, parseInt(m.employeId)) / 8;
@@ -727,7 +728,7 @@ export const calculerRentabiliteReelle = (chantier, parametres, devisList = []) 
   // Coût MO prévisionnel (somme tarifJour × joursPrévus par membre, chargé du coefficient)
   const coutMOPrevu = (chantier.equipe || []).reduce((total, membre) => {
     const emp = employes.find(e => String(e.id) === String(membre.employeId));
-    const coeff = emp?.tarifDejaCharge ? 1 : (parseFloat(parametres?.parametres?.coefficientMainOeuvre) || parseFloat(parametres?.coefficientMainOeuvre) || 1.35);
+    const coeff = emp?.tarifDejaCharge ? 1 : (parseFloat(parametres?.parametres?.coefficientMainOeuvre) || parseFloat(parametres?.coefficientMainOeuvre) || COEF_MO_DEFAUT);
     return total + (parseFloat(emp?.tarifJour) || 0) * coeff * (parseFloat(membre.joursPlannifies) || 0);
   }, 0);
 
@@ -1006,8 +1007,8 @@ export const calculerEtatChantier = (chantier, employes = [], devisList = [], pa
   // CA = devis accepté lié (montantHT) + avenants. Si aucun devis : CA = 0.
   const devisTotal = calculerCA(chantier, devisList);
 
-  // Coefficient charges sociales employeur (règle BTP Suisse : défaut 1.35 = +35%)
-  const coefficientMO = parseFloat(parametres?.coefficientMainOeuvre) || 1.35;
+  // Coefficient MO (défaut 1.0 — tarifs journaliers déjà tout compris, charges incluses)
+  const coefficientMO = parseFloat(parametres?.coefficientMainOeuvre) || COEF_MO_DEFAUT;
 
   // ── A. Jours réels par employé (source : journal uniquement) ──────────
   // Tous les employés ayant des heures dans le journal — sans nécessiter c.equipe

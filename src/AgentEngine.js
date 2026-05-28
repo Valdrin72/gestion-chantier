@@ -1072,13 +1072,6 @@ export function runConformiteBTP({ chantiers, parametres, agentContext }) {
       timestamp: Date.now(), lu: false, action: { page: 'heures', ctx: {} } });
   }
 
-  // Vérifie employés sans LPP (< 22 ans ou > 70 ans non géré)
-  (parametres?.employes || []).filter(e => e.actif !== false).forEach(emp => {
-    if (!emp.tarifDejaCharge && (!parametres?.parametres?.coefficientMainOeuvre || parametres.parametres.coefficientMainOeuvre < 1.3)) {
-      violations.push(`${emp.nom} — coefficient MO insuffisant (< 1.30) pour couvrir les charges sociales GE`);
-    }
-  });
-
   return { alertes, data: { violations, nbViolations: violations.length } };
 }
 

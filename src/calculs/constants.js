@@ -8,3 +8,6 @@ export const CYNA_PARAMS = {
   TAUX_FG: 0.18,
   TRESORERIE_SEUIL_ALERTE: 20_000,
 };
+
+// Tarifs journaliers déjà tout compris (charges sociales incluses) → pas de majoration.
+export const COEF_MO_DEFAUT = 1.0;

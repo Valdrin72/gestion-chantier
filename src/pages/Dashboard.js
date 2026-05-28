@@ -368,7 +368,7 @@ function Dashboard() {
             (entry.employes || []).forEach(e => {
               const emp = employes.find(em => String(em.id) === String(e.employeId));
               const tarifBrut = emp ? (parseFloat(emp.tarifJour) || 0) : 0;
-              const coeff = emp?.tarifDejaCharge ? 1 : (parseFloat(parametres.parametres?.coefficientMainOeuvre) || 1.35);
+              const coeff = emp?.tarifDejaCharge ? 1 : (parseFloat(parametres.parametres?.coefficientMainOeuvre) || 1.0);
               const heures = parseFloat(e.heuresTravaillees) || 0;
               couts += (heures / 8) * tarifBrut * coeff;
             });

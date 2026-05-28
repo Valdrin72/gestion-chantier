@@ -577,7 +577,7 @@ function buildChecks({ chantiers, devis, factures, clients, parametres }) {
     {
       id: 'coefficient_mo', categorie: 'Configuration',
       titre: 'Coefficient MO configuré (charges sociales)',
-      description: 'Le coefficient de main d\'œuvre représente les charges sociales (défaut 1.35 = +35%)',
+      description: 'Le coefficient de main d\'œuvre appliqué sur le tarif journalier (défaut 1.0 — tarifs tout compris)',
       fn: () => {
         const coeff = parseFloat(cfg.coefficientMainOeuvre);
         if (!isNaN(coeff) && coeff >= 1.0 && coeff <= 2.5) {
@@ -592,7 +592,7 @@ function buildChecks({ chantiers, devis, factures, clients, parametres }) {
         }
         return {
           niveau: NIV.warn,
-          detail: 'Coefficient MO non configuré — défaut 1.35 appliqué',
+          detail: 'Coefficient MO non configuré — défaut 1.0 appliqué',
           recommandation: 'Configurez le coefficient dans Paramètres → Calculs',
         };
       },

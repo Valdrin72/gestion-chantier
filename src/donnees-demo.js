@@ -8,7 +8,7 @@
 //   - TVA 8.1% — montantTTC = Math.round(montantHT * 1.081 * 100) / 100
 //   - dateEmission sur les factures (jamais dateFacture)
 //   - Marge sur vente : (CA − coûts) / CA × 100
-//   - coefficient MO 1.35 pour tarifDejaCharge absent ou false
+//   - coefficient MO 1.0 (tarifs journaliers tout compris — charges incluses)
 //   - Tous les champs numériques protégés parseFloat(x) || 0
 
 // ── Helpers internes (génération du journal) ─────────────────────────────────
@@ -92,7 +92,7 @@ export const donneesDemo = {
     seuilRentabiliteMin: 15,
     plafondCredi: 40,
     tauxFraisGeneraux: 12,
-    coefficientMainOeuvre: 1.35,
+    coefficientMainOeuvre: 1.0,
     joursAlerte: 5,
     tauxChargesSociales: 30,
     chargesMensuelles: 45000,
@@ -198,7 +198,7 @@ export const donneesDemo = {
   // ══════════════════════════════════════════════════════════════════════════
   // EMPLOYÉS — 10 personnes, 3 équipes
   // Règle : tarifDejaCharge:true → tarif utilisé tel quel (déjà chargé)
-  //         absent / false      → multiplier par coefficientMainOeuvre (1.35)
+  //         absent / false      → multiplier par coefficientMainOeuvre (1.0)
   // ══════════════════════════════════════════════════════════════════════════
   employes: [
     // ── Équipe A ────────────────────────────────────────────────────────────
@@ -219,7 +219,7 @@ export const donneesDemo = {
       poste: 'Monteur cloisons',
       equipe: 'A',
       tarifJour: 360,
-      tarifDejaCharge: false,  // × 1.35 = 486 CHF/j chargé
+      tarifDejaCharge: false,  // tarif tout compris (coef 1.0)
       telephone: '079 222 22 22',
       email: 'l.ferretti@cyna.ch',
       actif: true,
@@ -230,7 +230,7 @@ export const donneesDemo = {
       poste: 'Menuisier',
       equipe: 'A',
       tarifJour: 340,
-      tarifDejaCharge: false,  // × 1.35 = 459 CHF/j chargé
+      tarifDejaCharge: false,  // tarif tout compris (coef 1.0)
       telephone: '079 333 33 33',
       email: 'i.kovac@cyna.ch',
       actif: true,
@@ -241,7 +241,7 @@ export const donneesDemo = {
       poste: 'Manœuvre',
       equipe: 'A',
       tarifJour: 290,
-      tarifDejaCharge: false,  // × 1.35 = 391.50 CHF/j chargé
+      tarifDejaCharge: false,  // tarif tout compris (coef 1.0)
       telephone: '079 444 44 44',
       email: 'a.dallah@cyna.ch',
       actif: true,
@@ -264,7 +264,7 @@ export const donneesDemo = {
       poste: 'Carreleur',
       equipe: 'B',
       tarifJour: 380,
-      tarifDejaCharge: false,  // × 1.35 = 513 CHF/j chargé
+      tarifDejaCharge: false,  // tarif tout compris (coef 1.0)
       telephone: '079 666 66 66',
       email: 'f.rossi@cyna.ch',
       actif: true,
@@ -275,7 +275,7 @@ export const donneesDemo = {
       poste: 'Monteur vitrages',
       equipe: 'B',
       tarifJour: 370,
-      tarifDejaCharge: false,  // × 1.35 = 499.50 CHF/j chargé
+      tarifDejaCharge: false,  // tarif tout compris (coef 1.0)
       telephone: '079 777 77 77',
       email: 't.meier@cyna.ch',
       actif: true,
@@ -298,7 +298,7 @@ export const donneesDemo = {
       poste: 'Plâtrier',
       equipe: 'C',
       tarifJour: 355,
-      tarifDejaCharge: false,  // × 1.35 = 479.25 CHF/j chargé
+      tarifDejaCharge: false,  // tarif tout compris (coef 1.0)
       telephone: '079 999 99 99',
       email: 'd.petrovic@cyna.ch',
       actif: true,
@@ -309,7 +309,7 @@ export const donneesDemo = {
       poste: 'Technicien faux-planchers',
       equipe: 'C',
       tarifJour: 365,
-      tarifDejaCharge: false,  // × 1.35 = 492.75 CHF/j chargé
+      tarifDejaCharge: false,  // tarif tout compris (coef 1.0)
       telephone: '079 100 10 10',
       email: 'm.yilmaz@cyna.ch',
       actif: true,
@@ -1130,10 +1130,10 @@ export const donneesDemo = {
 //                      | double-fallback materielReel/coutMaterielReel
 //
 // FORMULES VÉRIFIABLES :
-//   CH1  CA=73000 | coût MO = 650×20 + 360×1.35×20 + 340×1.35×17.5 = 30752.5 CHF
-//        totalCoûts = 30752.5 + 17200 + 0 + 950 + 680 = 49582.5
-//        marge brute = 73000 − 49582.5 = 23417.5 → 32.1%
-//        marge nette = 23417.5 − 8760 (FG12%) = 14657.5 → 20.1% ✅
+//   CH1  CA=73000 | coût MO = 650×20 + 360×20 + 340×17.5 = 26150 CHF (coef 1.0)
+//        totalCoûts = 26150 + 17200 + 0 + 950 + 680 = 44980
+//        marge brute = 73000 − 44980 = 28020 → 38.4%
+//        marge nette = 28020 − 8760 (FG12%) = 19260 → 26.4% ✅
 //   CH2  CA=54500 | totalCoûts=37035 | marge nette ≈ 20% ✅
 //   CH3  CA=115000 | imprevus=4000 | materielReel=31500 → marge nette ≈ -4% (alerte ⚠️)
 //   CH4  40/90j = 44.4% avancement → projection EAC disponible (>=20%)

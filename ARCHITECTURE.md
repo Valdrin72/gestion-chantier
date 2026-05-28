@@ -1,8 +1,8 @@
 # Architecture CYNA Gestion-Chantier — Cartographie
 
 > Document généré automatiquement par `/cartographier`. Reflète l'état du code au moment de la génération.
-> **Dernière mise à jour :** `2026-05-26`
-> **Branche analysée :** `claude/debug-terminal-issue-uvSBY`
+> **Dernière mise à jour :** `2026-05-28` (post-Phase 5c)
+> **Branche analysée :** `claude/docs-claude-projet`
 
 ---
 
@@ -24,6 +24,7 @@
 | `src/` (racine) | 38 | 18 818 | Pages, moteur IA, utilitaires — mélange non rangé |
 | `src/pages/` | 11 | 5 355 | Pages principales de l'app (routage par App.js) |
 | `src/components/` | 8 | 1 491 | Composants UI partagés (Layout, Search, Modal…) |
+| `src/components/pointages/` | 7 | 634 | Formulaire pointage + modal + sous-composants |
 | `src/components/chantiers/` | 4 | 1 637 | Composants spécialisés chantiers (liste, détail, form, kanban) |
 | `src/components/chantiers/detail/` | 5 | 697 | Sous-composants du détail chantier (rentabilité, projection…) |
 | `src/components/ia/` | 1 | 1 065 | Panneau Claude IA intégré |
@@ -58,7 +59,7 @@
 | `Documents.js` | 156 | Page — **jamais importée** | `src/pages/` |
 | `ExportPDF.js` | 940 | Utilitaire PDF | `src/utils/` ou `src/modules/` |
 | `Factures.js` | 1 248 | Page Factures | `src/pages/` |
-| `Heures.js` | 482 | Page Heures | `src/pages/` |
+| `Heures.js` | 275 | Page Heures | `src/pages/` |
 | `ImportPDF.js` | 933 | Utilitaire PDF | `src/utils/` ou `src/modules/` |
 | `Marges.js` | 197 | Composant analyse marges | `src/components/` |
 | `MetragePlan.js` | 557 | Page — **jamais importée** | `src/pages/` |
@@ -91,7 +92,8 @@
 | `src/App.js` | 464 | Entrée, routage, layout global | `src/index.js` |
 | `src/Login.js` | 287 | Authentification, accès demo | `src/App.js` |
 | `src/Factures.js` | 1 248 | Gestion des factures (émission, suivi) | `src/App.js`, `src/alertes.js`, `src/useAgents.js`, +14 autres |
-| `src/Heures.js` | 482 | Saisie des heures par chantier/employé | `src/App.js`, `src/AuditApp.js`, +10 autres |
+| `src/Heures.js` | 275 | Saisie des heures par chantier/employé — "+" ouvre ModalPointageFormulaire (Phase 5c) | `src/App.js`, `src/AuditApp.js`, +10 autres |
+| `src/pages/PointagesPage.js` | — | Page pointages (saisie riche multi-chantier) — accessible via "+" grille Heures, non routée dans le menu | `src/App.js` (rendu conditionnel) |
 | `src/Planning.js` | 835 | Planning Gantt chantiers | `src/App.js`, `src/useAgents.js`, +5 autres |
 | `src/Analyse.js` | 1 135 | Multi-onglets : marges, stats, rapport, benchmark | `src/pages/RapportsPage.js` |
 | `src/AuditApp.js` | 776 | Audit interne de l'app (debug) | `src/pages/CentreIA.js` |
@@ -120,7 +122,13 @@
 |---|---|---|---|
 | `src/components/Layout.js` | 446 | Sidebar, Topbar, MobileNav | `src/App.js`, `src/Planning.js`, `src/components/chantiers/ChantiersListe.js` |
 | `src/components/GlobalSearch.js` | 304 | Recherche globale multi-entités | `src/components/Layout.js` |
-| `src/components/ModalSaisieHeures.js` | 260 | Modal saisie rapide des heures | `src/App.js` |
+| `src/components/ModalSaisieHeures.js` | 260 | Modal saisie rapide des heures (batch par chantier) | `src/App.js` |
+| `src/components/pointages/PointageFormulaire.js` | 310 | Formulaire pointage complet — multi-chantier, absences, déplacement, majorations (Phase 5b-ui) | `src/components/pointages/ModalPointageFormulaire.js`, `src/pages/PointagesPage.js` |
+| `src/components/pointages/ModalPointageFormulaire.js` | 49 | Modal fine wrapper de PointageFormulaire — monte/démonte à chaque ouverture → ré-init garantie (Phase 5c) | `src/Heures.js` |
+| `src/components/pointages/BadgeMajoration.js` | — | Badge visuel de majoration CCT (samedi/dimanche/fériés) | `src/components/pointages/LigneRepartition.js` |
+| `src/components/pointages/LigneRepartition.js` | — | Ligne de répartition chantier (heures, catégorie) | `src/components/pointages/PointageFormulaire.js` |
+| `src/components/pointages/SectionAbsences.js` | — | Section absences dans le formulaire pointage | `src/components/pointages/PointageFormulaire.js` |
+| `src/components/pointages/SectionDeplacement.js` | — | Section déplacement (durée + indemnité) | `src/components/pointages/PointageFormulaire.js` |
 | `src/components/SaisieRapideDashboard.js` | 237 | Widget saisie rapide sur Dashboard | `src/pages/Dashboard.js` |
 | `src/components/SharedBadges.js` | 74 | Badges de statut réutilisables | `src/components/chantiers/ChantierDetail.js`, `src/pages/ClientsPage.js`, `src/pages/EmployesPage.js` |
 | `src/components/ErrorBoundary.js` | 45 | Gestion erreurs React | `src/App.js` |

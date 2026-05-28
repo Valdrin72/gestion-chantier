@@ -1,106 +1,150 @@
-# CYNA SÀRL — Règles projet pour Claude
+# CYNA SÀRL — Manuel opérationnel Claude Code
 
-## Mission de l'IA sur ce projet
-
-Tu travailles sur l'application de gestion de chantiers de CYNA SÀRL, entreprise du bâtiment
-basée à Genève, Suisse. Ton rôle est triple :
-
-1. **Développeur** : implémenter les fonctionnalités demandées correctement
-2. **Contrôleur métier** : surveiller en permanence la cohérence des calculs BTP suisses
-3. **Chef d'équipe** : coordonner les agents spécialisés — chacun est actif en permanence
-
-### Équipe permanente — Toujours active
-
-**Consulter `.claude/team-manifest.md` au début de chaque session.**
-Chaque agent surveille son domaine à chaque modification. Règle absolue :
-
-> Avant toute modification d'un fichier, identifier l'agent responsable dans le manifeste.
-> Après toute modification, vérifier que les règles de cet agent sont respectées.
-> Si un bug est détecté, le corriger immédiatement — jamais laisser passer.
-
-| Domaine touché | Agent responsable |
-|---------------|-------------------|
-| Calculs marge/EAC/RAD | `rentabilite-analyst` |
-| Factures / TVA | `facturation-suisse` |
-| Devis | `devis-generator` |
-| Heures / Planning | `planning-chantier` |
-| Alertes | `alerts-engine` |
-| Auth / Sécurité | `security-auditor` |
-| Tout fichier JS | `bug-hunter` (toujours) |
-| Avant commit | `code-reviewer` (toujours) |
-
-À chaque modification de code, tu DOIS vérifier que les règles ci-dessous sont respectées.
-Si tu détectes une anomalie, tu la signales immédiatement avant de continuer.
+Application de gestion de chantiers pour CYNA SÀRL (second œuvre, Genève). Suivi des chantiers, devis, factures, heures, rentabilité, alertes. Développée par Claude Code en collaboration avec Valdrin Salihu (fondateur). Toute décision technique doit se justifier par : **fait gagner de l'argent / du temps / aide à gagner ou garder des clients / réduit un risque**. Sinon, ne pas le faire.
 
 ---
 
-## ARCHITECTURE CŒUR — Source unique de vérité
+## 1. Stack technique
+
+| Couche | Technologie | Note |
+|--------|------------|------|
+| Frontend | React 18, plain JavaScript (`.js` avec JSX) | CRA convention : `.js` pas `.jsx` |
+| Build prod | `react-scripts 5.0.1` | `CI=true npm run build` = check Vercel |
+| Tests | Vitest 4.1.7 + RTL + jsdom | `npm run test:unit` |
+| JSX en test | Plugin `babelJsxInJs` dans `vite.config.js` | OXC ne parse pas JSX dans `.js` |
+| State global | React Context (`AppContext`) | Pas de Zustand sauf le module alertes |
+| Persistance | Supabase — 1 blob JSON par user | Table `devis`, `numero='__cyna_storage__'` |
+| Auth | Supabase Auth (`useAuth.js`) | Rôles : `cyna`, `cynatech` |
+| Node | 24 | — |
+
+**Blob Supabase** contient : `{chantiers, devis, factures, clients, parametres, pointages}`. Tout change dans l'app se sauvegarde via `useSupabaseData` (debounce 800 ms + localStorage fallback offline).
+
+---
+
+## 2. Architecture clé
+
+### 2.1 Flux de données principal
 
 ```
-Devis signé (montantHT) ──► Chantier ──► Journal des heures ──► Facture
-      │                         │               │
-      └─ CA (jamais re-saisi)   └─ Lien obligatoire  └─ Coût MO réel
+Devis signé (montantHT)
+    │
+    └──► Chantier ──► pointages[] ──► journal dérivé ──► Calculs ──► Facture
+              │                              │
+              └─ CA (jamais re-saisi)        └─ strangler fig Phase 5a
+                                               (régénéré à chaque load)
 ```
 
-### Règles absolues d'architecture
+**Source de vérité** : `pointages[]` (depuis Phase 5a). `chantier.journal` est **dérivé** via `regenererJournalDepuisPointages()` à chaque chargement. Ne jamais écrire directement dans `chantier.journal`.
 
-| Donnée | Source UNIQUE | Interdit |
-|--------|--------------|---------|
-| CA du chantier | `devis.montantHT` du devis lié | Ressaisir le montant sur le chantier |
-| Coût MO réel | Journal des heures (`entry.employes[].heuresTravaillees`) | `joursPlannifies` dans un calcul réel |
-| Avancement | Jours uniques du journal / `nombreJours` | Estimation manuelle dans les calculs |
-| TVA | Taux saisi sur la facture (défaut 8.1%) | TVA hardcodée sans paramètre |
+### 2.2 Les deux moteurs de calcul (invariant critique)
 
-### Cascade obligatoire (vérifier à chaque delete)
+Les deux fonctions sont dans `src/donnees.js` et **doivent rester équivalentes à <0.01% près** :
 
-- Supprimer un **devis** → supprimer chantiers liés + leurs factures
-- Supprimer un **chantier** → supprimer ses factures liées
-- Supprimer un **employé** → ne pas supprimer les heures historiques (conserver le journal)
+| Moteur | Fonction | Répond à |
+|--------|---------|---------|
+| Situation actuelle | `calculerCoutsChantier(chantier, employes, localites, cfg, devisList, pointages)` | Coûts réels à ce jour |
+| Projection fin | `calculerEtatChantier(chantier, employes, devisList, parametres, pointages)` | EAC, RAD, avancement |
 
-### Liens requis (vérifier cohérence)
+Les deux partagent `_surcoutMajorations()` pour les majorations CCT. **Toute modification de l'un doit être répercutée sur l'autre.** Les assertions `assertEtatValide()` et `assertEtatCoherent()` dans `donnees.js` enforced les invariants (NaN interdit, avancement 0–100, coutMOReel ≤ coutTotalReel).
+
+### 2.3 Pointages — modèle actuel (Phase 5c livrée)
+
+```
+Pointage {
+  id, date, employeId,
+  repartitions: [{ chantierId, categorie, heures }],  // multi-chantier
+  deplacement: { duree_h, indemnite_chf } | null,     // champ séparé → FG
+  majoration: [] | null,                               // dérivé, par canton
+}
+```
+
+- **`upsertPointage(pointage, canton)`** : last-write-wins sur `(date, employeId)`. Dans `usePointages.js`.
+- **Majorations** : calculées par canton du chantier via `calculerMajorationDate()` (`src/calculs/majorations.js` + `src/calculs/feries.js`). GE = Jeûne genevois, VD = Berchtoldstag. Samedi ×1.25, dimanche/fériés ×1.50.
+- **Strangler fig** : `regenererJournalDepuisPointages()` dans `src/migration/`. Catégories incluses journal : `production`, `atelier`. Exclus : `deplacement`, absences.
+
+### 2.4 Agents IA (état Phase 5c)
+
+**20 agents** dans `src/AgentEngine.js` (2 193 lignes), orchestrés par `useAgents.js` + `src/Agents.js`.  
+Architecture 3 tiers : Tier 1 (9 agents analyse pure) → Tier 2 (6 agents cross-data) → Tier 3 (5 agents synthèse).  
+**Lisent encore `chantier.journal`** — compatible car le journal est dérivé des pointages (strangler fig). Migration directe vers `pointages[]` = Phase 6.
+
+**Module alertes** séparé : `src/modules/alertes/` — moteur Zustand (`store.js`), 15 règles métier, scheduler. Indépendant d'AgentEngine.
+
+---
+
+## 3. Commandes
+
+```bash
+npm run test:unit             # Vitest — doit toujours passer AVANT push
+CI=true npm run build         # Simule Vercel — les warnings ESLint = erreurs de build
+node scripts/audit-btp.js     # Après toute modif de donnees.js
+```
+
+**Double gate obligatoire avant tout push** : les DEUX doivent être verts.
+
+---
+
+## 4. Règles de travail non négociables
+
+### Workflow
+
+1. **ARRÊT obligatoire avant commit/push** — attendre le GO explicite (`go`, `GO`, `valide` ou équivalent).
+2. **Discipline phases** : audit/proposition → STOP → implémentation → STOP avant commit.
+3. **Double gate** : `CI=true npm run build` ET `npm run test:unit` verts avant tout push.
+4. **Branches** : jamais pousser sur `main` directement. Format : `claude/<sujet-court>`.
+5. **Merge sur main** : côté Windows via commande `ship` de l'utilisateur — Claude Code pousse la branche uniquement. `api.github.com` est bloqué dans le container Claude Code.
+6. **Tests non régressifs** : tout changement de calcul doit laisser les 414 tests verts. Ne jamais casser l'invariant des deux moteurs.
+
+### Code
 
 ```js
-facture.devisId   → doit exister dans devis[]
-facture.chantierId → doit exister dans chantiers[]
-facture.clientId  → doit exister dans clients[]
-chantier.devisId  → doit exister dans devis[]
-chantier.clientId → doit exister dans clients[]
+// ✅ Division par zéro
+const marge = ca > 0 ? (val / ca) * 100 : null;
+// ✅ Valeurs numériques
+const cout = parseFloat(chantier.monChamp) || 0;
+// ✅ Comparaison statuts — insensible casse
+['en cours', 'planifié'].includes(c.statut?.trim().toLowerCase())
+// ✅ IDs — toujours String coerce
+String(facture.chantierId) === String(chantier.id)
+// ✅ % retourne number (pas string)
+Math.round(val * 1000) / 10   // ✅     (val * 100).toFixed(1) // ❌
 ```
+
+Signaux d'alerte dans le code :
+- `/ total` sans guard `total > 0`
+- `.toFixed(` retourne une string
+- `=== 'En cours'` comparaison casse-sensitive
+- `joursPlannifies` dans un calcul réel (utiliser `heuresEmploye(journal, empId)`)
+- `chantier.avancement` dans un calcul réel
+- Écriture directe dans `chantier.journal` (source dérivée, ne pas toucher)
+
+### Ce que Claude ne doit pas faire
+
+- Pousser sur `main` sans `ship` explicite de l'utilisateur
+- Committer sans GO explicite
+- Modifier `chantier.journal` directement (c'est une vue dérivée)
+- Casser l'équivalence entre `calculerCoutsChantier` et `calculerEtatChantier`
+- Afficher NaN ou `undefined` dans l'UI (`|| 0` ou `|| '—'`)
+- Ressaisir le montant du devis sur le chantier (CA = `devis.montantHT` uniquement)
 
 ---
 
-## RÈGLES MÉTIER BTP SUISSE
+## 5. Règles métier BTP Suisse
 
-### Charges sociales Genève (2024)
+### Tarifs MO et charges
 
-| Charge | Taux employeur | Remarque |
-|--------|---------------|---------|
-| AVS/AI/APG | 5.30% | Sur salaire brut |
-| AC (chômage) | 1.10% | Jusqu'à 148'200 CHF/an |
-| AA non-professionnel | 1.11% | Accidents hors travail |
-| AA professionnel | Variable | Selon secteur (≈0.5–3%) |
-| LPP (retraite) | ≈9–18% | Selon âge et caisse |
-| Allocations familiales GE | 2.94% | Spécifique Genève |
-| IJM (maladie) | ≈1.5–2.5% | Selon assurance |
-| **TOTAL employeur** | **≈ 30–38%** | Sur salaire brut |
+- Chef d'équipe CHF 450/j, ouvrier qualifié CHF 350/j, MO CHF 280/j (tarifs bruts types)
+- `coefficientMainOeuvre` défaut **1.35** (+35% charges sociales employeur)
+- Si `emp.tarifDejaCharge = true` → tarif utilisé tel quel ; sinon `× coefficient`
+- Convention : **8h = 1 jour ouvrable**
 
-> **Règle** : Le `tarifJour` dans les paramètres doit être le **coût chargé** (brut + charges).
-> Si `emp.tarifDejaCharge = false`, appliquer `× coefficientMainOeuvre` (défaut 1.35 = +35%).
-> Le coefficient 1.35 représente les charges sociales minimales côté employeur.
+### TVA et facturation
 
-### TVA Suisse (2024)
+- TVA standard BTP : **8.1%** — `montantTTC = montantHT × 1.081`
+- Délai paiement : **30 jours net**
+- Retenue de garantie : **5%** pendant 5 ans (optionnel)
 
-| Taux | Usage |
-|------|-------|
-| **8.1%** | Standard — travaux BTP, matériaux |
-| 2.5% | Réduit — alimentation (non applicable BTP) |
-| 3.7% | Hébergement |
-| 0% | Exportations, certaines prestations médicales |
-
-> **Règle** : Toujours utiliser 8.1% par défaut pour les factures de travaux.
-> `montantTTC = montantHT × 1.081`
-
-### Marges BTP Genève
+### Marges cibles
 
 | Marge nette | Statut |
 |------------|--------|
@@ -109,224 +153,40 @@ chantier.clientId → doit exister dans clients[]
 | < 15% | 🔴 Non rentable |
 | < 0% | 💀 À perte — alerte critique |
 
-> **Marge brute** = CA − (MO + Matériel + Sous-traitance + Transport + Imprévus)
-> **Marge nette** = Marge brute − Frais généraux (défaut 12% du CA)
-
-### Heures et jours BTP
-
-- Convention : **8h = 1 jour ouvrable**
-- Semaine standard : **5 jours** (lundi–vendredi)
-- Samedi : possible si `inclusSamedi = true` sur le chantier
-- Heures supplémentaires : 125% en semaine, 150% dimanche/jours fériés (CCT Romande)
-- Délai paiement factures : **30 jours net** standard BTP Suisse
-- Retenue de garantie : **5% du marché** pendant 5 ans (possible)
-- Acompte signature : 10–30% du montant HT
-
-### Formules métier vérifiées
+### Formules vérifiées
 
 ```
-CA chantier      = devis.montantHT + avenants_devis + avenants_chantier + heuresRegie
-Coût MO réel     = Σ (heuresEmploye(journal, empId) / 8 × tarifJour × coefficient)
-RAD              = (coûtRéel / avancement%) × (100 − avancement%)
-EAC              = coûtRéel / (avancement / 100)
-Marge brute      = CA − totalCoûtsRéels
-Marge brute %    = marge / CA × 100   ← marge SUR VENTE (pas sur coût)
-Marge nette      = marge brute − (CA × tauxFG%)
-Potentiel fact.  = CA × avancement% − déjà_facturé  (min 0)
+CA chantier  = devis.montantHT + avenants + heuresRegie
+Coût MO réel = Σ (heuresEmploye(journal, empId) / 8 × tarifJour × coeff)
+EAC          = coutRéel / (avancement / 100)
+RAD          = EAC − coutRéel
+Marge brute% = (CA − coutTotal) / CA × 100   ← sur vente, pas sur coût
+Marge nette  = marge brute − (CA × tauxFG%)  ← tauxFG défaut 12%
 ```
 
-### Cas métier courants à gérer
+### Cascade de suppression
 
-| Situation | Comportement attendu |
-|-----------|---------------------|
-| Employé absent (0 heures un jour) | Ne pas compter ce jour dans `totalJoursReels` |
-| Chantier à 0% d'avancement | RAD = null, EAC = null, pas de projection |
-| Chantier planifié non démarré | Coûts réels = 0, avancement = 0, projection impossible |
-| Facture > montant devis | Alerte dans l'UI (dépassement devis) |
-| Plusieurs employés un même jour | 1 seul jour chantier (pas N jours) |
-| Chantier sans devis lié | CA = null, aucun calcul de marge |
-| Dépassement budgétaire > 20% | Alerte rouge automatique |
-| Retard > 7 jours ouvrables | Alerte critique |
-| Marge réelle < 0% | Alerte "chantier à perte" |
-| Facture impayée > 30 jours | Alerte relance |
+- Supprimer un **devis** → supprimer chantiers liés + leurs factures
+- Supprimer un **chantier** → supprimer ses factures liées
+- Supprimer un **employé** → conserver le journal/pointages historiques
 
 ---
 
-## RÈGLES DE CODE
+## 6. Lentille de décision
 
-### Protections obligatoires (NaN / division par zéro)
+Avant d'implémenter quoi que ce soit, se demander :
 
-```js
-// ✅ Toujours
-const marge = ca > 0 ? (val / ca) * 100 : null;
+> Cette feature **fait gagner de l'argent**, **fait gagner du temps**, **aide à gagner ou garder des clients**, ou **réduit un risque** pour CYNA ?
 
-// ✅ Coûts
-const cout = parseFloat(chantier.monChamp) || 0;
-
-// ✅ Avancement
-const av = Math.min(100, Math.max(0, parseFloat(chantier.avancement) || 0));
-
-// ✅ Comparaison statuts (insensible à la casse)
-['en cours', 'terminé'].includes(c.statut?.trim().toLowerCase())
-
-// ✅ Liens inter-entités (String coerce)
-String(facture.chantierId) === String(chantier.id)
-
-// ❌ Jamais
-const pct = val / total * 100; // total peut être 0
-const s = chantier.statut === 'En cours'; // fragile casse
-```
-
-### Typage des valeurs retournées
-
-```js
-// Les % sont TOUJOURS des nombres (pas des strings) :
-// ✅ Math.round(val * 1000) / 10     → number
-// ❌ (val * 100).toFixed(1)          → string
-```
-
-### Nommage des champs (source unique)
-
-| Champ | Nom correct | Alias rétrocompat |
-|-------|------------|-------------------|
-| Matériel réel | `materielReel` | `coutMaterielReel` |
-| Sous-traitance réelle | `sousTraitanceReelle` | `coutSousTraitanceReel` |
-| Autres coûts réels | `autresCoutsReels` | `autresCoutsReel` |
-| Date facture | `dateEmission` | `dateFacture`, `creeLe` |
-
-Toujours utiliser le double-fallback : `parseFloat(a) || parseFloat(b) || 0`
+Si la réponse est non ou floue, ne pas le faire. CYNA est une PME de 3 associés — la complexité accidentelle coûte cher.
 
 ---
 
-## COMPORTEMENT DE CLAUDE SUR CE PROJET
+## 7. Renvois
 
-### À chaque session, vérifier automatiquement
-
-1. **Après toute modification de `donnees.js`** : lancer `node scripts/audit-btp.js`
-2. **Après tout ajout de calcul** : vérifier protection division par zéro et NaN
-3. **Après tout delete** : vérifier la cascade (devis → chantiers → factures)
-4. **Après tout ajout de statut** : vérifier que la comparaison est `.toLowerCase()`
-5. **Après toute facture** : vérifier que `montantTTC = montantHT × (1 + tva/100)`
-
-### Signaux d'alerte à surveiller dans le code
-
-```
-⚠️  / total    sans guard (total > 0 ?)
-⚠️  .toFixed(  retourne une string — utiliser Math.round
-⚠️  === 'En cours'  comparaison casse-sensitive
-⚠️  chantier.avancement  dans un calcul réel (utiliser journal)
-⚠️  joursPlannifies  dans un calcul réel (utiliser heuresEmploye)
-⚠️  dateFacture  (le champ correct est dateEmission)
-⚠️  calculerDevisClient(d)  sans coutMO (marge incomplète)
-```
-
-### Ce que Claude NE doit PAS faire
-
-- Utiliser `joursPlannifies` ou `joursRealises` des membres d'équipe dans un calcul réel
-- Ressaisir/dupliquer le montant du devis sur le chantier
-- Créer une facture sans `clientId`, `chantierId` OU `devisId`
-- Afficher NaN ou undefined dans l'UI (toujours `|| 0` ou `|| '—'`)
-- Comparer des statuts sans `.toLowerCase()`
-- Retourner une string depuis une fonction de calcul de %
-
----
-
-## SCRIPT D'AUDIT AUTOMATIQUE
-
-Exécuter avant chaque commit :
-
-```bash
-node scripts/audit-btp.js
-```
-
-Ce script vérifie :
-- Division par zéro non protégées
-- Comparaisons de statut casse-sensitive
-- Champs obsolètes (`dateFacture`, `joursRealises`)
-- Incohérences de types (string vs number pour les %)
-- Calculs sans coefficient MO
-
----
-
-## PRIORITÉS SI INCOHÉRENCE DÉTECTÉE
-
-1. 🔴 **Critique** (bloquer le commit) : marge erronée, CA nul affiché, NaN visible
-2. 🟠 **Important** (corriger dans la session) : type string au lieu de number, statut casse
-3. 🟡 **À noter** (backlog) : duplication de logique, champ obsolète
-
----
-
-## ÉQUIPES D'AGENTS PARALLÈLES
-
-Pour les tâches complexes, lancer plusieurs agents simultanément avec leurs spécialités.
-
-### Équipe Frontend (UI/UX)
-
-```
-Agent "Designer Senior"
-  Spécialité : composants React, Tailwind, Shadcn UI, responsive mobile
-  Outils MCP : shadcn, context7, playwright
-  Prompt type : "Tu es un designer senior spécialisé React/Shadcn UI.
-    Crée [composant] en respectant le design system CYNA (couleurs #0d3d6e,
-    mobile-first, dark mode). Utilise shadcn MCP pour les composants."
-
-Agent "Designer Junior"
-  Spécialité : CSS, animations, icônes Lucide, accessibilité
-  Outils MCP : context7, playwright
-  Prompt type : "Tu es un développeur frontend. Affine [composant] :
-    animations subtiles, états hover/focus, cohérence visuelle."
-```
-
-### Équipe Code Quality
-
-```
-Agent "Code Reviewer"
-  Spécialité : revue de code, patterns React, performance, bugs
-  Outils MCP : memory, sequential-thinking
-  Prompt type : "Fais une revue complète de [fichier]. Vérifie :
-    division par zéro, NaN, comparaisons de statut, deps React hooks,
-    fuites mémoire, et règles CLAUDE.md section RÈGLES DE CODE."
-
-Agent "Security Auditor"
-  Spécialité : OWASP, XSS, injection, RLS Supabase, auth
-  Outils MCP : context7, memory
-  Prompt type : "Audite [fichier/feature] pour failles de sécurité.
-    Vérifie RLS Supabase, validation inputs, tokens exposés, XSS."
-```
-
-### Équipe Architecture & Planning
-
-```
-Agent "Architecte"
-  Spécialité : structure code, refactoring, scalabilité
-  Outils MCP : sequential-thinking, context7, memory
-  Prompt type : "Analyse l'architecture de [feature]. Propose un plan
-    d'implémentation étape par étape. Identifie les risques et dépendances."
-
-Agent "Planificateur"
-  Spécialité : découpage tâches, estimation, priorisation
-  Outils MCP : sequential-thinking, memory
-  Prompt type : "Décompose [fonctionnalité] en sous-tâches atomiques,
-    ordonnées par dépendances, avec estimation de complexité (S/M/L)."
-```
-
-### Utilisation des agents en parallèle
-
-```js
-// Exemple : lancer Designer + Reviewer simultanément
-Agent({ subagent_type: "general-purpose", description: "Designer UI",
-  prompt: "Crée le composant PDF preview..." })
-Agent({ subagent_type: "general-purpose", description: "Code Reviewer",
-  prompt: "Revue du composant DevisPage.js selon règles CLAUDE.md..." })
-// → Les deux tournent en même temps, résultats combinés ensuite
-```
-
-### MCP Servers disponibles
-
-| Serveur | Usage |
-|---------|-------|
-| `context7` | Docs live React, Supabase, Tailwind, Shadcn |
-| `memory` | Mémoriser décisions techniques entre sessions |
-| `shadcn` | Composants Shadcn UI prêts à l'emploi |
-| `sequential-thinking` | Planification et raisonnement structuré |
-| `playwright` | Tests UI, screenshots, vérification visuelle |
+| Document | Contenu |
+|----------|---------|
+| `PROJET.md` | Contexte business, roadmap phases, décisions techniques verrouillées |
+| `DONNEES.md` | Cartographie exhaustive de `src/donnees.js` (exports, usage, doublons) |
+| `AUDIT_POINTAGE.md` | 9 décisions architecturales du système de pointage (Phases 3–5c) |
+| `ARCHITECTURE.md` | Carte complète de `src/` (générée par `/cartographier`) |

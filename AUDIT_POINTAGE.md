@@ -400,7 +400,7 @@ Format actuel : chantier.journal[{ date, employes[{ employeId, heuresTravaillees
 Type : tableau imbriqué dans le chantier — pas d'entité indépendante
 Store : React Context (AppContext) — pas de Zustand
 Saisie : 3 points d'entrée — Heures.js, ModalSaisieHeures, SaisieRapideDashboard
-Consommateurs : 20+ fichiers dont 13 agents IA
+Consommateurs : 20+ fichiers dont 20 agents IA
 Modèle : strictement mono-chantier par employé par jour
 Catégorisation : ZÉRO
 Heures sup : détectées mais NON majorées financièrement

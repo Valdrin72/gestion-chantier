@@ -10,14 +10,8 @@ const TODAY = new Date().toISOString().split('T')[0];
 const MAX_LIGNES = 4;
 
 const REPARTITION_VIDE = { chantierId: '', categorie: 'production', heures: '' };
-
-const FORM_INITIAL = {
-  employeId: '',
-  date: TODAY,
-  repartitions: [{ ...REPARTITION_VIDE }],
-  absence: { active: false, categorie: 'absence_cp', heures: '8' },
-  deplacement: { active: false, duree_h: '', indemnite_chf: '' },
-};
+const ABSENCE_INITIAL = { active: false, categorie: 'absence_cp', heures: '8' };
+const DEPLACEMENT_INITIAL = { active: false, duree_h: '', indemnite_chf: '' };
 
 function buildRepartitions(form) {
   const lignes = form.repartitions
@@ -54,8 +48,9 @@ function cantonDominant(form, chantiers) {
 /**
  * Formulaire principal de saisie/modification d'un pointage.
  * Inclut détection auto-édition (Q2) : si (date, employeId) existant → pré-remplit.
+ * Props optionnelles initialDate/initialEmployeId/initialChantierId : pré-remplissage au 1er render.
  */
-export default function PointageFormulaire({ onSaved }) {
+export default function PointageFormulaire({ onSaved, initialDate, initialEmployeId, initialChantierId }) {
   const { chantiers, parametres, pointages, setPointages, afficherNotif } = useApp();
   const { upsertPointage } = usePointages({ pointages, setPointages });
 
@@ -64,7 +59,17 @@ export default function PointageFormulaire({ onSaved }) {
     ['en cours', 'planifié'].includes(c.statut?.toLowerCase?.() ?? '')
   );
 
-  const [form, setForm] = useState(FORM_INITIAL);
+  const [form, setForm] = useState(() => ({
+    employeId: initialEmployeId != null ? String(initialEmployeId) : '',
+    date: initialDate || TODAY,
+    repartitions: [{
+      chantierId: initialChantierId != null ? String(initialChantierId) : '',
+      categorie: 'production',
+      heures: '',
+    }],
+    absence: { ...ABSENCE_INITIAL },
+    deplacement: { ...DEPLACEMENT_INITIAL },
+  }));
   const [mode, setMode] = useState('create');
   const [erreurs, setErreurs] = useState([]);
   const [flash, setFlash] = useState(null);
@@ -98,12 +103,12 @@ export default function PointageFormulaire({ onSaved }) {
   }, [form.date, form.employeId]);
 
   const setDate = useCallback(date => {
-    setForm(prev => ({ ...prev, date, repartitions: [{ ...REPARTITION_VIDE }], absence: FORM_INITIAL.absence, deplacement: FORM_INITIAL.deplacement }));
+    setForm(prev => ({ ...prev, date, repartitions: [{ ...REPARTITION_VIDE }], absence: { ...ABSENCE_INITIAL }, deplacement: { ...DEPLACEMENT_INITIAL } }));
     setErreurs([]);
   }, []);
 
   const setEmployeId = useCallback(employeId => {
-    setForm(prev => ({ ...prev, employeId, repartitions: [{ ...REPARTITION_VIDE }], absence: FORM_INITIAL.absence, deplacement: FORM_INITIAL.deplacement }));
+    setForm(prev => ({ ...prev, employeId, repartitions: [{ ...REPARTITION_VIDE }], absence: { ...ABSENCE_INITIAL }, deplacement: { ...DEPLACEMENT_INITIAL } }));
     setErreurs([]);
   }, []);
 
@@ -164,7 +169,7 @@ export default function PointageFormulaire({ onSaved }) {
     setTimeout(() => setFlash(null), 3000);
     setErreurs([]);
     setMode('create');
-    setForm({ ...FORM_INITIAL, employeId: form.employeId, date: form.date });
+    setForm(prev => ({ ...prev, repartitions: [{ ...REPARTITION_VIDE }], absence: { ...ABSENCE_INITIAL }, deplacement: { ...DEPLACEMENT_INITIAL } }));
     if (onSaved) onSaved();
   };
 
@@ -286,7 +291,7 @@ export default function PointageFormulaire({ onSaved }) {
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '20px', paddingTop: '16px', borderTop: '1px solid var(--border)' }}>
         <button
           type="button"
-          onClick={() => { setForm({ ...FORM_INITIAL, employeId: form.employeId, date: form.date }); setErreurs([]); setMode('create'); }}
+          onClick={() => { setForm(prev => ({ ...prev, repartitions: [{ ...REPARTITION_VIDE }], absence: { ...ABSENCE_INITIAL }, deplacement: { ...DEPLACEMENT_INITIAL } })); setErreurs([]); setMode('create'); }}
           style={DS.btnGhost}
         >
           Annuler

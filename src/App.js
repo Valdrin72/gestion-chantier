@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import {
   LayoutDashboard, HardHat, FileText, Calendar,
-  ClipboardList, ClipboardCheck, Settings, DollarSign, Clock, Bot,
+  ClipboardList, Settings, DollarSign, Clock, Bot,
   Users, UserCog, ChevronRight, Sparkles, Calculator, Bell,
 } from 'lucide-react';
 import { Sidebar, Topbar, MobileNav } from './components/Layout';
@@ -48,7 +48,6 @@ const NAV_FALLBACK = {
   rapport:      'dashboard',
   analyse:      'dashboard',
   parametres:   'dashboard',
-  pointages:    'heures',
 };
 
 function App() {
@@ -305,7 +304,6 @@ function AppInner({ profil, deconnecter, userId }) {
     { id: 'clients',    label: 'Clients',     Icon: Users,           labelCourt: 'Clients' },
     { id: 'employes',   label: 'Employés',    Icon: UserCog,         labelCourt: 'Équipe' },
     { id: 'heures',     label: 'Heures',      Icon: Clock,           labelCourt: 'Heures' },
-    { id: 'pointages',  label: 'Pointages',   Icon: ClipboardCheck,  labelCourt: 'Pointages' },
     { id: 'planning',   label: 'Planning',    Icon: Calendar,        labelCourt: 'Planning' },
     { id: 'rapport',    label: 'Rapports',    Icon: ClipboardList,   labelCourt: 'Rapports' },
     { id: 'agents',     label: 'Centre IA',   Icon: Bot,             labelCourt: 'Centre IA' },

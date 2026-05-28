@@ -2,6 +2,8 @@ import React, { useState, useMemo, useCallback } from 'react';
 import { Clock, ChevronDown, CheckCircle, Plus } from 'lucide-react';
 import { heuresJour } from '../donnees';
 import { DS } from '../ds';
+import { useApp } from '../context/AppContext';
+import { usePointages } from '../hooks/usePointages';
 
 function localISODate(d) {
   const y = d.getFullYear();
@@ -13,6 +15,8 @@ function localISODate(d) {
 const TODAY = localISODate(new Date());
 
 export default function SaisieRapideDashboard({ chantiersActifs, parametres, setChantiers, afficherNotif }) {
+  const { pointages, setPointages } = useApp();
+  const { upsertPointage } = usePointages({ pointages, setPointages });
   const [ouvert, setOuvert] = useState(false);
   const [chantierId, setChantierId] = useState('');
   const [date, setDate] = useState(TODAY);
@@ -54,18 +58,23 @@ export default function SaisieRapideDashboard({ chantiersActifs, parametres, set
 
   const enregistrer = useCallback(() => {
     if (!chantier || nbSaisis === 0 || dateInvalide) return;
-    const employsEntries = Object.entries(heures)
+    const canton = chantier.canton ?? 'GE';
+    const chantierId = String(chantier.id);
+    Object.entries(heures)
       .filter(([, h]) => (parseFloat(h) || 0) > 0)
-      .map(([empId, h]) => ({ employeId: parseInt(empId), heuresTravaillees: parseFloat(h) || 0 }));
-    const journalFiltre = (chantier.journal || []).filter(e => e.date !== date);
-    const newJournal = [...journalFiltre, { date, employes: employsEntries }];
-    const updated = { ...chantier, journal: newJournal };
-    setChantiers(prev => prev.map(c => String(c.id) === String(chantier.id) ? updated : c));
+      .forEach(([empId, h]) => {
+        upsertPointage({
+          date,
+          employeId: parseInt(empId),
+          repartitions: [{ categorie: 'production', heures: parseFloat(h), chantierId }],
+          deplacement: null,
+        }, canton);
+      });
     if (afficherNotif) afficherNotif(`Heures enregistrées — ${chantier.nom}`);
     setSucces(true);
     setHeures({});
     setTimeout(() => setSucces(false), 3000);
-  }, [chantier, nbSaisis, dateInvalide, heures, date, setChantiers, afficherNotif]);
+  }, [chantier, nbSaisis, dateInvalide, heures, date, upsertPointage, afficherNotif]);
 
   return (
     <div style={{

@@ -2,6 +2,8 @@ import React, { useState, useMemo, useCallback } from 'react';
 import { X } from 'lucide-react';
 import { C, heuresJour } from '../donnees';
 import { DS } from '../ds';
+import { useApp } from '../context/AppContext';
+import { usePointages } from '../hooks/usePointages';
 
 function localISODate(d) {
   const y = d.getFullYear();
@@ -16,6 +18,8 @@ const btnSucces  = DS.btnSuccess;
 const btnDanger  = DS.btnDanger;
 
 function ModalSaisieHeures({ chantierSaisie, initialDate, onFermer, onSave, parametres }) {
+  const { pointages, setPointages } = useApp();
+  const { upsertPointage } = usePointages({ pointages, setPointages });
   const [date, setDate] = useState(initialDate);
   const [heures, setHeures] = useState(() => heuresJour(chantierSaisie.journal || [], initialDate));
 
@@ -66,13 +70,20 @@ function ModalSaisieHeures({ chantierSaisie, initialDate, onFermer, onSave, para
     if (nbSaisis === 0) { alert('Aucune heure saisie.'); return; }
     const overLimit = Object.entries(heures).some(([, h]) => (parseFloat(h) || 0) > 10);
     if (overLimit && !window.confirm('Certains employés dépassent 10h. Confirmer ?')) return;
-    const employes = Object.entries(heures)
+    const canton = chantierSaisie.canton ?? 'GE';
+    const chantierId = String(chantierSaisie.id);
+    Object.entries(heures)
       .filter(([, h]) => (parseFloat(h) || 0) > 0)
-      .map(([empId, h]) => ({ employeId: parseInt(empId), heuresTravaillees: parseFloat(h) || 0 }));
-    const journalFiltre = (chantierSaisie.journal || []).filter(e => e.date !== date);
-    const newJournal = [...journalFiltre, { date, employes }];
-    onSave({ ...chantierSaisie, journal: newJournal });
-  }, [dateInvalide, nbSaisis, heures, chantierSaisie, date, onSave]);
+      .forEach(([empId, h]) => {
+        upsertPointage({
+          date,
+          employeId: parseInt(empId),
+          repartitions: [{ categorie: 'production', heures: parseFloat(h), chantierId }],
+          deplacement: null,
+        }, canton);
+      });
+    onSave();
+  }, [dateInvalide, nbSaisis, heures, chantierSaisie, date, onSave, upsertPointage]);
 
   return (
     <div style={{

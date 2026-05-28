@@ -29,6 +29,7 @@ import { AlertsPage } from './modules/alertes/AlertsPage.js';
 import { useAlertBootstrap } from './modules/alertes/useAlertBootstrap.js';
 import { useUrgentCount } from './modules/alertes/hooks/useAlertCount.js';
 import { AppProvider } from './context/AppContext';
+import { regenererJournalDepuisPointages } from './migration/regenererJournalDepuisPointages';
 import InstallPWA from './components/InstallPWA';
 import OfflineBanner from './components/OfflineBanner';
 import ConfirmModal from './components/ui/ConfirmModal';
@@ -258,6 +259,22 @@ function AppInner({ profil, deconnecter, userId }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dataLoading, parametres.backfillMajorationPhase4Done, pointages.length]);
 
+  // Phase 5a — Régénération du journal dérivé depuis pointages (strangler fig).
+  // Dépendance sur pointages uniquement (pas chantiers) pour éviter la boucle infinie.
+  // La garde JSON.stringify évite setChantiers si le journal n'a pas changé.
+  useEffect(() => {
+    if (dataLoading) return;
+    if (pointages.length === 0) return;
+    setChantiers(prev => {
+      const regenes = regenererJournalDepuisPointages(pointages, prev);
+      const changed = regenes.some((c, i) =>
+        JSON.stringify(c.journal) !== JSON.stringify(prev[i]?.journal)
+      );
+      return changed ? regenes : prev;
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dataLoading, pointages]);
+
   const agentState = useAgents({ chantiers, devis, factures, clients, parametres });
 
   // Moteur d'alertes — évaluation automatique toutes les 5 min
@@ -301,12 +318,13 @@ function AppInner({ profil, deconnecter, userId }) {
   const appValue = useMemo(() => ({
     chantiers, setChantiers, clients, setClients, devis, setDevis,
     factures, setFactures, parametres, setParametres,
+    pointages, setPointages,
     paiementsData, setPaiementsData, actionsLog, profil,
     logAction, naviguer, contexte, periodeGlobale, setPeriodeGlobale,
     agentState, ouvrirSaisieHeures: ouvrirSaisieHeuresApp,
     deconnecter, afficherNotif, confirmer,
   }), [ // eslint-disable-line react-hooks/exhaustive-deps
-    chantiers, clients, devis, factures, parametres,
+    chantiers, clients, devis, factures, parametres, pointages,
     paiementsData, actionsLog, profil, contexte, periodeGlobale, agentState,
   ]);
 
@@ -382,8 +400,7 @@ function AppInner({ profil, deconnecter, userId }) {
               initialDate={saisieHeuresCtx.date}
               parametres={parametres}
               onFermer={() => setSaisieHeuresCtx(null)}
-              onSave={updated => {
-                setChantiers(prev => prev.map(ch => ch.id === updated.id ? updated : ch));
+              onSave={() => {
                 setSaisieHeuresCtx(null);
                 naviguer('heures');
               }}

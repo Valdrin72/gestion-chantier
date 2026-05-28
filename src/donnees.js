@@ -2,6 +2,7 @@
 // CYNA SÀRL — DONNÉES & CALCULS MÉTIER
 // =============================================
 import { donneesDemo } from './donnees-demo';
+import { calculerMajorationDate, calculerPartSemaine, facteurEffectif } from './calculs/majorations';
 
 // ===== SEUILS DE RENTABILITÉ BTP SUISSE — SOURCE UNIQUE DE VÉRITÉ =====
 // Tous les modules (Dashboard, Marges, Analyse, Statistiques, ChantierDetail)
@@ -219,6 +220,82 @@ export const migrerDevisId = (chantiers, devisList) => {
 };
 
 /**
+ * Calcule le surcoût de majoration CCT depuis les pointages d'un chantier.
+ * Appelé par les deux moteurs — garantit leur équivalence sur ce calcul.
+ * Retourne 0 si pointages est vide (backward-compatible).
+ *
+ * @param {Object} chantier
+ * @param {Object[]} employes
+ * @param {import('./types/pointage').Pointage[]} pointages - tous les pointages de l'app
+ * @param {number} coefficient - coefficient MO (défaut 1.35)
+ * @returns {{ coutMOSansMajoration: number, coutMajorations: number, heuresMajorees: number,
+ *             coutDeplacementFG: number, repartitionCategories: Object }}
+ */
+function _surcoutMajorations(chantier, employes, pointages, coefficient) {
+  const chantierId = String(chantier.id);
+  const canton = chantier.canton ?? 'GE';
+
+  // Pointages avec au moins une repartition productive sur ce chantier
+  const ptgsChantier = pointages.filter(p =>
+    p.repartitions.some(r =>
+      String(r.chantierId) === chantierId &&
+      ['production', 'atelier'].includes(r.categorie)
+    )
+  );
+
+  let coutMOSansMajoration = 0;
+  let coutMajorations = 0;
+  let heuresMajorees = 0;
+  let coutDeplacementFG = 0;
+  const repartitionCategories = {
+    production: { heures: 0, cout: 0 },
+    atelier:    { heures: 0, cout: 0 },
+  };
+
+  for (const p of ptgsChantier) {
+    const emp = employes.find(e => String(e.id) === String(p.employeId));
+    const tarifJourCharge = emp
+      ? (parseFloat(emp.tarifJour) || 0) * (emp.tarifDejaCharge ? 1 : coefficient)
+      : 0;
+    const tarifH = tarifJourCharge / 8;
+
+    // Heures productives de ce pointage sur ce chantier
+    const heuresCeChantier = p.repartitions
+      .filter(r => String(r.chantierId) === chantierId && ['production', 'atelier'].includes(r.categorie))
+      .reduce((s, r) => s + r.heures, 0);
+
+    if (heuresCeChantier <= 0) continue;
+
+    // Facteur date (stocké sur le pointage) + facteur semaine (read-time)
+    const majDate = p.majoration?.[0] ?? calculerMajorationDate(p.date, canton);
+    const majSem  = calculerPartSemaine(p.date, p.employeId, pointages);
+    const fe      = facteurEffectif(majDate, majSem);
+
+    const coutBase = heuresCeChantier * tarifH;
+    coutMOSansMajoration += coutBase;
+    coutMajorations      += coutBase * (fe - 1.0);
+    if (fe > 1.0) heuresMajorees += heuresCeChantier;
+
+    // Répartition par catégorie
+    for (const r of p.repartitions.filter(r => String(r.chantierId) === chantierId)) {
+      if (repartitionCategories[r.categorie]) {
+        repartitionCategories[r.categorie].heures += r.heures;
+        repartitionCategories[r.categorie].cout   += r.heures * tarifH * fe;
+      }
+    }
+  }
+
+  // Frais déplacement (indemnité CHF sur le champ deplacement — Phase 3: tous à 0)
+  for (const p of ptgsChantier) {
+    if (p.deplacement) {
+      coutDeplacementFG += parseFloat(p.deplacement.indemnite_chf) || 0;
+    }
+  }
+
+  return { coutMOSansMajoration, coutMajorations, heuresMajorees, coutDeplacementFG, repartitionCategories };
+}
+
+/**
  * Calcule l'état FINANCIER ACTUEL d'un chantier.
  *
  * Réponds à la question : "où en est-on en termes d'argent dépensé/encaissé MAINTENANT ?"
@@ -233,7 +310,7 @@ export const migrerDevisId = (chantiers, devisList) => {
  * Les deux moteurs partagent la même logique de coûts (équivalents à <0.01% près)
  * mais répondent à des questions différentes.
  */
-export const calculerCoutsChantier = (chantier, employes = [], localites = [], cfg = {}, devisList = []) => {
+export const calculerCoutsChantier = (chantier, employes = [], localites = [], cfg = {}, devisList = [], pointages = []) => {
   const coefficient = parseFloat(cfg.coefficientMainOeuvre) || 1.35;
   const tauxFG = parseFloat(cfg.tauxFraisGeneraux) || 12;
 
@@ -281,7 +358,10 @@ export const calculerCoutsChantier = (chantier, employes = [], localites = [], c
     const tarif = getTarifJour(emp);
     return { employeId: empId, joursReels, tarif, cout: tarif * joursReels };
   });
-  const coutEquipeReel = coutEquipeReelDetaille.reduce((t, m) => t + m.cout, 0);
+  const coutEquipeReelBase = coutEquipeReelDetaille.reduce((t, m) => t + m.cout, 0);
+  // Majorations CCT depuis les pointages (additive — 0 si aucun pointage)
+  const _maj = _surcoutMajorations(chantier, employes, pointages, coefficient);
+  const coutEquipeReel = coutEquipeReelBase + _maj.coutMajorations;
 
   const coutImprevus = chantier.imprevus?.reduce((t, imp) => t + (parseFloat(imp.montant) || 0), 0) || 0;
   const coutMaterielPrevu = parseFloat(chantier.coutMaterielPrevu) || 0;
@@ -419,7 +499,7 @@ export const calculerCoutsChantier = (chantier, employes = [], localites = [], c
     montantTotal, margePrevu, margeReel,
     margePrevuPct,
     margeActuellePct,
-    avancementPct: avancement, // exposé pour compatibilité avec calculerEtatChantier
+    avancementPct: avancement,
     coutParM2Prevu, coutParM2Reel, prixParM2Devis,
     ecartMontant, ecartPct,
     fraisGeneraux, margeNette, margeNettePct,
@@ -433,6 +513,12 @@ export const calculerCoutsChantier = (chantier, employes = [], localites = [], c
     donneesIncompletes, champsManquants,
     projectionCalculable, projectionFiable,
     coutFinalEstime, margeFinaleEstimeePct, margeFinaleNettePct, deriveProjetee, alerteDerive,
+    // Phase 4 — majorations CCT
+    coutMOSansMajoration: _maj.coutMOSansMajoration,
+    coutMajorations:      _maj.coutMajorations,
+    coutDeplacementFG:    _maj.coutDeplacementFG,
+    heuresMajorees:       _maj.heuresMajorees,
+    repartitionCategories: _maj.repartitionCategories,
   };
 };
 
@@ -913,7 +999,7 @@ export const heuresJour = (journal, date) => {
  * Les deux moteurs partagent la même logique de coûts (équivalents à <0.01% près)
  * mais répondent à des questions différentes.
  */
-export const calculerEtatChantier = (chantier, employes = [], devisList = [], parametres = null) => {
+export const calculerEtatChantier = (chantier, employes = [], devisList = [], parametres = null, pointages = []) => {
   const equipe     = chantier.equipe     || [];
   const journal    = chantier.journal    || [];
   const imprevus   = chantier.imprevus   || [];
@@ -985,7 +1071,10 @@ export const calculerEtatChantier = (chantier, employes = [], devisList = [], pa
   // positif = retard, négatif = avance
 
   // ── E. Coût main d'œuvre réelle ───────────────────────────────────────
-  const coutMOReel = membreDetail.reduce((s, m) => s + m.cout, 0);
+  const coutMOReelBase = membreDetail.reduce((s, m) => s + m.cout, 0);
+  // Majorations CCT depuis les pointages (même helper que calculerCoutsChantier — invariant préservé)
+  const _majE = _surcoutMajorations(chantier, employes, pointages, coefficientMO);
+  const coutMOReel = coutMOReelBase + _majE.coutMajorations;
 
   // ── F. Coût total réel ────────────────────────────────────────────────
   // Fallback sur les anciens noms de champs pour rétrocompatibilité
@@ -1046,6 +1135,13 @@ export const calculerEtatChantier = (chantier, employes = [], devisList = [], pa
     rad,
     margeEstimee,
     margeProjeteePct,
+
+    // Majorations CCT Phase 4
+    coutMOSansMajoration: _majE.coutMOSansMajoration,
+    coutMajorations:      _majE.coutMajorations,
+    coutDeplacementFG:    _majE.coutDeplacementFG,
+    heuresMajorees:       _majE.heuresMajorees,
+    repartitionCategories: _majE.repartitionCategories,
 
     // Détail équipe
     equipe: membreDetail,

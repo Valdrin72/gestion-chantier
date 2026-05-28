@@ -1,4 +1,5 @@
 import { CATEGORIES_POINTAGE, CATEGORIES_AVEC_CHANTIER, CATEGORIES_SANS_CHANTIER } from '../types/pointage';
+import { calculerMajorationDate } from '../calculs/majorations';
 
 /**
  * Génère un identifiant unique pour un pointage.
@@ -28,6 +29,23 @@ function erreurRepartition(r) {
     return `chantierId doit être null pour la catégorie "${r.categorie}"`;
   }
   return null;
+}
+
+/**
+ * Calcule la majoration date-based pour un pointage à sa création.
+ * Retourne null si le pointage n'a pas d'heures productives ou si le jour est ouvrable.
+ * @param {object} pointage
+ * @param {'GE'|'VD'} canton
+ * @returns {Array|null}
+ */
+function _calculerMajorationPourPointage(pointage, canton) {
+  const maj = calculerMajorationDate(pointage.date, canton);
+  if (!maj) return null;
+  const heuresProd = (pointage.repartitions || [])
+    .filter(r => ['production', 'atelier'].includes(r.categorie))
+    .reduce((s, r) => s + (r.heures || 0), 0);
+  if (heuresProd <= 0) return null;
+  return [{ type: maj.type, facteur: maj.facteur, heures: heuresProd, cout_supplementaire: 0 }];
 }
 
 /**
@@ -80,15 +98,20 @@ export function usePointages({ pointages, setPointages }) {
    * @param {Omit<import('../types/pointage').Pointage, 'id'|'saisi_le'|'modifie_le'>} pointage
    * @returns {{ ok: boolean, error?: string }}
    */
-  const addPointage = (pointage) => {
+  const addPointage = (pointage, canton = 'GE') => {
     for (const r of (pointage.repartitions || [])) {
       const err = erreurRepartition(r);
       if (err) return { ok: false, error: err };
     }
     const now = new Date().toISOString();
+    // Auto-calcul majoration date-based au moment de la création
+    const majoration = pointage.majoration !== undefined
+      ? pointage.majoration
+      : _calculerMajorationPourPointage(pointage, canton);
     const nouveau = {
       ...pointage,
       id: genererIdPointage(),
+      majoration,
       saisi_le: now,
       modifie_le: now,
     };
@@ -130,7 +153,7 @@ export function usePointages({ pointages, setPointages }) {
    * @param {Omit<import('../types/pointage').Pointage, 'id'|'saisi_le'|'modifie_le'>} pointage
    * @returns {{ ok: boolean, error?: string }}
    */
-  const upsertPointage = (pointage) => {
+  const upsertPointage = (pointage, canton = 'GE') => {
     const existing = pointages.find(p =>
       p.date === pointage.date && String(p.employeId) === String(pointage.employeId)
     );
@@ -141,7 +164,7 @@ export function usePointages({ pointages, setPointages }) {
         saisi_par: pointage.saisi_par ?? existing.saisi_par,
       });
     }
-    return addPointage(pointage);
+    return addPointage(pointage, canton);
   };
 
   return {

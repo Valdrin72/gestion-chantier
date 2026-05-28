@@ -7,6 +7,7 @@ import {
 import { Sidebar, Topbar, MobileNav } from './components/Layout';
 import { migrerDevisId, donneesInitiales, migrerJournal } from './donnees';
 import { migrerJournalVersPointages } from './migration/migrerJournalVersPointages';
+import { calculerMajorationDate } from './calculs/majorations';
 import Finances from './pages/FinancesPage';
 import Login from './Login';
 import useAuth from './hooks/useAuth';
@@ -225,6 +226,37 @@ function AppInner({ profil, deconnecter, userId }) {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dataLoading, parametres.migrationJournalV2Done, pointages.length]);
+
+  // Backfill Phase 4 — calcul des majorations date-based sur les pointages migrés
+  useEffect(() => {
+    if (dataLoading) return;
+    if (parametres.backfillMajorationPhase4Done) return;
+    if (pointages.length === 0) return;
+
+    // Index canton par chantierId
+    const cantonParChantier = {};
+    for (const c of chantiers) cantonParChantier[String(c.id)] = c.canton ?? 'GE';
+
+    let modified = false;
+    const enrichis = pointages.map(p => {
+      if (p.majoration !== null && p.majoration !== undefined) return p;
+      // Canton du chantier de la 1ère repartition productive
+      const repProd = p.repartitions.find(r => ['production', 'atelier'].includes(r.categorie));
+      const canton = repProd ? (cantonParChantier[String(repProd.chantierId)] ?? 'GE') : 'GE';
+      const maj = calculerMajorationDate(p.date, canton);
+      if (!maj) return p;
+      const heuresProd = p.repartitions
+        .filter(r => ['production', 'atelier'].includes(r.categorie))
+        .reduce((s, r) => s + r.heures, 0);
+      if (heuresProd <= 0) return p;
+      modified = true;
+      return { ...p, majoration: [{ type: maj.type, facteur: maj.facteur, heures: heuresProd, cout_supplementaire: 0 }] };
+    });
+
+    if (modified) setPointages(enrichis);
+    setParametres(prev => ({ ...prev, backfillMajorationPhase4Done: true }));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dataLoading, parametres.backfillMajorationPhase4Done, pointages.length]);
 
   const agentState = useAgents({ chantiers, devis, factures, clients, parametres });
 

@@ -50,7 +50,9 @@ function safeDate(val) {
   return isNaN(d.getTime()) ? null : d;
 }
 
-export function adapterContexteAlertes({ chantiers = [], devis = [], factures = [], clients = [], parametres = {} }) {
+const CATS_TRAVAIL = new Set(['production', 'atelier']);
+
+export function adapterContexteAlertes({ chantiers = [], devis = [], factures = [], clients = [], parametres = {}, pointages: rawPointages = [] }) {
   const now = new Date();
   const employesList = Array.isArray(parametres?.employes) ? parametres.employes : [];
 
@@ -127,22 +129,19 @@ export function adapterContexteAlertes({ chantiers = [], devis = [], factures = 
     tarifJour: parseFloat(e.tarifJour) || 0,
   }));
 
-  // Pointages depuis les journaux de chantiers (heures_sup = heures > 8h/jour)
-  const pointages = [];
-  for (const c of chantiers) {
-    for (const entry of (c.journal || [])) {
-      for (const ej of (entry.employes || [])) {
-        const h = parseFloat(ej.heuresTravaillees) || 0;
-        pointages.push({
-          employe_id: String(ej.employeId),
-          chantier_id: String(c.id),
-          date: entry.date,
-          heures: h,
-          heures_sup: Math.max(0, h - 8),
-        });
-      }
-    }
-  }
+  // Pointages depuis les vrais pointages[] — heures_sup correct par employé/jour
+  // (multi-chantier : un pointage = toutes les répartitions d'un employé ce jour-là)
+  const pointages = rawPointages.map(p => {
+    const heuresJour = (p.repartitions || [])
+      .filter(r => CATS_TRAVAIL.has(r.categorie))
+      .reduce((s, r) => s + (parseFloat(r.heures) || 0), 0);
+    return {
+      employe_id: String(p.employeId),
+      date: p.date,
+      heures: heuresJour,
+      heures_sup: Math.max(0, heuresJour - 8),
+    };
+  }).filter(p => p.heures > 0);
 
   // Calcul DSO réel
   const facturesEmises = facturesAdaptees.filter(f => f.statut === 'emise' || f.statut === 'partiellement_payee');

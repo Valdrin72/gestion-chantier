@@ -266,8 +266,8 @@ function _surcoutMajorations(chantier, employes, pointages, coefficient) {
 
     if (heuresCeChantier <= 0) continue;
 
-    // Facteur date (stocké sur le pointage) + facteur semaine (read-time)
-    const majDate = p.majoration?.[0] ?? calculerMajorationDate(p.date, canton);
+    // Facteur date dérivé depuis date + canton du chantier (Option A — par répartition)
+    const majDate = calculerMajorationDate(p.date, canton);
     const majSem  = calculerPartSemaine(p.date, p.employeId, pointages);
     const fe      = facteurEffectif(majDate, majSem);
 

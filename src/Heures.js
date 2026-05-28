@@ -4,6 +4,7 @@ import { DS } from './ds';
 import { fmtN, getHeuresParEmployeParDate, getIntervallesPeriode } from './donnees';
 import KpiCard from './components/ui/KpiCard';
 import { useApp } from './context/AppContext';
+import { usePointages } from './hooks/usePointages';
 
 const FORM_VIDE = { employeId: '', chantierId: '', date: '', heures: '8' };
 
@@ -34,7 +35,8 @@ const DAY_LABELS_SHORT = ['LUN', 'MAR', 'MER', 'JEU', 'VEN', 'SAM', 'DIM'];
 
 export default function Heures({ chantiers = [], parametres = {}, setChantiers }) {
   const employes = useMemo(() => parametres.employes || [], [parametres.employes]); // eslint-disable-line react-hooks/exhaustive-deps
-  const { periodeGlobale } = useApp();
+  const { periodeGlobale, pointages, setPointages } = useApp();
+  const { upsertPointage, getPointagesParDate, deletePointage } = usePointages({ pointages, setPointages });
   const today = new Date();
   const [weekStart, setWeekStart] = useState(() => getWeekStart(today));
 
@@ -81,37 +83,21 @@ export default function Heures({ chantiers = [], parametres = {}, setChantiers }
     // Saturday confirmation required if chantier doesn't have inclusSamedi enabled
     if (isSam && chantierCible && !chantierCible.inclusSamedi && !samediConfirme) return;
 
-    setChantiers(prev => prev.map(c => {
-      if (String(c.id) !== String(chantierId)) return c;
-      const journal = c.journal ? [...c.journal] : [];
-      const idx = journal.findIndex(e => e.date === date);
-      if (idx >= 0) {
-        const entry = { ...journal[idx] };
-        const employes2 = entry.employes ? [...entry.employes] : [];
-        const ei = employes2.findIndex(e => String(e.employeId) === String(employeId));
-        if (ei >= 0) employes2[ei] = { ...employes2[ei], heuresTravaillees: String(h) };
-        else employes2.push({ employeId: parseInt(employeId), heuresTravaillees: String(h) });
-        journal[idx] = { ...entry, employes: employes2 };
-      } else {
-        journal.push({ date, employes: [{ employeId: parseInt(employeId), heuresTravaillees: String(h) }] });
-      }
-      return { ...c, journal };
-    }));
+    const canton = chantierCible?.canton ?? 'GE';
+    upsertPointage({
+      date,
+      employeId: parseInt(employeId),
+      repartitions: [{ categorie: 'production', heures: h, chantierId: String(chantierId) }],
+      deplacement: null,
+    }, canton);
     setModal(null);
   };
 
   const supprimerHeures = (employeId, date) => {
     if (!window.confirm(`Supprimer les heures du ${new Date(date + 'T00:00:00').toLocaleDateString('fr-CH', { day: 'numeric', month: 'long' })} pour cet employé ?`)) return;
-    setChantiers(prev => prev.map(c => {
-      const entry = (c.journal || []).find(e => e.date === date);
-      if (!entry) return c;
-      const employes2 = (entry.employes || []).filter(e => String(e.employeId) !== String(employeId));
-      if (employes2.length === entry.employes?.length) return c; // cet employé n'était pas là
-      const newJournal = employes2.length > 0
-        ? c.journal.map(e => e.date === date ? { ...e, employes: employes2 } : e)
-        : c.journal.filter(e => e.date !== date);
-      return { ...c, journal: newJournal };
-    }));
+    const ptgsDate = getPointagesParDate(date);
+    const ptg = ptgsDate.find(p => String(p.employeId) === String(employeId));
+    if (ptg) deletePointage(ptg.id);
   };
 
   const weekDays = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)), [weekStart]);

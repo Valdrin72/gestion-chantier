@@ -5,7 +5,7 @@ const TOUTES_PAGES = [
   'dashboard', 'chantiers', 'clients', 'employes', 'devis', 'heures',
   'finances', 'planning', 'rapport', 'agents', 'parametres',
   'factures', 'statistiques', 'paiements', 'analyse', 'importpdf', 'metrage', 'photos',
-  'calculs', 'alertes',
+  'calculs', 'alertes', 'pointages',
 ];
 
 const ROLE_PAGES = {

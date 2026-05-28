@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import {
   LayoutDashboard, HardHat, FileText, Calendar,
-  ClipboardList, Settings, DollarSign, Clock, Bot,
+  ClipboardList, ClipboardCheck, Settings, DollarSign, Clock, Bot,
   Users, UserCog, ChevronRight, Sparkles, Calculator, Bell,
 } from 'lucide-react';
 import { Sidebar, Topbar, MobileNav } from './components/Layout';
@@ -14,6 +14,7 @@ import useAuth from './hooks/useAuth';
 import useSupabaseData from './hooks/useSupabaseData';
 import useAgents from './useAgents';
 import Heures from './Heures';
+import PointagesPage from './pages/PointagesPage';
 import ModalSaisieHeures from './components/ModalSaisieHeures';
 import Dashboard from './pages/Dashboard';
 import Chantiers from './pages/ChantiersPage';
@@ -47,6 +48,7 @@ const NAV_FALLBACK = {
   rapport:      'dashboard',
   analyse:      'dashboard',
   parametres:   'dashboard',
+  pointages:    'heures',
 };
 
 function App() {
@@ -303,6 +305,7 @@ function AppInner({ profil, deconnecter, userId }) {
     { id: 'clients',    label: 'Clients',     Icon: Users,           labelCourt: 'Clients' },
     { id: 'employes',   label: 'Employés',    Icon: UserCog,         labelCourt: 'Équipe' },
     { id: 'heures',     label: 'Heures',      Icon: Clock,           labelCourt: 'Heures' },
+    { id: 'pointages',  label: 'Pointages',   Icon: ClipboardCheck,  labelCourt: 'Pointages' },
     { id: 'planning',   label: 'Planning',    Icon: Calendar,        labelCourt: 'Planning' },
     { id: 'rapport',    label: 'Rapports',    Icon: ClipboardList,   labelCourt: 'Rapports' },
     { id: 'agents',     label: 'Centre IA',   Icon: Bot,             labelCourt: 'Centre IA' },
@@ -378,8 +381,9 @@ function AppInner({ profil, deconnecter, userId }) {
           {page === 'alertes'      && <AlertsPage naviguer={naviguer} />}
           {page === 'parametres'   && pagesAutorisees.includes('parametres') && <Parametres parametres={parametres} setParametres={setParametres} clients={clients} setClients={setClients} chantiers={chantiers} setChantiers={setChantiers} devis={devis} setDevis={setDevis} factures={factures} setFactures={setFactures} naviguer={naviguer} />}
           {page === 'heures'       && pagesAutorisees.includes('heures')     && <Heures chantiers={chantiers} parametres={parametres} setChantiers={setChantiers} />}
+          {page === 'pointages'    && pagesAutorisees.includes('pointages')  && <PointagesPage />}
           {/* Fallback 404 */}
-          {!['dashboard', 'chantiers', 'devis', 'finances', 'clients', 'employes', 'planning', 'rapport', 'agents', 'calculs', 'alertes', 'parametres', 'heures'].includes(page) && (
+          {!['dashboard', 'chantiers', 'devis', 'finances', 'clients', 'employes', 'planning', 'rapport', 'agents', 'calculs', 'alertes', 'parametres', 'heures', 'pointages'].includes(page) && (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', gap: 16, color: 'var(--text-secondary)' }}>
               <div style={{ fontSize: 48 }}>404</div>
               <div style={{ fontSize: 18, fontWeight: 600 }}>Page introuvable</div>

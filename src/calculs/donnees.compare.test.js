@@ -129,3 +129,46 @@ describe('Observation — divergences par design (pas d\'assertion)', () => {
     console.log('');
   });
 });
+
+// ── Invariant F2 : déplacement exclu de totalCoutsReel ──────────────────────
+// F2 : les frais de déplacement sont imputés aux FG, pas au coût chantier.
+// coutDeplacementReel doit être exposé séparément dans le retour mais ne
+// doit PAS gonfler totalCoutsReel. Les deux moteurs doivent produire le
+// même coutTotalReel (chantier sans déplacement dans leurs coûts).
+
+describe('Invariant F2 — déplacement hors totalCoutsReel', () => {
+  const localiteTest = [{ nom: 'Meyrin', tarifJour: 60 }];
+  const empTest = [{ id: 1, nom: 'Test', tarifJour: 400, tarifDejaCharge: true }];
+  const chantierAvecVille = {
+    id: 'TEST_F2',
+    nom: 'Chantier Meyrin',
+    ville: 'Meyrin',
+    statut: 'en cours',
+    nombreJours: 20,
+    equipe: [{ employeId: 1, joursPlannifies: 20 }],
+    journal: [
+      { date: '2026-05-05', employes: [{ employeId: 1, heuresTravaillees: 8 }] },
+      { date: '2026-05-06', employes: [{ employeId: 1, heuresTravaillees: 8 }] },
+      { date: '2026-05-07', employes: [{ employeId: 1, heuresTravaillees: 8 }] },
+    ],
+  };
+  // 3 jours journal × CHF 60/j → coutDeplacementReel = 180
+
+  it('coutDeplacementReel exposé dans le retour et non nul', () => {
+    const r = calculerCoutsChantier(chantierAvecVille, empTest, localiteTest, {}, []);
+    expect(r.coutDeplacementReel).toBe(180);
+  });
+
+  it('totalCoutsReel n\'inclut PAS coutDeplacementReel (F2 : déplacement → FG)', () => {
+    const r = calculerCoutsChantier(chantierAvecVille, empTest, localiteTest, {}, []);
+    // Coût MO = 3j × 400 CHF/j = 1200. Pas de matériaux ni autres.
+    expect(r.totalCoutsReel).toBe(r.coutEquipeReel); // déplacement absent
+    expect(r.totalCoutsReel).not.toBe(r.coutEquipeReel + r.coutDeplacementReel);
+  });
+
+  it('invariant : totalCoutsReel moteur1 == coutTotalReel moteur2 (même chantier avec localité)', () => {
+    const r1 = calculerCoutsChantier(chantierAvecVille, empTest, localiteTest, {}, []);
+    const r2 = calculerEtatChantier(chantierAvecVille, empTest, [], {});
+    expect(equivPct(r1.totalCoutsReel, r2.coutTotalReel)).toBe(true);
+  });
+});

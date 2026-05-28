@@ -7,7 +7,7 @@
 const ACCES_TOTAL = {
   pages: [
     'dashboard', 'chantiers', 'clients', 'employes', 'devis', 'heures',
-    'finances', 'planning', 'rapport', 'agents', 'parametres',
+    'finances', 'planning', 'rapport', 'agents', 'parametres', 'calculs', 'alertes',
     'factures', 'statistiques', 'paiements', 'analyse', 'importpdf', 'metrage', 'photos',
   ],
   actions: {

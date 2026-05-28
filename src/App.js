@@ -304,10 +304,11 @@ function AppInner({ profil, deconnecter, userId }) {
     if (destination) naviguer(destination);
   }, [naviguer]);
 
-  const nbFacturesRetard = factures.filter(f =>
-    f.statut === 'retard' ||
-    (f.statut === 'envoyee' && f.dateEcheance && new Date(f.dateEcheance) < new Date())
-  ).length;
+  const nbFacturesRetard = factures.filter(f => {
+    const statut = (f.statut || '').trim().toLowerCase();
+    return statut === 'retard' ||
+      (statut === 'envoyee' && f.dateEcheance && new Date(f.dateEcheance) < new Date());
+  }).length;
 
   const navItems = [
     { id: 'dashboard',  label: 'Dashboard',   Icon: LayoutDashboard, labelCourt: 'Accueil' },
@@ -388,7 +389,7 @@ function AppInner({ profil, deconnecter, userId }) {
           {page === 'planning'     && pagesAutorisees.includes('planning')   && <PlanningPage chantiers={chantiers} setChantiers={setChantiers} clients={clients} devis={devis} factures={factures} parametres={parametres} naviguer={naviguer} />}
           {page === 'rapport'      && pagesAutorisees.includes('rapport')    && <RapportsPage chantiers={chantiers} clients={clients} devis={devis} factures={factures} parametres={parametres} setParametres={setParametres} paiementsData={paiementsData} periodeGlobale={periodeGlobale} naviguer={naviguer} />}
           {page === 'agents'       && pagesAutorisees.includes('agents')     && <CentreIA />}
-          {page === 'calculs'      && <CalculsPage />}
+          {page === 'calculs'      && pagesAutorisees.includes('calculs')    && <CalculsPage />}
           {page === 'alertes'      && <AlertsPage naviguer={naviguer} />}
           {page === 'parametres'   && pagesAutorisees.includes('parametres') && <Parametres parametres={parametres} setParametres={setParametres} clients={clients} setClients={setClients} chantiers={chantiers} setChantiers={setChantiers} devis={devis} setDevis={setDevis} factures={factures} setFactures={setFactures} naviguer={naviguer} />}
           {page === 'heures'       && pagesAutorisees.includes('heures')     && <Heures chantiers={chantiers} parametres={parametres} setChantiers={setChantiers} />}

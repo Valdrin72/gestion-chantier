@@ -394,7 +394,8 @@ export const calculerCoutsChantier = (chantier, employes = [], localites = [], c
   const caDisponible = montantTotal !== null;
 
   const totalCoutsPrevu = coutEquipePrevu + coutMaterielPrevu + coutSousTraitancePrevu + coutDeplacementPrevu + autresCoutsPrevu;
-  const totalCoutsReel = coutEquipeReel + coutMaterielReel + coutSousTraitanceReel + coutDeplacementReel + coutImprevus + autresCoutsReel;
+  // F2 : déplacement imputé aux Frais Généraux — hors coût chantier
+  const totalCoutsReel = coutEquipeReel + coutMaterielReel + coutSousTraitanceReel + coutImprevus + autresCoutsReel;
 
   const margePrevu = caDisponible ? montantTotal - totalCoutsPrevu : null;
   const margeReel = caDisponible ? montantTotal - totalCoutsReel : null;

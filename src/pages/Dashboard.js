@@ -27,7 +27,7 @@ function safeStr(v) {
 
 function Dashboard() {
   const isMobile = useIsMobile();
-  const { chantiers, setChantiers, clients, factures, devis = [], parametres, naviguer, actionsLog = [], periodeGlobale = 'mois', setPeriodeGlobale = () => {}, agentState, profil, afficherNotif } = useApp();
+  const { chantiers, setChantiers, clients, factures, devis = [], parametres, naviguer, actionsLog = [], periodeGlobale = 'mois', setPeriodeGlobale = () => {}, agentState, profil, afficherNotif, pointages = [] } = useApp();
   const agentAlertes = agentState?.alertes || [];
   const facturesSafe = useMemo(() => factures || [], [factures]);
   const [insightsFerme, setInsightsFerme] = useState(false);
@@ -39,10 +39,10 @@ function Dashboard() {
   const coutsMap = useMemo(() => {
     const map = new Map();
     chantiers.forEach(c => {
-      map.set(c.id, calculerCoutsChantier(c, parametres.employes || [], parametres.localites || [], parametres.parametres, devis));
+      map.set(c.id, calculerCoutsChantier(c, parametres.employes || [], parametres.localites || [], parametres.parametres, devis, pointages));
     });
     return map;
-  }, [chantiers, parametres.employes, parametres.localites, parametres.parametres, devis]);
+  }, [chantiers, parametres.employes, parametres.localites, parametres.parametres, devis, pointages]);
 
   // ── Factures filtrées par période ────────────────────────────
   const facturesPeriode = useMemo(() => {
@@ -316,7 +316,12 @@ function Dashboard() {
     const r = rentaParChantier[c.id];
     const reel = rentaReelleParChantier[c.id];
     const retardJ = j !== null && j < 0 && !estRetardJustifie(c) ? Math.abs(j) : 0;
-    const avancement = parseFloat(c.avancement) || 0;
+    // Avancement depuis journal (cohérent avec calculerEtatChantier) — fallback sur valeur manuelle
+    const joursRealisesForPrio = new Set((c.journal || []).map(e => e.date).filter(Boolean)).size;
+    const joursPlannedForPrio = parseInt(c.nombreJours) || 0;
+    const avancement = joursPlannedForPrio > 0
+      ? Math.min(100, Math.round((joursRealisesForPrio / joursPlannedForPrio) * 100))
+      : (parseFloat(c.avancement) || 0);
 
     // Critique : retard interne > 5j OU rentabilité négative OU dépassement > 20% des jours OU marge réelle négative
     const depassementCritique = reel && reel.enDepassement && reel.joursPrevu > 0 &&
@@ -327,9 +332,7 @@ function Dashboard() {
 
     // Attention : retard interne 1-5j OU renta < 10% OU dépassement jours OU marge réelle faible
     // Avancement faible = seulement si >50% des jours planifiés sont déjà consommés mais <30% d'avancement
-    const joursRealisesC = new Set((c.journal || []).map(e => e.date).filter(Boolean)).size;
-    const joursPlannedC = c.nombreJours || 0;
-    const avancementRetard = joursPlannedC > 0 && joursRealisesC > joursPlannedC * 0.5 && avancement < 30;
+    const avancementRetard = joursPlannedForPrio > 0 && joursRealisesForPrio > joursPlannedForPrio * 0.5 && avancement < 30;
     if (retardJ >= 1 || (r !== null && r < SEUILS.margeLimite) || avancementRetard ||
         (reel && reel.enDepassement) || (reel && !reel.aucuneSaisie && Number.isFinite(reel.rentabilitePct) && reel.rentabilitePct < SEUILS.margeLimite))
       return { niveau: 'attention', score: 1 };

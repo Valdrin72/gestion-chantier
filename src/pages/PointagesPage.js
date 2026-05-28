@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { ClipboardCheck } from 'lucide-react';
 import { DS } from '../ds';
 import { useApp } from '../context/AppContext';
@@ -23,7 +23,6 @@ function totalHeuresProd(pointage) {
 export default function PointagesPage() {
   const { pointages, parametres, chantiers } = useApp();
   const employes = parametres?.employes ?? [];
-  const [refresh, setRefresh] = useState(0);
 
   // Derniers pointages — 20 max, triés du plus récent au plus ancien
   const recents = [...pointages]
@@ -59,7 +58,7 @@ export default function PointagesPage() {
       <div style={{ display: 'flex', gap: '24px', alignItems: 'flex-start', flexWrap: 'wrap' }}>
         {/* Formulaire */}
         <div style={{ flex: '1 1 400px', minWidth: '320px' }}>
-          <PointageFormulaire onSaved={() => setRefresh(r => r + 1)} />
+          <PointageFormulaire />
         </div>
 
         {/* Historique récent */}

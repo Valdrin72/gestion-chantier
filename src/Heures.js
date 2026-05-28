@@ -1,12 +1,10 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Clock, X, Trash2, AlertTriangle } from 'lucide-react';
+import { Clock } from 'lucide-react';
 import { DS } from './ds';
 import { fmtN, getHeuresParEmployeParDate, getIntervallesPeriode } from './donnees';
 import KpiCard from './components/ui/KpiCard';
 import { useApp } from './context/AppContext';
-import { usePointages } from './hooks/usePointages';
-
-const FORM_VIDE = { employeId: '', chantierId: '', date: '', heures: '8' };
+import ModalPointageFormulaire from './components/pointages/ModalPointageFormulaire';
 
 function getWeekStart(date) {
   const d = new Date(date);
@@ -35,8 +33,7 @@ const DAY_LABELS_SHORT = ['LUN', 'MAR', 'MER', 'JEU', 'VEN', 'SAM', 'DIM'];
 
 export default function Heures({ chantiers = [], parametres = {}, setChantiers }) {
   const employes = useMemo(() => parametres.employes || [], [parametres.employes]); // eslint-disable-line react-hooks/exhaustive-deps
-  const { periodeGlobale, pointages, setPointages } = useApp();
-  const { upsertPointage, getPointagesParDate, deletePointage } = usePointages({ pointages, setPointages });
+  const { periodeGlobale } = useApp();
   const today = new Date();
   const [weekStart, setWeekStart] = useState(() => getWeekStart(today));
 
@@ -44,61 +41,7 @@ export default function Heures({ chantiers = [], parametres = {}, setChantiers }
   useEffect(() => {
     if (periodeGlobale === 'semaine') setWeekStart(getWeekStart(new Date()));
   }, [periodeGlobale]);
-  const [modal, setModal] = useState(null);
-  const [samediConfirme, setSamediConfirme] = useState(false);
-
-  const ouvrirModal = (prefill = {}) => {
-    setSamediConfirme(false);
-    const dateDefaut = prefill.date || isoDate(today);
-    const employeId = prefill.employeId || employes[0]?.id || '';
-    // Retrouver le chantier et les heures existantes pour ce jour/employé
-    let chantierId = prefill.chantierId || chantiers[0]?.id || '';
-    let heuresExistantes = '';
-    if (prefill.date && employeId) {
-      for (const c of chantiers) {
-        const entry = (c.journal || []).find(e => e.date === prefill.date);
-        if (entry) {
-          const emp = (entry.employes || []).find(e => String(e.employeId) === String(employeId));
-          if (emp) { chantierId = c.id; heuresExistantes = String(emp.heuresTravaillees); break; }
-        }
-      }
-    }
-    setModal({ form: { ...FORM_VIDE, date: dateDefaut, employeId, chantierId, heures: heuresExistantes || '8' }, existant: !!heuresExistantes });
-  };
-
-  const sauvegarder = () => {
-    const { employeId, chantierId, date, heures } = modal.form;
-    if (!employeId || !chantierId || !date || !heures) return;
-    const h = parseFloat(heures);
-    if (!h || h <= 0) { alert('Le nombre d\'heures doit être supérieur à 0.'); return; }
-    if (h > 16) { alert('Maximum 16h par jour.'); return; }
-    // Règle CYNA stricte : pas de saisie dans le futur.
-    // Exception : samedi de la semaine courante uniquement si chantier.inclusSamedi=true.
-    const todayStr = isoDate(new Date());
-    const samSemaineCourante = isoDate(addDays(getWeekStart(new Date()), 5));
-    const isSam = new Date(date + 'T00:00:00').getDay() === 6;
-    const chantierCible = chantiers.find(c => String(c.id) === String(chantierId));
-    const samediFuturAutorise = isSam && date === samSemaineCourante && chantierCible?.inclusSamedi;
-    if (date > todayStr && !samediFuturAutorise) return;
-    // Saturday confirmation required if chantier doesn't have inclusSamedi enabled
-    if (isSam && chantierCible && !chantierCible.inclusSamedi && !samediConfirme) return;
-
-    const canton = chantierCible?.canton ?? 'GE';
-    upsertPointage({
-      date,
-      employeId: parseInt(employeId),
-      repartitions: [{ categorie: 'production', heures: h, chantierId: String(chantierId) }],
-      deplacement: null,
-    }, canton);
-    setModal(null);
-  };
-
-  const supprimerHeures = (employeId, date) => {
-    if (!window.confirm(`Supprimer les heures du ${new Date(date + 'T00:00:00').toLocaleDateString('fr-CH', { day: 'numeric', month: 'long' })} pour cet employé ?`)) return;
-    const ptgsDate = getPointagesParDate(date);
-    const ptg = ptgsDate.find(p => String(p.employeId) === String(employeId));
-    if (ptg) deletePointage(ptg.id);
-  };
+  const [pointageModal, setPointageModal] = useState(null);
 
   const weekDays = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)), [weekStart]);
 
@@ -201,7 +144,7 @@ export default function Heures({ chantiers = [], parametres = {}, setChantiers }
           <div className="page-title-sub">{weekLabel}</div>
         </div>
         <div className="page-actions-group">
-          <button onClick={ouvrirModal} style={{ ...DS.btnPrimary, display: 'flex', alignItems: 'center', gap: 6 }}>
+          <button onClick={() => setPointageModal({})} style={{ ...DS.btnPrimary, display: 'flex', alignItems: 'center', gap: 6 }}>
             <Clock size={14} strokeWidth={2.5} /> Saisir des heures
           </button>
         </div>
@@ -278,7 +221,7 @@ export default function Heures({ chantiers = [], parametres = {}, setChantiers }
                         const isSamFuturAutorise = di === 5 && dateCell > todayStr && isSamSemCourante;
                         return (
                           <td key={di} style={{ ...DS.td, textAlign: 'center', opacity: estFutur ? 0.35 : 1, cursor: estFutur ? 'default' : 'pointer' }}
-                            onClick={() => !estFutur && ouvrirModal({ date: dateCell, employeId: emp.id })}
+                            onClick={() => !estFutur && setPointageModal({ date: dateCell, employeId: String(emp.id) })}
                             title={estFutur ? 'Date future — saisie impossible' : isSamFuturAutorise ? 'Saisir heures du samedi (confirmation requise)' : h > 0 ? `Modifier — ${h}h` : 'Saisir heures'}
                           >
                             {h > 0
@@ -320,148 +263,12 @@ export default function Heures({ chantiers = [], parametres = {}, setChantiers }
         )}
       </div>
 
-      {/* Modal saisie heures */}
-      {modal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(4px)' }}
-          onClick={() => setModal(null)}>
-          <div style={{ background: 'var(--bg-card)', border: '1px solid var(--ds-card-border)', borderRadius: 18, padding: 28, width: '100%', maxWidth: 420, boxShadow: '0 20px 60px rgba(0,0,0,0.4)' }}
-            onClick={e => e.stopPropagation()}>
-
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-              <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--text-primary)' }}>
-                {(() => {
-                  const { employeId, date } = modal.form;
-                  if (!employeId || !date) return 'Saisir des heures';
-                  const existant = chantiers.some(c => (c.journal || []).some(e => e.date === date && (e.employes || []).some(em => String(em.employeId) === String(employeId) && (parseFloat(em.heuresTravaillees) || 0) > 0)));
-                  return existant ? 'Modifier les heures' : 'Saisir des heures';
-                })()}
-              </div>
-              <button onClick={() => setModal(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 4 }}>
-                <X size={18} />
-              </button>
-            </div>
-
-            <div style={{ marginBottom: 14 }}>
-              <label style={DS.label}>Employé</label>
-              <select value={modal.form.employeId} onChange={e => setModal({ ...modal, form: { ...modal.form, employeId: e.target.value } })} style={DS.input}>
-                <option value="">— Sélectionner —</option>
-                {employes.filter(e => e.actif !== false).map(e => (
-                  <option key={e.id} value={e.id}>{e.nom}{e.poste ? ` · ${e.poste}` : ''}</option>
-                ))}
-              </select>
-            </div>
-
-            <div style={{ marginBottom: 14 }}>
-              <label style={DS.label}>Chantier</label>
-              <select value={modal.form.chantierId} onChange={e => setModal({ ...modal, form: { ...modal.form, chantierId: e.target.value } })} style={DS.input}>
-                <option value="">— Sélectionner —</option>
-                {chantiers.filter(c => !['terminé','clôturé','facturé'].includes((c.statut || '').trim().toLowerCase())).map(c => (
-                  <option key={c.id} value={c.id}>{c.nom || c.numero}</option>
-                ))}
-              </select>
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
-              <div>
-                <label style={DS.label}>Date</label>
-                {(() => {
-                  const todayStr = isoDate(new Date());
-                  const samSemaine = isoDate(addDays(getWeekStart(new Date()), 5));
-                  const maxDate = samSemaine > todayStr ? samSemaine : todayStr;
-                  const futur = modal.form.date && modal.form.date > maxDate;
-                  return (
-                    <input type="date" value={modal.form.date} max={maxDate}
-                      onChange={e => { setSamediConfirme(false); setModal({ ...modal, form: { ...modal.form, date: e.target.value } }); }}
-                      style={{ ...DS.input, borderColor: futur ? '#ef4444' : undefined }} />
-                  );
-                })()}
-              </div>
-              <div>
-                <label style={DS.label}>Heures travaillées</label>
-                <input type="number" min="0.5" max="24" step="0.5" value={modal.form.heures} onChange={e => setModal({ ...modal, form: { ...modal.form, heures: e.target.value } })} style={DS.input} />
-              </div>
-            </div>
-
-            {/* Alerte date vraiment future (au-delà du samedi courant) */}
-            {(() => {
-              const todayStr = isoDate(new Date());
-              const samSemaine = isoDate(addDays(getWeekStart(new Date()), 5));
-              const vraimantFutur = modal.form.date && modal.form.date > todayStr && modal.form.date > samSemaine;
-              if (!vraimantFutur) return null;
-              return (
-                <div style={{ display: 'flex', gap: 10, background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 10, padding: '12px 14px', marginBottom: 16 }}>
-                  <span style={{ fontSize: 18 }}>🚫</span>
-                  <div>
-                    <div style={{ fontWeight: 700, color: '#991b1b', fontSize: 13 }}>Date dans le futur</div>
-                    <div style={{ fontSize: 12, color: '#b91c1c', marginTop: 2 }}>Vous ne pouvez pas saisir des heures pour une date future.</div>
-                  </div>
-                </div>
-              );
-            })()}
-
-            {/* Confirmation travail samedi */}
-            {(() => {
-              if (!modal.form.date) return null;
-              const isSam = new Date(modal.form.date + 'T00:00:00').getDay() === 6;
-              if (!isSam) return null;
-              const chantierCible = chantiers.find(c => String(c.id) === String(modal.form.chantierId));
-              return (
-                <div style={{ display: 'flex', gap: 10, background: chantierCible?.inclusSamedi ? '#f0fdf4' : '#fffbeb', border: `1px solid ${chantierCible?.inclusSamedi ? '#86efac' : '#fcd34d'}`, borderRadius: 10, padding: '12px 14px', marginBottom: 16 }}>
-                  <AlertTriangle size={18} style={{ color: chantierCible?.inclusSamedi ? '#16a34a' : '#d97706', flexShrink: 0, marginTop: 1 }} />
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 700, color: chantierCible?.inclusSamedi ? '#15803d' : '#92400e', fontSize: 13 }}>
-                      {chantierCible?.inclusSamedi ? 'Samedi autorisé sur ce chantier' : 'Travail le samedi — confirmation requise'}
-                    </div>
-                    <div style={{ fontSize: 12, color: chantierCible?.inclusSamedi ? '#166534' : '#78350f', marginTop: 3 }}>
-                      {chantierCible?.inclusSamedi
-                        ? 'Ce chantier inclut le samedi dans sa durée planifiée.'
-                        : 'Selon la CCT Romande, les heures du samedi peuvent être majorées (+25%). Ce jour sera compté comme jour travaillé.'}
-                    </div>
-                    {!chantierCible?.inclusSamedi && (
-                      <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8, cursor: 'pointer', fontSize: 12, fontWeight: 600, color: '#92400e' }}>
-                        <input type="checkbox" checked={samediConfirme} onChange={e => setSamediConfirme(e.target.checked)} style={{ width: 14, height: 14 }} />
-                        Je confirme que l'équipe a travaillé ce samedi
-                      </label>
-                    )}
-                  </div>
-                </div>
-              );
-            })()}
-
-            <div style={{ display: 'flex', gap: 10, justifyContent: 'space-between', alignItems: 'center' }}>
-              {/* Bouton supprimer — visible seulement si des heures existent pour cet employé/jour */}
-              {modal.existant && (
-                <button
-                  onClick={() => {
-                    if (!window.confirm(`Supprimer les heures du ${new Date(modal.form.date + 'T00:00:00').toLocaleDateString('fr-CH', { day: 'numeric', month: 'long' })} ?`)) return;
-                    supprimerHeures(modal.form.employeId, modal.form.date);
-                    setModal(null);
-                  }}
-                  style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 8, padding: '7px 14px', cursor: 'pointer', color: '#dc2626', fontWeight: 700, fontSize: 13, fontFamily: 'inherit' }}
-                ><Trash2 size={14} /> Supprimer</button>
-              )}
-              <div style={{ display: 'flex', gap: 10, marginLeft: 'auto' }}>
-              <button onClick={() => setModal(null)} style={DS.btnGhost}>Annuler</button>
-              {(() => {
-                const todayStr = isoDate(new Date());
-                const samSemaine = isoDate(addDays(getWeekStart(new Date()), 5));
-                const futur = modal.form.date && modal.form.date > todayStr && modal.form.date > samSemaine;
-                const manque = !modal.form.employeId || !modal.form.chantierId || !modal.form.date || !modal.form.heures;
-                const isSam = modal.form.date ? new Date(modal.form.date + 'T00:00:00').getDay() === 6 : false;
-                const chantierCible = chantiers.find(c => String(c.id) === String(modal.form.chantierId));
-                const needsSamConf = isSam && chantierCible && !chantierCible.inclusSamedi && !samediConfirme;
-                const bloque = futur || manque || needsSamConf;
-                return (
-                  <button onClick={sauvegarder} disabled={bloque}
-                    style={{ ...DS.btnPrimary, opacity: bloque ? 0.4 : 1 }}>
-                    {futur ? 'Date invalide' : needsSamConf ? 'Confirmer le samedi' : 'Enregistrer'}
-                  </button>
-                );
-              })()}
-              </div>
-            </div>
-          </div>
-        </div>
+      {pointageModal && (
+        <ModalPointageFormulaire
+          initialDate={pointageModal.date}
+          initialEmployeId={pointageModal.employeId}
+          onClose={() => setPointageModal(null)}
+        />
       )}
     </div>
   );

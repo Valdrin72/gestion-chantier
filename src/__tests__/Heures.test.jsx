@@ -36,14 +36,22 @@ const CHANTIER = {
 const PARAMETRES = { employes: [EMPLOYE] };
 
 function renderHeures(propsOverrides = {}, ctxOverrides = {}) {
+  const heuresChantiers = propsOverrides.chantiers || [CHANTIER];
+  const heuresParams = propsOverrides.parametres || PARAMETRES;
   const defaultProps = {
-    chantiers: [CHANTIER],
-    parametres: PARAMETRES,
+    chantiers: heuresChantiers,
+    parametres: heuresParams,
     setChantiers: vi.fn(),
   };
   return renderWithApp(
     <Heures {...defaultProps} {...propsOverrides} />,
-    { pointages: [], setPointages: vi.fn(), periodeGlobale: 'semaine', ...ctxOverrides },
+    {
+      pointages: [], setPointages: vi.fn(), periodeGlobale: 'semaine',
+      // Fournir chantiers + parametres pour PointageFormulaire via useApp()
+      chantiers: heuresChantiers,
+      parametres: heuresParams,
+      ...ctxOverrides,
+    },
   );
 }
 
@@ -51,7 +59,8 @@ function renderHeures(propsOverrides = {}, ctxOverrides = {}) {
 
 describe('Heures — grille hebdomadaire', () => {
   beforeEach(() => {
-    mockUpsertPointage.mockClear();
+    mockUpsertPointage.mockReset();
+    mockUpsertPointage.mockReturnValue({ ok: true });
     mockDeletePointage.mockClear();
     mockGetPointagesParDate.mockReturnValue([]);
     vi.spyOn(window, 'alert').mockImplementation(() => {});
@@ -85,53 +94,93 @@ describe('Heures — grille hebdomadaire', () => {
     expect(screen.getByText('Bernard')).toBeInTheDocument();
   });
 
-  it('bouton "Saisir des heures" ouvre le formulaire de saisie', () => {
+  // ── Tests adaptés : ModalPointageFormulaire remplace la modale inline ──────
+
+  it('bouton "Saisir des heures" ouvre ModalPointageFormulaire', () => {
     renderHeures();
     fireEvent.click(screen.getByRole('button', { name: /saisir des heures/i }));
-    // Le modal s'ouvre : 2 comboboxes (employé + chantier) et 1 spinbutton (heures)
-    expect(screen.getAllByRole('combobox')).toHaveLength(2);
-    expect(screen.getByRole('spinbutton')).toBeInTheDocument();
+    // ModalPointageFormulaire rend un h2 "Pointage" et le formulaire complet
+    expect(screen.getByRole('heading', { name: 'Pointage' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /enregistrer le pointage/i })).toBeInTheDocument();
   });
 
-  it('le formulaire est pré-rempli avec le premier employé et chantier', () => {
+  it('bouton "Saisir des heures" ouvre le formulaire avec la date d\'aujourd\'hui pré-remplie', () => {
+    const TODAY = new Date().toISOString().split('T')[0];
     renderHeures();
     fireEvent.click(screen.getByRole('button', { name: /saisir des heures/i }));
-    const [empSelect, chanSelect] = screen.getAllByRole('combobox');
-    expect(empSelect.value).toBe('1');
-    expect(chanSelect.value).toBe('CH3');
+    // L'input date est pré-rempli avec aujourd'hui (initialDate = undefined → TODAY dans PointageFormulaire)
+    const dateInputs = screen.getAllByDisplayValue(TODAY);
+    expect(dateInputs.length).toBeGreaterThanOrEqual(1);
   });
 
-  it('Enregistrer → upsertPointage appelé avec les bonnes repartitions', () => {
+  it('saisie dans ModalPointageFormulaire → upsertPointage appelé avec les bonnes répartitions', () => {
     renderHeures();
     fireEvent.click(screen.getByRole('button', { name: /saisir des heures/i }));
 
-    // Formulaire pré-rempli : employé=1, chantier=CH3, date=today, heures=8
-    // Bouton "Enregistrer" dans le modal (pas le bouton "Saisir des heures")
-    const saveBtn = screen.getByRole('button', { name: 'Enregistrer' });
-    expect(saveBtn).not.toBeDisabled();
-    fireEvent.click(saveBtn);
+    // PointageFormulaire : 3 comboboxes (employé, chantier, catégorie) + 1 spinbutton (heures)
+    const comboboxes = screen.getAllByRole('combobox');
+    // comboboxes[0] = employé select
+    fireEvent.change(comboboxes[0], { target: { value: '1' } });
+    // comboboxes[1] = chantier select dans LigneRepartition
+    fireEvent.change(comboboxes[1], { target: { value: 'CH3' } });
+
+    // Spinbutton = heures dans LigneRepartition
+    const spinbutton = screen.getByRole('spinbutton');
+    fireEvent.change(spinbutton, { target: { value: '8' } });
+
+    fireEvent.click(screen.getByRole('button', { name: /enregistrer le pointage/i }));
 
     expect(mockUpsertPointage).toHaveBeenCalledOnce();
     const [pointage, canton] = mockUpsertPointage.mock.calls[0];
-    expect(pointage.employeId).toBe(1);
     expect(pointage.repartitions).toEqual([
-      { categorie: 'production', heures: 8, chantierId: 'CH3' },
+      { chantierId: 'CH3', categorie: 'production', heures: 8 },
     ]);
     expect(canton).toBe('GE');
   });
 
-  it('modifier les heures dans le formulaire → valeur transmise à upsertPointage', () => {
+  // ── Nouveau test : clic "+" sur cellule → prefill date + employeId ─────────
+
+  it('clic "+" sur une cellule ouvre ModalPointageFormulaire avec date et employé pré-remplis', () => {
     renderHeures();
-    fireEvent.click(screen.getByRole('button', { name: /saisir des heures/i }));
+    // Les cellules de la semaine courante sans heures affichent "Saisir heures" en titre
+    const cells = screen.getAllByTitle('Saisir heures');
+    expect(cells.length).toBeGreaterThan(0);
+    fireEvent.click(cells[0]);
 
-    // Le spinbutton est l'input number "Heures travaillées"
-    const heuresInput = screen.getByRole('spinbutton');
-    fireEvent.change(heuresInput, { target: { value: '6' } });
+    // La modale s'ouvre
+    expect(screen.getByRole('heading', { name: 'Pointage' })).toBeInTheDocument();
+    // L'employé est pré-rempli (select avec valeur '1')
+    const empSelects = screen.getAllByRole('combobox');
+    const empSelect = empSelects.find(s => s.value === '1');
+    expect(empSelect).toBeDefined();
+  });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Enregistrer' }));
+  // ── Nouveau test : cellule avec pointage → mode édition ───────────────────
 
-    const [pointage] = mockUpsertPointage.mock.calls[0];
-    expect(pointage.repartitions[0].heures).toBe(6);
+  it('clic sur cellule avec pointage existant → mode édition dans ModalPointageFormulaire', async () => {
+    const TODAY_STR = new Date().toISOString().split('T')[0];
+    const ptg = {
+      id: 'ptg_today', date: TODAY_STR, employeId: 1,
+      repartitions: [{ chantierId: 'CH3', categorie: 'production', heures: 6 }],
+      deplacement: null,
+    };
+    const chantierAvecJournal = {
+      ...CHANTIER,
+      journal: [{ date: TODAY_STR, employes: [{ employeId: 1, heuresTravaillees: 6 }] }],
+    };
+
+    renderHeures(
+      { chantiers: [chantierAvecJournal] },
+      { chantiers: [chantierAvecJournal], parametres: PARAMETRES, pointages: [ptg] },
+    );
+
+    // La cellule avec heures affiche "6h" et a title "Modifier — 6h"
+    const cell6h = screen.getByTitle('Modifier — 6h');
+    fireEvent.click(cell6h);
+
+    expect(screen.getByRole('heading', { name: 'Pointage' })).toBeInTheDocument();
+    // PointageFormulaire détecte le pointage existant et passe en mode édition
+    await screen.findByText(/Modification d'un pointage existant/i);
   });
 
   it('navigation ← Sem. préc. → le titre de la semaine change', () => {
@@ -142,18 +191,8 @@ describe('Heures — grille hebdomadaire', () => {
     expect(newTitle).not.toBe(initialTitle);
   });
 
-  it('suppression heures → deletePointage appelé si pointage trouvé', () => {
-    const PTAG = {
-      id: 'ptg_test', date: '2025-09-01', employeId: 1,
-      repartitions: [{ categorie: 'production', heures: 8, chantierId: 'CH3' }],
-    };
-    mockGetPointagesParDate.mockReturnValue([PTAG]);
-
+  it('deletePointage reste accessible via le hook (non invoqué depuis la grille)', () => {
     renderHeures();
-    // Appel direct de supprimerHeures via la grille (clic sur cellule existante)
-    // On simule en appelant via la fonction exposée par la vue
-    // La grille n'affiche pas de bouton supprimer directement — seul le modal le fait
-    // On teste plutôt que deletePointage est appelable depuis le hook
     expect(mockDeletePointage).not.toHaveBeenCalled();
   });
 });

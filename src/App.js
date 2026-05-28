@@ -292,7 +292,7 @@ function AppInner({ profil, deconnecter, userId }) {
   const agentState = useAgents({ chantiers, devis, factures, clients, parametres });
 
   // Moteur d'alertes — évaluation automatique toutes les 5 min
-  useAlertBootstrap({ chantiers, devis, factures, clients, parametres });
+  useAlertBootstrap({ chantiers, devis, factures, clients, parametres, pointages });
   const urgentAlerteCount = useUrgentCount();
 
   const [showOnboarding, setShowOnboarding] = useState(() => {

@@ -2,14 +2,14 @@ import { useEffect, useRef } from 'react';
 import { bootstrapAlertSystem } from './bootstrap.js';
 import { adapterContexteAlertes } from './contextAdapter.js';
 
-export function useAlertBootstrap({ chantiers, devis, factures, clients, parametres }) {
+export function useAlertBootstrap({ chantiers, devis, factures, clients, parametres, pointages }) {
   const systemRef = useRef(null);
-  const dataRef = useRef({ chantiers, devis, factures, clients, parametres });
+  const dataRef = useRef({ chantiers, devis, factures, clients, parametres, pointages });
 
   // Mise à jour des données sans recréer le système
   useEffect(() => {
-    dataRef.current = { chantiers, devis, factures, clients, parametres };
-  }, [chantiers, devis, factures, clients, parametres]);
+    dataRef.current = { chantiers, devis, factures, clients, parametres, pointages };
+  }, [chantiers, devis, factures, clients, parametres, pointages]);
 
   useEffect(() => {
     const contextProvider = () => adapterContexteAlertes(dataRef.current);

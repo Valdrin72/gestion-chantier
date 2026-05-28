@@ -40,7 +40,7 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
     [chantiersAvecDevis, parametres.employes, parametres.localites, parametres.parametres, devis]
   );
   const margeAvantCharges = caTotal - coutsTotal;
-  // Les coûts MO incluent déjà le coefficient 1.35 (charges employeur).
+  // Coûts MO calculés avec coefficientMainOeuvre (1.0 si tarifs tout compris).
   // chargesSociales ici = estimation des charges non-MO (impôts, FG hors MO) — indicatif seulement.
   const chargesSocialesIndic = caTotal * (tauxChargesSociales / 100) * 0.3; // ~30% du CA en MO × taux → estimation
   const chargesSociales = chargesSocialesIndic; // affiché comme indicateur, non déduit doublement
@@ -108,7 +108,7 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
       return t + heures / 8;
     }, 0);
     const heuresTotal = joursTotal * 8;
-    const coeff = emp.tarifDejaCharge ? 1 : (parseFloat(parametres.parametres?.coefficientMainOeuvre) || 1.35);
+    const coeff = emp.tarifDejaCharge ? 1 : (parseFloat(parametres.parametres?.coefficientMainOeuvre) || 1.0);
     const coutTotal = joursTotal * (parseFloat(emp.tarifJour) || 0) * coeff;
     const caGenere = chantiersPeriode.reduce((t, c) => {
       const heures = heuresEmploye(c.journal || [], emp.id);

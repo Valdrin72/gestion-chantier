@@ -74,7 +74,7 @@ function Chantiers() {
       const jours = heuresEmploye(form.journal || [], empId) / 8;
       return { ...m, joursRealises: String(jours) };
     });
-    const coefficient = parseFloat(parametres?.parametres?.coefficientMainOeuvre) || 1.35;
+    const coefficient = parseFloat(parametres?.parametres?.coefficientMainOeuvre) || 1.0;
     const employes = equipeAvecJours.map(m => {
       const emp = empsList.find(e => e.id === parseInt(m.employeId));
       const jours = parseFloat(m.joursRealises) || 0;

@@ -260,6 +260,19 @@ function AppInner({ profil, deconnecter, userId }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dataLoading, parametres.backfillMajorationPhase4Done, pointages.length]);
 
+  // Backfill coef MO — passe coefficientMainOeuvre de 1.35 → 1.0 (tarifs déjà tout compris)
+  useEffect(() => {
+    if (dataLoading) return;
+    if (parametres.backfillCoefMO10Done) return;
+    if (parseFloat(parametres.coefficientMainOeuvre) !== 1.35) {
+      // Valeur déjà différente de 1.35 → marquer done sans toucher
+      setParametres(prev => ({ ...prev, backfillCoefMO10Done: true }));
+      return;
+    }
+    setParametres(prev => ({ ...prev, coefficientMainOeuvre: 1.0, backfillCoefMO10Done: true }));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dataLoading, parametres.backfillCoefMO10Done]);
+
   // Phase 5a — Régénération du journal dérivé depuis pointages (strangler fig).
   // Dépendance sur pointages uniquement (pas chantiers) pour éviter la boucle infinie.
   // La garde JSON.stringify évite setChantiers si le journal n'a pas changé.

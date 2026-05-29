@@ -603,12 +603,33 @@ function ChantierDetail({ chantier, detailOnglet, setDetailOnglet, modeCompleter
         {(() => {
           const employes = parametres?.employes || [];
           const extras = c.extras || [];
+          // Source de vérité : facture non annulée avec extraId === extra.id
+          const estFacture = (extraId) => factures.some(f => String(f.extraId) === String(extraId) && f.statut !== 'annulee');
           const sauverExtras = (nouveauxExtras) => {
             if (setChantiers) setChantiers(prev => prev.map(ch => String(ch.id) === String(c.id) ? { ...ch, extras: nouveauxExtras } : ch));
           };
           const ajouterExtra = () => sauverExtras([...extras, { id: Date.now(), description: '', mode: 'forfait', montantForfait: '', heures: '', tarifHeure: '', employeId: '', factureId: null, dateCreation: new Date().toISOString().slice(0, 10) }]);
           const modifierExtra = (id, patch) => sauverExtras(extras.map(e => String(e.id) === String(id) ? { ...e, ...patch } : e));
           const supprimerExtra = (id) => sauverExtras(extras.filter(e => String(e.id) !== String(id)));
+          const facturerExtra = (extra) => {
+            const montant = extra.mode === 'forfait'
+              ? parseFloat(extra.montantForfait) || 0
+              : (parseFloat(extra.heures) || 0) * (parseFloat(extra.tarifHeure) || 0);
+            const ligne = extra.mode === 'forfait'
+              ? { description: extra.description || 'Extra forfait', quantite: 1, prixUnitaire: montant, tva: 8.1 }
+              : { description: extra.description || 'Extra heures', quantite: parseFloat(extra.heures) || 0, prixUnitaire: parseFloat(extra.tarifHeure) || 0, tva: 8.1 };
+            naviguer('finances', {
+              preRemplirExtra: {
+                chantierId: String(c.id),
+                devisId: c.devisId || '',
+                clientId: c.clientId || '',
+                type: 'standard',
+                objet: `Extra — ${extra.description || 'travail imprévu'}`,
+                extraId: String(extra.id),
+                lignes: [ligne],
+              },
+            });
+          };
           return (
             <div style={{ marginBottom: 20 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
@@ -686,9 +707,16 @@ function ChantierDetail({ chantier, detailOnglet, setDetailOnglet, modeCompleter
                         </div>
                       )}
                     </div>
-                    {e.factureId && (
-                      <div style={{ marginTop: 6, fontSize: 11, color: C.secondaire, fontWeight: 700 }}>✓ Facturé</div>
-                    )}
+                    <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
+                      {estFacture(e.id) ? (
+                        <span style={{ fontSize: 11, color: C.secondaire, fontWeight: 700 }}>✓ Facturé</span>
+                      ) : (
+                        <button
+                          onClick={() => facturerExtra(e)}
+                          style={{ fontSize: 11, fontWeight: 700, padding: '4px 10px', background: '#10b981', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer' }}
+                        >Facturer l'extra</button>
+                      )}
+                    </div>
                   </div>
                 );
               })}

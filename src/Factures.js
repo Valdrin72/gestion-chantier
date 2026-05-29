@@ -10,7 +10,7 @@ import React, { useState, useMemo } from 'react';
 import { FileDown, Download } from 'lucide-react';
 import { DS } from './ds';
 import { exportCSV } from './utils/exportCSV';
-import { fmtN, getIntervallesPeriode, facturesInPeriode, genererNumeroFacture, calculerStatutFacture, calculerCA } from './donnees';
+import { fmtN, getIntervallesPeriode, facturesInPeriode, genererNumeroFacture, calculerStatutFacture, calculerCAForfait } from './donnees';
 import { prochainRappel, niveauInfo, genererTexteRappel, marquerRappelEnvoye } from './relances';
 import { exportFicheChantier, exportFacture } from './ExportPDF';
 
@@ -1162,7 +1162,7 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
         {/* Helper acompte % — visible uniquement si type=acompte ET chantier/devis sélectionné */}
         {form.type === 'acompte' && (form.chantierId || form.devisId) && (() => {
           const chantierObj = chantiers.find(c => String(c.id) === String(form.chantierId));
-          const caHT = chantierObj ? calculerCA(chantierObj, devis) : null;
+          const caHT = chantierObj ? calculerCAForfait(chantierObj, devis) : null;
           const devisObj = !chantierObj && form.devisId ? devis.find(d => String(d.id) === String(form.devisId)) : null;
           const caRef = caHT ?? (devisObj ? (parseFloat(devisObj.montantHT) || 0) : null);
           if (!caRef || caRef <= 0) return null;

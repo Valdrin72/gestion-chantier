@@ -180,15 +180,16 @@ export const isChantierActif = (c) => c?.statut?.trim().toLowerCase() === 'en co
 export const isChantierComptable = (c) => ['en cours', 'planifié'].includes(c?.statut?.trim().toLowerCase());
 
 /**
- * Chiffre d'affaires = montantHT du devis lié + avenants (devis) + avenants (chantier) + heures en régie (devis).
- * Retourne null si aucun devis lié — aucun fallback autorisé.
+ * CA FORFAIT = montantHT du devis lié + avenants (devis) + avenants (chantier) + heures en régie (devis).
+ * C'est la base pour les situations (CA × avancement%). Retourne null si aucun devis lié.
  *
  * Séparation claire :
  *   - avenants devis   → travaux supplémentaires négociés, documentés sur le devis
  *   - avenants chantier → ancienne structure (rétrocompat)
  *   - heuresRegie      → stockées sur le devis (heures facturées au temps passé)
+ *   - chantier.extras  → travaux imprévus facturés séparément (EXCLUS ici, voir calculerCA)
  */
-export const calculerCA = (chantier, devisList = []) => {
+export const calculerCAForfait = (chantier, devisList = []) => {
   if (!chantier.devisId) return null;
   const devisLie = devisList.find(d => String(d.id) === String(chantier.devisId));
   if (!devisLie) return null;
@@ -197,6 +198,21 @@ export const calculerCA = (chantier, devisList = []) => {
     ? devisLie.avenants.reduce((s, a) => s + (parseFloat(a.montant) || 0), 0)
     : 0;
   return montantBase + avenantDevis + sommeAvenants(chantier) + sommeHeuresRegie(devisLie);
+};
+
+/**
+ * CA TOTAL = caForfait + extras chantier (travaux imprévus facturés à part).
+ * Utilisé pour la marge et le portfolio. Retourne null si aucun devis lié.
+ * Invariant : si chantier.extras est vide, calculerCA === calculerCAForfait.
+ */
+export const calculerCA = (chantier, devisList = []) => {
+  const forfait = calculerCAForfait(chantier, devisList);
+  if (forfait === null) return null;
+  const extras = (chantier.extras || []).reduce((s, e) => {
+    if (e.mode === 'forfait') return s + (parseFloat(e.montantForfait) || 0);
+    return s + (parseFloat(e.heures) || 0) * (parseFloat(e.tarifHeure) || 0);
+  }, 0);
+  return forfait + extras;
 };
 
 /**

@@ -6,7 +6,7 @@ import { DollarSign, FileText, Clock, AlertTriangle, CreditCard, TrendingUp, Cal
 import Factures from '../Factures';
 import Paiements from '../Paiements';
 import RelancesTab from '../RelancesTab';
-import { getIntervallesPeriode, getPeriodeLabel, facturesInPeriode, calculerCA, calculerStatutFacture, calculerEtatChantier } from '../donnees';
+import { getIntervallesPeriode, getPeriodeLabel, facturesInPeriode, calculerCA, calculerCAForfait, calculerStatutFacture, calculerEtatChantier } from '../donnees';
 import { useApp } from '../context/AppContext';
 import { prochainRappel } from '../relances';
 
@@ -50,17 +50,19 @@ function Tresorerie({ factures = [], chantiers = [], clients = [], devis = [], p
     const aFacturer = chantiers
       .filter(c => ['en cours', 'terminé', 'planifié'].includes(c.statut?.trim().toLowerCase()) && c.devisId)
       .map(c => {
+        const caForfait = calculerCAForfait(c, devis);
+        if (!caForfait || caForfait <= 0) return null;
         const ca = calculerCA(c, devis);
-        if (!ca || ca <= 0) return null;
         // Source unique : avancement depuis journal (calculerEtatChantier), fallback sur valeur manuelle
         const etat = calculerEtatChantier(c, employes, devis, paramsConfig);
         const avancement = etat.totalJoursReels > 0 ? etat.avancementPct : (parseFloat(c.avancement) || 0);
-        const facturesChantier = factures.filter(f => String(f.chantierId) === String(c.id) && f.statut !== 'annulee');
+        // déjà facturé = situations/acomptes/finales — EXCLUT les factures d'extras (extraId renseigné)
+        const facturesChantier = factures.filter(f => String(f.chantierId) === String(c.id) && f.statut !== 'annulee' && !f.extraId);
         const dejaFacture = facturesChantier.reduce((s, f) => s + (parseFloat(f.montantHT) || 0), 0);
-        const potentiel = Math.max(0, (ca * avancement / 100) - dejaFacture);
+        const potentiel = Math.max(0, (caForfait * avancement / 100) - dejaFacture);
         if (potentiel < 500) return null;
         const client = clients.find(cl => String(cl.id) === String(c.clientId));
-        return { id: c.id, nom: c.nom || c.numero, clientNom: client?.entreprise || client?.nom || '—', avancement, ca, dejaFacture, potentiel };
+        return { id: c.id, nom: c.nom || c.numero, clientNom: client?.entreprise || client?.nom || '—', avancement, ca, caForfait, dejaFacture, potentiel };
       })
       .filter(Boolean)
       .sort((a, b) => b.potentiel - a.potentiel);

@@ -7,7 +7,7 @@ import {
   fmtN, calculerDateFinOuvrables,
   getChantierStatus, C,
   assertEtatValide, assertEtatCoherent,
-  sommeAvenants, calculerCA, isChantierActif,
+  sommeAvenants, calculerCA, calculerCAForfait, isChantierActif,
 } from '../../donnees';
 import { DS, couleurStatut as couleurStatutDS } from '../../ds';
 import { STATUTS_CLOS } from '../../constants/statuts';
@@ -118,6 +118,7 @@ function ChantierDetail({ chantier, detailOnglet, setDetailOnglet, modeCompleter
     const viaScalaire   = parseFloat(f.montantPaye) || 0;
     return s + (viaHistorique > 0 ? viaHistorique : viaScalaire);
   }, 0);
+  const caForfait  = calculerCAForfait(c, devis);
   const devisTotal = calculerCA(c, devis) || 0;
   const _pctFactureRaw = devisTotal > 0 ? (montantFactureLie / devisTotal) * 100 : 0;
   const pctFacture = isNaN(_pctFactureRaw) ? 0 : Math.min(Math.round(_pctFactureRaw), 100);
@@ -566,7 +567,7 @@ function ChantierDetail({ chantier, detailOnglet, setDetailOnglet, modeCompleter
           <div style={{ marginBottom: 20 }}>
             <div style={{ display: 'grid', gridTemplateColumns: 'var(--g3)', gap: 10, marginBottom: 14 }}>
               {[
-                { label: 'CA signé', val: `CHF ${fmtK(devisTotal)}`, sub: (() => { const av = sommeAvenants(c); const rg = Array.isArray(devisSource?.heuresRegie) ? devisSource.heuresRegie.reduce((s,r) => s+(parseFloat(r.heures)||0)*(parseFloat(r.tarifHeure)||0),0) : 0; if (av > 0 && rg > 0) return `avenants ${fmtK(av)} + régie ${fmtK(rg)}`; if (av > 0) return `dont avenants CHF ${fmtK(av)}`; if (rg > 0) return `dont régie CHF ${fmtK(rg)}`; return null; })(), couleur: C.primaire },
+                { label: 'CA signé', val: `CHF ${fmtK(caForfait ?? devisTotal)}`, sub: (() => { const av = sommeAvenants(c); const rg = Array.isArray(devisSource?.heuresRegie) ? devisSource.heuresRegie.reduce((s,r) => s+(parseFloat(r.heures)||0)*(parseFloat(r.tarifHeure)||0),0) : 0; const extrasTotal = (c.extras || []).reduce((s, e) => s + (e.mode === 'forfait' ? (parseFloat(e.montantForfait)||0) : (parseFloat(e.heures)||0)*(parseFloat(e.tarifHeure)||0)), 0); if (extrasTotal > 0) return `forfait + extras CHF ${fmtK(extrasTotal)}`; if (av > 0 && rg > 0) return `avenants ${fmtK(av)} + régie ${fmtK(rg)}`; if (av > 0) return `dont avenants CHF ${fmtK(av)}`; if (rg > 0) return `dont régie CHF ${fmtK(rg)}`; return null; })(), couleur: C.primaire },
                 { label: 'Facturé', val: `CHF ${fmtK(montantFactureLie)}`, sub: `${pctFacture}% du devis`, couleur: pctFacture >= 100 ? C.secondaire : pctFacture > 0 ? C.info : '#78909c' },
                 { label: 'Encaissé', val: `CHF ${fmtK(montantPayeLie)}`, sub: `${pctEncaisse}% du devis`, couleur: pctEncaisse >= 100 ? C.secondaire : pctEncaisse > 0 ? C.warning : '#78909c' },
               ].map(s => (

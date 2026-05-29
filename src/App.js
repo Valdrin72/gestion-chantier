@@ -289,7 +289,7 @@ function AppInner({ profil, deconnecter, userId }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dataLoading, pointages]);
 
-  const agentState = useAgents({ chantiers, devis, factures, clients, parametres });
+  const agentState = useAgents({ chantiers, devis, factures, clients, parametres, pointages });
 
   // Moteur d'alertes — évaluation automatique toutes les 5 min
   useAlertBootstrap({ chantiers, devis, factures, clients, parametres, pointages });
@@ -383,7 +383,7 @@ function AppInner({ profil, deconnecter, userId }) {
           {page === 'dashboard'    && <Dashboard />}
           {page === 'chantiers'    && pagesAutorisees.includes('chantiers')  && <Chantiers />}
           {page === 'devis'        && pagesAutorisees.includes('devis')      && <Devis />}
-          {page === 'finances'     && pagesAutorisees.includes('finances')   && <Finances factures={factures} onSave={setFactures} clients={clients} chantiers={chantiers} devis={devis} paiementsData={paiementsData} setPaiementsData={setPaiementsData} naviguer={naviguer} contexte={contexte} profil={profil} periodeGlobale={periodeGlobale} parametres={parametres} />}
+          {page === 'finances'     && pagesAutorisees.includes('finances')   && <Finances factures={factures} onSave={setFactures} clients={clients} chantiers={chantiers} devis={devis} paiementsData={paiementsData} setPaiementsData={setPaiementsData} naviguer={naviguer} contexte={contexte} profil={profil} periodeGlobale={periodeGlobale} parametres={parametres} pointages={pointages} />}
           {page === 'clients'      && pagesAutorisees.includes('clients')    && <Clients clients={clients} setClients={setClients} chantiers={chantiers} setChantiers={setChantiers} devis={devis} setDevis={setDevis} factures={factures} setFactures={setFactures} naviguer={naviguer} />}
           {page === 'employes'     && pagesAutorisees.includes('employes')   && <Employes parametres={parametres} setParametres={setParametres} chantiers={chantiers} naviguer={naviguer} />}
           {page === 'planning'     && pagesAutorisees.includes('planning')   && <PlanningPage chantiers={chantiers} setChantiers={setChantiers} clients={clients} devis={devis} factures={factures} parametres={parametres} naviguer={naviguer} />}

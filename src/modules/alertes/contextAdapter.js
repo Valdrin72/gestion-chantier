@@ -62,12 +62,12 @@ export function adapterContexteAlertes({ chantiers = [], devis = [], factures = 
     const devisLie = devisMap.get(String(c.devisId));
     let etat = null;
     try {
-      etat = calculerEtatChantier(c, devisLie ? [devisLie] : devis, parametres);
+      etat = calculerEtatChantier(c, employesList, devis, parametres, rawPointages);
     } catch { /* skip */ }
 
-    const ca = parseFloat(etat?.ca ?? devisLie?.montantHT ?? 0) || 0;
-    const couts = parseFloat(etat?.totalCoutsReel) || 0;
-    const avancement = parseFloat(etat?.avancement ?? c.avancement) || 0;
+    const ca = parseFloat(etat?.devisTotal ?? devisLie?.montantHT ?? 0) || 0;
+    const couts = parseFloat(etat?.coutTotalReel) || 0;
+    const avancement = parseFloat(etat?.avancementPct ?? c.avancement) || 0;
 
     // Calcul du % temps écoulé
     let pctTemps = null;

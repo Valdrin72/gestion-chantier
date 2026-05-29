@@ -14,7 +14,7 @@ const fmt  = (n) => (parseFloat(n) || 0).toLocaleString('fr-CH', { minimumFracti
 const fmtK = (n) => { const v = parseFloat(n) || 0; return v >= 1000 ? `${(v/1000).toFixed(1)}k` : String(Math.round(v)); };
 
 // ── Composant Trésorerie prévisionnelle ──────────────────────────────────────
-function Tresorerie({ factures = [], chantiers = [], clients = [], devis = [], parametres = null, onEmettreFacture = null, onEmettreExtra = null }) {
+function Tresorerie({ factures = [], chantiers = [], clients = [], devis = [], parametres = null, onEmettreFacture = null, onEmettreExtra = null, pointages = [] }) {
   const today = new Date(); today.setHours(0,0,0,0);
 
   const data = useMemo(() => {
@@ -54,7 +54,7 @@ function Tresorerie({ factures = [], chantiers = [], clients = [], devis = [], p
         if (!caForfait || caForfait <= 0) return null;
         const ca = calculerCA(c, devis);
         // Source unique : avancement depuis journal (calculerEtatChantier), fallback sur valeur manuelle
-        const etat = calculerEtatChantier(c, employes, devis, paramsConfig);
+        const etat = calculerEtatChantier(c, employes, devis, paramsConfig, pointages);
         const avancement = etat.totalJoursReels > 0 ? etat.avancementPct : (parseFloat(c.avancement) || 0);
         // déjà facturé = situations/acomptes/finales — EXCLUT les factures d'extras (extraId renseigné)
         const facturesChantier = factures.filter(f => String(f.chantierId) === String(c.id) && f.statut !== 'annulee' && !f.extraId);
@@ -161,7 +161,7 @@ function Tresorerie({ factures = [], chantiers = [], clients = [], devis = [], p
       topClients, topChantiers, extrasAFacturer, totalExtrasAFacturer,
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [factures, chantiers, clients, devis, parametres]);
+  }, [factures, chantiers, clients, devis, parametres, pointages]);
 
   const urgenceConfig = {
     retard:  { couleur: '#ef4444', bg: '#ef444410', label: 'En retard',    dot: 'red' },
@@ -473,6 +473,7 @@ export default function Finances({
   naviguer, contexte = {}, profil,
   periodeGlobale = 'mois',
   parametres = null,
+  pointages = [],
 }) {
   const { confirmer, afficherNotif } = useApp();
   const [onglet, setOnglet] = useState('tresorerie');
@@ -686,7 +687,7 @@ export default function Finances({
 
       {/* ── Contenu ── */}
       {onglet === 'tresorerie' && (
-        <Tresorerie factures={facturesValides} chantiers={chantiers} clients={clients} devis={devis} parametres={parametres} onEmettreFacture={onEmettreFacture} onEmettreExtra={onEmettreExtra} />
+        <Tresorerie factures={facturesValides} chantiers={chantiers} clients={clients} devis={devis} parametres={parametres} onEmettreFacture={onEmettreFacture} onEmettreExtra={onEmettreExtra} pointages={pointages} />
       )}
       <div style={{ display: onglet === 'factures' ? 'block' : 'none' }}>
         <Factures

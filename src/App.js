@@ -10,7 +10,7 @@ import { migrerJournalVersPointages } from './migration/migrerJournalVersPointag
 import { calculerMajorationDate } from './calculs/majorations';
 import Finances from './pages/FinancesPage';
 import Login from './Login';
-import useAuth from './hooks/useAuth';
+import useAuth, { DEMO_USER_ID } from './hooks/useAuth';
 import useSupabaseData from './hooks/useSupabaseData';
 import useAgents from './useAgents';
 import Heures from './Heures';
@@ -65,10 +65,10 @@ function App() {
     return <Login />;
   }
 
-  return <AppInner key={session.user.id} profil={profilAuth} deconnecter={deconnecter} userId={session.user.id} />;
+  return <AppInner key={session.user.id} profil={profilAuth} deconnecter={deconnecter} userId={session.user.id} isDemo={session.user.id === DEMO_USER_ID} />;
 }
 
-function AppInner({ profil, deconnecter, userId }) {
+function AppInner({ profil, deconnecter, userId, isDemo = false }) {
   const {
     chantiers, setChantiers,
     devis, setDevis,
@@ -78,12 +78,13 @@ function AppInner({ profil, deconnecter, userId }) {
     pointages, setPointages,
     loading: dataLoading,
     syncing,
-  } = useSupabaseData(userId);
+  } = useSupabaseData(userId, isDemo);
 
-  // Filet de sécurité : si après chargement tout est vide, injecter les données initiales
+  // Filet de sécurité (mode démo uniquement) : si après chargement tout est vide, recharger donneesInitiales.
+  // Ne s'applique PAS à un vrai compte — un compte vide est un démarrage propre légitime.
   const injectedRef = useRef(false);
   useEffect(() => {
-    if (dataLoading || injectedRef.current) return;
+    if (!isDemo || dataLoading || injectedRef.current) return;
     if (chantiers.length === 0 && devis.length === 0) {
       injectedRef.current = true;
       setChantiers(donneesInitiales.chantiers.map(ch => ({ ...ch, journal: migrerJournal(ch.journal || []) })));
@@ -92,7 +93,7 @@ function AppInner({ profil, deconnecter, userId }) {
       setClients(donneesInitiales.clients);
       setParametres({ ...donneesInitiales, demoVersion: 5 });
     }
-  }, [dataLoading, chantiers.length, devis.length, setChantiers, setDevis, setFactures, setClients, setParametres]);
+  }, [isDemo, dataLoading, chantiers.length, devis.length, setChantiers, setDevis, setFactures, setClients, setParametres]);
 
   const [page, setPage] = useState('dashboard');
   const [contexte, setContexte] = useState({});

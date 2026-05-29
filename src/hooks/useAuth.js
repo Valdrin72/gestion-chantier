@@ -25,9 +25,10 @@ const ROLE_PAGES = {
   },
 };
 
+const DEMO_USER_ID = '00000000-0000-0000-0000-000000000001';
 const DEMO_SESSION = {
   user: {
-    id: '00000000-0000-0000-0000-000000000001',
+    id: DEMO_USER_ID,
     email: 'demo@cyna.ch',
     app_metadata: { role: 'cyna' },
     user_metadata: {},
@@ -88,6 +89,7 @@ export default function useAuth() {
 
   const connecter = useCallback(async (email, motDePasse) => {
     setErreur(null);
+    try { localStorage.removeItem(DEMO_FLAG); } catch {}
     const { error } = await supabase.auth.signInWithPassword({ email, password: motDePasse });
     if (error) {
       setErreur(traduireErreur(error.message));
@@ -106,6 +108,8 @@ export default function useAuth() {
   return { session, profil, loading, erreur, connecter, connecterDemo, deconnecter };
 }
 
+export { ROLE_PAGES, DEMO_USER_ID };
+
 function traduireErreur(msg) {
   if (msg.includes('Invalid login credentials')) return 'Email ou mot de passe incorrect.';
   if (msg.includes('Email not confirmed')) return 'Confirmez votre email avant de vous connecter.';
@@ -113,4 +117,3 @@ function traduireErreur(msg) {
   return 'Erreur de connexion. Réessayez.';
 }
 
-export { ROLE_PAGES };

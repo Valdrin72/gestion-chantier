@@ -27,6 +27,20 @@ const DEMO_VERSION   = 5;
 
 const LEGACY_STATUTS = { 'Validé': 'accepté', 'Signé': 'accepté', 'Envoyé': 'envoyé', 'Refusé': 'refusé', 'Brouillon': 'brouillon', 'Annulé': 'refusé' };
 
+// Numéros de factures de test créées par les agents — filtrées à chaque chargement
+const FACTURES_TEST = new Set([
+  'F-202605-001','F-202605-002','F-202605-003','F-202605-004','F-202605-005',
+  'F-2026-005','F-2026-006','F-2026-007','F-2026-008',
+  'F-2026-009','F-2026-010','F-2026-011','F-2026-012',
+  'F-2026-017','F-2026-018',
+]);
+
+// Paramètres par défaut pour un nouveau compte réel : config BTP GE sans données démo.
+// On conserve typesTravaux/localites/zones (config standard GE utile dès le 1er jour)
+// mais employes = [] (l'utilisateur saisit ses propres employés).
+const { chantiers: _dc, devis: _dd, clients: _dcl, factures: _df, employes: _de, ...PARAMETRES_DEFAUT_BASE } = donneesInitiales;
+export const PARAMETRES_DEFAUT = { ...PARAMETRES_DEFAUT_BASE, employes: [], demoVersion: DEMO_VERSION };
+
 function sauvegarderLocal(cle, data) {
   try { localStorage.setItem(cle, JSON.stringify(data)); } catch {}
 }
@@ -60,19 +74,79 @@ async function ecrireRowUser(userId, rowId, payload) {
   }
 }
 
-// Données initiales précalculées une seule fois (hors du composant — stable)
+/**
+ * Résout les données à afficher depuis un blob Supabase.
+ * Exportée pour les tests — fonction pure, aucun effet de bord.
+ *
+ * @param {object|null} rawBlob  — contenu du blob (d.data de Supabase), null si absent
+ * @param {boolean}     isDemo   — true si session démo active
+ */
+export function resolveDataFromBlob(rawBlob, isDemo) {
+  const d = rawBlob || {};
+  const c = (d.chantiers || []).map(ch => ({ ...ch, journal: migrerJournal(ch.journal || []) }));
+  const dv = (d.devis || []).map(x => ({ ...x, statut: LEGACY_STATUTS[x.statut] || x.statut }));
+  const facturesBrutes = d.factures || [];
+  const facturesPropres = facturesBrutes.filter(f => !FACTURES_TEST.has(f.numero));
+  const nettoyage = facturesPropres.length < facturesBrutes.length;
+  const storedParams = d.parametres || {};
+  const outdated = (storedParams.demoVersion || 0) < DEMO_VERSION;
+
+  let chantiers, devis, factures, clients, parametres;
+
+  if (isDemo) {
+    // Mode démo : logique existante — recharger donneesInitiales si périmé ou vide
+    chantiers = (!outdated && c.length > 0) ? c : donneesInitiales.chantiers.map(ch => ({ ...ch, journal: migrerJournal(ch.journal || []) }));
+    devis     = (!outdated && dv.length > 0) ? dv : donneesInitiales.devis;
+    clients   = (!outdated && (d.clients || []).length > 0) ? (d.clients || []) : donneesInitiales.clients;
+    factures  = (!outdated && facturesPropres.length > 0) ? facturesPropres : (donneesInitiales.factures || []);
+    parametres = outdated
+      ? { ...donneesInitiales, demoVersion: DEMO_VERSION }
+      : {
+          ...donneesInitiales,
+          ...storedParams,
+          demoVersion:  DEMO_VERSION,
+          employes:     storedParams.employes?.length     > 0 ? storedParams.employes     : donneesInitiales.employes,
+          typesTravaux: storedParams.typesTravaux?.length  > 0 ? storedParams.typesTravaux : donneesInitiales.typesTravaux,
+          localites:    storedParams.localites?.length    > 0 ? storedParams.localites    : donneesInitiales.localites,
+          zones:        storedParams.zones?.length        > 0 ? storedParams.zones        : donneesInitiales.zones,
+        };
+  } else {
+    // Vrai compte : JAMAIS de données démo, quelles que soient les conditions
+    chantiers  = c;
+    devis      = dv;
+    factures   = facturesPropres;
+    clients    = d.clients || [];
+    parametres = {
+      ...PARAMETRES_DEFAUT,
+      ...storedParams,
+      demoVersion:  DEMO_VERSION,
+      employes:     storedParams.employes?.length     > 0 ? storedParams.employes     : [],
+      typesTravaux: storedParams.typesTravaux?.length  > 0 ? storedParams.typesTravaux : PARAMETRES_DEFAUT.typesTravaux,
+      localites:    storedParams.localites?.length    > 0 ? storedParams.localites    : PARAMETRES_DEFAUT.localites,
+      zones:        storedParams.zones?.length        > 0 ? storedParams.zones        : PARAMETRES_DEFAUT.zones,
+    };
+  }
+
+  // needsSync uniquement si nettoyage nécessaire ou démo périmée
+  const needsSync = nettoyage || (isDemo && (outdated || c.length === 0 || dv.length === 0 || !storedParams.employes?.length));
+
+  return { chantiers, devis, factures, clients, parametres, pointages: d.pointages || [], needsSync };
+}
+
+// Données démo précalculées une seule fois (hors du composant — stable)
 const _initChantiers = donneesInitiales.chantiers.map(c => ({ ...c, journal: migrerJournal(c.journal || []) }));
 const _initDevis     = donneesInitiales.devis;
 const _initFactures  = donneesInitiales.factures || [];
 const _initClients   = donneesInitiales.clients;
 
-export default function useSupabaseData(userId) {
-  // Initialiser avec donneesInitiales — visible immédiatement, Supabase écrase ensuite
-  const [chantiers,   setChantiersState]  = useState(_initChantiers);
-  const [devis,       setDevisState]      = useState(_initDevis);
-  const [factures,    setFacturesState]   = useState(_initFactures);
-  const [clients,     setClientsState]    = useState(_initClients);
-  const [parametres,  setParametresState] = useState(donneesInitiales);
+export default function useSupabaseData(userId, isDemo = false) {
+  // État initial : données démo en mode démo, vide pour un vrai compte.
+  // AppInner est monté avec key={userId} → remonte si l'utilisateur change.
+  const [chantiers,   setChantiersState]  = useState(() => isDemo ? _initChantiers : []);
+  const [devis,       setDevisState]      = useState(() => isDemo ? _initDevis : []);
+  const [factures,    setFacturesState]   = useState(() => isDemo ? _initFactures : []);
+  const [clients,     setClientsState]    = useState(() => isDemo ? _initClients : []);
+  const [parametres,  setParametresState] = useState(() => isDemo ? donneesInitiales : PARAMETRES_DEFAUT);
   const [pointages,   setPointagesState]  = useState([]);
   const [loading,     setLoading]         = useState(true);
   const [syncing,     setSyncing]         = useState(false);
@@ -80,61 +154,36 @@ export default function useSupabaseData(userId) {
   const rowIdRef    = useRef(null);
   const syncTimer   = useRef(null);
   const pendingRef  = useRef(null);
-  const dataRef     = useRef({ chantiers: _initChantiers, devis: _initDevis, factures: _initFactures, clients: _initClients, parametres: donneesInitiales, pointages: [] });
+  const dataRef     = useRef({
+    chantiers:  isDemo ? _initChantiers : [],
+    devis:      isDemo ? _initDevis : [],
+    factures:   isDemo ? _initFactures : [],
+    clients:    isDemo ? _initClients : [],
+    parametres: isDemo ? donneesInitiales : PARAMETRES_DEFAUT,
+    pointages:  [],
+  });
   const mountedRef  = useRef(true);
   useEffect(() => { mountedRef.current = true; return () => { mountedRef.current = false; }; }, []);
 
-  // Numéros de factures de test créées par les agents — supprimées une fois lors du chargement
-  const FACTURES_TEST = new Set([
-    'F-202605-001','F-202605-002','F-202605-003','F-202605-004','F-202605-005',
-    'F-2026-005','F-2026-006','F-2026-007','F-2026-008',
-    'F-2026-009','F-2026-010','F-2026-011','F-2026-012',
-    'F-2026-017','F-2026-018',
-  ]);
+  function appliquerData(blobData) {
+    const resolved = resolveDataFromBlob(blobData, isDemo);
+    const { chantiers: ch, devis: dv, factures: fa, clients: cl, parametres: pa, pointages: pt, needsSync } = resolved;
 
-  function appliquerData(d) {
-    const c = (d.chantiers || []).map(c => ({ ...c, journal: migrerJournal(c.journal || []) }));
-    const dv = (d.devis || []).map(x => ({ ...x, statut: LEGACY_STATUTS[x.statut] || x.statut }));
-    const facturesPropres = (d.factures || []).filter(f => !FACTURES_TEST.has(f.numero));
-    const nettoyage = facturesPropres.length < (d.factures || []).length;
+    setChantiersState(ch);
+    setDevisState(dv);
+    setFacturesState(fa);
+    setClientsState(cl);
+    setParametresState(pa);
+    setPointagesState(pt);
+    dataRef.current = { chantiers: ch, devis: dv, factures: fa, clients: cl, parametres: pa, pointages: pt };
 
-    const storedParams = d.parametres || {};
-    const outdated = (storedParams.demoVersion || 0) < DEMO_VERSION;
-
-    // Données actives : si vides ou périmées → injecter donneesInitiales
-    const chantiersFinaux = (!outdated && c.length > 0) ? c
-      : donneesInitiales.chantiers.map(ch => ({ ...ch, journal: migrerJournal(ch.journal || []) }));
-    const devisFinaux     = (!outdated && dv.length > 0) ? dv : donneesInitiales.devis;
-    const clientsFinaux   = (!outdated && (d.clients || []).length > 0) ? (d.clients || []) : donneesInitiales.clients;
-    const facturesFinales = (!outdated && facturesPropres.length > 0) ? facturesPropres : (donneesInitiales.factures || []);
-    const params = outdated ? { ...donneesInitiales, demoVersion: DEMO_VERSION } : {
-      ...donneesInitiales,
-      ...storedParams,
-      demoVersion:  DEMO_VERSION,
-      employes:     (storedParams.employes?.length     > 0) ? storedParams.employes     : donneesInitiales.employes,
-      typesTravaux: (storedParams.typesTravaux?.length  > 0) ? storedParams.typesTravaux : donneesInitiales.typesTravaux,
-      localites:    (storedParams.localites?.length    > 0) ? storedParams.localites    : donneesInitiales.localites,
-      zones:        (storedParams.zones?.length        > 0) ? storedParams.zones        : donneesInitiales.zones,
-    };
-
-    const pointagesBruts = d.pointages || [];
-    setChantiersState(chantiersFinaux);
-    setDevisState(devisFinaux);
-    setFacturesState(facturesFinales);
-    setClientsState(clientsFinaux);
-    setParametresState(params);
-    setPointagesState(pointagesBruts);
-    dataRef.current = { chantiers: chantiersFinaux, devis: devisFinaux, factures: facturesFinales, clients: clientsFinaux, parametres: params, pointages: pointagesBruts };
-
-    const needsSync = nettoyage || outdated || c.length === 0 || dv.length === 0 || !storedParams.employes?.length;
     if (needsSync) {
-      // Mettre à jour aussi le localStorage pour que le fallback offline soit correct
-      sauvegarderLocal('cyna_chantiers',  chantiersFinaux);
-      sauvegarderLocal('cyna_devis',      devisFinaux);
-      sauvegarderLocal('cyna_factures',   facturesFinales);
-      sauvegarderLocal('cyna_clients',    clientsFinaux);
-      sauvegarderLocal('cyna_parametres', params);
-      scheduleSync({ chantiers: chantiersFinaux, devis: devisFinaux, factures: facturesFinales, clients: clientsFinaux, parametres: params, pointages: pointagesBruts });
+      sauvegarderLocal('cyna_chantiers',  ch);
+      sauvegarderLocal('cyna_devis',      dv);
+      sauvegarderLocal('cyna_factures',   fa);
+      sauvegarderLocal('cyna_clients',    cl);
+      sauvegarderLocal('cyna_parametres', pa);
+      scheduleSync({ chantiers: ch, devis: dv, factures: fa, clients: cl, parametres: pa, pointages: pt });
     }
   }
 
@@ -153,27 +202,39 @@ export default function useSupabaseData(userId) {
           rowIdRef.current = row.id;
           appliquerData(row.data);
         } else {
-          // Pas de données Supabase → charger directement donneesInitiales
-          const localData = {
-            chantiers:  donneesInitiales.chantiers.map(c => ({ ...c, journal: migrerJournal(c.journal || []) })),
-            devis:      donneesInitiales.devis,
-            factures:   donneesInitiales.factures || [],
-            clients:    donneesInitiales.clients,
-            parametres: { ...donneesInitiales, demoVersion: DEMO_VERSION },
-          };
+          // Blob absent : initialiser avec données correctes selon le mode
+          const localData = isDemo
+            ? {
+                chantiers:  donneesInitiales.chantiers.map(c => ({ ...c, journal: migrerJournal(c.journal || []) })),
+                devis:      donneesInitiales.devis,
+                factures:   donneesInitiales.factures || [],
+                clients:    donneesInitiales.clients,
+                parametres: { ...donneesInitiales, demoVersion: DEMO_VERSION },
+                pointages:  [],
+              }
+            : {
+                chantiers: [], devis: [], factures: [], clients: [],
+                parametres: PARAMETRES_DEFAUT,
+                pointages:  [],
+              };
           if (!cancelled) appliquerData(localData);
           const id = await ecrireRowUser(userId, row?.id ?? null, localData);
-          rowIdRef.current = id;
+          if (!cancelled) rowIdRef.current = id;
         }
       } catch (e) {
-        if (process.env.NODE_ENV !== 'production') console.warn('[Sync] Chargement Supabase échoué, fallback donneesInitiales:', e.message);
-        if (!cancelled) appliquerData({
-          chantiers:  donneesInitiales.chantiers,
-          devis:      donneesInitiales.devis,
-          factures:   donneesInitiales.factures || [],
-          clients:    donneesInitiales.clients,
-          parametres: { ...donneesInitiales, demoVersion: DEMO_VERSION },
-        });
+        if (process.env.NODE_ENV !== 'production') console.warn('[Sync] Chargement Supabase échoué, fallback:', e.message);
+        // Fallback erreur : démo garde ses données, vrai compte reste vide
+        if (!cancelled) appliquerData(isDemo
+          ? {
+              chantiers:  donneesInitiales.chantiers,
+              devis:      donneesInitiales.devis,
+              factures:   donneesInitiales.factures || [],
+              clients:    donneesInitiales.clients,
+              parametres: { ...donneesInitiales, demoVersion: DEMO_VERSION },
+              pointages:  [],
+            }
+          : { chantiers: [], devis: [], factures: [], clients: [], parametres: PARAMETRES_DEFAUT, pointages: [] }
+        );
       } finally {
         if (!cancelled) setLoading(false);
       }

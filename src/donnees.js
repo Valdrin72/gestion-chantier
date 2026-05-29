@@ -374,10 +374,10 @@ export const calculerCoutsChantier = (chantier, employes = [], localites = [], c
   const coutSousTraitanceReelRaw = _reel(chantier.sousTraitanceReelle) ?? _reel(chantier.coutSousTraitanceReel);
   const autresCoutsReelRaw     = _reel(chantier.autresCoutsReels)   ?? _reel(chantier.autresCoutsReel);
 
-  // Pour les calculs arithmétiques, null → 0 (valeur neutre)
-  const coutMaterielReel    = coutMaterielReelRaw    ?? 0;
-  const coutSousTraitanceReel = coutSousTraitanceReelRaw ?? 0;
-  const autresCoutsReel     = autresCoutsReelRaw     ?? 0;
+  // Pour les calculs arithmétiques, null → 0 (valeur neutre) + clamp ≥ 0 (saisie négative impossible métier)
+  const coutMaterielReel    = Math.max(0, coutMaterielReelRaw    ?? 0);
+  const coutSousTraitanceReel = Math.max(0, coutSousTraitanceReelRaw ?? 0);
+  const autresCoutsReel     = Math.max(0, autresCoutsReelRaw     ?? 0);
 
   // P8 : détection des champs non renseignés (coûts attendus mais absents)
   const hasEquipe = (chantier.equipe?.length || 0) > 0 || empIdsAvecHeures.length > 0;
@@ -430,7 +430,7 @@ export const calculerCoutsChantier = (chantier, employes = [], localites = [], c
   const statutLower = (chantier.statut || '').trim().toLowerCase();
   const avancement = ['terminé', 'termine', 'clôturé', 'cloture', 'facturé', 'facture'].includes(statutLower)
     ? 100
-    : (avancementJournal || parseFloat(chantier.avancement) || 0);
+    : (avancementJournal || Math.min(100, parseFloat(chantier.avancement) || 0));
   const rad = (avancement > 0 && totalCoutsReel > 0)
     ? (totalCoutsReel / avancement) * (100 - avancement)
     : null;

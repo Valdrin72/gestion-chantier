@@ -14,7 +14,7 @@ const fmt  = (n) => (parseFloat(n) || 0).toLocaleString('fr-CH', { minimumFracti
 const fmtK = (n) => { const v = parseFloat(n) || 0; return v >= 1000 ? `${(v/1000).toFixed(1)}k` : String(Math.round(v)); };
 
 // ── Composant Trésorerie prévisionnelle ──────────────────────────────────────
-function Tresorerie({ factures = [], chantiers = [], clients = [], devis = [], parametres = null }) {
+function Tresorerie({ factures = [], chantiers = [], clients = [], devis = [], parametres = null, onEmettreFacture = null }) {
   const today = new Date(); today.setHours(0,0,0,0);
 
   const data = useMemo(() => {
@@ -273,9 +273,19 @@ function Tresorerie({ factures = [], chantiers = [], clients = [], devis = [], p
                       <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.nom}</div>
                       <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{c.clientNom}</div>
                     </div>
-                    <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                      <div style={{ fontSize: 13, fontWeight: 800, color: '#10b981' }}>CHF {fmt(c.potentiel)}</div>
-                      <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>à facturer</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                      <div style={{ textAlign: 'right' }}>
+                        <div style={{ fontSize: 13, fontWeight: 800, color: '#10b981' }}>CHF {fmt(c.potentiel)}</div>
+                        <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>à facturer</div>
+                      </div>
+                      {onEmettreFacture && (
+                        <button
+                          onClick={() => onEmettreFacture(c)}
+                          style={{ padding: '5px 10px', fontSize: 11, fontWeight: 700, background: '#10b981', color: '#fff', border: 'none', borderRadius: 7, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}
+                        >
+                          Créer la situation →
+                        </button>
+                      )}
                     </div>
                   </div>
                   <div style={{ marginTop: 8 }}>
@@ -412,6 +422,28 @@ export default function Finances({
 }) {
   const { confirmer, afficherNotif } = useApp();
   const [onglet, setOnglet] = useState('tresorerie');
+  const [preRemplirFacture, setPreRemplirFacture] = useState(null);
+
+  const onEmettreFacture = useCallback((chantierData) => {
+    const chantierObj = chantiers.find(ch => String(ch.id) === String(chantierData.id));
+    const situationNum = factures.filter(
+      f => String(f.chantierId) === String(chantierData.id) && f.type === 'situation' && f.statut !== 'annulee'
+    ).length + 1;
+    setPreRemplirFacture({
+      chantierId: String(chantierData.id),
+      devisId: chantierObj?.devisId || '',
+      clientId: chantierObj?.clientId || '',
+      type: 'situation',
+      objet: `Situation n°${situationNum} — ${chantierData.nom}`,
+      lignes: [{
+        description: `Situation n°${situationNum} — avancement ${Math.round(chantierData.avancement)}%`,
+        quantite: 1,
+        prixUnitaire: Math.round(chantierData.potentiel * 100) / 100,
+        tva: 8.1,
+      }],
+    });
+    setOnglet('factures');
+  }, [chantiers, factures]);
 
   // ── Exclure les factures orphelines (chantier, devis ou client supprimé, ou sans ancrage) ──
   const facturesOrphelines = useMemo(() =>
@@ -576,7 +608,7 @@ export default function Finances({
 
       {/* ── Contenu ── */}
       {onglet === 'tresorerie' && (
-        <Tresorerie factures={facturesValides} chantiers={chantiers} clients={clients} devis={devis} parametres={parametres} />
+        <Tresorerie factures={facturesValides} chantiers={chantiers} clients={clients} devis={devis} parametres={parametres} onEmettreFacture={onEmettreFacture} />
       )}
       <div style={{ display: onglet === 'factures' ? 'block' : 'none' }}>
         <Factures
@@ -592,6 +624,8 @@ export default function Finances({
           periodeGlobale={periodeGlobale}
           parametres={parametres}
           hideHeader
+          preRemplir={preRemplirFacture}
+          onConsumePreRemplir={() => setPreRemplirFacture(null)}
         />
       </div>
       {onglet === 'relances' && (

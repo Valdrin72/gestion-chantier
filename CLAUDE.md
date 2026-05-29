@@ -94,6 +94,11 @@ node scripts/audit-btp.js     # Après toute modif de donnees.js
 4. **Branches** : jamais pousser sur `main` directement. Format : `claude/<sujet-court>`.
 5. **Merge sur main** : côté Windows via commande `ship` de l'utilisateur — Claude Code pousse la branche uniquement. `api.github.com` est bloqué dans le container Claude Code.
 6. **Tests non régressifs** : tout changement de calcul doit laisser les 414 tests verts. Ne jamais casser l'invariant des deux moteurs.
+7. **TESTS RÉELS OBLIGATOIRES** — un test doit exercer le VRAI chemin de code :
+   - UI/composants → tests RTL qui rendent le vrai composant et simulent l'interaction (`renderWithApp`).
+   - Logique pure → importer et appeler les VRAIES fonctions exportées.
+   - **INTERDIT** : les tests qui recopient/ré-implémentent la logique dans le fichier de test ("logic-mirror") = fausse confiance.
+   - **BUT** : Valdrin ne doit JAMAIS avoir à tester un branchement à la main. Tester, c'est le job de Claude Code.
 
 ### Code
 

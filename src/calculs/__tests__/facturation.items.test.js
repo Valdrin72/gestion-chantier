@@ -1,178 +1,281 @@
-// Tests Items 1 & 2 — acompte % + situation 1 clic
-import { describe, it, expect } from 'vitest';
-import { calculerCA } from '../../donnees';
+/**
+ * Tests RÉELS Items 1 & 2 — acompte % + situation 1 clic
+ *
+ * Règle : ces tests exercent le VRAI code des composants via RTL.
+ * Pas de helpers qui re-implémentent la logique dans le fichier de test.
+ * Valdrin ne devrait jamais avoir à vérifier manuellement ces interactions.
+ */
+import React from 'react';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { screen, fireEvent } from '@testing-library/react';
+import Factures from '../../Factures';
+import Finances from '../../pages/FinancesPage';
+import { renderWithApp } from '../../test-utils/renderWithApp';
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
-const makeDevis = (overrides = {}) => ({
-  id: 'd1', numero: 'D-2026-001', montantHT: 50000, prixPropose: 50000,
-  avenants: [], heuresRegie: [],
-  ...overrides,
-});
+// ── Mocks — dépendances non testées ici ─────────────────────────────────────
+vi.mock('../../ExportPDF', () => ({
+  exportFacture: vi.fn(),
+  exportFicheChantier: vi.fn(),
+}));
+vi.mock('../../utils/exportCSV', () => ({ exportCSV: vi.fn() }));
+vi.mock('../../relances', () => ({
+  prochainRappel: vi.fn(() => null),
+  niveauInfo: vi.fn(() => ({ couleur: '#f59e0b', label: 'Rappel 1' })),
+  genererTexteRappel: vi.fn(() => ({ texte: '', objet: '' })),
+  marquerRappelEnvoye: vi.fn(f => f),
+}));
+// FinancesPage utilise ces composants — on les neutralise pour isoler les items testés
+vi.mock('../../Paiements', () => ({ default: () => null }));
+vi.mock('../../RelancesTab', () => ({ default: () => null }));
 
-const makeChantier = (overrides = {}) => ({
-  id: 'c1', nom: 'Chantier Test', devisId: 'd1', avancement: 0, statut: 'En cours',
-  ...overrides,
-});
+// ── Fixtures communes ────────────────────────────────────────────────────────
+const DEVIS    = [{ id: 'd1', numero: 'D-2026-001', montantHT: 50000, avenants: [], heuresRegie: [] }];
+const CHANTIERS = [{ id: 'c1', nom: 'Réno Dupont', devisId: 'd1', clientId: 'cl1', statut: 'En cours', avancement: 60, journal: [] }];
+const CLIENTS  = [{ id: 'cl1', nom: 'Dupont', prenom: 'Jean', entreprise: '' }];
 
-// Simule la logique du helper acompte dans Factures.js
-function calculerLigneAcompte(pct, caHT, refLabel) {
-  const montantHT = Math.round((caHT * pct / 100) * 100) / 100;
-  return {
-    description: `Acompte ${pct}% — ${refLabel}`.trim(),
-    quantite: 1,
-    prixUnitaire: montantHT,
-    tva: 8.1,
-  };
+// ── Helpers de rendu ─────────────────────────────────────────────────────────
+function renderFactures(facturesData = []) {
+  return renderWithApp(
+    <Factures
+      clients={CLIENTS}
+      chantiers={CHANTIERS}
+      devis={DEVIS}
+      factures={facturesData}
+      onSave={vi.fn()}
+      profil={{ id: 'cyna' }}
+    />,
+  );
 }
 
-// Simule la logique de la situation dans onEmettreFacture (FinancesPage)
-function creerPreRemplirSituation({ chantierData, chantierObj, factures }) {
-  const situationNum = factures.filter(
-    f => String(f.chantierId) === String(chantierData.id) && f.type === 'situation' && f.statut !== 'annulee'
-  ).length + 1;
-  return {
-    chantierId: String(chantierData.id),
-    devisId: chantierObj?.devisId || '',
-    clientId: chantierObj?.clientId || '',
-    type: 'situation',
-    objet: `Situation n°${situationNum} — ${chantierData.nom}`,
-    lignes: [{
-      description: `Situation n°${situationNum} — avancement ${Math.round(chantierData.avancement)}%`,
-      quantite: 1,
-      prixUnitaire: Math.round(chantierData.potentiel * 100) / 100,
-      tva: 8.1,
-    }],
-  };
+function renderFinances(facturesData = []) {
+  return renderWithApp(
+    <Finances
+      clients={CLIENTS}
+      chantiers={CHANTIERS}
+      devis={DEVIS}
+      factures={facturesData}
+      onSave={vi.fn()}
+      paiementsData={{}}
+      setPaiementsData={vi.fn()}
+      profil={{ id: 'cyna' }}
+      parametres={{ employes: [] }}
+      periodeGlobale="annee"
+    />,
+  );
 }
 
 // ── ITEM 1 — Acompte en % ────────────────────────────────────────────────────
-describe('Item 1 — acompte en % du CA', () => {
-  it('acompte 30% → montant = 30% du CA', () => {
-    const devis = makeDevis({ montantHT: 50000 });
-    const chantier = makeChantier({ devisId: devis.id });
-    const ca = calculerCA(chantier, [devis]);
-    expect(ca).toBe(50000);
-    const ligne = calculerLigneAcompte(30, ca, devis.numero);
-    expect(ligne.prixUnitaire).toBe(15000);
-    expect(ligne.description).toBe('Acompte 30% — D-2026-001');
-    expect(ligne.tva).toBe(8.1);
-    expect(ligne.quantite).toBe(1);
+describe('Item 1 — acompte % (RTL — vrai composant Factures)', () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it('le helper acompte est masqué quand aucun chantier/devis sélectionné', () => {
+    renderFactures();
+    fireEvent.click(screen.getByRole('button', { name: /\+ Nouvelle facture/i }));
+
+    // Changer type → acompte
+    fireEvent.change(screen.getByDisplayValue('Standard'), { target: { value: 'acompte' } });
+
+    // Pas de chantier sélectionné → helper invisible
+    expect(screen.queryByPlaceholderText('30')).toBeNull();
   });
 
-  it('acompte 50% → montant = 25 000 sur CA 50 000', () => {
-    const devis = makeDevis({ montantHT: 50000 });
-    const chantier = makeChantier({ devisId: devis.id });
-    const ca = calculerCA(chantier, [devis]);
-    const ligne = calculerLigneAcompte(50, ca, devis.numero);
-    expect(ligne.prixUnitaire).toBe(25000);
+  it('le helper apparaît avec le CA affiché quand chantier sélectionné', () => {
+    renderFactures();
+    fireEvent.click(screen.getByRole('button', { name: /\+ Nouvelle facture/i }));
+
+    fireEvent.change(screen.getByDisplayValue('Standard'), { target: { value: 'acompte' } });
+
+    // Sélectionner chantier c1 (devisId d1 → CA 50 000)
+    const aukunSelects = screen.getAllByDisplayValue('— Aucun —');
+    fireEvent.change(aukunSelects[0], { target: { value: 'c1' } });
+
+    // Le helper doit apparaître avec l'input %
+    expect(screen.getByPlaceholderText('30')).toBeInTheDocument();
+    // CA de référence affiché dans le texte helper
+    expect(screen.getByText(/50'000/)).toBeInTheDocument();
   });
 
-  it('acompte avec avenants inclus dans le CA', () => {
-    const devis = makeDevis({ montantHT: 40000, avenants: [{ montant: 5000 }, { montant: 3000 }] });
-    const chantier = makeChantier({ devisId: devis.id });
-    const ca = calculerCA(chantier, [devis]);
-    expect(ca).toBe(48000); // 40k + 5k + 3k
-    const ligne = calculerLigneAcompte(25, ca, devis.numero);
-    expect(ligne.prixUnitaire).toBe(12000);
+  it('le bouton Appliquer est désactivé tant que le % est vide', () => {
+    renderFactures();
+    fireEvent.click(screen.getByRole('button', { name: /\+ Nouvelle facture/i }));
+    fireEvent.change(screen.getByDisplayValue('Standard'), { target: { value: 'acompte' } });
+    const aukunSelects = screen.getAllByDisplayValue('— Aucun —');
+    fireEvent.change(aukunSelects[0], { target: { value: 'c1' } });
+
+    const appliquerBtn = screen.getByRole('button', { name: /Appliquer/i });
+    expect(appliquerBtn).toBeDisabled();
   });
 
-  it('acompte 100% → montant = CA complet', () => {
-    const devis = makeDevis({ montantHT: 12500 });
-    const chantier = makeChantier({ devisId: devis.id });
-    const ca = calculerCA(chantier, [devis]);
-    const ligne = calculerLigneAcompte(100, ca, devis.numero);
-    expect(ligne.prixUnitaire).toBe(12500);
+  it('saisir 30% + Appliquer → ligne "Acompte 30% — Réno Dupont", prix 15\'000, TVA 8.1%', () => {
+    renderFactures();
+    fireEvent.click(screen.getByRole('button', { name: /\+ Nouvelle facture/i }));
+    fireEvent.change(screen.getByDisplayValue('Standard'), { target: { value: 'acompte' } });
+
+    const aukunSelects = screen.getAllByDisplayValue('— Aucun —');
+    fireEvent.change(aukunSelects[0], { target: { value: 'c1' } });
+
+    // Saisir 30%
+    const pctInput = screen.getByPlaceholderText('30');
+    fireEvent.change(pctInput, { target: { value: '30' } });
+
+    // Clic Appliquer
+    fireEvent.click(screen.getByRole('button', { name: /Appliquer/i }));
+
+    // La ligne de facturation est mise à jour avec le VRAI calculerCA(chantier, devis)
+    const descInputs = screen.getAllByPlaceholderText('Description du poste');
+    expect(descInputs[0]).toHaveValue('Acompte 30% — Réno Dupont');
+
+    // Prix unitaire = 30% × 50 000 = 15 000 (format fmtN → "15'000")
+    expect(screen.getByDisplayValue("15'000")).toBeInTheDocument();
+
+    // TVA par défaut 8.1%
+    expect(screen.getAllByDisplayValue('8.1% — Standard').length).toBeGreaterThan(0);
   });
 
-  it('garde anti-surfacturation : acompte 30% + acompte existant 80% → total dépasse CA', () => {
-    const caHT = 50000;
-    const acomptePrecedent = 40000; // 80%
-    const nouvelAcompte = calculerLigneAcompte(30, caHT, 'D-2026-001').prixUnitaire; // 15000
-    const total = acomptePrecedent + nouvelAcompte;
-    // La guard existante dans Factures.js compare total > caDevis × 1.001
-    expect(total).toBeGreaterThan(caHT * 1.001);
+  it('saisir 50% → prix = 25\'000', () => {
+    renderFactures();
+    fireEvent.click(screen.getByRole('button', { name: /\+ Nouvelle facture/i }));
+    fireEvent.change(screen.getByDisplayValue('Standard'), { target: { value: 'acompte' } });
+    fireEvent.change(screen.getAllByDisplayValue('— Aucun —')[0], { target: { value: 'c1' } });
+
+    fireEvent.change(screen.getByPlaceholderText('30'), { target: { value: '50' } });
+    fireEvent.click(screen.getByRole('button', { name: /Appliquer/i }));
+
+    expect(screen.getByDisplayValue("25'000")).toBeInTheDocument();
   });
 
-  it('acompte 0% → ne doit pas créer de ligne (guard: disabled si pct <= 0)', () => {
-    // La logique dans le bouton vérifie disabled={!pct || pct <= 0 || pct > 100}
-    const pct = 0;
-    expect(!pct || pct <= 0 || pct > 100).toBe(true); // bouton désactivé
+  it('saisir 101% → bouton Appliquer reste désactivé', () => {
+    renderFactures();
+    fireEvent.click(screen.getByRole('button', { name: /\+ Nouvelle facture/i }));
+    fireEvent.change(screen.getByDisplayValue('Standard'), { target: { value: 'acompte' } });
+    fireEvent.change(screen.getAllByDisplayValue('— Aucun —')[0], { target: { value: 'c1' } });
+
+    fireEvent.change(screen.getByPlaceholderText('30'), { target: { value: '101' } });
+
+    expect(screen.getByRole('button', { name: /Appliquer/i })).toBeDisabled();
   });
 
-  it('acompte 101% → bouton désactivé', () => {
-    const pct = 101;
-    expect(!pct || pct <= 0 || pct > 100).toBe(true);
-  });
+  it('acompte avec avenants : CA inclut les avenants du devis', () => {
+    const devisAvecAvenants = [{
+      id: 'd2', numero: 'D-2026-002', montantHT: 40000,
+      avenants: [{ montant: 5000 }, { montant: 3000 }],
+      heuresRegie: [],
+    }];
+    const chantierAvecDevis2 = [{ id: 'c2', nom: 'Chantier Avenants', devisId: 'd2', clientId: 'cl1', statut: 'En cours', avancement: 0, journal: [] }];
 
-  it('CA null (pas de devisId) → helper masqué', () => {
-    const chantier = makeChantier({ devisId: null });
-    const ca = calculerCA(chantier, []);
-    expect(ca).toBeNull(); // helper ne s'affiche que si caRef > 0
+    renderWithApp(
+      <Factures
+        clients={CLIENTS}
+        chantiers={chantierAvecDevis2}
+        devis={devisAvecAvenants}
+        factures={[]}
+        onSave={vi.fn()}
+        profil={{ id: 'cyna' }}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /\+ Nouvelle facture/i }));
+    fireEvent.change(screen.getByDisplayValue('Standard'), { target: { value: 'acompte' } });
+    fireEvent.change(screen.getAllByDisplayValue('— Aucun —')[0], { target: { value: 'c2' } });
+
+    // CA = 40 000 + 5 000 + 3 000 = 48 000 affiché dans le helper
+    expect(screen.getByText(/48'000/)).toBeInTheDocument();
+
+    // 25% de 48 000 = 12 000
+    fireEvent.change(screen.getByPlaceholderText('30'), { target: { value: '25' } });
+    fireEvent.click(screen.getByRole('button', { name: /Appliquer/i }));
+
+    expect(screen.getByDisplayValue("12'000")).toBeInTheDocument();
   });
 });
 
 // ── ITEM 2 — Situation en 1 clic ─────────────────────────────────────────────
-describe('Item 2 — situation en 1 clic', () => {
-  it('premier clic → situation n°1', () => {
-    const chantierData = { id: 'c1', nom: 'Réno Dupont', avancement: 60, ca: 50000, potentiel: 18000 };
-    const chantierObj = makeChantier({ id: 'c1', devisId: 'd1', clientId: 'cl1' });
-    const result = creerPreRemplirSituation({ chantierData, chantierObj, factures: [] });
-    expect(result.type).toBe('situation');
-    expect(result.chantierId).toBe('c1');
-    expect(result.devisId).toBe('d1');
-    expect(result.clientId).toBe('cl1');
-    expect(result.objet).toBe('Situation n°1 — Réno Dupont');
-    expect(result.lignes).toHaveLength(1);
-    expect(result.lignes[0].prixUnitaire).toBe(18000);
-    expect(result.lignes[0].tva).toBe(8.1);
-    expect(result.lignes[0].description).toContain('Situation n°1');
-    expect(result.lignes[0].description).toContain('60%');
+describe('Item 2 — situation 1 clic (RTL — vrai composant FinancesPage)', () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it('le widget "Chantiers à facturer" affiche Réno Dupont avec le bouton "Créer la situation"', () => {
+    renderFinances();
+    // potentiel = 50 000 × 60% − 0 = 30 000 > 500 → chantier visible
+    expect(screen.getByText('Réno Dupont')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Créer la situation/i })).toBeInTheDocument();
   });
 
-  it('deuxième situation → numérotée n°2', () => {
-    const factures = [
-      { chantierId: 'c1', type: 'situation', statut: 'envoyee' },
-    ];
-    const chantierData = { id: 'c1', nom: 'Réno Dupont', avancement: 80, ca: 50000, potentiel: 5000 };
-    const chantierObj = makeChantier({ id: 'c1' });
-    const result = creerPreRemplirSituation({ chantierData, chantierObj, factures });
-    expect(result.objet).toBe('Situation n°2 — Réno Dupont');
-    expect(result.lignes[0].description).toContain('Situation n°2');
+  it('clic "Créer la situation" → onglet Factures + formulaire pré-rempli type situation', async () => {
+    renderFinances();
+
+    fireEvent.click(screen.getByRole('button', { name: /Créer la situation/i }));
+
+    // Le formulaire Factures s'ouvre (useEffect dans Factures réagit au preRemplir)
+    // findBy* attend de manière asynchrone que le form soit rendu
+    const objetInput = await screen.findByDisplayValue('Situation n°1 — Réno Dupont');
+    expect(objetInput).toBeInTheDocument();
+
+    // Type = situation
+    expect(screen.getByDisplayValue('Situation')).toBeInTheDocument();
+
+    // Description de la ligne = avancement 60%
+    const descInput = await screen.findByDisplayValue(/Situation n°1 — avancement 60%/);
+    expect(descInput).toBeInTheDocument();
   });
 
-  it('situation annulée ne compte pas dans la numérotation', () => {
-    const factures = [
-      { chantierId: 'c1', type: 'situation', statut: 'annulee' },
-      { chantierId: 'c1', type: 'situation', statut: 'payee' },
-    ];
-    const chantierData = { id: 'c1', nom: 'Test', avancement: 90, ca: 30000, potentiel: 2000 };
-    const chantierObj = makeChantier({ id: 'c1' });
-    const result = creerPreRemplirSituation({ chantierData, chantierObj, factures });
-    // 1 annulée (exclue) + 1 payée = 1 comptée → n°2
-    expect(result.objet).toContain('n°2');
+  it('le potentiel pré-remplit le prix de la ligne (30 000 HT)', async () => {
+    renderFinances();
+    fireEvent.click(screen.getByRole('button', { name: /Créer la situation/i }));
+
+    // Prix unitaire = potentiel = 30 000 → fmtN(30000) → "30'000"
+    await screen.findByDisplayValue("30'000");
+    expect(screen.getByDisplayValue("30'000")).toBeInTheDocument();
   });
 
-  it('potentiel arrondi à 2 décimales dans la ligne', () => {
-    const chantierData = { id: 'c1', nom: 'Test', avancement: 33, ca: 10000, potentiel: 1333.333 };
-    const chantierObj = makeChantier({ id: 'c1' });
-    const result = creerPreRemplirSituation({ chantierData, chantierObj, factures: [] });
-    expect(result.lignes[0].prixUnitaire).toBe(1333.33);
+  it('deuxième situation → numérotée n°2 (une situation payée existante)', async () => {
+    const facturesExistantes = [{
+      id: 'f1', chantierId: 'c1', clientId: 'cl1', devisId: 'd1',
+      type: 'situation', statut: 'payee',
+      montantHT: 10000, montantTVA: 810, montantTTC: 10810, montantPaye: 10810,
+      dateEmission: '2026-01-01', dateEcheance: '2026-01-31', lignes: [],
+    }];
+
+    renderFinances(facturesExistantes);
+    fireEvent.click(screen.getByRole('button', { name: /Créer la situation/i }));
+
+    const objetInput = await screen.findByDisplayValue('Situation n°2 — Réno Dupont');
+    expect(objetInput).toBeInTheDocument();
   });
 
-  it('montantHT du preRemplir = potentiel (pas de NaN)', () => {
-    const chantierData = { id: 'c1', nom: 'Test', avancement: 50, ca: 20000, potentiel: 10000 };
-    const chantierObj = makeChantier({ id: 'c1' });
-    const result = creerPreRemplirSituation({ chantierData, chantierObj, factures: [] });
-    const montantHT = result.lignes.reduce((s, l) => s + l.quantite * l.prixUnitaire, 0);
-    expect(isNaN(montantHT)).toBe(false);
-    expect(montantHT).toBe(10000);
+  it('une situation annulée ne compte pas → reste n°1', async () => {
+    const facturesAnnulees = [{
+      id: 'f1', chantierId: 'c1', clientId: 'cl1', devisId: 'd1',
+      type: 'situation', statut: 'annulee',
+      montantHT: 10000, montantTVA: 810, montantTTC: 10810, montantPaye: 0,
+      dateEmission: '2026-01-01', dateEcheance: '2026-01-31', lignes: [],
+    }];
+
+    renderFinances(facturesAnnulees);
+    fireEvent.click(screen.getByRole('button', { name: /Créer la situation/i }));
+
+    const objetInput = await screen.findByDisplayValue('Situation n°1 — Réno Dupont');
+    expect(objetInput).toBeInTheDocument();
   });
 
-  it('sans chantierObj (lien rompu) → devisId et clientId vides, pas de crash', () => {
-    const chantierData = { id: 'c99', nom: 'Orphelin', avancement: 70, ca: 5000, potentiel: 1500 };
-    const result = creerPreRemplirSituation({ chantierData, chantierObj: undefined, factures: [] });
-    expect(result.devisId).toBe('');
-    expect(result.clientId).toBe('');
-    expect(result.type).toBe('situation');
+  it('chantier sans devisId absent du widget (pas de CA)', () => {
+    const chantierSansDevis = [{ id: 'c9', nom: 'Sans Devis', devisId: '', clientId: 'cl1', statut: 'En cours', avancement: 80, journal: [] }];
+
+    renderWithApp(
+      <Finances
+        clients={CLIENTS}
+        chantiers={chantierSansDevis}
+        devis={DEVIS}
+        factures={[]}
+        onSave={vi.fn()}
+        paiementsData={{}}
+        setPaiementsData={vi.fn()}
+        profil={{ id: 'cyna' }}
+        parametres={{ employes: [] }}
+        periodeGlobale="annee"
+      />,
+    );
+
+    // calculerCA retourne null sans devisId → filtré par potentiel <= 0
+    expect(screen.queryByRole('button', { name: /Créer la situation/i })).toBeNull();
   });
 });

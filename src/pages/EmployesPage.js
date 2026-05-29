@@ -21,17 +21,18 @@ function Employes({ parametres, setParametres, chantiers, naviguer }) {
   const voirSalaires = ['cyna', 'cynatech'].includes(profil?.id);
   const [onglet, setOnglet] = useState('equipe');
   const [ajout, setAjout] = useState(false);
-  const [form, setForm] = useState({ nom: '', poste: 'Ouvrier qualifié', tarifJour: '', telephone: '', email: '', actif: true });
+  const [form, setForm] = useState({ nom: '', poste: 'Ouvrier qualifié', tarifJour: '', tarifRegieHeure: '', telephone: '', email: '', actif: true });
   const sauvegarder = () => {
     if (!form.nom || !form.tarifJour) {
       if (afficherNotif) afficherNotif('Le nom et le tarif journalier sont obligatoires', 'error');
       return;
     }
     const isEdit = !!form.id;
-    if (isEdit) setParametres({ ...parametres, employes: (parametres.employes || []).map(e => String(e.id) === String(form.id) ? { ...form, tarifJour: parseFloat(form.tarifJour) } : e) });
-    else setParametres({ ...parametres, employes: [...(parametres.employes || []), { ...form, id: Date.now(), tarifJour: parseFloat(form.tarifJour) }] });
+    const empData = { ...form, tarifJour: parseFloat(form.tarifJour), tarifRegieHeure: form.tarifRegieHeure ? parseFloat(form.tarifRegieHeure) : undefined };
+    if (isEdit) setParametres({ ...parametres, employes: (parametres.employes || []).map(e => String(e.id) === String(form.id) ? empData : e) });
+    else setParametres({ ...parametres, employes: [...(parametres.employes || []), { ...empData, id: Date.now() }] });
     setAjout(false);
-    setForm({ nom: '', poste: 'Ouvrier qualifié', tarifJour: '', telephone: '', email: '', actif: true });
+    setForm({ nom: '', poste: 'Ouvrier qualifié', tarifJour: '', tarifRegieHeure: '', telephone: '', email: '', actif: true });
     if (afficherNotif) afficherNotif(isEdit ? 'Employé mis à jour' : 'Employé ajouté à l\'équipe');
   };
   return (
@@ -115,6 +116,7 @@ function Employes({ parametres, setParametres, chantiers, naviguer }) {
                 {["Chef de chantier", "Ouvrier qualifié", "Manœuvre", "Technicien", "Comptable", "Chef d'équipe", "Sous-traitant"].map(p => <option key={p}>{p}</option>)}
               </select></div>
             {voirSalaires && <div><label style={labelStyle}>Tarif/jour (CHF) *</label><input type="text" inputMode="numeric" placeholder="350" value={form.tarifJour ? fmtN(form.tarifJour) : ''} onChange={e => { const raw = e.target.value.replace(/'/g, '').replace(/[^0-9.]/g, ''); setForm({ ...form, tarifJour: raw }); }} style={inputStyle} /></div>}
+            {voirSalaires && <div><label style={labelStyle}>Tarif régie /h (CHF HT — prix facturé)</label><input type="text" inputMode="numeric" placeholder="85" value={form.tarifRegieHeure ? fmtN(form.tarifRegieHeure) : ''} onChange={e => { const raw = e.target.value.replace(/'/g, '').replace(/[^0-9.]/g, ''); setForm({ ...form, tarifRegieHeure: raw }); }} style={inputStyle} /></div>}
             <div><label style={labelStyle}>Téléphone</label><input placeholder="079 000 00 00" value={form.telephone} onChange={e => setForm({ ...form, telephone: e.target.value })} style={inputStyle} /></div>
             <div><label style={labelStyle}>Email</label><input placeholder="email@cyna.ch" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} style={inputStyle} /></div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, paddingTop: '10px' }}>

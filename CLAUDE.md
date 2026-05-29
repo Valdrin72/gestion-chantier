@@ -99,6 +99,11 @@ node scripts/audit-btp.js     # Après toute modif de donnees.js
    - Logique pure → importer et appeler les VRAIES fonctions exportées.
    - **INTERDIT** : les tests qui recopient/ré-implémentent la logique dans le fichier de test ("logic-mirror") = fausse confiance.
    - **BUT** : Valdrin ne doit JAMAIS avoir à tester un branchement à la main. Tester, c'est le job de Claude Code.
+8. **RÉSUMÉ + PREUVE AUTOMATIQUES** — à la fin de CHAQUE tâche, AVANT tout commit et de façon AUTOMATIQUE (même si le brief ne le redemande pas), Claude Code doit fournir :
+   1. Un résumé PRÉCIS, point par point, de ce qui a été fait face à chaque point du brief — preuve que l'intention a été comprise (pas un "c'est fait" vague).
+   2. La PREUVE par de VRAIS tests (cf. règle 7) qui exercent le vrai chemin de code, + double gate vert (`CI=true npm run build` ET `npm run test:unit`), avec le total de tests.
+   3. `git diff main --stat` pour montrer l'ampleur des changements.
+   Puis ARRÊT et attente du GO explicite. Valdrin ne doit jamais avoir à tester un branchement à la main : prouver que ça marche fait partie du livrable.
 
 ### Code
 

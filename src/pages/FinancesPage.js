@@ -426,6 +426,14 @@ export default function Finances({
   const [onglet, setOnglet] = useState('tresorerie');
   const [preRemplirFacture, setPreRemplirFacture] = useState(null);
 
+  // Déclenchement depuis ChantierDetail via naviguer('finances', { preRemplirExtra: {...} })
+  React.useEffect(() => {
+    if (!contexte?.preRemplirExtra) return;
+    setPreRemplirFacture(contexte.preRemplirExtra);
+    setOnglet('factures');
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [contexte?.preRemplirExtra]);
+
   const onEmettreFacture = useCallback((chantierData) => {
     const chantierObj = chantiers.find(ch => String(ch.id) === String(chantierData.id));
     const situationNum = factures.filter(

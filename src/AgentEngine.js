@@ -2079,12 +2079,13 @@ export function runSentinelAgent({ agentContext, violations = [], agentsStatuts 
 // ═══════════════════════════════════════════════════════════════
 // ORCHESTRATEUR — 3 tiers, communication inter-agents
 // ═══════════════════════════════════════════════════════════════
-export function runAllAgents({ chantiers, devis, factures, clients, parametres, dernierRapport, agentsActifs, memoire = {} }) {
+export function runAllAgents({ chantiers, devis, factures, clients, parametres, dernierRapport, agentsActifs, memoire = {}, pointages = [] }) {
   const enabled = agentsActifs || {};
   const isEnabled = (name) => enabled[name] !== false; // actif par défaut
 
   // ── Cache partagé calculerCoutsChantier — calculé une seule fois pour tous les agents ──
   // Évite 80–200 recalculs redondants par cycle sur les mêmes données.
+  // pointages passé pour que les majorations CCT (samedi ×1.25, férié ×1.5) soient comptées.
   const coutsCache = new Map();
   const getCouts = (chantier) => {
     if (!coutsCache.has(chantier.id)) {
@@ -2093,7 +2094,8 @@ export function runAllAgents({ chantiers, devis, factures, clients, parametres, 
         parametres.employes,
         parametres.localites,
         parametres.parametres,
-        devis
+        devis,
+        pointages
       ));
     }
     return coutsCache.get(chantier.id);

@@ -5,7 +5,8 @@ export const CYNA_PARAMS = {
   CHARGES_SOCIALES: 0.16,
   DSO_CIBLE: 45,
   MARGE_CIBLE: 0.25,
-  TAUX_FG: 0.18,
+  TAUX_FG: 0.12, // aligné sur donnees.js défaut (tauxFraisGeneraux = 12%)
+
   TRESORERIE_SEUIL_ALERTE: 20_000,
 };
 

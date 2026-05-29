@@ -26,7 +26,7 @@ const btnSucces = DS.btnSuccess;
 const btnDanger = DS.btnDanger;
 
 function ChantierDetail({ chantier, detailOnglet, setDetailOnglet, modeCompleter, onRetour, onModifier, onSupprimer, onPasserEnCours }) {
-  const { factures = [], clients, devis = [], parametres, naviguer, ouvrirSaisieHeures, agentState } = useApp();
+  const { factures = [], clients, devis = [], parametres, setChantiers, naviguer, ouvrirSaisieHeures, agentState } = useApp();
   const { etat, couts } = useChantierCalculs(chantier);
   const couleurStatut = couleurStatutDS;
 
@@ -598,6 +598,103 @@ function ChantierDetail({ chantier, detailOnglet, setDetailOnglet, modeCompleter
             </div>
           </div>
         )}
+
+        {/* ── Extras / travaux imprévus (saisie inline) ─────────────────── */}
+        {(() => {
+          const employes = parametres?.employes || [];
+          const extras = c.extras || [];
+          const sauverExtras = (nouveauxExtras) => {
+            if (setChantiers) setChantiers(prev => prev.map(ch => String(ch.id) === String(c.id) ? { ...ch, extras: nouveauxExtras } : ch));
+          };
+          const ajouterExtra = () => sauverExtras([...extras, { id: Date.now(), description: '', mode: 'forfait', montantForfait: '', heures: '', tarifHeure: '', employeId: '', factureId: null, dateCreation: new Date().toISOString().slice(0, 10) }]);
+          const modifierExtra = (id, patch) => sauverExtras(extras.map(e => String(e.id) === String(id) ? { ...e, ...patch } : e));
+          const supprimerExtra = (id) => sauverExtras(extras.filter(e => String(e.id) !== String(id)));
+          return (
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.7px', color: C.primaire }}>Extras / travaux imprévus</div>
+                <button
+                  onClick={ajouterExtra}
+                  style={{ fontSize: 12, fontWeight: 700, padding: '5px 12px', background: C.primaire, color: '#fff', border: 'none', borderRadius: 7, cursor: 'pointer' }}
+                >+ Ajouter un extra</button>
+              </div>
+              {extras.length === 0 && (
+                <div style={{ fontSize: 12, color: 'var(--text-muted)', fontStyle: 'italic' }}>Aucun extra — cliquez sur "Ajouter un extra" si un travail imprévu doit être facturé séparément.</div>
+              )}
+              {extras.map((e) => {
+                const montantHeures = e.mode === 'heures' ? (parseFloat(e.heures) || 0) * (parseFloat(e.tarifHeure) || 0) : 0;
+                return (
+                  <div key={e.id} style={{ background: 'rgba(13,61,110,0.04)', border: '1px solid rgba(13,61,110,0.15)', borderRadius: 10, padding: '12px 14px', marginBottom: 8 }}>
+                    <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 8 }}>
+                      <input
+                        placeholder="Description de l'extra"
+                        value={e.description}
+                        onChange={ev => modifierExtra(e.id, { description: ev.target.value })}
+                        style={{ flex: 1, padding: '6px 10px', borderRadius: 6, border: '1px solid var(--border-hover)', fontSize: 13, fontFamily: 'inherit', background: 'var(--bg-input, #fff)' }}
+                      />
+                      <button onClick={() => supprimerExtra(e.id)} style={{ fontSize: 11, padding: '5px 9px', background: '#fef2f2', color: C.danger, border: `1px solid ${C.danger}44`, borderRadius: 6, cursor: 'pointer', flexShrink: 0 }}>✕</button>
+                    </div>
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', marginRight: 4 }}>Mode :</span>
+                      {['forfait', 'heures'].map(m => (
+                        <label key={m} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 13, cursor: 'pointer' }}>
+                          <input type="radio" name={`mode-${e.id}`} value={m} checked={e.mode === m} onChange={() => modifierExtra(e.id, { mode: m })} />
+                          {m === 'forfait' ? 'Forfait' : 'Heures'}
+                        </label>
+                      ))}
+                      {e.mode === 'forfait' && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginLeft: 8 }}>
+                          <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Montant HT (CHF)</span>
+                          <input
+                            type="number" min={0} placeholder="0"
+                            value={e.montantForfait}
+                            onChange={ev => modifierExtra(e.id, { montantForfait: ev.target.value })}
+                            style={{ width: 90, padding: '5px 8px', borderRadius: 6, border: '1px solid var(--border-hover)', fontSize: 13, textAlign: 'right', fontFamily: 'inherit' }}
+                          />
+                        </div>
+                      )}
+                      {e.mode === 'heures' && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginLeft: 8 }}>
+                          <select
+                            value={e.employeId || ''}
+                            onChange={ev => {
+                              const emp = employes.find(emp => String(emp.id) === String(ev.target.value));
+                              modifierExtra(e.id, { employeId: ev.target.value, tarifHeure: emp?.tarifRegieHeure ? String(emp.tarifRegieHeure) : e.tarifHeure });
+                            }}
+                            style={{ padding: '5px 8px', borderRadius: 6, border: '1px solid var(--border-hover)', fontSize: 12, fontFamily: 'inherit' }}
+                          >
+                            <option value="">— Employé (optionnel)</option>
+                            {employes.filter(emp => emp.actif !== false).map(emp => <option key={emp.id} value={emp.id}>{emp.nom}</option>)}
+                          </select>
+                          <input
+                            type="number" min={0} placeholder="0"
+                            value={e.heures}
+                            onChange={ev => modifierExtra(e.id, { heures: ev.target.value })}
+                            style={{ width: 65, padding: '5px 8px', borderRadius: 6, border: '1px solid var(--border-hover)', fontSize: 13, textAlign: 'right', fontFamily: 'inherit' }}
+                          />
+                          <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>h ×</span>
+                          <input
+                            type="number" min={0} placeholder="0"
+                            value={e.tarifHeure}
+                            onChange={ev => modifierExtra(e.id, { tarifHeure: ev.target.value })}
+                            style={{ width: 75, padding: '5px 8px', borderRadius: 6, border: '1px solid var(--border-hover)', fontSize: 13, textAlign: 'right', fontFamily: 'inherit' }}
+                          />
+                          <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>CHF/h</span>
+                          {montantHeures > 0 && (
+                            <span style={{ fontSize: 13, fontWeight: 700, color: C.primaire }}>= CHF {fmtN(montantHeures, 0)}</span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    {e.factureId && (
+                      <div style={{ marginTop: 6, fontSize: 11, color: C.secondaire, fontWeight: 700 }}>✓ Facturé</div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })()}
 
         {c.imprevus?.length > 0 && (
           <div style={{ marginBottom: 16 }}>

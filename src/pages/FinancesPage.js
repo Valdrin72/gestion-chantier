@@ -14,7 +14,7 @@ const fmt  = (n) => (parseFloat(n) || 0).toLocaleString('fr-CH', { minimumFracti
 const fmtK = (n) => { const v = parseFloat(n) || 0; return v >= 1000 ? `${(v/1000).toFixed(1)}k` : String(Math.round(v)); };
 
 // ── Composant Trésorerie prévisionnelle ──────────────────────────────────────
-function Tresorerie({ factures = [], chantiers = [], clients = [], devis = [], parametres = null, onEmettreFacture = null }) {
+function Tresorerie({ factures = [], chantiers = [], clients = [], devis = [], parametres = null, onEmettreFacture = null, onEmettreExtra = null }) {
   const today = new Date(); today.setHours(0,0,0,0);
 
   const data = useMemo(() => {
@@ -139,11 +139,26 @@ function Tresorerie({ factures = [], chantiers = [], clients = [], devis = [], p
     });
     const topChantiers = Object.values(caParChantier).sort((a, b) => b.ca - a.ca).slice(0, 5);
 
+    // ── 6. Extras à facturer ─────────────────────────────────────
+    const extrasAFacturer = chantiers.flatMap(c => {
+      const extras = (c.extras || []).filter(e =>
+        !factures.some(f => String(f.extraId) === String(e.id) && f.statut !== 'annulee')
+      );
+      const client = clients.find(cl => String(cl.id) === String(c.clientId));
+      return extras.map(e => {
+        const montant = e.mode === 'forfait'
+          ? parseFloat(e.montantForfait) || 0
+          : (parseFloat(e.heures) || 0) * (parseFloat(e.tarifHeure) || 0);
+        return { ...e, chantierNom: c.nom || c.numero || '—', chantierId: c.id, devisId: c.devisId, clientId: c.clientId, clientNom: client?.entreprise || client?.nom || '—', montant };
+      }).filter(e => e.montant > 0);
+    });
+    const totalExtrasAFacturer = extrasAFacturer.reduce((s, e) => s + e.montant, 0);
+
     return {
       impayees, aFacturer, semaines, maxSemaine,
       totalAEncaisser, totalRetard, totalCetteSemaine, totalAFacturer, total60j, signalCash,
       caTotalFacture, encaisseTotal, nbFactures, ticketMoyen, tauxEncaissement, delaiMoyen,
-      topClients, topChantiers,
+      topClients, topChantiers, extrasAFacturer, totalExtrasAFacturer,
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [factures, chantiers, clients, devis, parametres]);
@@ -306,6 +321,43 @@ function Tresorerie({ factures = [], chantiers = [], clients = [], devis = [], p
         </div>
       </div>
 
+      {/* ── Extras à facturer ── */}
+      {data.extrasAFacturer.length > 0 && (
+        <div style={{ background: 'var(--surface-glass)', border: '1px solid rgba(139,92,246,0.25)', borderRadius: 16, padding: '20px 22px', marginTop: 20 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Zap size={14} style={{ color: '#8b5cf6' }} />
+            Extras à facturer
+            <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--text-muted)', fontWeight: 500 }}>
+              {data.extrasAFacturer.length} extra{data.extrasAFacturer.length !== 1 ? 's' : ''} — Total HT CHF {fmt(data.totalExtrasAFacturer)}
+            </span>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 320, overflowY: 'auto' }}>
+            {data.extrasAFacturer.map(e => (
+              <div key={e.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 10, background: 'rgba(139,92,246,0.06)', border: '1px solid rgba(139,92,246,0.18)' }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.description}</div>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                    {e.chantierNom} · {e.mode === 'forfait' ? 'forfait' : `${e.heures}h × CHF ${e.tarifHeure}/h`}
+                  </div>
+                </div>
+                <div style={{ textAlign: 'right', flexShrink: 0, marginRight: onEmettreExtra ? 12 : 0 }}>
+                  <div style={{ fontSize: 13, fontWeight: 800, color: '#8b5cf6' }}>CHF {fmt(e.montant)}</div>
+                  <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>HT</div>
+                </div>
+                {onEmettreExtra && (
+                  <button
+                    onClick={() => onEmettreExtra(e)}
+                    style={{ padding: '5px 10px', fontSize: 11, fontWeight: 700, background: '#8b5cf6', color: '#fff', border: 'none', borderRadius: 7, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}
+                  >
+                    Facturer →
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* ── Performance globale (toujours rempli s'il y a des factures) ── */}
       {data.nbFactures > 0 && (
         <div style={{ marginTop: 24 }}>
@@ -433,6 +485,22 @@ export default function Finances({
     setOnglet('factures');
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [contexte?.preRemplirExtra]);
+
+  const onEmettreExtra = useCallback((extra) => {
+    const lignes = extra.mode === 'forfait'
+      ? [{ description: extra.description, quantite: 1, prixUnitaire: parseFloat(extra.montantForfait) || 0, tva: 8.1 }]
+      : [{ description: extra.description, quantite: parseFloat(extra.heures) || 0, prixUnitaire: parseFloat(extra.tarifHeure) || 0, tva: 8.1 }];
+    setPreRemplirFacture({
+      chantierId: String(extra.chantierId),
+      devisId: extra.devisId || '',
+      clientId: extra.clientId || '',
+      type: 'standard',
+      objet: `Extra — ${extra.description}`,
+      extraId: String(extra.id),
+      lignes,
+    });
+    setOnglet('factures');
+  }, []);
 
   const onEmettreFacture = useCallback((chantierData) => {
     const chantierObj = chantiers.find(ch => String(ch.id) === String(chantierData.id));
@@ -618,7 +686,7 @@ export default function Finances({
 
       {/* ── Contenu ── */}
       {onglet === 'tresorerie' && (
-        <Tresorerie factures={facturesValides} chantiers={chantiers} clients={clients} devis={devis} parametres={parametres} onEmettreFacture={onEmettreFacture} />
+        <Tresorerie factures={facturesValides} chantiers={chantiers} clients={clients} devis={devis} parametres={parametres} onEmettreFacture={onEmettreFacture} onEmettreExtra={onEmettreExtra} />
       )}
       <div style={{ display: onglet === 'factures' ? 'block' : 'none' }}>
         <Factures

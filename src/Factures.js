@@ -10,7 +10,7 @@ import React, { useState, useMemo } from 'react';
 import { FileDown, Download } from 'lucide-react';
 import { DS } from './ds';
 import { exportCSV } from './utils/exportCSV';
-import { fmtN, getIntervallesPeriode, facturesInPeriode, genererNumeroFacture, calculerStatutFacture } from './donnees';
+import { fmtN, getIntervallesPeriode, facturesInPeriode, genererNumeroFacture, calculerStatutFacture, calculerCA } from './donnees';
 import { prochainRappel, niveauInfo, genererTexteRappel, marquerRappelEnvoye } from './relances';
 import { exportFicheChantier, exportFacture } from './ExportPDF';
 
@@ -116,7 +116,7 @@ function KpiCard({ label, value, couleur, icon, sous }) {
 }
 
 // ── COMPOSANT PRINCIPAL ──────────────────────────────────────
-export default function Factures({ profil, clients = [], chantiers = [], devis = [], factures = [], onSave, paiementsData = {}, setPaiementsData, naviguer, hideHeader = false, periodeGlobale = 'mois', parametres = null }) {
+export default function Factures({ profil, clients = [], chantiers = [], devis = [], factures = [], onSave, paiementsData = {}, setPaiementsData, naviguer, hideHeader = false, periodeGlobale = 'mois', parametres = null, preRemplir = null, onConsumePreRemplir = null }) {
   const [vue, setVue] = useState('liste');   // 'liste' | 'form' | 'detail'
   const [selected, setSelected] = useState(null);
   const [filtreStatut, setFiltreStatut] = useState('');
@@ -128,6 +128,36 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
   const [rappelModal, setRappelModal] = useState(null); // { facture, niveau, contenu }
   const [pageFact, setPageFact] = useState(0);
   const PAGE_SIZE_FACT = 50;
+  const [pctAcompte, setPctAcompte] = useState('');
+
+  // Ouvrir le formulaire pré-rempli depuis FinancesPage (bouton "Créer la situation")
+  React.useEffect(() => {
+    if (!preRemplir) return;
+    const dateEmissionDefaut = new Date().toISOString().slice(0, 10);
+    const dateEcheanceDefaut = new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10);
+    const lignes = preRemplir.lignes || [{ description: '', quantite: 1, prixUnitaire: 0, tva: 8.1 }];
+    const montantHT  = lignes.reduce((s, l) => s + (l.quantite || 0) * (l.prixUnitaire || 0), 0);
+    const montantTVA = lignes.reduce((s, l) => s + (l.quantite || 0) * (l.prixUnitaire || 0) * (l.tva || 0) / 100, 0);
+    setForm({
+      id: `fact_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+      numero: genererNumeroFacture(factures),
+      statut: 'brouillon',
+      dateEmission: dateEmissionDefaut,
+      dateEcheance: dateEcheanceDefaut,
+      montantPaye: 0,
+      notes: '',
+      creeLe: new Date().toISOString(),
+      source: 'chantier',
+      ...preRemplir,
+      lignes,
+      montantHT,
+      montantTVA,
+      montantTTC: montantHT + montantTVA,
+    });
+    setVue('form');
+    onConsumePreRemplir?.();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [preRemplir]);
 
   const canEdit = ['cyna', 'cynatech'].includes(profil?.id);
 
@@ -1128,6 +1158,46 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
             </select>
           </div>
         </div>
+
+        {/* Helper acompte % — visible uniquement si type=acompte ET chantier/devis sélectionné */}
+        {form.type === 'acompte' && (form.chantierId || form.devisId) && (() => {
+          const chantierObj = chantiers.find(c => String(c.id) === String(form.chantierId));
+          const caHT = chantierObj ? calculerCA(chantierObj, devis) : null;
+          const devisObj = !chantierObj && form.devisId ? devis.find(d => String(d.id) === String(form.devisId)) : null;
+          const caRef = caHT ?? (devisObj ? (parseFloat(devisObj.montantHT) || 0) : null);
+          if (!caRef || caRef <= 0) return null;
+          const pct = parseFloat(pctAcompte) || 0;
+          const montantPreview = pct > 0 ? Math.round((caRef * pct / 100) * 100) / 100 : null;
+          return (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16, padding: '12px 16px', background: 'rgba(13,61,110,0.07)', border: '1px solid rgba(13,61,110,0.2)', borderRadius: 10 }}>
+              <span style={{ fontSize: 12, fontWeight: 700, color: '#0d3d6e', whiteSpace: 'nowrap' }}>Acompte de</span>
+              <input
+                type="number" min={1} max={100} step={1}
+                style={{ ...S.input, width: 70, textAlign: 'center' }}
+                placeholder="30"
+                value={pctAcompte}
+                onChange={e => setPctAcompte(e.target.value)}
+              />
+              <span style={{ fontSize: 12, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
+                % du CA ({fmtN(caRef, 0)} CHF HT)
+                {montantPreview !== null && <strong style={{ color: '#0d3d6e', marginLeft: 6 }}>→ {fmtN(montantPreview, 2)} CHF HT</strong>}
+              </span>
+              <button
+                style={{ ...S.btnPrimary, padding: '6px 14px', fontSize: 12, whiteSpace: 'nowrap', marginLeft: 'auto' }}
+                disabled={!pct || pct <= 0 || pct > 100}
+                onClick={() => {
+                  const montantHT = Math.round((caRef * pct / 100) * 100) / 100;
+                  const refLabel = chantierObj?.nom || devisObj?.numero || '';
+                  const lignes = [{ description: `Acompte ${pct}% — ${refLabel}`.trim(), quantite: 1, prixUnitaire: montantHT, tva: 8.1 }];
+                  const totaux = calculerTotaux(lignes);
+                  setForm(f => ({ ...f, lignes, ...totaux }));
+                }}
+              >
+                Appliquer
+              </button>
+            </div>
+          );
+        })()}
 
         {/* Ligne 3 : dates + objet */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 2fr', gap: 16, marginBottom: 16 }}>

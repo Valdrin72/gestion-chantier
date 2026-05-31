@@ -180,7 +180,7 @@ export const isChantierActif = (c) => c?.statut?.trim().toLowerCase() === 'en co
 export const isChantierComptable = (c) => ['en cours', 'planifié'].includes(c?.statut?.trim().toLowerCase());
 
 /**
- * CA FORFAIT = montantHT du devis lié + avenants (devis) + avenants (chantier) + heures en régie (devis).
+ * CA FORFAIT = montantHT du devis lié + avenants + heures en régie (devis).
  * C'est la base pour les situations (CA × avancement%). Retourne null si aucun devis lié.
  *
  * Séparation claire :
@@ -188,6 +188,9 @@ export const isChantierComptable = (c) => ['en cours', 'planifié'].includes(c?.
  *   - avenants chantier → ancienne structure (rétrocompat)
  *   - heuresRegie      → stockées sur le devis (heures facturées au temps passé)
  *   - chantier.extras  → travaux imprévus facturés séparément (EXCLUS ici, voir calculerCA)
+ *
+ * Guard anti double-comptage : devis.avenants prioritaire ; chantier.avenants utilisé
+ * en fallback UNIQUEMENT si devis.avenants est vide (legacy pur). Jamais les deux additionnés.
  */
 export const calculerCAForfait = (chantier, devisList = []) => {
   if (!chantier.devisId) return null;
@@ -197,7 +200,9 @@ export const calculerCAForfait = (chantier, devisList = []) => {
   const avenantDevis = Array.isArray(devisLie.avenants)
     ? devisLie.avenants.reduce((s, a) => s + (parseFloat(a.montant) || 0), 0)
     : 0;
-  return montantBase + avenantDevis + sommeAvenants(chantier) + sommeHeuresRegie(devisLie);
+  // Si devis.avenants est renseigné → source unique ; sinon fallback legacy chantier.avenants
+  const avenants = avenantDevis > 0 ? avenantDevis : sommeAvenants(chantier);
+  return montantBase + avenants + sommeHeuresRegie(devisLie);
 };
 
 /**

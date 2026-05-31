@@ -373,6 +373,46 @@ function Devis() {
                 {['brouillon', 'envoyé', 'accepté', 'refusé'].map(s => <option key={s}>{s}</option>)}
               </select></div>
           </div>
+          {/* ── Types de travaux ── */}
+          <div style={{ background: 'rgba(13,61,110,0.04)', border: `1px solid ${erreurs.typesTravaux ? '#ef444460' : 'rgba(13,61,110,0.15)'}`, borderRadius: 12, padding: '16px 20px', marginBottom: 20 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: '#0d3d6e', marginBottom: 8 }}>
+              Types de travaux <span style={{ color: '#ef4444' }}>*</span>
+            </div>
+            {(parametres.typesTravaux || []).length === 0 ? (
+              <div style={{ fontSize: 12, color: '#ef4444', fontStyle: 'italic' }}>
+                Aucun type configuré — ajoutez-en dans <strong>Paramètres → Types de travaux</strong>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                {(parametres.typesTravaux || []).map(t => {
+                  const actif = (form.typesTravaux || []).includes(t.nom);
+                  return (
+                    <button
+                      key={t.id}
+                      type="button"
+                      onClick={() => {
+                        const courants = form.typesTravaux || [];
+                        const nv = actif ? courants.filter(n => n !== t.nom) : [...courants, t.nom];
+                        setForm(f => ({ ...f, typesTravaux: nv }));
+                        if (erreurs.typesTravaux) setErreurs(prev => ({ ...prev, typesTravaux: null }));
+                      }}
+                      style={{
+                        background: actif ? 'rgba(13,61,110,0.12)' : 'transparent',
+                        color: actif ? '#0d3d6e' : 'var(--text-muted)',
+                        border: `1px solid ${actif ? '#0d3d6e60' : 'var(--border)'}`,
+                        borderRadius: 20, padding: '5px 14px', cursor: 'pointer', fontSize: 13,
+                        fontWeight: actif ? 700 : 400, fontFamily: 'inherit', transition: 'all 0.15s',
+                      }}
+                    >
+                      {actif ? '✓ ' : ''}{t.nom}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+            {erreurs.typesTravaux && <div style={{ color: '#ef4444', fontSize: 12, marginTop: 8, fontWeight: 600 }}>{erreurs.typesTravaux}</div>}
+          </div>
+
           <div style={{ background: 'rgba(16,185,129,0.04)', border: '1px solid rgba(16,185,129,0.15)', borderRadius: 12, padding: '20px', marginBottom: 20 }}>
             <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: '#10b981', marginBottom: 12 }}>Montant signé HT</div>
             <input

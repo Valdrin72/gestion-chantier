@@ -35,7 +35,9 @@ const POINTAGE_SAMEDI = {
   repartitions: [{ chantierId: 'c1', categorie: 'production', heures: 8 }],
 };
 
-const DEVIS = [{ id: 'd1', numero: 'D-001', montantHT: 1100, avenants: [], heuresRegie: [] }];
+// CA = 1200 → marge nette sans maj = (0.88×1200 - 800)/1200 = 21.3% ≥ 20% → aucune alerte
+// CA = 1200 → marge nette avec maj = (0.88×1200 - 1000)/1200 = 4.7% < 15% → DANGER
+const DEVIS = [{ id: 'd1', numero: 'D-001', montantHT: 1200, avenants: [], heuresRegie: [] }];
 
 const CHANTIER = {
   id: 'c1', nom: 'Test Samedi', devisId: 'd1', clientId: 'cl1',
@@ -76,7 +78,8 @@ describe('Fix #1-A — calculerCoutsChantier : majorations CCT samedi', () => {
 });
 
 // ── (ii) runAllAgents : le chemin getCouts interne inclut pointages ──────────
-// CA = 1100, base 800 → marge 27% OK. Avec samedi +200 → totalCoutsReel = 1000, marge 9% < 15% → ATTENTION
+// CA = 1200, base 800 → marge NETTE 21.3% → aucune alerte (≥ 20%)
+// CA = 1200, avec samedi → totalCoutsReel = 1000, marge NETTE 4.7% < 15% → DANGER
 describe('Fix #1-B — runAllAgents : alerte marge change avec pointage samedi', () => {
   const PARAMS = {
     employes: [EMPLOYE],
@@ -85,7 +88,7 @@ describe('Fix #1-B — runAllAgents : alerte marge change avec pointage samedi',
     parametres: {},
   };
 
-  it('sans pointages → aucune alerte marge (marge 27% > seuil 15%)', () => {
+  it('sans pointages → aucune alerte marge (marge nette 21.3% ≥ 20%)', () => {
     const result = runAllAgents({
       chantiers: [CHANTIER], devis: DEVIS, factures: [], clients: [], parametres: PARAMS,
       pointages: [],
@@ -94,7 +97,7 @@ describe('Fix #1-B — runAllAgents : alerte marge change avec pointage samedi',
     expect(alertesMarge).toHaveLength(0);
   });
 
-  it('avec pointage samedi → alerte marge ATTENTION (marge 9% < seuil 15%)', () => {
+  it('avec pointage samedi → alerte marge DANGER (marge nette 4.7% < 15%)', () => {
     const result = runAllAgents({
       chantiers: [CHANTIER], devis: DEVIS, factures: [], clients: [], parametres: PARAMS,
       pointages: [POINTAGE_SAMEDI],
@@ -129,13 +132,13 @@ describe('Fix #1-C — adapterContexteAlertes : couts_engages avec pointage same
     expect(ch.couts_engages).toBeCloseTo(COUT_AVEC_MAJ, 0);
   });
 
-  it('marge_brute_actuelle avec samedi = CA - coutTotalReel = 1100 - 1000 = 100', () => {
+  it('marge_brute_actuelle avec samedi = CA - coutTotalReel = 1200 - 1000 = 200', () => {
     const ctx = adapterContexteAlertes({
       chantiers: [CHANTIER], devis: DEVIS, factures: [], clients: [],
       parametres: PARAMS_ADAPTER, pointages: [POINTAGE_SAMEDI],
     });
     const ch = ctx.chantiers[0];
-    expect(ch.marge_brute_actuelle).toBeCloseTo(100, 0);
+    expect(ch.marge_brute_actuelle).toBeCloseTo(200, 0);
   });
 });
 

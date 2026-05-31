@@ -280,10 +280,11 @@ describe('E2E Step 6 — Situation : potentiel basé sur caForfait × avancement
 // STEP 7 — runAllAgents : coûts reflètent les majorations (alerte marge)
 // ════════════════════════════════════════════════════════════════════════════
 describe('E2E Step 7 — runAllAgents avec/sans pointages Sat+Dim', () => {
-  // CA serré : marge passe sous 15% quand les majorations s'ajoutent
-  // Sans maj : (7 800 - 6 400) / 7 800 ≈ 17.9% → OK
-  // Avec maj : (7 800 - 7 000) / 7 800 ≈ 10.3% → ATTENTION
-  const DEVIS_TIGHT = [{ id: 'd2', montantHT: 7_800, avenants: [], heuresRegie: [] }];
+  // CA serré : marge NETTE passe dans la zone limite/danger quand les majorations s'ajoutent
+  // FG = 12% (défaut) — marge nette = (CA - coûts - CA×12%) / CA
+  // Sans maj : (10 000 - 6 400 - 1 200) / 10 000 = 24% → aucune alerte (≥ 20%)
+  // Avec maj : (10 000 - 7 000 - 1 200) / 10 000 = 18% → ATTENTION (15% ≤ 18% < 20%)
+  const DEVIS_TIGHT = [{ id: 'd2', montantHT: 10_000, avenants: [], heuresRegie: [] }];
   // JOURNAL = 8 jours normaux × 800 = 6 400 CHF base
   // + Sat (200) + Dim (400) = 7 000 → marge (7800-7000)/7800 = 10.3%
   const CHANTIER_TIGHT = {
@@ -294,7 +295,7 @@ describe('E2E Step 7 — runAllAgents avec/sans pointages Sat+Dim', () => {
   };
   const PARAMS_AGENTS = { employes: [EMPLOYE], localites: [], typesTravaux: [], parametres: {} };
 
-  it('sans pointages → aucune alerte marge (marge ≈ 17.9% > 15%)', () => {
+  it('sans pointages → aucune alerte marge (marge nette ≈ 24% ≥ 20%)', () => {
     const result = runAllAgents({
       chantiers: [CHANTIER_TIGHT], devis: DEVIS_TIGHT, factures: [], clients: [],
       parametres: PARAMS_AGENTS, pointages: [],
@@ -303,7 +304,7 @@ describe('E2E Step 7 — runAllAgents avec/sans pointages Sat+Dim', () => {
     expect(alertesMarge).toHaveLength(0);
   });
 
-  it('avec pointages Sat+Dim → alerte marge (marge ≈ 10.3% < 15%)', () => {
+  it('avec pointages Sat+Dim → alerte marge (marge nette ≈ 18% < 20% → ATTENTION)', () => {
     const ptgSam = { ...PTAG_SAM, repartitions: [{ chantierId: 'c2', categorie: 'production', heures: 8 }] };
     const ptgDim = { ...PTAG_DIM, repartitions: [{ chantierId: 'c2', categorie: 'production', heures: 8 }] };
     const result = runAllAgents({

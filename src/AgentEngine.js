@@ -26,7 +26,7 @@ export function runAlerteChantier({ chantiers, devis, factures = [], parametres,
   const alertes = [];
   const actifs = chantiers.filter(isChantierActif);
   const cfg = parametres?.agentsConfig?.alerteChantier || {
-    seuilMargeDanger: 0, seuilMargeAttention: SEUILS.margeLimite,
+    seuilMargeDanger: SEUILS.margeLimite, seuilMargeAttention: SEUILS.margeRentable,
     seuilRetardAttention: 3, seuilRetardCritique: 7,
     seuilBudgetAttention: 5, seuilBudgetDanger: 20,
   };
@@ -48,19 +48,19 @@ export function runAlerteChantier({ chantiers, devis, factures = [], parametres,
         }
       }
 
-      if (couts.montantTotal > 0 && couts.totalCoutsReel > 0 && Number.isFinite(couts.margeActuellePct)) {
-        const marge = couts.margeActuellePct;
+      if (couts.montantTotal > 0 && couts.totalCoutsReel > 0 && Number.isFinite(couts.margeNettePct)) {
+        const marge = couts.margeNettePct;
         const margeStr = Math.round(marge * 10) / 10;
         if (marge < cfg.seuilMargeDanger) {
-          data.chantiersEnDanger.push({ id: c.id, nom: c.nom || c.numero, marge, deficit: Math.abs(Math.round(couts.margeReel)) });
+          data.chantiersEnDanger.push({ id: c.id, nom: c.nom || c.numero, marge, deficit: Math.abs(Math.round(couts.margeNette ?? couts.margeReel)) });
           alertes.push({ id: uid('ac-perte'), agent: 'AlerteChantier', type: 'marge', niveau: 'DANGER',
-            message: `${c.nom || c.numero} — chantier à perte · marge ${margeStr}%`,
-            detail: `Déficit estimé : CHF ${fmtN(Math.abs(Math.round(couts.margeReel)))}`,
+            message: `${c.nom || c.numero} — marge nette ${margeStr}% (danger < ${cfg.seuilMargeDanger}%)`,
+            detail: `Déficit estimé : CHF ${fmtN(Math.abs(Math.round(couts.margeNette ?? couts.margeReel)))}`,
             chantier_id: c.id, timestamp: Date.now(), lu: false, action: { page: 'chantiers', ctx: { chantierActif: c.id } } });
         } else if (marge < cfg.seuilMargeAttention) {
           alertes.push({ id: uid('ac-marge'), agent: 'AlerteChantier', type: 'marge', niveau: 'ATTENTION',
-            message: `${c.nom || c.numero} — marge faible à ${margeStr}%`,
-            detail: `Seuil cible : ${cfg.seuilMargeAttention}% · écart : ${Math.round((cfg.seuilMargeAttention - marge) * 10) / 10} pts`,
+            message: `${c.nom || c.numero} — marge nette ${margeStr}% (limite ${cfg.seuilMargeDanger}–${cfg.seuilMargeAttention}%)`,
+            detail: `Cible ≥ ${cfg.seuilMargeAttention}% · écart : ${Math.round((cfg.seuilMargeAttention - marge) * 10) / 10} pts`,
             chantier_id: c.id, timestamp: Date.now(), lu: false, action: { page: 'chantiers', ctx: { chantierActif: c.id } } });
         } else data.chantiersOk++;
       }
@@ -82,6 +82,14 @@ export function runAlerteChantier({ chantiers, devis, factures = [], parametres,
             detail: `Prévu CHF ${fmtN(Math.round(couts.totalCoutsPrevu))} · Réel CHF ${fmtN(Math.round(couts.totalCoutsReel))}`,
             chantier_id: c.id, timestamp: Date.now(), lu: false, action: { page: 'chantiers', ctx: { chantierActif: c.id } } });
         }
+      }
+
+      // ── Jours planifiés manquants : heures pointées mais nombreJours absent → EAC/RAD désactivés ──
+      if ((parseInt(c.nombreJours) || 0) <= 0 && couts.totalCoutsReel > 0) {
+        alertes.push({ id: uid('ac-jours'), agent: 'AlerteChantier', type: 'jours_planifies_manquants', niveau: 'ATTENTION',
+          message: `${c.nom || c.numero} — jours planifiés manquants → EAC/RAD désactivés`,
+          detail: `Complète le nombre de jours prévu dans la fiche pour activer les projections.`,
+          chantier_id: c.id, timestamp: Date.now(), lu: false, action: { page: 'chantiers', ctx: { chantierActif: c.id } } });
       }
 
       // ── Sur-facturation : total facturé HT > CA × avancement% × 1.1 (tolérance 10%) ──

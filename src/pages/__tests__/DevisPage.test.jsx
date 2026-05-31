@@ -585,7 +585,77 @@ describe('DevisPage — conversion devis → chantier', () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 10. SUPPRESSION CASCADE — devis + chantier lié + facture liée
+// 10. PROPAGATION typesTravaux : devis → chantier à la conversion
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('DevisPage — propagation typesTravaux devis → chantier', () => {
+  // Devis avec plusieurs types pour tester la copie exacte
+  const DEVIS_MULTI_TYPES = {
+    id: 'dm', numero: 'DEV-2026-MT', clientId: 1,
+    statut: 'accepté', montantHT: '15000',
+    date: '2026-05-01', avenants: [], heuresRegie: [],
+    typesTravaux: ['Cloisons vitrées', 'Faux plancher'],
+  };
+
+  // Devis legacy sans champ typesTravaux (avant le fix)
+  const DEVIS_LEGACY = {
+    id: 'dl', numero: 'DEV-2025-LGC', clientId: 1,
+    statut: 'accepté', montantHT: '8000',
+    date: '2025-11-01', avenants: [], heuresRegie: [],
+    // Pas de typesTravaux
+  };
+
+  async function convertir(devis, ctx) {
+    fireEvent.click(screen.getByRole('button', { name: /Créer le chantier/i }));
+    const btnConfirm = screen.getAllByRole('button', { name: /Créer le chantier/i }).at(-1);
+    fireEvent.click(btnConfirm);
+    await waitFor(() => expect(ctx.setChantiers).toHaveBeenCalledOnce());
+    const updater = ctx.setChantiers.mock.calls[0][0];
+    return updater([])[0]; // retourne le chantier créé
+  }
+
+  it('conversion avec typesTravaux → le chantier hérite EXACTEMENT des types du devis', async () => {
+    const { ctx } = renderDevis({ devis: [DEVIS_MULTI_TYPES] });
+    const chantier = await convertir(DEVIS_MULTI_TYPES, ctx);
+
+    expect(chantier.typesTravaux).toEqual(['Cloisons vitrées', 'Faux plancher']);
+  });
+
+  it('les types du chantier sont une COPIE indépendante (pas de référence partagée)', async () => {
+    const { ctx } = renderDevis({ devis: [DEVIS_MULTI_TYPES] });
+    const chantier = await convertir(DEVIS_MULTI_TYPES, ctx);
+
+    // Modifier la copie ne doit pas altérer le tableau original
+    chantier.typesTravaux.push('Autre');
+    expect(DEVIS_MULTI_TYPES.typesTravaux).toHaveLength(2);
+  });
+
+  it('devis legacy sans typesTravaux → chantier.typesTravaux = [], aucun crash', async () => {
+    const { ctx } = renderDevis({ devis: [DEVIS_LEGACY] });
+    const chantier = await convertir(DEVIS_LEGACY, ctx);
+
+    expect(Array.isArray(chantier.typesTravaux)).toBe(true);
+    expect(chantier.typesTravaux).toHaveLength(0);
+  });
+
+  it('devis avec typesTravaux: [] → chantier.typesTravaux = []', async () => {
+    const devisVide = { ...DEVIS_ACCEPTE, id: 'dv0', typesTravaux: [] };
+    const { ctx } = renderDevis({ devis: [devisVide] });
+    const chantier = await convertir(devisVide, ctx);
+
+    expect(chantier.typesTravaux).toEqual([]);
+  });
+
+  it('un seul type → le chantier porte ce type unique', async () => {
+    const { ctx } = renderDevis({ devis: [DEVIS_ACCEPTE] }); // typesTravaux: ['Cloisons vitrées']
+    const chantier = await convertir(DEVIS_ACCEPTE, ctx);
+
+    expect(chantier.typesTravaux).toEqual(['Cloisons vitrées']);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 11. SUPPRESSION CASCADE — devis + chantier lié + facture liée
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe('DevisPage — suppression en cascade', () => {

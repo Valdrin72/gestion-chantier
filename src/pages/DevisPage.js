@@ -252,7 +252,7 @@ function Devis() {
       statut: 'Planifié', priorite: 'Normale', avancement: 0,
       dateDebut: '', nombreJours: d.dureeEstimee || '', nombrePersonnes: d.nombrePersonnes || '',
       inclusSamedi: false, avenants: [], montantFacture: 0,
-      typesTravaux: [], ville: '', canton: '', adresse: '',
+      typesTravaux: Array.isArray(d.typesTravaux) ? [...d.typesTravaux] : [], ville: '', canton: '', adresse: '',
       conducteur: '', directeurTravauxId: '', equipe: [], employes: [],
       coutMaterielPrevu: '', materielReel: '',
       coutSousTraitancePrevu: '', sousTraitanceReelle: '',

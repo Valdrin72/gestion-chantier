@@ -643,6 +643,47 @@ describe('FinancesPage — Performance globale', () => {
   });
 });
 
+describe("FinancesPage — auto-correcteur extras : annuler une facture d'extra → l'extra repasse à facturer", () => {
+  // Chantier avec un extra (mode forfait, montant > 0)
+  const EXTRA = { id: 'EX1', description: 'Mur supplémentaire', mode: 'forfait', montantForfait: 3000 };
+  const CHANTIER_EXTRA = { ...CHANTIER_1, extras: [EXTRA] };
+  // Facture qui matérialise l'extra (extraId pointant vers EX1)
+  const FACTURE_EXTRA = {
+    id: 'FEX1', chantierId: 'CH1', clientId: '1', devisId: 'D1',
+    statut: 'envoyee', numero: 'FAC-EXTRA-001', extraId: 'EX1',
+    montantTTC: 3243, montantHT: 3000, montantPaye: 0,
+    dateEcheance: '2027-01-01',
+  };
+
+  it("facture d'extra ÉMISE (non annulée) → l'extra n'apparaît PAS dans 'Extras à facturer'", () => {
+    renderFinances({
+      clients: [CLIENT_1], chantiers: [CHANTIER_EXTRA], devis: [DEVIS_1],
+      factures: [FACTURE_EXTRA], periodeGlobale: 'annee',
+    });
+    // L'extra est déjà facturé (facture non annulée avec extraId) → section absente ou extra non listé
+    expect(screen.queryByText('Mur supplémentaire')).not.toBeInTheDocument();
+  });
+
+  it("facture d'extra ANNULÉE → l'extra REPASSE dans 'Extras à facturer' (logique dérivée réelle)", () => {
+    renderFinances({
+      clients: [CLIENT_1], chantiers: [CHANTIER_EXTRA], devis: [DEVIS_1],
+      factures: [{ ...FACTURE_EXTRA, statut: 'annulee' }], periodeGlobale: 'annee',
+    });
+    // La facture d'extra étant annulée, le filtre f.statut !== 'annulee' la rejette
+    // → l'extra n'est plus considéré facturé → il réapparaît dans la liste
+    expect(screen.getByText(/Extras à facturer/i)).toBeInTheDocument();
+    expect(screen.getByText('Mur supplémentaire')).toBeInTheDocument();
+  });
+
+  it("aucune facture pour l'extra → l'extra est à facturer (état initial)", () => {
+    renderFinances({
+      clients: [CLIENT_1], chantiers: [CHANTIER_EXTRA], devis: [DEVIS_1],
+      factures: [], periodeGlobale: 'annee',
+    });
+    expect(screen.getByText('Mur supplémentaire')).toBeInTheDocument();
+  });
+});
+
 describe('FinancesPage — Encaissements prévus (timeline 8 semaines)', () => {
   it('affiche le titre "Encaissements prévus — 8 semaines"', () => {
     renderFinances();

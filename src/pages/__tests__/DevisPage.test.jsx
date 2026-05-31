@@ -18,16 +18,31 @@ vi.mock('../../utils/exportCSV', () => ({
   exportCSV: (...args) => mockExportCSV(...args),
 }));
 
+// Supabase : requis par useSupabaseData (importé pour PARAMETRES_DEFAUT)
+vi.mock('../../lib/supabase', () => ({
+  supabase: { from: vi.fn(() => ({ select: vi.fn(), upsert: vi.fn() })) },
+}));
+
+import { PARAMETRES_DEFAUT } from '../../hooks/useSupabaseData';
+
 // ── Fixtures ─────────────────────────────────────────────────────────────────
 
 const CLIENT_1 = { id: 1, prenom: 'Alice', nom: 'Dupont', entreprise: 'Dupont SA' };
 const CLIENT_2 = { id: 2, prenom: 'Bob', nom: 'Martin', entreprise: 'Martin SÀRL' };
+
+// Types de travaux CYNA (subset réaliste — comme parametres.typesTravaux)
+const TYPES_TRAVAUX = [
+  { id: 1, nom: 'Cloisons vitrées',   unite: 'm²', tarifBase: 125 },
+  { id: 2, nom: 'Faux plancher',      unite: 'm²', tarifBase: 80  },
+  { id: 3, nom: 'Plafonds suspendus', unite: 'm²', tarifBase: 85  },
+];
 
 // Devis accepté — sans chantier lié (pour tester la conversion)
 const DEVIS_ACCEPTE = {
   id: 'd1', numero: 'DEV-2026-001', clientId: 1,
   statut: 'accepté', montantHT: '10000',
   date: '2026-05-01', avenants: [], heuresRegie: [],
+  typesTravaux: ['Cloisons vitrées'],
 };
 
 const DEVIS_BROUILLON = {
@@ -36,12 +51,12 @@ const DEVIS_BROUILLON = {
   date: '2026-05-10', avenants: [], heuresRegie: [],
 };
 
-// Devis modifiable : typesTravaux pré-renseigné pour passer la validation
+// Devis modifiable : typesTravaux pré-renseigné (normal après le fix)
 const DEVIS_EDITABLE = {
   id: 'd3', numero: 'DEV-2026-003', clientId: 1,
   statut: 'brouillon', montantHT: '8000',
   date: '2026-05-15', avenants: [], heuresRegie: [],
-  typesTravaux: ['Cloisons'], // contourne le bug typesTravaux (cf. describe dédié)
+  typesTravaux: ['Cloisons vitrées'],
 };
 
 // Fixtures cascade : devis lié à un chantier lié à une facture
@@ -76,6 +91,7 @@ function renderDevis(ctxOverrides = {}) {
       devis: [],
       chantiers: [],
       factures: [],
+      parametres: { employes: [], typesTravaux: TYPES_TRAVAUX },
       confirmer,
       setDevis,
       setChantiers,
@@ -187,33 +203,117 @@ describe('DevisPage — validation formulaire', () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 4. 🐛 BUG — typesTravaux bloque toute création via le formulaire UI
+// 4. CRÉATION D'UN DEVIS — le fix rend la création possible
 // ─────────────────────────────────────────────────────────────────────────────
 
-describe('🐛 BUG DevisPage — typesTravaux bloque la création', () => {
-  it('remplir client + montantHT → sauvegarder échoue : "typesTravaux" absent du formulaire UI', () => {
+describe('DevisPage — création d\'un devis (fix typesTravaux)', () => {
+  it('le sélecteur de types de travaux est visible dans le formulaire', () => {
+    renderDevis();
+    fireEvent.click(screen.getByRole('button', { name: /Nouveau devis/i }));
+    expect(screen.getByText(/Types de travaux/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Cloisons vitrées/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Faux plancher/i })).toBeInTheDocument();
+  });
+
+  it('client + montantHT + typesTravaux → setDevis appelé (création réussit)', () => {
     const { ctx } = renderDevis();
     fireEvent.click(screen.getByRole('button', { name: /Nouveau devis/i }));
 
-    // Saisir le client
+    // 1. Sélectionner un client
     const selects = screen.getAllByRole('combobox');
     fireEvent.change(selects[0], { target: { value: '1' } });
 
-    // Saisir le montant HT
+    // 2. Saisir le montant HT
     fireEvent.change(
       screen.getByPlaceholderText("Ex : 45'000"),
       { target: { value: '15000' } },
     );
 
+    // 3. Sélectionner un type de travaux via le pill
+    fireEvent.click(screen.getByRole('button', { name: /Cloisons vitrées/i }));
+
+    // 4. Sauvegarder
     fireEvent.click(screen.getByRole('button', { name: /Sauvegarder/i }));
 
-    // La validation bloque sur typesTravaux — aucun champ UI ne permet de le renseigner
-    expect(
-      screen.getByText(/Sélectionner au moins un type de travaux/i),
-    ).toBeInTheDocument();
+    // setDevis doit être appelé avec le nouveau devis
+    expect(ctx.setDevis).toHaveBeenCalledOnce();
+    const nouvelleListeDevis = ctx.setDevis.mock.calls[0][0];
+    expect(nouvelleListeDevis).toHaveLength(1);
+    expect(nouvelleListeDevis[0].typesTravaux).toContain('Cloisons vitrées');
+    expect(nouvelleListeDevis[0].montantHT).toBe('15000');
+  });
 
-    // setDevis n'est jamais appelé : impossible de créer un devis via l'UI
+  it('client + montantHT SANS type → toujours bloqué (validation intentionnelle)', () => {
+    const { ctx } = renderDevis();
+    fireEvent.click(screen.getByRole('button', { name: /Nouveau devis/i }));
+
+    const selects = screen.getAllByRole('combobox');
+    fireEvent.change(selects[0], { target: { value: '1' } });
+    fireEvent.change(
+      screen.getByPlaceholderText("Ex : 45'000"),
+      { target: { value: '15000' } },
+    );
+    // Pas de type sélectionné → Sauvegarder
+    fireEvent.click(screen.getByRole('button', { name: /Sauvegarder/i }));
+
+    // Erreur visible (inline + résumé = 2 occurrences possibles, d'où getAllByText)
+    expect(screen.getAllByText(/Sélectionner au moins un type de travaux/i).length).toBeGreaterThan(0);
     expect(ctx.setDevis).not.toHaveBeenCalled();
+  });
+
+  it('sélectionner puis désélectionner un type → validation bloque à nouveau', () => {
+    const { ctx } = renderDevis();
+    fireEvent.click(screen.getByRole('button', { name: /Nouveau devis/i }));
+
+    const selects = screen.getAllByRole('combobox');
+    fireEvent.change(selects[0], { target: { value: '1' } });
+    fireEvent.change(screen.getByPlaceholderText("Ex : 45'000"), { target: { value: '10000' } });
+
+    // Sélectionner puis désélectionner
+    fireEvent.click(screen.getByRole('button', { name: /Cloisons vitrées/i }));
+    fireEvent.click(screen.getByRole('button', { name: /✓ Cloisons vitrées/i }));
+
+    fireEvent.click(screen.getByRole('button', { name: /Sauvegarder/i }));
+    expect(screen.getAllByText(/Sélectionner au moins un type de travaux/i).length).toBeGreaterThan(0);
+    expect(ctx.setDevis).not.toHaveBeenCalled();
+  });
+
+  it('sélection multiple : deux types → les deux sauvegardés', () => {
+    const { ctx } = renderDevis();
+    fireEvent.click(screen.getByRole('button', { name: /Nouveau devis/i }));
+
+    const selects = screen.getAllByRole('combobox');
+    fireEvent.change(selects[0], { target: { value: '1' } });
+    fireEvent.change(screen.getByPlaceholderText("Ex : 45'000"), { target: { value: '20000' } });
+
+    fireEvent.click(screen.getByRole('button', { name: /Cloisons vitrées/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Faux plancher/i }));
+
+    fireEvent.click(screen.getByRole('button', { name: /Sauvegarder/i }));
+
+    expect(ctx.setDevis).toHaveBeenCalledOnce();
+    const liste = ctx.setDevis.mock.calls[0][0];
+    expect(liste[0].typesTravaux).toContain('Cloisons vitrées');
+    expect(liste[0].typesTravaux).toContain('Faux plancher');
+  });
+
+  it('compte neuf sans typesTravaux configurés → message "Aucun type configuré"', () => {
+    renderDevis({ parametres: { employes: [], typesTravaux: [] } });
+    fireEvent.click(screen.getByRole('button', { name: /Nouveau devis/i }));
+    expect(screen.getByText(/Aucun type configuré/i)).toBeInTheDocument();
+  });
+
+  it('afficherNotif "Devis créé" après création réussie', () => {
+    const { ctx } = renderDevis();
+    fireEvent.click(screen.getByRole('button', { name: /Nouveau devis/i }));
+
+    const selects = screen.getAllByRole('combobox');
+    fireEvent.change(selects[0], { target: { value: '1' } });
+    fireEvent.change(screen.getByPlaceholderText("Ex : 45'000"), { target: { value: '12000' } });
+    fireEvent.click(screen.getByRole('button', { name: /Cloisons vitrées/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Sauvegarder/i }));
+
+    expect(ctx.afficherNotif).toHaveBeenCalledWith('Devis créé');
   });
 });
 
@@ -222,6 +322,17 @@ describe('🐛 BUG DevisPage — typesTravaux bloque la création', () => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe('DevisPage — modification d\'un devis existant', () => {
+  it('types du devis existant pré-sélectionnés à l\'ouverture de l\'édition', () => {
+    renderDevis({ devis: [DEVIS_EDITABLE] });
+
+    fireEvent.click(screen.getByTitle('Modifier'));
+
+    // "✓ Cloisons vitrées" doit être visible (actif = préfixé par ✓)
+    expect(screen.getByRole('button', { name: /✓ Cloisons vitrées/i })).toBeInTheDocument();
+    // "Faux plancher" non sélectionné (pas de ✓)
+    expect(screen.queryByRole('button', { name: /✓ Faux plancher/i })).not.toBeInTheDocument();
+  });
+
   it('cliquer l\'icône crayon ouvre le formulaire pré-rempli', () => {
     renderDevis({ devis: [DEVIS_EDITABLE] });
 
@@ -610,5 +721,62 @@ describe('DevisPage — filtre par statut', () => {
 
     expect(screen.getByText('DEV-2026-001')).toBeInTheDocument();
     expect(screen.getByText('DEV-2026-002')).toBeInTheDocument();
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 13. COMPTE NEUF — PARAMETRES_DEFAUT seeds des types → dévis créable out of the box
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('DevisPage — compte neuf (PARAMETRES_DEFAUT)', () => {
+  it('PARAMETRES_DEFAUT.typesTravaux est non vide (seed présent)', () => {
+    expect(Array.isArray(PARAMETRES_DEFAUT.typesTravaux)).toBe(true);
+    expect(PARAMETRES_DEFAUT.typesTravaux.length).toBeGreaterThan(0);
+  });
+
+  it('PARAMETRES_DEFAUT contient les 8 types CYNA standard', () => {
+    const noms = PARAMETRES_DEFAUT.typesTravaux.map(t => t.nom);
+    expect(noms).toContain('Cloisons vitrées');
+    expect(noms).toContain('Faux plancher');
+    expect(noms).toContain('Plafonds suspendus');
+    expect(noms).toContain('Autre');
+  });
+
+  it('compte neuf : sélecteur peuplé avec PARAMETRES_DEFAUT — options visibles', () => {
+    renderDevis({ parametres: PARAMETRES_DEFAUT });
+    fireEvent.click(screen.getByRole('button', { name: /Nouveau devis/i }));
+
+    // Tous les types CYNA standard sont cliquables
+    expect(screen.getByRole('button', { name: /Cloisons vitrées/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Faux plancher/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Plafonds suspendus/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Autre/i })).toBeInTheDocument();
+  });
+
+  it('compte neuf : création d\'un devis OUT OF THE BOX (sans configurer de types)', () => {
+    const setDevis = vi.fn();
+    renderDevis({ parametres: PARAMETRES_DEFAUT, setDevis });
+    fireEvent.click(screen.getByRole('button', { name: /Nouveau devis/i }));
+
+    // Sélectionner client
+    const selects = screen.getAllByRole('combobox');
+    fireEvent.change(selects[0], { target: { value: '1' } });
+
+    // Saisir montant HT
+    fireEvent.change(
+      screen.getByPlaceholderText("Ex : 45'000"),
+      { target: { value: '30000' } },
+    );
+
+    // Sélectionner un type (disponible grâce au seed)
+    fireEvent.click(screen.getByRole('button', { name: /Cloisons vitrées/i }));
+
+    // Sauvegarder → réussit sans configuration préalable
+    fireEvent.click(screen.getByRole('button', { name: /Sauvegarder/i }));
+
+    expect(setDevis).toHaveBeenCalledOnce();
+    const liste = setDevis.mock.calls[0][0];
+    expect(liste[0].typesTravaux).toContain('Cloisons vitrées');
+    expect(liste[0].montantHT).toBe('30000');
   });
 });

@@ -57,6 +57,25 @@ const FACTURE_PARTIELLE = {
   rappels: [],
 };
 
+const FACTURE_PAYEE = {
+  id: 'F5', numero: 'F-2026-005', clientId: '1', chantierId: 'CH1', devisId: 'D1',
+  statut: 'payee', type: 'finale', source: 'chantier',
+  montantHT: 4000, montantTVA: 324, montantTTC: 4324, montantPaye: 4324,
+  dateEmission: TODAY, dateEcheance: IN_30_DAYS,
+  lignes: [{ description: 'Finale', quantite: 1, prixUnitaire: 4000, tva: 8.1 }],
+  paiementsHistorique: [{ id: 'pay5', montant: 4324, date: TODAY, mode: 'Virement', note: '' }],
+  rappels: [],
+};
+
+const FACTURE_ANNULEE = {
+  id: 'F6', numero: 'F-2026-006', clientId: '1', chantierId: 'CH1', devisId: 'D1',
+  statut: 'annulee', type: 'situation', source: 'chantier',
+  montantHT: 1500, montantTVA: 121.5, montantTTC: 1621.5, montantPaye: 0,
+  dateEmission: TODAY, dateEcheance: IN_30_DAYS,
+  lignes: [{ description: 'Annulée', quantite: 1, prixUnitaire: 1500, tva: 8.1 }],
+  paiementsHistorique: [], rappels: [],
+};
+
 // Facture pour test relances (en retard > 15 jours)
 const PAST_DATE = '2020-01-01';
 const FACTURE_RETARD_RELANCE = {
@@ -532,9 +551,13 @@ describe('Factures — paiements', () => {
     renderFactures({ factures: [FACTURE_ENVOYEE], onSave });
 
     fireEvent.click(screen.getByRole('button', { name: /^Payer$/i }));
-    expect(screen.getByText(/Enregistrer un paiement/i)).toBeInTheDocument();
+    const titre = screen.getByText(/Enregistrer un paiement/i);
+    expect(titre).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: /^Annuler$/i }));
+    // Scoper sur la modal — le bouton "Annuler" du cycle de vie existe aussi dans la liste
+    const modal = titre.closest('div[style*="position: fixed"]') || titre.closest('div');
+    const annulerModal = within(modal).getByRole('button', { name: /^Annuler$/i });
+    fireEvent.click(annulerModal);
 
     expect(onSave).not.toHaveBeenCalled();
     expect(screen.queryByText(/Enregistrer un paiement/i)).not.toBeInTheDocument();
@@ -583,16 +606,148 @@ describe('Factures — changerStatut', () => {
     expect(factureMAJ.paiementsHistorique.some(p => p.note === 'Soldé manuellement')).toBe(true);
   });
 
-  // 🐛 Pas de bouton "Annuler" dans l'UI — changerStatut('annulee') inaccessible
-  it("🐛 aucun bouton 'Annuler' ou 'Annulée' dans l'UI — changerStatut('annulee') est du code mort", () => {
+  // ✅ (anciennement 🐛) Le bouton "Annuler" existe désormais et déclenche changerStatut→'annulee'
+  it("le bouton 'Annuler' existe pour une facture émise — l'API annulee n'est plus du code mort", () => {
     renderFactures({ factures: [FACTURE_ENVOYEE] });
-    // Il n'existe aucun bouton qui appelle changerStatut avec 'annulee'
-    // La liste des boutons dans la liste : Modifier, Émettre (brouillon seulement), Payer, Suppr
-    // Le détail : Modifier, Émettre (brouillon), Paiement, Payée, Supprimer
-    // → Aucun "Annuler" / "Annulée" visible
     const tousLesBoutons = screen.getAllByRole('button').map(b => b.textContent?.trim());
-    expect(tousLesBoutons).not.toContain('Annuler');
-    expect(tousLesBoutons).not.toContain('Annulée');
+    expect(tousLesBoutons).toContain('Annuler');
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CYCLE DE VIE FACTURE — règle métier (annuler vs supprimer)
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('Factures — cycle de vie : brouillon (delete autorisé, pas d\'annuler)', () => {
+  it('brouillon → bouton "Suppr" présent, pas de bouton "Annuler" (liste)', () => {
+    renderFactures({ factures: [FACTURE_BROUILLON] });
+    const boutons = screen.getAllByRole('button').map(b => b.textContent?.trim());
+    expect(boutons).toContain('Suppr');
+    expect(boutons).not.toContain('Annuler');
+  });
+
+  it('brouillon → delete filtre la facture dans onSave', () => {
+    const onSave = vi.fn();
+    confirmSpy.mockReturnValue(true);
+    renderFactures({ factures: [FACTURE_BROUILLON], onSave });
+    fireEvent.click(screen.getByRole('button', { name: /^Suppr$/i }));
+    expect(onSave).toHaveBeenCalledOnce();
+    expect(onSave.mock.calls[0][0].some(f => f.id === 'F2')).toBe(false);
+  });
+});
+
+describe('Factures — cycle de vie : émise (annuler, pas de delete)', () => {
+  it('émise → bouton "Annuler" présent, pas de bouton "Suppr" (liste)', () => {
+    renderFactures({ factures: [FACTURE_ENVOYEE] });
+    const boutons = screen.getAllByRole('button').map(b => b.textContent?.trim());
+    expect(boutons).toContain('Annuler');
+    expect(boutons).not.toContain('Suppr');
+  });
+
+  it("émise → annuler appelle onSave avec statut 'annulee' (facture conservée, pas filtrée)", () => {
+    const onSave = vi.fn();
+    confirmSpy.mockReturnValue(true);
+    renderFactures({ factures: [FACTURE_ENVOYEE], onSave });
+    fireEvent.click(screen.getByRole('button', { name: /^Annuler$/i }));
+    expect(confirmSpy).toHaveBeenCalled();
+    expect(onSave).toHaveBeenCalledOnce();
+    const liste = onSave.mock.calls[0][0];
+    const f1 = liste.find(f => f.id === 'F1');
+    expect(f1).toBeDefined();              // conservée (numéro/trace gardés)
+    expect(f1.statut).toBe('annulee');
+    expect(f1.numero).toBe('F-2026-001');  // numéro conservé
+  });
+
+  it('émise → annuler avec confirm=false ne change rien', () => {
+    const onSave = vi.fn();
+    confirmSpy.mockReturnValue(false);
+    renderFactures({ factures: [FACTURE_ENVOYEE], onSave });
+    fireEvent.click(screen.getByRole('button', { name: /^Annuler$/i }));
+    expect(onSave).not.toHaveBeenCalled();
+  });
+
+  it('émise sans paiement → message de confirmation SANS avertissement fiduciaire', () => {
+    confirmSpy.mockReturnValue(false);
+    renderFactures({ factures: [FACTURE_ENVOYEE] });
+    fireEvent.click(screen.getByRole('button', { name: /^Annuler$/i }));
+    expect(confirmSpy).toHaveBeenCalledWith(expect.not.stringContaining('fiduciaire'));
+  });
+});
+
+describe('Factures — cycle de vie : partielle / payée (annuler + avertissement paiements)', () => {
+  it('partielle → "Annuler" présent, "Suppr" absent', () => {
+    renderFactures({ factures: [FACTURE_PARTIELLE] });
+    const boutons = screen.getAllByRole('button').map(b => b.textContent?.trim());
+    expect(boutons).toContain('Annuler');
+    expect(boutons).not.toContain('Suppr');
+  });
+
+  it('partielle (montantPaye>0) → annuler avec avertissement fiduciaire', () => {
+    confirmSpy.mockReturnValue(false);
+    renderFactures({ factures: [FACTURE_PARTIELLE] });
+    fireEvent.click(screen.getByRole('button', { name: /^Annuler$/i }));
+    expect(confirmSpy).toHaveBeenCalledWith(expect.stringContaining('fiduciaire'));
+  });
+
+  it("payée → annuler appelle onSave avec statut 'annulee' + avertissement paiements", () => {
+    const onSave = vi.fn();
+    confirmSpy.mockReturnValue(true);
+    renderFactures({ factures: [FACTURE_PAYEE], onSave });
+    fireEvent.click(screen.getByRole('button', { name: /^Annuler$/i }));
+    expect(confirmSpy).toHaveBeenCalledWith(expect.stringContaining('fiduciaire'));
+    const f5 = onSave.mock.calls[0][0].find(f => f.id === 'F5');
+    expect(f5.statut).toBe('annulee');
+  });
+});
+
+describe("Factures — cycle de vie : annulée (aucune action, reste visible)", () => {
+  it('annulée → reste visible dans la liste (numéro affiché)', () => {
+    renderFactures({ factures: [FACTURE_ANNULEE] });
+    expect(screen.getByText('F-2026-006')).toBeInTheDocument();
+    expect(screen.getAllByText('Annulée').length).toBeGreaterThan(0); // badge statut
+  });
+
+  it("annulée → aucun bouton d'action (ni Modifier, ni Payer, ni Annuler, ni Suppr)", () => {
+    renderFactures({ factures: [FACTURE_ANNULEE] });
+    const boutons = screen.getAllByRole('button').map(b => b.textContent?.trim());
+    expect(boutons).not.toContain('Modifier');
+    expect(boutons).not.toContain('Payer');
+    expect(boutons).not.toContain('Annuler');
+    expect(boutons).not.toContain('Suppr');
+    expect(boutons).not.toContain('Émettre');
+  });
+
+  it('annulée → vue détail : pas de bouton Annuler/Supprimer/Modifier', async () => {
+    renderFactures({ factures: [FACTURE_ANNULEE] });
+    const dataRow = screen.getAllByRole('row').find(r => r.textContent?.includes('F-2026-006'));
+    fireEvent.click(dataRow);
+    await waitFor(() => screen.getByText(/Facture F-2026-006/i));
+    const boutons = screen.getAllByRole('button').map(b => b.textContent?.trim());
+    expect(boutons).not.toContain('Modifier');
+    expect(boutons).not.toContain('Annuler');
+    expect(boutons).not.toContain('Supprimer');
+  });
+});
+
+describe('Factures — cycle de vie : vue détail (émise → annuler)', () => {
+  it("détail émise → bouton 'Annuler' (pas 'Supprimer')", async () => {
+    renderFactures({ factures: [FACTURE_ENVOYEE] });
+    const dataRow = screen.getAllByRole('row').find(r => r.textContent?.includes('F-2026-001'));
+    fireEvent.click(dataRow);
+    await waitFor(() => screen.getByText(/Facture F-2026-001/i));
+    const boutons = screen.getAllByRole('button').map(b => b.textContent?.trim());
+    expect(boutons).toContain('Annuler');
+    expect(boutons).not.toContain('Supprimer');
+  });
+
+  it("détail brouillon → bouton 'Supprimer' (pas 'Annuler')", async () => {
+    renderFactures({ factures: [FACTURE_BROUILLON] });
+    const dataRow = screen.getAllByRole('row').find(r => r.textContent?.includes('F-2026-002'));
+    fireEvent.click(dataRow);
+    await waitFor(() => screen.getByText(/Facture F-2026-002/i));
+    const boutons = screen.getAllByRole('button').map(b => b.textContent?.trim());
+    expect(boutons).toContain('Supprimer');
+    expect(boutons).not.toContain('Annuler');
   });
 });
 
@@ -600,51 +755,52 @@ describe('Factures — changerStatut', () => {
 // SUPPRIMER
 // ─────────────────────────────────────────────────────────────────────────────
 
-describe('Factures — supprimerFacture', () => {
+describe('Factures — supprimerFacture (brouillon uniquement)', () => {
   it('confirm=true → onSave appelé sans la facture supprimée', () => {
     const onSave = vi.fn();
     confirmSpy.mockReturnValue(true);
-    renderFactures({ factures: [FACTURE_ENVOYEE], onSave });
+    renderFactures({ factures: [FACTURE_BROUILLON], onSave });
 
     fireEvent.click(screen.getByRole('button', { name: /^Suppr$/i }));
 
     expect(confirmSpy).toHaveBeenCalled();
     expect(onSave).toHaveBeenCalledOnce();
     const liste = onSave.mock.calls[0][0];
-    expect(liste.some(f => f.id === 'F1')).toBe(false);
+    expect(liste.some(f => f.id === 'F2')).toBe(false);
     expect(liste).toHaveLength(0);
   });
 
   it('confirm=false → onSave non appelé', () => {
     const onSave = vi.fn();
     confirmSpy.mockReturnValue(false);
-    renderFactures({ factures: [FACTURE_ENVOYEE], onSave });
+    renderFactures({ factures: [FACTURE_BROUILLON], onSave });
 
     fireEvent.click(screen.getByRole('button', { name: /^Suppr$/i }));
 
     expect(onSave).not.toHaveBeenCalled();
   });
 
-  it('supprimer une facture parmi plusieurs conserve les autres', () => {
+  it('supprimer un brouillon parmi plusieurs conserve les autres', () => {
     const onSave = vi.fn();
     confirmSpy.mockReturnValue(true);
-    renderFactures({ factures: [FACTURE_ENVOYEE, FACTURE_BROUILLON], onSave });
+    const BROUILLON_2 = { ...FACTURE_BROUILLON, id: 'F2b', numero: 'F-2026-002b' };
+    renderFactures({ factures: [FACTURE_BROUILLON, BROUILLON_2], onSave });
 
     const boutonsSup = screen.getAllByRole('button', { name: /^Suppr$/i });
-    fireEvent.click(boutonsSup[0]); // Supprimer F1
+    fireEvent.click(boutonsSup[0]); // Supprimer F2
 
     const liste = onSave.mock.calls[0][0];
     expect(liste).toHaveLength(1);
-    expect(liste[0].id).toBe('F2');
+    expect(liste[0].id).toBe('F2b');
   });
 
   it('supprimer nettoie paiementsData (factureId orphelins)', () => {
     const setPaiementsData = vi.fn();
     const paiementsData = {
-      CH1: [{ id: 'pay1', factureId: 'F1', montant: 500 }],
+      CH1: [{ id: 'pay1', factureId: 'F2', montant: 500 }],
     };
     confirmSpy.mockReturnValue(true);
-    renderFactures({ factures: [FACTURE_ENVOYEE], setPaiementsData, paiementsData });
+    renderFactures({ factures: [FACTURE_BROUILLON], setPaiementsData, paiementsData });
 
     fireEvent.click(screen.getByRole('button', { name: /^Suppr$/i }));
 

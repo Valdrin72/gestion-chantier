@@ -388,6 +388,22 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
     if (returnToListe) { setVue('liste'); setSelected(null); }
   };
 
+  // Annuler une facture émise/partielle/payée — garde le numéro + la trace (statut 'annulee').
+  // Remplace la suppression interdite sur ces statuts. Sur facture avec paiements → avertissement renforcé.
+  const annulerFacture = (id, returnToListe = false) => {
+    const f = factures.find(x => x.id === id);
+    if (!f) return;
+    if (f.statut === 'annulee' || f.statut === 'brouillon') return; // pas d'action sur ces statuts
+    const montantPaye = parseFloat(f.montantPaye) || 0;
+    const msg = montantPaye > 0
+      ? `Annuler la facture ${f.numero || ''} ?\n\nCette facture a des paiements enregistrés (CHF ${montantPaye.toLocaleString('fr-CH')}). L'annulation ne génère pas d'avoir — régularise avec ton fiduciaire.\n\nLa facture restera visible, marquée annulée.`
+      : `Annuler la facture ${f.numero || ''} ?\nElle restera visible, marquée annulée (le numéro est conservé).`;
+    if (!window.confirm(msg)) return;
+    onSave(factures.map(x => x.id === id ? { ...x, statut: 'annulee' } : x));
+    if (returnToListe) { setVue('liste'); setSelected(null); }
+    else if (selected?.id === id) setSelected({ ...f, statut: 'annulee' });
+  };
+
   const ouvrirRappel = (facture, niveau) => {
     const cli = clients.find(c => String(c.id) === String(facture.clientId));
     const contenu = genererTexteRappel(niveau, facture, cli);
@@ -584,7 +600,7 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
                     <td style={S.td}><BadgeStatut statut={f.statut} /></td>
                     <td style={S.td} onClick={e => e.stopPropagation()}>
                       <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', alignItems: 'center' }}>
-                        {canEdit && (
+                        {canEdit && f.statut !== 'annulee' && (
                           <>
                             <button style={{ ...S.btnGhost, padding: '5px 10px', fontSize: 12 }}
                               onClick={() => ouvrirForm(f)}>Modifier</button>
@@ -598,12 +614,21 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
                           <button style={{ ...S.btnPrimary, padding: '5px 10px', fontSize: 12 }}
                             onClick={() => setPaiementModal(f)}>Payer</button>
                         )}
-                        {canEdit && (
+                        {/* Brouillon : suppression autorisée (pas encore émis). */}
+                        {canEdit && f.statut === 'brouillon' && (
                           <button
                             style={{ ...S.btnDanger, padding: '5px 10px', fontSize: 12, opacity: 0.75 }}
                             onMouseEnter={e => e.currentTarget.style.opacity = '1'}
                             onMouseLeave={e => e.currentTarget.style.opacity = '0.75'}
                             onClick={() => supprimerFacture(f.id)}>Suppr</button>
+                        )}
+                        {/* Émise/Partielle/Payée : pas de delete — annulation (garde la trace). */}
+                        {canEdit && (f.statut === 'envoyee' || f.statut === 'partielle' || f.statut === 'payee') && (
+                          <button
+                            style={{ ...S.btnDanger, padding: '5px 10px', fontSize: 12, opacity: 0.75 }}
+                            onMouseEnter={e => e.currentTarget.style.opacity = '1'}
+                            onMouseLeave={e => e.currentTarget.style.opacity = '0.75'}
+                            onClick={() => annulerFacture(f.id)}>Annuler</button>
                         )}
                         {(() => {
                           const chantierF = chantiers.find(c => String(c.id) === String(f.chantierId));
@@ -724,7 +749,7 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
               </>
             );
           })()}
-          {canEdit && (
+          {canEdit && f.statut !== 'annulee' && (
             <>
               <button style={S.btnGhost} onClick={() => ouvrirForm(f)}>Modifier</button>
               {f.statut === 'brouillon' && (
@@ -739,11 +764,20 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
                   </button>
                 </>
               )}
-              <button
-                style={{ ...S.btnDanger, marginLeft: 8 }}
-                onClick={() => supprimerFacture(f.id, true)}>
-                Supprimer
-              </button>
+              {/* Brouillon : delete autorisé. Émise+ : annulation (trace conservée). */}
+              {f.statut === 'brouillon' ? (
+                <button
+                  style={{ ...S.btnDanger, marginLeft: 8 }}
+                  onClick={() => supprimerFacture(f.id, true)}>
+                  Supprimer
+                </button>
+              ) : (
+                <button
+                  style={{ ...S.btnDanger, marginLeft: 8 }}
+                  onClick={() => annulerFacture(f.id, true)}>
+                  Annuler
+                </button>
+              )}
             </>
           )}
           </div>
@@ -984,12 +1018,18 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
           </div>
         )}
 
-        {canEdit && (
+        {/* Action bas de page : brouillon = supprimer, émise/partielle/payée = annuler, annulée = rien. */}
+        {canEdit && f.statut === 'brouillon' && (
           <div style={{ marginTop: 16, display: 'flex', gap: 8 }}>
             <button style={S.btnDanger} onClick={() => {
               supprimerFacture(f.id);
               setVue('liste');
             }}>Supprimer</button>
+          </div>
+        )}
+        {canEdit && (f.statut === 'envoyee' || f.statut === 'partielle' || f.statut === 'payee') && (
+          <div style={{ marginTop: 16, display: 'flex', gap: 8 }}>
+            <button style={S.btnDanger} onClick={() => annulerFacture(f.id, true)}>Annuler</button>
           </div>
         )}
 
@@ -1301,7 +1341,8 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
           <button style={S.btnSuccess} onClick={() => sauvegarder('envoyee')}>
             Émettre la facture
           </button>
-          {!isNew && (
+          {/* Suppression depuis le form : uniquement sur brouillon (émise+ = annulation via liste/détail). */}
+          {!isNew && form.statut === 'brouillon' && (
             <button style={S.btnDanger} onClick={() => {
               supprimerFacture(form.id);
               setVue('liste');

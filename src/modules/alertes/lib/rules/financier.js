@@ -25,8 +25,8 @@ export const MARGE_NEGATIVE = {
 
 export const MARGE_FAIBLE = {
   id: 'fin.marge.faible',
-  nom: 'Marge chantier faible',
-  description: 'Marge brute prévisionnelle sous 15%',
+  nom: 'Marge chantier danger',
+  description: 'Marge nette prévisionnelle sous 15% (seuil danger CYNA)',
   category: 'financier',
   trigger: 'event',
   eventTypes: ['chantier.couts.updated', 'devis.updated'],
@@ -37,18 +37,49 @@ export const MARGE_FAIBLE = {
   evaluate: (ctx) => ctx.chantiers
     .filter(c => {
       if (c.statut !== 'actif') return false;
-      const marge = c.marge_brute_actuelle;
+      const margeNette = c.marge_nette_actuelle;
       const ca = c.budget_total;
-      if (typeof marge !== 'number' || ca === 0) return false;
-      const taux = marge / ca;
-      return taux >= 0 && taux < 0.15;
+      if (typeof margeNette !== 'number' || ca === 0) return false;
+      return margeNette / ca < 0.15;
     })
     .map(c => {
-      const taux = (c.marge_brute_actuelle ?? 0) / c.budget_total;
+      const taux = (c.marge_nette_actuelle ?? 0) / c.budget_total;
       return {
         contextRef: { type: 'chantier', id: c.id, label: c.nom },
-        title: `Marge faible : ${c.nom}`,
-        message: `Taux de marge brute ${fmtPct(taux)} (cible CYNA ≥ 25%).`,
+        title: `Marge danger : ${c.nom}`,
+        message: `Taux de marge nette ${fmtPct(taux)} — sous le seuil danger CYNA (15%).`,
+        data: { tauxMarge: taux },
+        actions: [{ label: 'Analyser', type: 'navigate', target: 'chantiers' }],
+      };
+    }),
+};
+
+export const MARGE_LIMITE = {
+  id: 'fin.marge.limite',
+  nom: 'Marge chantier limite',
+  description: 'Marge nette entre 15% et 20% (zone limite CYNA)',
+  category: 'financier',
+  trigger: 'event',
+  eventTypes: ['chantier.couts.updated', 'devis.updated'],
+  severity: 'MEDIUM',
+  destinataires: ['direction', 'conducteur'],
+  canaux: ['in_app'],
+  cooldownMinutes: 60 * 24,
+  evaluate: (ctx) => ctx.chantiers
+    .filter(c => {
+      if (c.statut !== 'actif') return false;
+      const margeNette = c.marge_nette_actuelle;
+      const ca = c.budget_total;
+      if (typeof margeNette !== 'number' || ca === 0) return false;
+      const taux = margeNette / ca;
+      return taux >= 0.15 && taux < 0.20;
+    })
+    .map(c => {
+      const taux = (c.marge_nette_actuelle ?? 0) / c.budget_total;
+      return {
+        contextRef: { type: 'chantier', id: c.id, label: c.nom },
+        title: `Marge limite : ${c.nom}`,
+        message: `Taux de marge nette ${fmtPct(taux)} — zone limite CYNA (cible ≥ 20%).`,
         data: { tauxMarge: taux },
         actions: [{ label: 'Analyser', type: 'navigate', target: 'chantiers' }],
       };
@@ -153,6 +184,7 @@ export const DEVIS_SANS_RELANCE = {
 export const FINANCIER_RULES = [
   MARGE_NEGATIVE,
   MARGE_FAIBLE,
+  MARGE_LIMITE,
   CPI_CRITIQUE,
   DEPASSEMENT_BUDGET_25,
   DEVIS_SANS_RELANCE,

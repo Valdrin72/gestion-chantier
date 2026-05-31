@@ -56,6 +56,7 @@ export function adapterContexteAlertes({ chantiers = [], devis = [], factures = 
   const now = new Date();
   const employesList = Array.isArray(parametres?.employes) ? parametres.employes : [];
 
+  const tauxFG = parseFloat(parametres?.tauxFraisGeneraux) || 12;
   const devisMap = new Map(devis.map(d => [String(d.id), d]));
 
   const chantiersAdaptes = chantiers.map(c => {
@@ -93,6 +94,7 @@ export function adapterContexteAlertes({ chantiers = [], devis = [], factures = 
       couts_engages: couts,
       marge_brute_prevue: ca > 0 && devisLie ? ca * (parseFloat(parametres?.tauxMargeObjectif ?? 0.25)) : null,
       marge_brute_actuelle: ca > 0 ? ca - couts : null,
+      marge_nette_actuelle: ca > 0 ? (ca - couts) - ca * (tauxFG / 100) : null,
     };
   });
 

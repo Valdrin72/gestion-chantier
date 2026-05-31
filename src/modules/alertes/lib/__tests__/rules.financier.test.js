@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { MARGE_NEGATIVE, MARGE_FAIBLE, CPI_CRITIQUE, DEPASSEMENT_BUDGET_25, DEVIS_SANS_RELANCE } from '../rules/financier.js';
+import { MARGE_NEGATIVE, MARGE_FAIBLE, MARGE_LIMITE, CPI_CRITIQUE, DEPASSEMENT_BUDGET_25, DEVIS_SANS_RELANCE } from '../rules/financier.js';
 
 function baseCtx(overrides = {}) {
   return {
@@ -44,19 +44,43 @@ describe('MARGE_NEGATIVE', () => {
 });
 
 describe('MARGE_FAIBLE', () => {
-  it('déclenche si taux 0–14%', () => {
-    const ctx = baseCtx({ chantiers: [makeChantier({ marge_brute_actuelle: 5_000, budget_total: 50_000 })] });
+  it('déclenche si marge nette 0–14% (danger)', () => {
+    const ctx = baseCtx({ chantiers: [makeChantier({ marge_nette_actuelle: 5_000, budget_total: 50_000 })] });
     expect(MARGE_FAIBLE.evaluate(ctx)).toHaveLength(1);
   });
 
-  it('ne déclenche pas si taux >= 15%', () => {
-    const ctx = baseCtx({ chantiers: [makeChantier({ marge_brute_actuelle: 10_000, budget_total: 50_000 })] });
+  it('ne déclenche pas si marge nette >= 15%', () => {
+    const ctx = baseCtx({ chantiers: [makeChantier({ marge_nette_actuelle: 10_000, budget_total: 50_000 })] });
     expect(MARGE_FAIBLE.evaluate(ctx)).toHaveLength(0);
   });
 
-  it('ne déclenche pas si marge négative (couvert par MARGE_NEGATIVE)', () => {
-    const ctx = baseCtx({ chantiers: [makeChantier({ marge_brute_actuelle: -1_000, budget_total: 50_000 })] });
+  it('déclenche si marge nette négative (< 15% inclut le négatif)', () => {
+    const ctx = baseCtx({ chantiers: [makeChantier({ marge_nette_actuelle: -1_000, budget_total: 50_000 })] });
+    expect(MARGE_FAIBLE.evaluate(ctx)).toHaveLength(1);
+  });
+
+  it('ne déclenche pas si marge_nette_actuelle absente', () => {
+    const ctx = baseCtx({ chantiers: [makeChantier()] });
     expect(MARGE_FAIBLE.evaluate(ctx)).toHaveLength(0);
+  });
+});
+
+describe('MARGE_LIMITE', () => {
+  it('déclenche si marge nette 15–19%', () => {
+    const ctx = baseCtx({ chantiers: [makeChantier({ marge_nette_actuelle: 8_000, budget_total: 50_000 })] });
+    // 8000/50000 = 16% → [15, 20[
+    expect(MARGE_LIMITE.evaluate(ctx)).toHaveLength(1);
+  });
+
+  it('ne déclenche pas si marge nette >= 20%', () => {
+    const ctx = baseCtx({ chantiers: [makeChantier({ marge_nette_actuelle: 11_000, budget_total: 50_000 })] });
+    // 11000/50000 = 22% → pas dans [15, 20[
+    expect(MARGE_LIMITE.evaluate(ctx)).toHaveLength(0);
+  });
+
+  it('ne déclenche pas si marge nette < 15% (couvert par MARGE_FAIBLE)', () => {
+    const ctx = baseCtx({ chantiers: [makeChantier({ marge_nette_actuelle: 5_000, budget_total: 50_000 })] });
+    expect(MARGE_LIMITE.evaluate(ctx)).toHaveLength(0);
   });
 });
 

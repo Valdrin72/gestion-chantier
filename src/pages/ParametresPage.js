@@ -48,7 +48,7 @@ const btnPrimaire = DS.btnPrimary;
 const btnSucces  = DS.btnSuccess;
 const btnDanger  = DS.btnDanger;
 
-function Parametres({ parametres, setParametres, clients = [], setClients = () => {}, chantiers = [], setChantiers = () => {}, devis = [], setDevis = () => {}, factures = [], setFactures = () => {}, naviguer = () => {} }) {
+function Parametres({ parametres, setParametres, clients = [], setClients = () => {}, chantiers = [], setChantiers = () => {}, devis = [], setDevis = () => {}, factures = [], setFactures = () => {}, pointages = [], setPointages = () => {}, naviguer = () => {} }) {
   const [onglet, setOnglet] = useState('dashboard');
   const [nouvelEmploye, setNouvelEmploye] = useState({ nom: '', poste: 'Ouvrier qualifié', tarifJour: '', telephone: '', email: '' });
   const [nouveauClient, setNouveauClient] = useState({ nom: '', prenom: '', entreprise: '', telephone: '', email: '' });
@@ -61,7 +61,7 @@ function Parametres({ parametres, setParametres, clients = [], setClients = () =
   const exporterDonnees = () => {
     const date = new Date().toISOString().slice(0, 10);
     const blob = new Blob(
-      [JSON.stringify({ meta: { date, version: 1, app: 'CYNA' }, chantiers, devis, factures, clients, parametres }, null, 2)],
+      [JSON.stringify({ meta: { date, version: 1, app: 'CYNA' }, chantiers, devis, factures, clients, parametres, pointages }, null, 2)],
       { type: 'application/json' }
     );
     const url = URL.createObjectURL(blob);
@@ -84,13 +84,15 @@ function Parametres({ parametres, setParametres, clients = [], setClients = () =
         alert('Fichier de sauvegarde invalide — structure incorrecte (chantiers, devis, factures ou clients manquants).');
         return;
       }
+      const hasPointages = Array.isArray(data.pointages);
       const ok = window.confirm(
         `Restaurer la sauvegarde du ${data.meta?.date || 'date inconnue'} ?\n\n` +
         `Cette action remplacera TOUTES les données actuelles :\n` +
         `• ${(data.chantiers || []).length} chantiers\n` +
         `• ${(data.devis || []).length} devis\n` +
         `• ${(data.factures || []).length} factures\n` +
-        `• ${(data.clients || []).length} clients`
+        `• ${(data.clients || []).length} clients\n` +
+        `• ${hasPointages ? data.pointages.length : 0} pointages${hasPointages ? '' : ' (backup ancien format — pointages réinitialisés)'}`
       );
       if (!ok) return;
       if (data.parametres) setParametres(data.parametres);
@@ -98,7 +100,12 @@ function Parametres({ parametres, setParametres, clients = [], setClients = () =
       if (data.chantiers) setChantiers(data.chantiers);
       if (data.devis) setDevis(data.devis);
       if (data.factures) setFactures(data.factures);
-      alert('Sauvegarde restaurée avec succès — chantiers, devis, factures, clients et paramètres.');
+      setPointages(hasPointages ? data.pointages : []);
+      if (!hasPointages) {
+        alert('Attention : ce backup ne contient pas de pointages (version antérieure). Les heures pointées ont été réinitialisées. Vérifiez vos coûts MO avant utilisation.');
+      } else {
+        alert('Sauvegarde restaurée avec succès — chantiers, devis, factures, clients, paramètres et pointages.');
+      }
     } catch {
       alert('Erreur lors de la lecture du fichier. Assurez-vous que c\'est un fichier backup CYNA valide.');
     }

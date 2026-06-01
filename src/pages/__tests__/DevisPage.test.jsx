@@ -655,11 +655,11 @@ describe('DevisPage — propagation typesTravaux devis → chantier', () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 11. SUPPRESSION CASCADE — devis + chantier lié + facture liée
+// 11. SUPPRESSION PROTÉGÉE — principe "Rien ne se détruit"
 // ─────────────────────────────────────────────────────────────────────────────
 
-describe('DevisPage — suppression en cascade', () => {
-  it('supprimer un devis sans chantier lié supprime uniquement le devis', async () => {
+describe('DevisPage — suppression protégée', () => {
+  it('supprimer un devis vierge (sans chantier ni facture) → suppression OK', async () => {
     const { ctx } = renderDevis({ devis: [DEVIS_BROUILLON] });
 
     fireEvent.click(screen.getByTitle('Supprimer'));
@@ -667,67 +667,50 @@ describe('DevisPage — suppression en cascade', () => {
 
     const nouveauxDevis = ctx.setDevis.mock.calls[0][0];
     expect(nouveauxDevis).toHaveLength(0);
-    // Pas de chantier à supprimer
+    // Pas de cascade — setChantiers et setFactures ne doivent pas être appelés
     expect(ctx.setChantiers).not.toHaveBeenCalled();
-    // Pas de facture à supprimer
     expect(ctx.setFactures).not.toHaveBeenCalled();
   });
 
-  it('supprimer un devis avec chantier et facture → les 3 setters appelés', async () => {
+  it('supprimer un devis avec chantier lié → BLOQUÉ, afficherNotif appelée', async () => {
     const { ctx } = renderDevis({
       devis: [DEVIS_CASCADE],
       chantiers: [CHANTIER_LIE],
-      factures: [FACTURE_LIEE],
     });
 
     fireEvent.click(screen.getByTitle('Supprimer'));
-    await waitFor(() => expect(ctx.setDevis).toHaveBeenCalledOnce());
 
-    // Devis retiré
-    const nouveauxDevis = ctx.setDevis.mock.calls[0][0];
-    expect(nouveauxDevis).toHaveLength(0);
+    await waitFor(() => expect(ctx.afficherNotif).toHaveBeenCalledOnce());
+    const [msg, type] = ctx.afficherNotif.mock.calls[0];
+    expect(msg).toMatch(/ne peut pas être supprimé/);
+    expect(type).toBe('error');
 
-    // Chantier lié retiré
-    expect(ctx.setChantiers).toHaveBeenCalledOnce();
-    const nouveauxChantiers = ctx.setChantiers.mock.calls[0][0];
-    expect(nouveauxChantiers).toHaveLength(0);
-
-    // Facture liée retirée
-    expect(ctx.setFactures).toHaveBeenCalledOnce();
-    const nouvellesFactures = ctx.setFactures.mock.calls[0][0];
-    expect(nouvellesFactures).toHaveLength(0);
+    // Aucun setter appelé — rien n'est détruit
+    expect(ctx.setDevis).not.toHaveBeenCalled();
+    expect(ctx.setChantiers).not.toHaveBeenCalled();
+    expect(ctx.setFactures).not.toHaveBeenCalled();
   });
 
-  it('confirmer affiche le nombre de chantiers et factures impactés', async () => {
+  it('supprimer un devis avec facture directe → BLOQUÉ', async () => {
     const { ctx } = renderDevis({
       devis: [DEVIS_CASCADE],
-      chantiers: [CHANTIER_LIE],
       factures: [FACTURE_LIEE],
     });
 
     fireEvent.click(screen.getByTitle('Supprimer'));
 
-    await waitFor(() => expect(ctx.confirmer).toHaveBeenCalledOnce());
-    const msgConfirm = ctx.confirmer.mock.calls[0][0];
-    expect(msgConfirm).toMatch(/1 chantier/);
-    expect(msgConfirm).toMatch(/1 facture/);
+    await waitFor(() => expect(ctx.afficherNotif).toHaveBeenCalledOnce());
+    expect(ctx.setDevis).not.toHaveBeenCalled();
   });
 
-  it('si confirmer renvoie false → rien n\'est supprimé', async () => {
+  it('si confirmer renvoie false sur devis vierge → rien n\'est supprimé', async () => {
     const confirmer = vi.fn().mockResolvedValue(false);
-    const { ctx } = renderDevis({
-      devis: [DEVIS_CASCADE],
-      chantiers: [CHANTIER_LIE],
-      factures: [FACTURE_LIEE],
-      confirmer,
-    });
+    const { ctx } = renderDevis({ devis: [DEVIS_BROUILLON], confirmer });
 
     fireEvent.click(screen.getByTitle('Supprimer'));
     await waitFor(() => expect(confirmer).toHaveBeenCalledOnce());
 
     expect(ctx.setDevis).not.toHaveBeenCalled();
-    expect(ctx.setChantiers).not.toHaveBeenCalled();
-    expect(ctx.setFactures).not.toHaveBeenCalled();
   });
 });
 

@@ -9,6 +9,7 @@ import { DS } from '../ds';
 import { useApp } from '../context/AppContext';
 import { exportDevis } from '../ExportPDF';
 import AssistantDevisIA from '../AssistantDevisIA';
+import { devisEstReferencé } from '../utils/referenceGuard';
 
 const inputStyle = DS.input;
 const labelStyle = DS.label;
@@ -755,20 +756,10 @@ function Devis() {
                           ><Pencil size={14} /></button>
                           <button
                             onClick={async () => {
-                              const chantiersLies = chantiers.filter(ch => String(ch.devisId) === String(d.id));
-                              const facturesLiees = factures.filter(f => chantiersLies.some(ch => String(ch.id) === String(f.chantierId)) || String(f.devisId) === String(d.id));
-                              const lignes = [`Supprimer le devis "${d.numero}" ?`];
-                              if (chantiersLies.length > 0) lignes.push(`→ ${chantiersLies.length} chantier(s) lié(s) seront aussi supprimé(s)`);
-                              if (facturesLiees.length > 0) lignes.push(`→ ${facturesLiees.length} facture(s) liée(s) seront aussi supprimée(s)`);
-                              lignes.push('Cette action est irréversible.');
-                              if (!await confirmer(lignes.join('\n'), { labelOui: 'Supprimer' })) return;
-                              const idsChantiers = new Set(chantiersLies.map(ch => String(ch.id)));
+                              const erreur = devisEstReferencé(d, { chantiers, factures });
+                              if (erreur) { afficherNotif(erreur, 'error'); return; }
+                              if (!await confirmer(`Supprimer le devis "${d.numero}" ?`, { labelOui: 'Supprimer' })) return;
                               setDevis(devis.filter(dv => String(dv.id) !== String(d.id)));
-                              if (idsChantiers.size > 0) setChantiers(chantiers.filter(ch => !idsChantiers.has(String(ch.id))));
-                              if (facturesLiees.length > 0) {
-                                const idsFactures = new Set(facturesLiees.map(f => String(f.id)));
-                                setFactures(factures.filter(f => !idsFactures.has(String(f.id))));
-                              }
                             }}
                             style={{ ...DS.iconBtn, color: '#EF4444' }}
                             title="Supprimer"

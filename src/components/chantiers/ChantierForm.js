@@ -108,7 +108,7 @@ function ChantierForm({ form, setForm, erreurs, setErreurs, modeCompleter, onSau
       <div style={{ marginBottom: '20px' }}>
         <label style={labelStyle}>Types de travaux</label>
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-          {parametres.typesTravaux.map(t => (
+          {(parametres.typesTravaux || []).map(t => (
             <button key={t.id} onClick={() => toggleTravaux(t.nom)} style={{
               background: (form.typesTravaux || []).includes(t.nom) ? 'rgba(13,61,110,0.18)' : 'var(--bg-glass-2)',
               color: (form.typesTravaux || []).includes(t.nom) ? C.primaire : 'var(--text-secondary)',

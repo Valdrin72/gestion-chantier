@@ -13,7 +13,7 @@ const sanitiser = (obj) => {
 };
 
 function Chantiers() {
-  const { chantiers, setChantiers, devis = [], factures = [], setFactures, parametres, naviguer, contexte, afficherNotif, confirmer } = useApp();
+  const { chantiers, setChantiers, devis = [], factures = [], pointages = [], parametres, naviguer, contexte, afficherNotif, confirmer } = useApp();
   const { filtre, setFiltre, chantiersFiltres, joursParChantier } = useChantierFiltres();
 
   const [vue, setVue] = useState('liste');
@@ -108,13 +108,19 @@ function Chantiers() {
 
   const supprimer = async (id) => {
     const c = chantiers.find(ch => ch.id === id);
+    // Option 2 — un chantier avec historique (heures pointées OU factures) ne se supprime jamais :
+    // on conserve toute la donnée et on le passe en Terminé/Annulé. Seule une coquille vide est supprimable.
     const facturesLiees = factures.filter(f => String(f.chantierId) === String(id));
-    const msg = facturesLiees.length > 0
-      ? `Supprimer le chantier "${c?.nom}" et ses ${facturesLiees.length} facture(s) liée(s) ?\n\nCette action est irréversible.`
-      : `Supprimer le chantier "${c?.nom}" ?\n\nCette action est irréversible.`;
-    if (!await confirmer(msg, { labelOui: 'Supprimer' })) return;
+    const pointagesLies = (pointages || []).filter(p =>
+      (p.repartitions || []).some(r => String(r.chantierId) === String(id))
+    );
+    if (facturesLiees.length > 0 || pointagesLies.length > 0) {
+      const msgBloque = 'Ce chantier a des heures pointées et/ou des factures. Il ne peut pas être supprimé — passe-le en Terminé ou Annulé pour conserver l\'historique.';
+      if (afficherNotif) afficherNotif(msgBloque); else alert(msgBloque);
+      return;
+    }
+    if (!await confirmer(`Supprimer le chantier "${c?.nom}" ?\n\nCette action est irréversible.`, { labelOui: 'Supprimer' })) return;
     setChantiers(chantiers.filter(ch => String(ch.id) !== String(id)));
-    if (facturesLiees.length > 0) setFactures(factures.filter(f => String(f.chantierId) !== String(id)));
     setSelected(null);
     setVue('liste');
   };

@@ -228,7 +228,7 @@ describe('ChantiersPage — avancement (auto-dérivé, borné)', () => {
 // SUPPRESSION + CASCADE
 // ─────────────────────────────────────────────────────────────────────────────
 
-describe('ChantiersPage — suppression & cascade', () => {
+describe('ChantiersPage — suppression protégée (Option 2)', () => {
   function supprimer(nomChantier, ctxOver) {
     const r = renderChantiers(ctxOver);
     const ligne = screen.getByText(nomChantier).closest('tr');
@@ -236,51 +236,86 @@ describe('ChantiersPage — suppression & cascade', () => {
     return r;
   }
 
-  it('supprimer (confirm=true) → setChantiers sans le chantier', async () => {
-    const { ctx } = supprimer('Bureaux Dupont');
+  // Pointage liant un employé au chantier via repartitions[].chantierId
+  const pointageLie = (id, chantierId) => ({
+    id, date: '2026-01-01', employeId: 1,
+    repartitions: [{ chantierId, categorie: 'production', heures: 8 }],
+  });
+
+  it('coquille vide (sans pointage ni facture) → suppression AUTORISÉE', async () => {
+    const { ctx } = supprimer('Bureaux Dupont', { factures: [], pointages: [] });
     await waitFor(() => expect(ctx.setChantiers).toHaveBeenCalled());
     const arg = ctx.setChantiers.mock.calls.at(-1)[0];
     expect(arg.some(c => String(c.id) === '1')).toBe(false);
     expect(arg.some(c => String(c.id) === '2')).toBe(true);
   });
 
-  it('cascade factures : supprimer un chantier → setFactures sans ses factures liées', async () => {
-    const factures = [
-      { id: 'F1', chantierId: 1, montantTTC: 1000 },
-      { id: 'F2', chantierId: 2, montantTTC: 2000 },
-    ];
-    const { ctx } = supprimer('Bureaux Dupont', { factures });
-    await waitFor(() => expect(ctx.setFactures).toHaveBeenCalled());
-    const arg = ctx.setFactures.mock.calls.at(-1)[0];
-    // F1 (liée au chantier 1 supprimé) retirée, F2 conservée
-    expect(arg.some(f => f.id === 'F1')).toBe(false);
-    expect(arg.some(f => f.id === 'F2')).toBe(true);
-  });
-
-  it('pas de factures liées → setFactures NON appelé (rien à cascader)', async () => {
-    const { ctx } = supprimer('Bureaux Dupont', { factures: [] });
-    await waitFor(() => expect(ctx.setChantiers).toHaveBeenCalled());
+  it('🐛→✅ chantier AVEC pointages → suppression BLOQUÉE (zéro orphelin)', async () => {
+    const pointages = [pointageLie('P1', 1), pointageLie('P2', 2)];
+    const { ctx } = supprimer('Bureaux Dupont', { pointages, factures: [] });
+    // message d'information affiché, AUCUNE mutation
+    await waitFor(() => expect(ctx.afficherNotif).toHaveBeenCalled());
+    expect(ctx.afficherNotif.mock.calls.at(-1)[0]).toMatch(/Terminé ou Annulé|heures pointées/i);
+    expect(ctx.setChantiers).not.toHaveBeenCalled();
+    expect(ctx.setPointages).not.toHaveBeenCalled(); // pas d'orphelin : le chantier reste
     expect(ctx.setFactures).not.toHaveBeenCalled();
   });
 
-  it('confirm=false → AUCUNE suppression', async () => {
-    const confirmer = vi.fn().mockResolvedValue(false);
-    const { ctx } = supprimer('Bureaux Dupont', { confirmer });
-    await waitFor(() => expect(confirmer).toHaveBeenCalled());
+  it('chantier AVEC factures (sans pointage) → suppression BLOQUÉE', async () => {
+    const factures = [{ id: 'F1', chantierId: 1, montantTTC: 1000 }];
+    const { ctx } = supprimer('Bureaux Dupont', { factures, pointages: [] });
+    await waitFor(() => expect(ctx.afficherNotif).toHaveBeenCalled());
     expect(ctx.setChantiers).not.toHaveBeenCalled();
     expect(ctx.setFactures).not.toHaveBeenCalled();
   });
 
-  it('🐛 cascade incomplète : supprimer un chantier NE supprime PAS ses pointages → orphelins', async () => {
-    // pointages référençant le chantier 1 via repartitions[].chantierId
-    const pointages = [
-      { id: 'P1', date: '2026-01-01', employeId: 1, repartitions: [{ chantierId: 1, categorie: 'production', heures: 8 }] },
-      { id: 'P2', date: '2026-01-02', employeId: 1, repartitions: [{ chantierId: 2, categorie: 'production', heures: 8 }] },
-    ];
-    const { ctx } = supprimer('Bureaux Dupont', { pointages });
-    await waitFor(() => expect(ctx.setChantiers).toHaveBeenCalled());
-    // setPointages n'est JAMAIS appelé → P1 reste, pointant vers un chantier supprimé (orphelin).
-    // Les pointages sont la source de vérité (CLAUDE.md §2.1) : un orphelin pollue les calculs heures/coûts.
+  it('chantier AVEC pointage ET facture → suppression BLOQUÉE', async () => {
+    const factures = [{ id: 'F1', chantierId: 1, montantTTC: 1000 }];
+    const pointages = [pointageLie('P1', 1)];
+    const { ctx } = supprimer('Bureaux Dupont', { factures, pointages });
+    await waitFor(() => expect(ctx.afficherNotif).toHaveBeenCalled());
+    expect(ctx.setChantiers).not.toHaveBeenCalled();
     expect(ctx.setPointages).not.toHaveBeenCalled();
+    expect(ctx.setFactures).not.toHaveBeenCalled();
+  });
+
+  it('coquille vide + confirm=false → AUCUNE suppression', async () => {
+    const confirmer = vi.fn().mockResolvedValue(false);
+    const { ctx } = supprimer('Bureaux Dupont', { confirmer, factures: [], pointages: [] });
+    await waitFor(() => expect(confirmer).toHaveBeenCalled());
+    expect(ctx.setChantiers).not.toHaveBeenCalled();
+  });
+
+  it('passer en Terminé via le form → chantier conservé, pointages + factures intacts', () => {
+    const factures = [{ id: 'F1', chantierId: 1, montantTTC: 1000 }];
+    const pointages = [pointageLie('P1', 1)];
+    const { ctx } = renderChantiers({ factures, pointages });
+    const ligne = screen.getByText('Bureaux Dupont').closest('tr');
+    fireEvent.click(within(ligne).getByTitle('Modifier'));
+    fireEvent.change(screen.getByDisplayValue('En cours'), { target: { value: 'Terminé' } });
+    fireEvent.click(screen.getByRole('button', { name: /Enregistrer le suivi/i }));
+    // chantier conservé avec nouveau statut, même id
+    const arg = ctx.setChantiers.mock.calls.at(-1)[0];
+    const maj = arg.find(c => c.id === 1);
+    expect(maj.statut).toBe('Terminé');
+    // rien n'est effacé : ni factures, ni pointages
+    expect(ctx.setFactures).not.toHaveBeenCalled();
+    expect(ctx.setPointages).not.toHaveBeenCalled();
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GARDE-FOU FORM
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('ChantierForm — robustesse', () => {
+  it('parametres sans typesTravaux → pas de crash à l\'ouverture du form', () => {
+    const params = clone(PARAMETRES);
+    delete params.typesTravaux;
+    renderChantiers({ parametres: params });
+    const ligne = screen.getByText('Bureaux Dupont').closest('tr');
+    // ne doit pas throw (garde || [])
+    expect(() => fireEvent.click(within(ligne).getByTitle('Modifier'))).not.toThrow();
+    expect(screen.getByText('Modifier le chantier')).toBeInTheDocument();
   });
 });

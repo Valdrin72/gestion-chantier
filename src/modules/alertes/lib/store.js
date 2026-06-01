@@ -2,17 +2,65 @@ import { create } from 'zustand';
 
 const SEVERITY_ORDER = { INFO: 0, LOW: 1, MEDIUM: 2, HIGH: 3, CRITICAL: 4 };
 
-export const useAlertsStore = create((set, get) => ({
-  alerts: [],
+// ── Persistance localStorage ──────────────────────────────────────
+// L'état des alertes (acquitté/snoozé/résolu) n'est PAS de la donnée métier :
+// il ne va NI dans le blob Supabase NI dans le backup. Juste localStorage.
+export const ALERTS_STORAGE_KEY = 'cyna-alertes-v1';
 
-  add: (newAlerts) => set(s => ({
-    alerts: [...newAlerts, ...s.alerts].slice(0, 500),
-  })),
+const DATE_FIELDS = ['createdAt', 'acknowledgedAt', 'resolvedAt', 'snoozedUntil'];
+
+function reviveDates(alert) {
+  const out = { ...alert };
+  for (const f of DATE_FIELDS) {
+    if (out[f]) {
+      const d = new Date(out[f]);
+      if (!Number.isNaN(d.getTime())) out[f] = d;
+    }
+  }
+  return out;
+}
+
+// Lit + parse + réhydrate les Dates. localStorage corrompu/illisible → [].
+export function loadPersistedAlerts() {
+  try {
+    if (typeof localStorage === 'undefined') return [];
+    const raw = localStorage.getItem(ALERTS_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.map(reviveDates);
+  } catch {
+    return [];
+  }
+}
+
+// Écrit en localStorage. On élague les résolues (storage léger) — un re-fire après
+// résolution recrée une alerte fraîche via reconcile (stableKey alors absente).
+export function persistAlerts(alerts) {
+  try {
+    if (typeof localStorage === 'undefined') return;
+    const aPersister = alerts.filter(a => a.state !== 'resolved');
+    localStorage.setItem(ALERTS_STORAGE_KEY, JSON.stringify(aPersister));
+  } catch {
+    /* quota / mode privé / illisible : on ignore silencieusement, jamais de crash */
+  }
+}
+
+export const useAlertsStore = create((set, get) => ({
+  // Réhydratation au chargement du module (= au reload de page).
+  alerts: loadPersistedAlerts(),
+
+  add: (newAlerts) => {
+    const alerts = [...newAlerts, ...get().alerts].slice(0, 500);
+    set({ alerts });
+    persistAlerts(alerts);
+  },
 
   // Reconcile the store against a full scheduled-evaluation snapshot.
   // Called every scheduler tick with ALL conditions that currently match.
-  reconcile: (incomingAlerts) => set(s => {
+  reconcile: (incomingAlerts) => {
     const now = new Date();
+    const s = get();
 
     // Map of stableKey → first non-resolved scheduled alert that exists in the store.
     const existingByKey = new Map();
@@ -43,30 +91,51 @@ export const useAlertsStore = create((set, get) => ({
     // — condition revenue après résolution → existingByKey vide → CRÉER (vraie news)
     const toAdd = incomingAlerts.filter(a => !existingByKey.has(a.stableKey));
 
-    return { alerts: [...toAdd, ...updated].slice(0, 500) };
-  }),
+    const alerts = [...toAdd, ...updated].slice(0, 500);
+    set({ alerts });
+    persistAlerts(alerts);
+  },
 
-  acknowledge: (id) => set(s => ({
-    alerts: s.alerts.map(a =>
+  acknowledge: (id) => {
+    const alerts = get().alerts.map(a =>
       a.id === id ? { ...a, state: 'acknowledged', acknowledgedAt: new Date() } : a
-    ),
-  })),
+    );
+    set({ alerts });
+    persistAlerts(alerts);
+  },
 
-  snooze: (id, until) => set(s => ({
-    alerts: s.alerts.map(a =>
+  snooze: (id, until) => {
+    const alerts = get().alerts.map(a =>
       a.id === id ? { ...a, state: 'snoozed', snoozedUntil: until } : a
-    ),
-  })),
+    );
+    set({ alerts });
+    persistAlerts(alerts);
+  },
 
-  resolve: (id) => set(s => ({
-    alerts: s.alerts.map(a =>
+  resolve: (id) => {
+    const alerts = get().alerts.map(a =>
       a.id === id ? { ...a, state: 'resolved', resolvedAt: new Date() } : a
-    ),
-  })),
+    );
+    set({ alerts });
+    persistAlerts(alerts);
+  },
 
-  remove: (id) => set(s => ({ alerts: s.alerts.filter(a => a.id !== id) })),
+  remove: (id) => {
+    const alerts = get().alerts.filter(a => a.id !== id);
+    set({ alerts });
+    persistAlerts(alerts);
+  },
 
-  clear: () => set({ alerts: [] }),
+  // Vide la mémoire ET le localStorage (action explicite de purge).
+  clear: () => {
+    set({ alerts: [] });
+    persistAlerts([]);
+  },
+
+  // Recharge l'état depuis localStorage (simulation de reload / réhydratation explicite).
+  hydrateFromStorage: () => {
+    set({ alerts: loadPersistedAlerts() });
+  },
 
   getActive: () => {
     const now = Date.now();

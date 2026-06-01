@@ -29,6 +29,11 @@ const PARAMS = {
   localites: [],
 };
 
+const POINTAGES_FIXTURE = [
+  { id: 'p1', date: '2026-05-01', employeId: 1, repartitions: [{ chantierId: 'c1', categorie: 'production', heures: 8 }] },
+  { id: 'p2', date: '2026-05-02', employeId: 1, repartitions: [{ chantierId: 'c1', categorie: 'production', heures: 7.5 }] },
+];
+
 const clone = (o) => JSON.parse(JSON.stringify(o));
 
 // Helper — render Parametres avec props pilotables + renvoie les props (spies)
@@ -44,6 +49,8 @@ function renderParametres(over = {}) {
     setDevis: vi.fn(),
     factures: [],
     setFactures: vi.fn(),
+    pointages: [],
+    setPointages: vi.fn(),
     naviguer: vi.fn(),
     ...over,
   };
@@ -305,6 +312,33 @@ describe('Parametres — EXPORT backup', () => {
     expect(data.meta.app).toBe('CYNA');
   });
 
+  it('export inclut les 6 clés top-level du blob Supabase (garde-fou anti-régression)', async () => {
+    const get = spyBlob();
+    renderParametres({
+      chantiers: [{ id: 'c1' }],
+      devis: [{ id: 'd1' }],
+      factures: [{ id: 'f1' }],
+      clients: [{ id: 'cl1' }],
+      pointages: [{ id: 'p1' }],
+    });
+    fireEvent.click(screen.getByRole('button', { name: /Exporter backup/i }));
+    const data = JSON.parse(await get().text());
+    // Les 6 clés définies dans CLAUDE.md §2 : blob = {chantiers, devis, factures, clients, parametres, pointages}
+    for (const key of ['chantiers', 'devis', 'factures', 'clients', 'parametres', 'pointages']) {
+      expect(data).toHaveProperty(key);
+    }
+  });
+
+  it('export inclut les pointages (source de vérité heures/coûts)', async () => {
+    const get = spyBlob();
+    renderParametres({ pointages: clone(POINTAGES_FIXTURE) });
+    fireEvent.click(screen.getByRole('button', { name: /Exporter backup/i }));
+    const data = JSON.parse(await get().text());
+    expect(data.pointages).toHaveLength(2);
+    expect(data.pointages[0].id).toBe('p1');
+    expect(data.pointages[1].id).toBe('p2');
+  });
+
   it('export inclut les extras (imbriqués dans chantier.extras)', async () => {
     const get = spyBlob();
     renderParametres({
@@ -315,23 +349,14 @@ describe('Parametres — EXPORT backup', () => {
     expect(data.chantiers[0].extras).toHaveLength(1);
     expect(data.chantiers[0].extras[0].description).toBe('Mur supp');
   });
-
-  it('🐛 export OMET pointages — perte de la source de vérité des heures/coûts', async () => {
-    const get = spyBlob();
-    renderParametres();
-    fireEvent.click(screen.getByRole('button', { name: /Exporter backup/i }));
-    const data = JSON.parse(await get().text());
-    // CLAUDE.md : le blob Supabase = {chantiers, devis, factures, clients, parametres, pointages}
-    // L'export omet pointages → un backup ne sauvegarde PAS les heures pointées.
-    expect(data.pointages).toBeUndefined();
-  });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// IMPORT BACKUP — round-trip, écrasement, robustesse
+// IMPORT BACKUP — round-trip, écrasement, robustesse, rétrocompat
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe('Parametres — IMPORT backup', () => {
+  // Backup format actuel (avec pointages)
   const BACKUP_VALIDE = {
     meta: { date: '2026-01-01', version: 1, app: 'CYNA' },
     parametres: { parametres: { tauxTVA: 7.7 }, employes: [] },
@@ -339,6 +364,18 @@ describe('Parametres — IMPORT backup', () => {
     devis: [{ id: 'NEW_D' }],
     factures: [{ id: 'NEW_F' }],
     clients: [{ id: 'NEW_CL' }],
+    pointages: [{ id: 'NEW_P', date: '2026-01-01', employeId: 1, repartitions: [] }],
+  };
+
+  // Backup ancien format (sans pointages) — rétrocompatibilité
+  const BACKUP_ANCIEN = {
+    meta: { date: '2025-12-01', version: 1, app: 'CYNA' },
+    parametres: { parametres: { tauxTVA: 8.1 }, employes: [] },
+    chantiers: [{ id: 'OLD_C' }],
+    devis: [{ id: 'OLD_D' }],
+    factures: [{ id: 'OLD_F' }],
+    clients: [{ id: 'OLD_CL' }],
+    // pas de clé pointages
   };
 
   it('import valide + confirm=true → ÉCRASE toutes les données (replace, pas merge)', async () => {
@@ -347,7 +384,6 @@ describe('Parametres — IMPORT backup', () => {
     fireEvent.change(getFileInput(container), { target: { files: [makeFile(BACKUP_VALIDE)] } });
 
     await waitFor(() => expect(props.setChantiers).toHaveBeenCalled());
-    // Replace total : la liste passée = exactement l'importée (pas de fusion avec OLD)
     expect(props.setChantiers).toHaveBeenCalledWith([{ id: 'NEW_C' }]);
     expect(props.setDevis).toHaveBeenCalledWith([{ id: 'NEW_D' }]);
     expect(props.setFactures).toHaveBeenCalledWith([{ id: 'NEW_F' }]);
@@ -355,7 +391,15 @@ describe('Parametres — IMPORT backup', () => {
     expect(props.setParametres).toHaveBeenCalledWith({ parametres: { tauxTVA: 7.7 }, employes: [] });
   });
 
-  it('round-trip export→import : les données réimportées sont identiques', async () => {
+  it('import valide → restaure les pointages (setPointages appelé)', async () => {
+    confirmSpy.mockReturnValue(true);
+    const { container, props } = renderParametres();
+    fireEvent.change(getFileInput(container), { target: { files: [makeFile(BACKUP_VALIDE)] } });
+    await waitFor(() => expect(props.setPointages).toHaveBeenCalled());
+    expect(props.setPointages).toHaveBeenCalledWith([{ id: 'NEW_P', date: '2026-01-01', employeId: 1, repartitions: [] }]);
+  });
+
+  it('round-trip export→import : pointages identiques après restauration', async () => {
     // 1. Export
     let captured;
     vi.spyOn(URL, 'createObjectURL').mockImplementation((b) => { captured = b; return 'blob:x'; });
@@ -365,6 +409,7 @@ describe('Parametres — IMPORT backup', () => {
       devis: [{ id: 'd1' }],
       factures: [{ id: 'f1' }],
       clients: [{ id: 'cl1' }],
+      pointages: clone(POINTAGES_FIXTURE),
     };
     const { container, props, unmount } = renderParametres(exportData);
     fireEvent.click(screen.getByRole('button', { name: /Exporter backup/i }));
@@ -373,26 +418,36 @@ describe('Parametres — IMPORT backup', () => {
 
     // 2. Réimport du fichier exporté
     confirmSpy.mockReturnValue(true);
-    const second = renderParametres({ chantiers: [], devis: [], factures: [], clients: [] });
+    const second = renderParametres({ chantiers: [], devis: [], factures: [], clients: [], pointages: [] });
     fireEvent.change(getFileInput(second.container), { target: { files: [makeFile(exported)] } });
     await waitFor(() => expect(second.props.setChantiers).toHaveBeenCalled());
 
-    // L'état réinjecté = l'état exporté (aucune perte sur les entités exportées)
     expect(second.props.setChantiers).toHaveBeenCalledWith(exportData.chantiers);
     expect(second.props.setDevis).toHaveBeenCalledWith(exportData.devis);
     expect(second.props.setFactures).toHaveBeenCalledWith(exportData.factures);
     expect(second.props.setClients).toHaveBeenCalledWith(exportData.clients);
+    expect(second.props.setPointages).toHaveBeenCalledWith(exportData.pointages);
   });
 
-  it('🐛 import ne restaure PAS les pointages — round-trip perd les heures pointées', async () => {
+  it('rétrocompat : backup ANCIEN FORMAT (sans pointages) → pas de crash, setPointages([]), alerte avertissement', async () => {
     confirmSpy.mockReturnValue(true);
-    const backupAvecPointages = { ...BACKUP_VALIDE, pointages: [{ id: 'p1', heures: 8 }] };
-    const { container, props } = renderParametres();
-    fireEvent.change(getFileInput(container), { target: { files: [makeFile(backupAvecPointages)] } });
+    const { container, props } = renderParametres({ pointages: clone(POINTAGES_FIXTURE) });
+    fireEvent.change(getFileInput(container), { target: { files: [makeFile(BACKUP_ANCIEN)] } });
     await waitFor(() => expect(props.setChantiers).toHaveBeenCalled());
-    // Le composant n'accepte aucun setPointages : même si le fichier contient des pointages,
-    // ils ne sont jamais restaurés → perte de la source de vérité.
-    expect(props.setPointages).toBeUndefined();
+    // Pas de crash — comportement gracieux
+    expect(props.setPointages).toHaveBeenCalledWith([]);
+    // Avertissement visible pour signaler la perte potentielle
+    expect(alertSpy).toHaveBeenCalledWith(expect.stringMatching(/pointages|version antérieure/i));
+  });
+
+  it('rétrocompat : data.pointages non-array (malformé) → traité comme absent, setPointages([])', async () => {
+    confirmSpy.mockReturnValue(true);
+    const backupMalformed = { ...BACKUP_ANCIEN, pointages: 'pas un tableau' };
+    const { container, props } = renderParametres();
+    fireEvent.change(getFileInput(container), { target: { files: [makeFile(backupMalformed)] } });
+    await waitFor(() => expect(props.setChantiers).toHaveBeenCalled());
+    // Non-array → garde identique à absent → pas de crash
+    expect(props.setPointages).toHaveBeenCalledWith([]);
   });
 
   it('import JSON malformé → alerte + AUCUN écrasement', async () => {
@@ -414,7 +469,7 @@ describe('Parametres — IMPORT backup', () => {
   });
 
   it('import partiel (parametres manquant) → alerte + aucun écrasement', async () => {
-    const partiel = { chantiers: [], devis: [], factures: [], clients: [] }; // pas de parametres
+    const partiel = { chantiers: [], devis: [], factures: [], clients: [] };
     const { container, props } = renderParametres({ chantiers: [{ id: 'OLD' }] });
     fireEvent.change(getFileInput(container), { target: { files: [makeFile(partiel)] } });
     await waitFor(() => expect(alertSpy).toHaveBeenCalled());

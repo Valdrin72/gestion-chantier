@@ -392,7 +392,7 @@ function AppInner({ profil, deconnecter, userId, isDemo = false }) {
           {page === 'agents'       && pagesAutorisees.includes('agents')     && <CentreIA />}
           {page === 'calculs'      && pagesAutorisees.includes('calculs')    && <CalculsPage />}
           {page === 'alertes'      && <AlertsPage naviguer={naviguer} />}
-          {page === 'parametres'   && pagesAutorisees.includes('parametres') && <Parametres parametres={parametres} setParametres={setParametres} clients={clients} setClients={setClients} chantiers={chantiers} setChantiers={setChantiers} devis={devis} setDevis={setDevis} factures={factures} setFactures={setFactures} naviguer={naviguer} />}
+          {page === 'parametres'   && pagesAutorisees.includes('parametres') && <Parametres parametres={parametres} setParametres={setParametres} clients={clients} setClients={setClients} chantiers={chantiers} setChantiers={setChantiers} devis={devis} setDevis={setDevis} factures={factures} setFactures={setFactures} pointages={pointages} setPointages={setPointages} naviguer={naviguer} />}
           {page === 'heures'       && pagesAutorisees.includes('heures')     && <Heures chantiers={chantiers} parametres={parametres} setChantiers={setChantiers} />}
           {page === 'pointages'    && pagesAutorisees.includes('pointages')  && <PointagesPage />}
           {/* Fallback 404 */}

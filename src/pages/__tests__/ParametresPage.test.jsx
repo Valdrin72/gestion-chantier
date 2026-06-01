@@ -18,6 +18,7 @@ const PARAMS = {
     tauxTVA: 8.1,
     margeCible: 20,
     seuilRentabiliteMin: 15,
+    plafondCredi: 80,
   },
   employes: [
     { id: 1, nom: 'Jean Martin', poste: 'Ouvrier qualifié', tarifJour: 350, telephone: '079', email: 'j@cyna.ch' },
@@ -110,8 +111,8 @@ describe('Parametres — structure de base', () => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe('Parametres — onglet Devis (tauxFG / coefMO / TVA)', () => {
-  function ouvrirDevis() {
-    const { props, ...rest } = renderParametres();
+  function ouvrirDevis(over = {}) {
+    const { props, ...rest } = renderParametres(over);
     fireEvent.click(screen.getByText('Devis'));
     return { props, ...rest };
   }
@@ -143,23 +144,74 @@ describe('Parametres — onglet Devis (tauxFG / coefMO / TVA)', () => {
     expect(arg.parametres.tauxTVA).toBe(7.7);
   });
 
-  it('🐛 valeur VIDE sur un taux financier → NaN écrit (aucune validation/rejet)', () => {
+  it('valeur VIDE sur un taux financier → 0 (jamais NaN)', () => {
     const { props } = ouvrirDevis();
     const card = screen.getByText('Frais généraux (%)').closest('div');
     const input = within(card).getByRole('spinbutton');
     fireEvent.change(input, { target: { value: '' } });
     const arg = props.setParametres.mock.calls.at(-1)[0];
-    // parseFloat('') = NaN → écrit tel quel, pas de garde
-    expect(Number.isNaN(arg.parametres.tauxFraisGeneraux)).toBe(true);
+    expect(Number.isNaN(arg.parametres.tauxFraisGeneraux)).toBe(false);
+    expect(arg.parametres.tauxFraisGeneraux).toBe(0);
   });
 
-  it('🐛 coefMO NÉGATIF accepté (aucun rejet) — risque coût MO négatif', () => {
+  it('coefMO NÉGATIF → clampé à 0 (jamais négatif → pas de coût MO négatif)', () => {
     const { props } = ouvrirDevis();
     const card = screen.getByText('Coeff. MO').closest('div');
     const input = within(card).getByRole('spinbutton');
     fireEvent.change(input, { target: { value: '-5' } });
     const arg = props.setParametres.mock.calls.at(-1)[0];
-    expect(arg.parametres.coefficientMainOeuvre).toBe(-5);
+    expect(arg.parametres.coefficientMainOeuvre).toBe(0);
+  });
+
+  it('saisie décimale "8.1" sur TVA (champ vide au départ) → stockée 8.1, buffer "8.1"', () => {
+    // tauxTVA absent → buffer démarre vide → on prouve qu\'on peut taper un décimal complet
+    const params = clone(PARAMS);
+    delete params.parametres.tauxTVA;
+    const { props } = ouvrirDevis({ parametres: params });
+    const card = screen.getByText('TVA (%)').closest('div');
+    const input = within(card).getByRole('spinbutton');
+    fireEvent.change(input, { target: { value: '8.1' } });
+    const arg = props.setParametres.mock.calls.at(-1)[0];
+    expect(arg.parametres.tauxTVA).toBe(8.1);
+    // le buffer affiché conserve bien la saisie décimale
+    expect(input.value).toBe('8.1');
+  });
+
+  it('saisie décimale "1.0" sur coefMO → buffer conserve "1.0", stocke 1', () => {
+    // coefMO démarre à 1.35 → "1.0" diffère → onChange déclenché
+    const { props } = ouvrirDevis();
+    const card = screen.getByText('Coeff. MO').closest('div');
+    const input = within(card).getByRole('spinbutton');
+    fireEvent.change(input, { target: { value: '1.0' } });
+    const arg = props.setParametres.mock.calls.at(-1)[0];
+    expect(arg.parametres.coefficientMainOeuvre).toBe(1);
+    expect(input.value).toBe('1.0');
+  });
+
+  it('les 6 champs financiers : valeur vide → 0, jamais NaN/négatif', () => {
+    const champs = [
+      ['Marge cible (%)', 'margeCible'],
+      ['Seuil min. (%)', 'seuilRentabiliteMin'],
+      ['Plafond crédibilité (%)', 'plafondCredi'],
+      ['Frais généraux (%)', 'tauxFraisGeneraux'],
+      ['Coeff. MO', 'coefficientMainOeuvre'],
+      ['TVA (%)', 'tauxTVA'],
+    ];
+    for (const [label, key] of champs) {
+      const { props, unmount } = ouvrirDevis();
+      const card = screen.getByText(label).closest('div');
+      const input = within(card).getByRole('spinbutton');
+      // vide → 0
+      fireEvent.change(input, { target: { value: '' } });
+      let arg = props.setParametres.mock.calls.at(-1)[0];
+      expect(Number.isNaN(arg.parametres[key])).toBe(false);
+      expect(arg.parametres[key]).toBe(0);
+      // négatif → 0
+      fireEvent.change(input, { target: { value: '-99' } });
+      arg = props.setParametres.mock.calls.at(-1)[0];
+      expect(arg.parametres[key]).toBe(0);
+      unmount();
+    }
   });
 });
 

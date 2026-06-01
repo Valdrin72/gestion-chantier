@@ -141,6 +141,14 @@ export function usePointages({ pointages, setPointages }) {
 
   /**
    * Supprime un pointage par son id.
+   *
+   * ⚠️ Principe "Rien ne se détruit" : les pointages sont la SOURCE DE VÉRITÉ
+   * (l'avancement et le coût MO en dérivent). Une correction se fait via
+   * `upsertPointage` (last-write-wins sur date+employé), JAMAIS par suppression.
+   * Cette fonction n'est câblée à AUCUN bouton de l'UI — elle reste exposée
+   * uniquement pour des migrations/scripts techniques. Ne pas la brancher sur
+   * une action utilisateur sans garde explicite.
+   *
    * @param {string} id
    */
   const deletePointage = (id) => {

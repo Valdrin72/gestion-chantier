@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import {
-  Users, HardHat, TrendingUp, Plus, Pencil, Trash2,
+  Users, HardHat, TrendingUp, Plus, Pencil, Power,
   DollarSign, Clock, BarChart2,
 } from 'lucide-react';
 import { fmtN, C, getIntervallesPeriode, getPeriodeLabel } from '../donnees';
@@ -181,14 +181,13 @@ function Employes({ parametres, setParametres, chantiers, naviguer }) {
                   <HardHat size={13} /> Chantiers ({chantiersEmp.length})
                 </button>
                 <button onClick={() => { setForm(e); setAjout(true); }} style={{ ...DS.btnGhost, padding: '6px 10px' }}><Pencil size={13} /></button>
-                <button onClick={() => {
-                  const heuresEmp = chantiers.reduce((total, c) => total + (c.journal || []).reduce((jt, j) => jt + (j.employes || []).filter(m => String(m.employeId) === String(e.id)).reduce((et, m) => et + (parseFloat(m.heuresTravaillees) || 0), 0), 0), 0);
-                  const joursEmp = heuresEmp > 0 ? Math.round(heuresEmp / 8 * 10) / 10 : 0;
-                  const avertissement = heuresEmp > 0
-                    ? `\n\n⚠ ATTENTION : ${e.nom} a ${Math.round(heuresEmp)}h travaillées (≈ ${joursEmp} jours) dans le journal. Après suppression, le coût MO de ces entrées sera recalculé à 0 CHF dans tous les chantiers concernés.`
-                    : '';
-                  if (window.confirm(`Supprimer ${e.nom} ?${avertissement}`)) setParametres({ ...parametres, employes: (parametres.employes || []).filter(emp => String(emp.id) !== String(e.id)) });
-                }} style={{ ...btnDanger, padding: '6px 10px' }}><Trash2 size={13} /></button>
+                <button
+                  onClick={() => setParametres({ ...parametres, employes: (parametres.employes || []).map(emp => String(emp.id) === String(e.id) ? { ...emp, actif: e.actif === false } : emp) })}
+                  style={{ ...(e.actif === false ? btnSucces : DS.btnGhost), padding: '6px 10px', fontSize: '12px' }}
+                  title={e.actif === false ? 'Réactiver cet employé' : 'Désactiver cet employé (conserve l\'historique)'}
+                >
+                  <Power size={13} /> {e.actif === false ? 'Réactiver' : 'Désactiver'}
+                </button>
               </div>
             </div>
           );
@@ -344,7 +343,13 @@ export function EditEmployeRow({ e, parametres, sauv }) {
       <td style={tdStyle}>
         <div style={{ display: 'flex', gap: 4 }}>
           <button onClick={() => setEditing(true)} style={{ ...DS.btnGhost, padding: '4px 10px', fontSize: 12 }}><Pencil size={12} /> Modifier</button>
-          <button onClick={() => { if (window.confirm(`Supprimer ${e.nom} ?\n\n⚠ ATTENTION : si cet employé a des heures dans le journal des chantiers, le coût MO de ces entrées sera recalculé à 0 CHF après suppression.`)) sauv({ ...parametres, employes: (parametres.employes || []).filter(emp => String(emp.id) !== String(e.id)) }); }} style={{ ...btnDanger, padding: '4px 8px' }}>Suppr</button>
+          <button
+            onClick={() => sauv({ ...parametres, employes: (parametres.employes || []).map(emp => String(emp.id) === String(e.id) ? { ...emp, actif: e.actif === false } : emp) })}
+            style={{ ...(e.actif === false ? btnSucces : DS.btnGhost), padding: '4px 10px', fontSize: 12 }}
+            title={e.actif === false ? 'Réactiver cet employé' : 'Désactiver cet employé (conserve l\'historique)'}
+          >
+            <Power size={12} /> {e.actif === false ? 'Réactiver' : 'Désactiver'}
+          </button>
         </div>
       </td>
     </tr>

@@ -38,7 +38,7 @@ const POINTAGES_FIXTURE = [
 const clone = (o) => JSON.parse(JSON.stringify(o));
 
 // Helper — render Parametres avec props pilotables + renvoie les props (spies)
-function renderParametres(over = {}) {
+function renderParametres(over = {}, ctxOver = {}) {
   const props = {
     parametres: clone(PARAMS),
     setParametres: vi.fn(),
@@ -55,8 +55,10 @@ function renderParametres(over = {}) {
     naviguer: vi.fn(),
     ...over,
   };
-  const result = renderWithApp(<Parametres {...props} />);
-  return { ...result, props };
+  const confirmer = ctxOver.confirmer ?? vi.fn().mockResolvedValue(true);
+  const afficherNotif = ctxOver.afficherNotif ?? vi.fn();
+  const result = renderWithApp(<Parametres {...props} />, { confirmer, afficherNotif, ...ctxOver });
+  return { ...result, props, confirmer, afficherNotif };
 }
 
 // Helpers backup
@@ -323,12 +325,83 @@ describe('Parametres — onglet Employés (CRUD)', () => {
     expect(props.setParametres).not.toHaveBeenCalled();
   });
 
-  it('supprimer un employé (confirm=true) → retiré de employes', () => {
-    confirmSpy.mockReturnValue(true);
+  it('désactiver un employé → actif:false (jamais retiré, historique conservé)', () => {
     const { props } = ouvrirEmployes();
-    fireEvent.click(screen.getByRole('button', { name: /^Suppr$/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Désactiver/i }));
     const arg = props.setParametres.mock.calls.at(-1)[0];
-    expect(arg.employes.some(e => e.id === 1)).toBe(false);
+    // L'employé EXISTE toujours — il est juste désactivé
+    const emp = arg.employes.find(e => e.id === 1);
+    expect(emp).toBeDefined();
+    expect(emp.actif).toBe(false);
+  });
+
+  it('réactiver un employé désactivé → actif:true', () => {
+    const params = clone(PARAMS);
+    params.employes[0].actif = false;
+    const { props } = ouvrirEmployes({ parametres: params });
+    fireEvent.click(screen.getByRole('button', { name: /Réactiver/i }));
+    const arg = props.setParametres.mock.calls.at(-1)[0];
+    expect(arg.employes.find(e => e.id === 1).actif).toBe(true);
+  });
+
+  it('aucun bouton de suppression dure ("Suppr") pour les employés', () => {
+    ouvrirEmployes();
+    expect(screen.queryByRole('button', { name: /^Suppr$/i })).toBeNull();
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CARNET CLIENTS (EditClientRow) — suppression protégée
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('Parametres — carnet clients : suppression protégée', () => {
+  const CLIENT = { id: 'CL-1', nom: 'Pictet', prenom: 'Banque' };
+
+  function ouvrirClients(over = {}, ctxOver = {}) {
+    const r = renderParametres({ clients: [CLIENT], ...over }, ctxOver);
+    fireEvent.click(screen.getByText(/Clients/i));
+    return r;
+  }
+
+  it('supprimer un client vierge → confirmer puis setClients (retiré)', async () => {
+    const confirmer = vi.fn().mockResolvedValue(true);
+    const { props } = ouvrirClients({}, { confirmer });
+    fireEvent.click(screen.getByRole('button', { name: /^Suppr$/i }));
+    await waitFor(() => expect(confirmer).toHaveBeenCalledOnce());
+    await waitFor(() => expect(props.setClients).toHaveBeenCalledOnce());
+    const arg = props.setClients.mock.calls.at(-1)[0];
+    expect(arg.some(cl => String(cl.id) === 'CL-1')).toBe(false);
+  });
+
+  it('supprimer un client avec chantier → BLOQUÉ (afficherNotif error, pas de setClients)', async () => {
+    const afficherNotif = vi.fn();
+    const { props } = ouvrirClients(
+      { chantiers: [{ id: 'CH-1', clientId: 'CL-1' }] },
+      { afficherNotif },
+    );
+    fireEvent.click(screen.getByRole('button', { name: /^Suppr$/i }));
+    await waitFor(() => expect(afficherNotif).toHaveBeenCalledOnce());
+    expect(afficherNotif.mock.calls[0][1]).toBe('error');
+    expect(props.setClients).not.toHaveBeenCalled();
+  });
+
+  it('supprimer un client avec devis → BLOQUÉ', async () => {
+    const afficherNotif = vi.fn();
+    const { props } = ouvrirClients(
+      { devis: [{ id: 'D-1', clientId: 'CL-1' }] },
+      { afficherNotif },
+    );
+    fireEvent.click(screen.getByRole('button', { name: /^Suppr$/i }));
+    await waitFor(() => expect(afficherNotif).toHaveBeenCalledOnce());
+    expect(props.setClients).not.toHaveBeenCalled();
+  });
+
+  it('n\'utilise plus window.confirm — passe par confirmer() du contexte', async () => {
+    const confirmer = vi.fn().mockResolvedValue(true);
+    ouvrirClients({}, { confirmer });
+    fireEvent.click(screen.getByRole('button', { name: /^Suppr$/i }));
+    await waitFor(() => expect(confirmer).toHaveBeenCalledOnce());
+    expect(confirmSpy).not.toHaveBeenCalled();
   });
 });
 

@@ -211,7 +211,7 @@ function ImportCSVModal({ onClose, onImport }) {
   );
 }
 
-function Clients({ clients, setClients, chantiers, setChantiers, devis = [], setDevis, factures = [], setFactures, naviguer }) {
+function Clients({ clients, setClients, chantiers, devis = [], factures = [], naviguer }) {
   const { confirmer, afficherNotif } = useApp();
   const isMobile = useIsMobile();
   const [ajout, setAjout] = useState(false);
@@ -249,6 +249,26 @@ function Clients({ clients, setClients, chantiers, setChantiers, devis = [], set
       ];
     });
     exportCSV(`clients_${new Date().toISOString().slice(0,10)}.csv`, entetes, lignes);
+  };
+
+  // Un client référencé par chantiers, devis OU factures ne se supprime pas :
+  // son historique métier doit être conservé. Seul un client totalement vierge est supprimable.
+  const supprimer = async (c) => {
+    const chantiersLies = chantiers.filter(ch => String(ch.clientId) === String(c.id));
+    const devisLies = devis.filter(dv => String(dv.clientId) === String(c.id));
+    const idsCh = new Set(chantiersLies.map(ch => String(ch.id)));
+    const idsDevis = new Set(devisLies.map(dv => String(dv.id)));
+    const facturesLiees = factures.filter(f =>
+      idsCh.has(String(f.chantierId)) || idsDevis.has(String(f.devisId))
+    );
+    if (chantiersLies.length > 0 || devisLies.length > 0 || facturesLiees.length > 0) {
+      const msgBloque = 'Ce client a des chantiers, devis ou factures — il ne peut pas être supprimé, son historique doit être conservé.';
+      if (afficherNotif) afficherNotif(msgBloque, 'error'); else alert(msgBloque);
+      return;
+    }
+    if (!await confirmer(`Supprimer ${c.prenom} ${c.nom} ?\n\nCette action est irréversible.`, { labelOui: 'Supprimer' })) return;
+    setClients(clients.filter(cl => String(cl.id) !== String(c.id)));
+    if (afficherNotif) afficherNotif('Client supprimé');
   };
 
   const handleImport = (nouveauxClients, mode) => {
@@ -399,19 +419,7 @@ function Clients({ clients, setClients, chantiers, setChantiers, devis = [], set
                 <button onClick={() => { setForm(c); setAjout(true); window.scrollTo({ top: 0, behavior: 'smooth' }); }} style={{ ...DS.btnGhost, fontSize: '12px', padding: '6px 11px' }}>
                   <Pencil size={13} /> Modifier
                 </button>
-                <button onClick={async () => {
-                  const nbCh = chantiers.filter(ch => String(ch.clientId) === String(c.id)).length;
-                  const msg = `Supprimer ${c.prenom} ${c.nom} ?${nbCh > 0 ? `\n→ ${nbCh} chantier(s) et leurs factures liées seront aussi supprimés.` : ''}\n\nCette action est irréversible.`;
-                  if (!await confirmer(msg, { labelOui: 'Supprimer' })) return;
-                  const chantiersDuClient = chantiers.filter(ch => String(ch.clientId) === String(c.id));
-                  const idsCh = new Set(chantiersDuClient.map(ch => String(ch.id)));
-                  const devisDuClient = devis.filter(dv => String(dv.clientId) === String(c.id));
-                  const idsFactures = new Set(factures.filter(f => idsCh.has(String(f.chantierId)) || devisDuClient.some(dv => String(dv.id) === String(f.devisId))).map(f => String(f.id)));
-                  if (idsCh.size > 0) setChantiers(chantiers.filter(ch => !idsCh.has(String(ch.id))));
-                  if (devisDuClient.length > 0) setDevis(devis.filter(dv => String(dv.clientId) !== String(c.id)));
-                  if (idsFactures.size > 0) setFactures(factures.filter(f => !idsFactures.has(String(f.id))));
-                  setClients(clients.filter(cl => String(cl.id) !== String(c.id)));
-                }} style={{ ...btnDanger, padding: '6px 10px' }} title="Supprimer ce client"><Trash2 size={13} /></button>
+                <button onClick={() => supprimer(c)} style={{ ...btnDanger, padding: '6px 10px' }} title="Supprimer ce client"><Trash2 size={13} /></button>
               </div>
             </div>
           );

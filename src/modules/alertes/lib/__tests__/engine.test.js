@@ -25,6 +25,16 @@ const RULE_ALWAYS = {
   evaluate: () => [{ title: 'Test', message: 'Test alert' }],
 };
 
+const RULE_SCHEDULE = {
+  id: 'test.sched',
+  category: 'financier',
+  trigger: 'schedule',
+  severity: 'MEDIUM',
+  destinataires: ['direction'],
+  canaux: ['in_app'],
+  evaluate: () => [{ title: 'Sched', message: 'Scheduled alert', contextRef: { type: 'global', id: 'CH-1' } }],
+};
+
 describe('AlertEngine', () => {
   let engine;
   beforeEach(() => { engine = new AlertEngine([RULE_ALWAYS]); });
@@ -37,17 +47,11 @@ describe('AlertEngine', () => {
     expect(alerts[0].state).toBe('active');
   });
 
-  it('respecte le cooldown (même contexte)', () => {
+  // Cooldown retiré : même contexte évalué deux fois → deux alertes (dédup = responsabilité du store).
+  it('sans cooldown : même contexte évalué deux fois génère deux alertes', () => {
     const ctx = mockCtx();
     expect(engine.evaluateAll(ctx)).toHaveLength(1);
-    expect(engine.evaluateAll(ctx)).toHaveLength(0);
-  });
-
-  it('cooldown expire après le délai configuré', () => {
-    const ctx1 = mockCtx();
-    engine.evaluateAll(ctx1);
-    const ctx2 = mockCtx({ now: new Date(ctx1.now.getTime() + 61 * 60 * 1000) });
-    expect(engine.evaluateAll(ctx2)).toHaveLength(1);
+    expect(engine.evaluateAll(ctx)).toHaveLength(1);
   });
 
   it('filtre par type d\'événement', () => {
@@ -62,7 +66,7 @@ describe('AlertEngine', () => {
     expect(alerts).toHaveLength(1);
   });
 
-  it('notifie les listeners', () => {
+  it('notifie les listeners via subscribe', () => {
     const received = [];
     engine.subscribe((alerts) => received.push(...alerts));
     engine.evaluateAll(mockCtx());
@@ -88,10 +92,10 @@ describe('AlertEngine', () => {
     expect(alerts).toHaveLength(1);
   });
 
-  it('reset vide les cooldowns', () => {
+  it('reset() est désormais un no-op (cooldown retiré)', () => {
     const ctx = mockCtx();
     engine.evaluateAll(ctx);
-    engine.reset();
+    engine.reset(); // ne plante pas, ne change pas le comportement
     expect(engine.evaluateAll(ctx)).toHaveLength(1);
   });
 
@@ -99,5 +103,62 @@ describe('AlertEngine', () => {
     const disabled = { ...RULE_ALWAYS, id: 'test.disabled', enabled: false };
     const eng = new AlertEngine([disabled]);
     expect(eng.evaluateAll(mockCtx())).toHaveLength(0);
+  });
+
+  // ── stableKey + triggerType ────────────────────────────────────────
+  it('_materialize porte stableKey = ruleId:contextRef.id', () => {
+    const eng = new AlertEngine([RULE_SCHEDULE]);
+    const alerts = eng.evaluateScheduled(mockCtx());
+    expect(alerts[0].stableKey).toBe('test.sched:CH-1');
+  });
+
+  it('_materialize porte stableKey = ruleId:global quand contextRef absent', () => {
+    const ruleNoRef = { ...RULE_ALWAYS, id: 'test.noref', trigger: 'event', eventTypes: ['x'] };
+    const eng = new AlertEngine([ruleNoRef]);
+    const alerts = eng.evaluateAll(mockCtx());
+    expect(alerts[0].stableKey).toBe('test.noref:global');
+  });
+
+  it('_materialize porte triggerType', () => {
+    const eng = new AlertEngine([RULE_SCHEDULE]);
+    const alerts = eng.evaluateScheduled(mockCtx());
+    expect(alerts[0].triggerType).toBe('schedule');
+  });
+
+  // ── subscribeScheduled ────────────────────────────────────────────
+  it('subscribeScheduled reçoit le snapshot même avec 0 alertes', () => {
+    const snapshots = [];
+    const eng = new AlertEngine([]); // aucune règle
+    eng.subscribeScheduled(a => snapshots.push(a));
+    eng.evaluateScheduled(mockCtx());
+    expect(snapshots).toHaveLength(1);
+    expect(snapshots[0]).toEqual([]); // snapshot vide → signal "aucune condition active"
+  });
+
+  it('subscribeScheduled reçoit les alertes schedules', () => {
+    const received = [];
+    const eng = new AlertEngine([RULE_SCHEDULE]);
+    eng.subscribeScheduled(a => received.push(...a));
+    eng.evaluateScheduled(mockCtx());
+    expect(received).toHaveLength(1);
+    expect(received[0].ruleId).toBe('test.sched');
+  });
+
+  it('subscribe ne reçoit PAS les alertes de evaluateScheduled', () => {
+    // evaluateScheduled passe par _notifyScheduled uniquement, pas _notify
+    const received = [];
+    const eng = new AlertEngine([RULE_SCHEDULE]);
+    eng.subscribe(a => received.push(...a));
+    eng.evaluateScheduled(mockCtx());
+    expect(received).toHaveLength(0);
+  });
+
+  it('unsubscribeScheduled retire le listener', () => {
+    const received = [];
+    const eng = new AlertEngine([RULE_SCHEDULE]);
+    const unsub = eng.subscribeScheduled(a => received.push(...a));
+    unsub();
+    eng.evaluateScheduled(mockCtx());
+    expect(received).toHaveLength(0);
   });
 });

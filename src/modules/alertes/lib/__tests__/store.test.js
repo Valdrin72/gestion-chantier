@@ -1,10 +1,10 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { useAlertsStore } from '../store.js';
 import { AlertEngine } from '../engine.js';
 
-// ── Helpers ───────────────────────────────────────────────────────
 const store = () => useAlertsStore.getState();
 
+// Alerte brute (additive, pas de stableKey) pour les tests de add/acknowledge/etc.
 function alerte(over = {}) {
   return {
     id: `a_${Math.random().toString(36).slice(2)}`,
@@ -21,6 +21,19 @@ function alerte(over = {}) {
   };
 }
 
+// Alerte avec stableKey + triggerType (pour reconcile)
+function alerteSched(over = {}) {
+  const base = alerte(over);
+  return {
+    ...base,
+    stableKey: `${base.ruleId}:${base.contextRef?.id ?? 'global'}`,
+    triggerType: 'schedule',
+    ...over,
+    // recalcule stableKey si ruleId/contextRef overridés
+    stableKey: `${over.ruleId ?? 'r.test'}:${over.contextRef?.id ?? over.id ?? 'CH-1'}`,
+  };
+}
+
 describe('useAlertsStore', () => {
   beforeEach(() => { store().clear(); });
 
@@ -30,7 +43,7 @@ describe('useAlertsStore', () => {
     store().add([alerte({ id: 'a2' })]);
     const active = store().getActive();
     expect(active).toHaveLength(2);
-    expect(active[0].id).toBe('a2'); // dernier ajouté en tête
+    expect(active[0].id).toBe('a2');
   });
 
   it('add() plafonne le buffer à 500 alertes', () => {
@@ -40,13 +53,12 @@ describe('useAlertsStore', () => {
   });
 
   // ── acknowledge ──────────────────────────────────────────────────
-  it('acknowledge() marque acknowledged + horodate, mais reste ACTIVE (par design)', () => {
+  it('acknowledge() marque acknowledged + horodate, reste visible dans getActive()', () => {
     store().add([alerte({ id: 'a1' })]);
     store().acknowledge('a1');
     const a = store().alerts.find(x => x.id === 'a1');
     expect(a.state).toBe('acknowledged');
     expect(a.acknowledgedAt).toBeInstanceOf(Date);
-    // getActive ne filtre QUE resolved + snoozed → un acquittement reste visible
     expect(store().getActive().map(x => x.id)).toContain('a1');
   });
 
@@ -69,7 +81,7 @@ describe('useAlertsStore', () => {
 
   it('snooze() expiré réaffiche l\'alerte dans getActive()', () => {
     store().add([alerte({ id: 'a1' })]);
-    store().snooze('a1', new Date(Date.now() - 60_000)); // déjà passé
+    store().snooze('a1', new Date(Date.now() - 60_000));
     expect(store().getActive().map(x => x.id)).toContain('a1');
   });
 
@@ -135,49 +147,124 @@ describe('useAlertsStore', () => {
     expect(store().alerts).toHaveLength(0);
   });
 
-  // ── 🐛 CONSTATS RÉELS — comportements documentés (NE PAS corriger ici) ──
+  // ── reconcile : dédup ─────────────────────────────────────────────
+  describe('reconcile()', () => {
+    it('crée une alerte si la stableKey est absente du store', () => {
+      const a = alerteSched({ id: 'a1', ruleId: 'r.X', contextRef: { id: 'CH-1' } });
+      store().reconcile([a]);
+      expect(store().getActive()).toHaveLength(1);
+    });
 
-  it('🐛 add() ne déduplique PAS par ruleId+contextRef (doublons possibles)', () => {
-    // Deux alertes pour la MÊME règle + MÊME chantier, ids différents → les deux passent.
-    // Le store n'a aucune dédup ; seule la barrière de cooldown de l'engine évite le spam.
-    store().add([alerte({ id: 'a1', ruleId: 'r.X', contextRef: { type: 'chantier', id: 'CH-1' } })]);
-    store().add([alerte({ id: 'a2', ruleId: 'r.X', contextRef: { type: 'chantier', id: 'CH-1' } })]);
-    expect(store().getActive()).toHaveLength(2); // ⚠️ deux entrées pour la même condition
-  });
+    it('ne duplique PAS si la stableKey est déjà ACTIVE', () => {
+      const a = alerteSched({ ruleId: 'r.X', contextRef: { id: 'CH-1' } });
+      store().reconcile([a]);
+      store().reconcile([{ ...a, id: 'a_autre' }]); // 2e tick, même condition
+      expect(store().getActive()).toHaveLength(1); // ✅ dédup
+    });
 
-  it('🐛 aucune auto-résolution : condition disparue → l\'alerte reste active', () => {
-    // Rien dans le store ne ferme une alerte quand la condition disparaît.
-    // L'engine ne « rappelle » pas les alertes : il n'émet que de nouvelles alertes.
-    // Tant que resolve() n'est pas appelé manuellement, l'alerte reste dans getActive().
-    store().add([alerte({ id: 'a1' })]);
-    // Simule un nouveau run où la règle ne génère plus rien (engine.add([]))
-    store().add([]);
-    expect(store().getActive().map(x => x.id)).toContain('a1'); // ⚠️ toujours active
-  });
+    it('ne re-surface PAS une alerte ACQUITTÉE (condition persiste)', () => {
+      const a = alerteSched({ id: 'a1', ruleId: 'r.X', contextRef: { id: 'CH-1' } });
+      store().reconcile([a]);
+      store().acknowledge('a1');
+      // Condition toujours active au prochain tick
+      store().reconcile([{ ...a, id: 'a_autre' }]);
+      const active = store().getActive();
+      // L'alerte acquittée reste là, mais aucune nouvelle alerte créée
+      expect(active).toHaveLength(1);
+      expect(active[0].state).toBe('acknowledged');
+    });
 
-  it('🐛 une alerte acquittée RÉAPPARAÎT après expiration du cooldown (engine+store réels)', () => {
-    // Chemin réel : engine matérialise → store.add → utilisateur acquitte →
-    // cooldown expire → engine re-matérialise une NOUVELLE alerte (nouvel UUID, state active).
-    // Le store n'a aucun lien avec l'état acquitté précédent → l'alerte revient.
-    const RULE = {
-      id: 'r.recurr', category: 'financier', trigger: 'schedule',
-      severity: 'HIGH', destinataires: ['direction'], canaux: ['in_app'],
-      cooldownMinutes: 60,
-      evaluate: () => [{ title: 'Marge basse', message: '...', contextRef: { type: 'chantier', id: 'CH-9' } }],
-    };
-    const engine = new AlertEngine([RULE]);
-    engine.subscribe(a => store().add(a));
+    it('ne re-surface PAS une alerte SNOOZÉE', () => {
+      const a = alerteSched({ id: 'a1', ruleId: 'r.X', contextRef: { id: 'CH-1' } });
+      store().reconcile([a]);
+      store().snooze('a1', new Date(Date.now() + 60_000));
+      store().reconcile([{ ...a, id: 'a_autre' }]); // condition toujours active
+      // La snoozée persiste, aucune nouvelle alerte active
+      expect(store().getActive()).toHaveLength(0);
+      expect(store().alerts).toHaveLength(1); // snoozée existe toujours
+    });
 
-    const t0 = new Date('2026-05-15T10:00:00');
-    engine.evaluateScheduled({ now: t0 });
-    const premier = store().getActive()[0];
-    store().acknowledge(premier.id);
-    expect(store().getActive().find(x => x.id === premier.id).state).toBe('acknowledged');
+    it('auto-résout une alerte quand la condition disparaît', () => {
+      const a = alerteSched({ id: 'a1', ruleId: 'r.X', contextRef: { id: 'CH-1' } });
+      store().reconcile([a]); // condition active
+      store().reconcile([]); // condition disparue → auto-résolution
+      const a1 = store().alerts.find(x => x.id === 'a1');
+      expect(a1.state).toBe('resolved');
+      expect(a1.autoResolved).toBe(true);
+      expect(store().getActive()).toHaveLength(0);
+    });
 
-    // 61 min plus tard, cooldown expiré → nouvelle alerte émise
-    engine.evaluateScheduled({ now: new Date(t0.getTime() + 61 * 60_000) });
-    const actives = store().getActive().filter(a => a.state === 'active');
-    expect(actives).toHaveLength(1); // ⚠️ l'alerte « revient » malgré l'acquittement
-    expect(actives[0].id).not.toBe(premier.id); // nouvel UUID, aucun lien avec l'ancienne
+    it('auto-résout une alerte ACQUITTÉE quand la condition disparaît', () => {
+      const a = alerteSched({ id: 'a1', ruleId: 'r.X', contextRef: { id: 'CH-1' } });
+      store().reconcile([a]);
+      store().acknowledge('a1');
+      store().reconcile([]); // condition disparue
+      expect(store().getActive()).toHaveLength(0);
+      expect(store().alerts.find(x => x.id === 'a1').state).toBe('resolved');
+    });
+
+    it('crée une NOUVELLE alerte quand la condition réapparaît après résolution', () => {
+      const a = alerteSched({ id: 'a1', ruleId: 'r.X', contextRef: { id: 'CH-1' } });
+      store().reconcile([a]); // condition active
+      store().reconcile([]); // condition disparue → résolue
+      store().reconcile([{ ...a, id: 'a2' }]); // condition revenue → vraie news
+      const actives = store().getActive().filter(x => x.state === 'active');
+      expect(actives).toHaveLength(1);
+      expect(actives[0].id).toBe('a2'); // nouvel id, état active
+    });
+
+    it('ne touche pas les alertes event (triggerType !== schedule)', () => {
+      const evt = alerte({ id: 'evt1', triggerType: 'event', stableKey: 'r.evt:CH-1' });
+      store().add([evt]);
+      store().reconcile([]); // snapshot vide — mais evt n'est pas concerné
+      expect(store().getActive().find(x => x.id === 'evt1')?.state).toBe('active');
+    });
+
+    it('reconcile() avec store vide et 0 incomings ne plante pas', () => {
+      expect(() => store().reconcile([])).not.toThrow();
+      expect(store().alerts).toHaveLength(0);
+    });
+
+    // ── 🐛 → ✅ : les 3 bugs documentés dans la session précédente sont corrigés ──
+
+    it('✅ (ex-🐛 dédup) reconcile() dédup : même condition → 1 seule alerte', () => {
+      const a = alerteSched({ ruleId: 'r.X', contextRef: { id: 'CH-1' } });
+      store().reconcile([a]);
+      store().reconcile([{ ...a, id: 'a_autre' }]);
+      expect(store().getActive()).toHaveLength(1); // ✅ corrigé
+    });
+
+    it('✅ (ex-🐛 auto-résolution) condition disparue → résolue', () => {
+      const a = alerteSched({ ruleId: 'r.X', contextRef: { id: 'CH-1' } });
+      store().reconcile([a]);
+      store().reconcile([]); // condition disparue
+      expect(store().getActive()).toHaveLength(0); // ✅ corrigé
+    });
+
+    it('✅ (ex-🐛 acquittement) alerte acquittée NE réapparaît PAS après un nouveau tick — intégration engine+store', () => {
+      // Chemin réel : engine.subscribeScheduled → store.reconcile
+      const RULE = {
+        id: 'r.recurr', category: 'financier', trigger: 'schedule',
+        severity: 'HIGH', destinataires: ['direction'], canaux: ['in_app'],
+        evaluate: () => [{ title: 'Marge basse', message: '...', contextRef: { type: 'chantier', id: 'CH-9' } }],
+      };
+      const engine = new AlertEngine([RULE]);
+      engine.subscribeScheduled(a => store().reconcile(a)); // câblage réel
+
+      const t0 = new Date('2026-05-15T10:00:00');
+      engine.evaluateScheduled({ now: t0 });
+      const premier = store().getActive()[0];
+      store().acknowledge(premier.id);
+
+      // Nouveau tick (condition toujours active)
+      engine.evaluateScheduled({ now: new Date(t0.getTime() + 61 * 60_000) });
+
+      // L'alerte acquittée NE réapparaît PAS (dédup par stableKey)
+      const actives = store().getActive().filter(a => a.state === 'active');
+      expect(actives).toHaveLength(0); // ✅ corrigé — plus de doublon
+      const acked = store().getActive().filter(a => a.state === 'acknowledged');
+      expect(acked).toHaveLength(1); // l'acquittée reste là
+      expect(acked[0].id).toBe(premier.id); // même id, pas de nouvel UUID
+    });
   });
 });

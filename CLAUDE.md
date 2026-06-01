@@ -136,6 +136,20 @@ Signaux d'alerte dans le code :
 - Casser l'équivalence entre `calculerCoutsChantier` et `calculerEtatChantier`
 - Afficher NaN ou `undefined` dans l'UI (`|| 0` ou `|| '—'`)
 - Ressaisir le montant du devis sur le chantier (CA = `devis.montantHT` uniquement)
+- **Supprimer en cascade ou directement une entité référencée** — voir principe ci-dessous
+
+### Principe fondamental : Rien ne se détruit
+
+**Une entité qui a un historique ne peut jamais être supprimée — elle est bloquée.**
+
+| Entité | Bloquée si… | Action autorisée |
+|--------|------------|-----------------|
+| Chantier | a des pointages ou des factures | Passer en `Terminé` / `Annulé` |
+| Client | a des chantiers, devis ou factures | Conserver l'historique |
+| Devis | a des chantiers liés ou des factures | Conserver l'historique |
+| Employé | a des pointages | Marquer `actif: false` |
+
+**Règle d'implémentation** : tout chemin de suppression doit passer par `src/utils/referenceGuard.js` avant d'agir. Si la garde retourne un message → `afficherNotif(message, 'error')` + `return`. Jamais de cascade (supprimer A en supprimant B, C, D).
 
 ---
 

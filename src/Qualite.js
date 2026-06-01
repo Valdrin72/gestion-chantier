@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { Trash2 } from 'lucide-react';
 import { C } from './donnees';
 import { DS } from './ds';
+import { useApp } from './context/AppContext';
+import { chantierEstReferencé } from './utils/referenceGuard';
 
 const carteStyle = DS.card;
 const inputStyle = DS.input;
@@ -64,7 +66,8 @@ const TYPES_CONTROLE = [
   { id: 'securite', label: 'Sécurité', couleur: C.danger, items: checklistsDefaut.securite },
 ];
 
-export default function Qualite({ chantiers, setChantiers, qualiteData, setQualiteData }) {
+export default function Qualite({ chantiers, setChantiers, qualiteData, setQualiteData, factures, pointages }) {
+  const { confirmer, afficherNotif } = useApp();
   const [chantierSelectionne, setChantierSelectionne] = useState(null);
   const [typeActif, setTypeActif] = useState('demarrage');
 
@@ -94,13 +97,15 @@ export default function Qualite({ chantiers, setChantiers, qualiteData, setQuali
   const getNotes = (chantierId) => qualiteData[`${chantierId}_notes`] || '';
   const setNotes = (chantierId, val) => setQualiteData({ ...qualiteData, [`${chantierId}_notes`]: val });
 
-  const supprimerChantier = (e, c) => {
+  const supprimerChantier = async (e, c) => {
     e.stopPropagation();
-    if (!window.confirm(`Supprimer le chantier "${c.nom}" ? Cette action est irréversible.`)) return;
+    const erreur = chantierEstReferencé(c, { factures: factures || [], pointages: pointages || [] });
+    if (erreur) { afficherNotif(erreur, 'error'); return; }
+    if (!await confirmer(`Supprimer le chantier "${c.nom}" ?`, { labelOui: 'Supprimer' })) return;
     const newQualiteData = { ...qualiteData };
     Object.keys(newQualiteData).filter(k => k.startsWith(`${c.id}_`)).forEach(k => delete newQualiteData[k]);
     setQualiteData(newQualiteData);
-    setChantiers(chantiers.filter(ch => ch.id !== c.id));
+    setChantiers(chantiers.filter(ch => String(ch.id) !== String(c.id)));
   };
 
   if (chantierSelectionne) {

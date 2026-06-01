@@ -176,7 +176,23 @@ Toujours inclure dans le body : gates verts + nombre de tests.
 
 ---
 
-## 6. Renvois techniques
+## 6. Principe : Rien ne se détruit
+
+**Décision verrouillée (Phase 1, 2026-06-01)** : aucune entité référencée par un historique ne peut être supprimée.
+
+Raison métier : les pointages, factures et devis constituent l'historique légal et comptable de CYNA. Une suppression cascade détruirait des données nécessaires à la TVA, aux garanties, et à la traçabilité client. En BTP suisse, les documents doivent être conservés 10 ans.
+
+**Implémentation** :
+- `src/utils/referenceGuard.js` — fonctions `chantierEstReferencé`, `clientEstReferencé`, `devisEstReferencé`, `employeEstReferencé`
+- Tout chemin de suppression UI y passe avant d'agir
+- Si la garde retourne un message → bloqué avec `afficherNotif` + `return`
+- Jamais de cascade de suppression
+
+**Alternatives UX** (Phase 2) : archivage via flag `archive: true`, filtre "Afficher les archivés".
+
+---
+
+## 7. Renvois techniques
 
 | Document | Contenu |
 |----------|---------|
@@ -184,3 +200,4 @@ Toujours inclure dans le body : gates verts + nombre de tests.
 | `DONNEES.md` | Cartographie exhaustive de `src/donnees.js` |
 | `AUDIT_POINTAGE.md` | 9 décisions architecturales du système de pointage |
 | `ARCHITECTURE.md` | Carte complète de `src/` (générée par `/cartographier`) |
+| `src/utils/referenceGuard.js` | Garde partagée "Rien ne se détruit" — fonctions de vérification des références |

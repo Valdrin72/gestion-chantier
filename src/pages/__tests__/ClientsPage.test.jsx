@@ -217,84 +217,85 @@ describe('ClientsPage', () => {
     });
   });
 
-  // ── 6. Suppression client RÉFÉRENCÉ — cascade complète ───────────────────────
-  describe('Suppression client référencé', () => {
-    it('supprime le client ET ses chantiers EN CASCADE', async () => {
+  // ── 6. Suppression client RÉFÉRENCÉ — BLOQUÉE (historique conservé) ──────────
+  describe('Suppression client référencé → bloquée', () => {
+    it('AVEC chantiers → bloquée : aucun setter appelé, message affiché (ex-🐛 cascade → zéro orphelin)', async () => {
       const setClients = vi.fn();
-      const setChantiers = vi.fn();
-      const setDevis = vi.fn();
-      const setFactures = vi.fn();
-      renderClients({
-        setClients, setChantiers, setDevis, setFactures,
-        chantiers: [clone(CHANTIER_1)],     // chantier du client 1
-        devis: [clone(DEVIS_1)],             // devis du client 1
-        factures: [clone(FACTURE_1)],        // facture liée au chantier 100
-      });
+      const afficherNotif = vi.fn();
+      const confirmer = vi.fn().mockResolvedValue(true);
+      renderClients(
+        { setClients, chantiers: [clone(CHANTIER_1)] },
+        { afficherNotif, confirmer },
+      );
       const corbeilles = document.querySelectorAll('[title="Supprimer ce client"]');
-      fireEvent.click(corbeilles[0]);       // supprime client 1 (Marc Dupont)
-      await waitFor(() => expect(setClients).toHaveBeenCalled());
+      fireEvent.click(corbeilles[0]); // client 1 = Marc Dupont (a un chantier)
+      await waitFor(() => expect(afficherNotif).toHaveBeenCalled());
 
-      // Le client est supprimé
-      const clientsRestants = setClients.mock.calls[0][0];
-      expect(clientsRestants.find(c => c.id === 1)).toBeFalsy();
-
-      // Les chantiers du client sont supprimés
-      expect(setChantiers).toHaveBeenCalledTimes(1);
-      const chantiersRestants = setChantiers.mock.calls[0][0];
-      expect(chantiersRestants.find(ch => ch.id === 100)).toBeFalsy();
-
-      // Les devis du client sont supprimés
-      expect(setDevis).toHaveBeenCalledTimes(1);
-      const devisRestants = setDevis.mock.calls[0][0];
-      expect(devisRestants.find(d => d.id === 200)).toBeFalsy();
-
-      // Les factures liées aux chantiers sont supprimées
-      expect(setFactures).toHaveBeenCalledTimes(1);
-      const facturesRestantes = setFactures.mock.calls[0][0];
-      expect(facturesRestantes.find(f => f.id === 300)).toBeFalsy();
+      // Bloqué : ni suppression, ni confirmation demandée
+      expect(setClients).not.toHaveBeenCalled();
+      expect(confirmer).not.toHaveBeenCalled();
+      expect(afficherNotif).toHaveBeenCalledWith(
+        expect.stringContaining('ne peut pas être supprimé'),
+        'error',
+      );
     });
 
-    it('le message de confirmation mentionne le nombre de chantiers liés', async () => {
-      const confirmer = vi.fn().mockResolvedValue(false);
-      renderClients({
-        chantiers: [clone(CHANTIER_1)],
-        confirmer,
-      }, { confirmer });
+    it('AVEC devis (sans chantier) → bloquée', async () => {
+      const setClients = vi.fn();
+      const afficherNotif = vi.fn();
+      renderClients(
+        { setClients, chantiers: [], devis: [clone(DEVIS_1)] }, // DEVIS_1.clientId === 1
+        { afficherNotif },
+      );
       const corbeilles = document.querySelectorAll('[title="Supprimer ce client"]');
       fireEvent.click(corbeilles[0]);
-      await waitFor(() => expect(confirmer).toHaveBeenCalled());
-      const msgConfirm = confirmer.mock.calls[0][0];
-      expect(msgConfirm).toContain('1'); // 1 chantier mentionné
-      expect(msgConfirm).toMatch(/chantier/i);
+      await waitFor(() => expect(afficherNotif).toHaveBeenCalled());
+      expect(setClients).not.toHaveBeenCalled();
+      expect(afficherNotif).toHaveBeenCalledWith(expect.stringContaining('ne peut pas être supprimé'), 'error');
     });
 
-    // 🐛 POINTAGES ORPHELINS après suppression d'un client avec chantiers
-    it('🐛 suppression client avec chantiers → pointages qui référencent ces chantiers deviennent ORPHELINS', async () => {
-      // La cascade supprime chantiers + devis + factures mais JAMAIS les pointages.
-      // Les pointages dont repartitions[].chantierId = 100 pointent désormais vers
-      // un chantier inexistant → perte silencieuse de la source de vérité heures/coûts.
+    it('AVEC factures (via devis du client, sans chantier) → bloquée', async () => {
       const setClients = vi.fn();
-      const setChantiers = vi.fn();
-      const setDevis = vi.fn();
-      const setFactures = vi.fn();
-      // Les pointages ne sont PAS passés à Clients (pas dans sa signature)
-      // → impossible de les nettoyer ; ils restent en mémoire, orphelins.
-      renderClients({
-        setClients, setChantiers, setDevis, setFactures,
-        chantiers: [clone(CHANTIER_1)],
-        devis: [],
-        factures: [],
-      });
+      const afficherNotif = vi.fn();
+      // Facture rattachée au devis 200 (client 1), aucun chantier
+      const factureSurDevis = { id: 301, chantierId: null, devisId: 200, montantTTC: '1000', statut: 'envoyee', montantPaye: '0' };
+      renderClients(
+        { setClients, chantiers: [], devis: [clone(DEVIS_1)], factures: [factureSurDevis] },
+        { afficherNotif },
+      );
       const corbeilles = document.querySelectorAll('[title="Supprimer ce client"]');
       fireEvent.click(corbeilles[0]);
-      await waitFor(() => expect(setClients).toHaveBeenCalled());
+      await waitFor(() => expect(afficherNotif).toHaveBeenCalled());
+      expect(setClients).not.toHaveBeenCalled();
+    });
 
-      // Le composant NE reçoit pas setPointages et ne peut donc pas nettoyer les pointages.
-      // Un pointage { repartitions: [{ chantierId: 100 }] } reste en mémoire/Supabase
-      // après que chantier 100 a été supprimé → orphelin silencieux.
-      // NOTE : ce test documente que le composant ne gère pas les pointages orphelins.
-      // FIX : soit passer setPointages à Clients + le nettoyer en cascade,
-      //        soit bloquer la suppression si des pointages existent (Option 2 comme pour les chantiers).
+    it('AVEC factures (via chantier du client) → bloquée', async () => {
+      const setClients = vi.fn();
+      const afficherNotif = vi.fn();
+      renderClients(
+        { setClients, chantiers: [clone(CHANTIER_1)], factures: [clone(FACTURE_1)] },
+        { afficherNotif },
+      );
+      const corbeilles = document.querySelectorAll('[title="Supprimer ce client"]');
+      fireEvent.click(corbeilles[0]);
+      await waitFor(() => expect(afficherNotif).toHaveBeenCalled());
+      expect(setClients).not.toHaveBeenCalled();
+    });
+
+    it('client 2 (Martin) sans aucun lien reste supprimable même si client 1 est référencé', async () => {
+      const setClients = vi.fn();
+      const confirmer = vi.fn().mockResolvedValue(true);
+      // client 1 a un chantier, client 2 n'a rien
+      renderClients(
+        { setClients, chantiers: [clone(CHANTIER_1)] },
+        { confirmer },
+      );
+      const corbeilles = document.querySelectorAll('[title="Supprimer ce client"]');
+      fireEvent.click(corbeilles[1]); // client 2 = Julie Martin (vierge)
+      await waitFor(() => expect(setClients).toHaveBeenCalled());
+      const restants = setClients.mock.calls[0][0];
+      expect(restants.find(c => c.id === 2)).toBeFalsy(); // Martin supprimé
+      expect(restants.find(c => c.id === 1)).toBeTruthy(); // Dupont conservé
     });
   });
 

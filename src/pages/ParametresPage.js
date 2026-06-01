@@ -39,6 +39,46 @@ function EditClientRow({ c, clients, setClients }) {
   );
 }
 
+// Sanitise une saisie de taux financier : jamais NaN, jamais négatif.
+// Champ vide ou non numérique → 0 ; valeur négative → clampée à 0.
+function sanitizeFinancier(raw) {
+  const n = parseFloat(raw);
+  if (Number.isNaN(n)) return 0;
+  if (n < 0) return 0;
+  return n;
+}
+
+// Champ de taux financier (onglet Devis).
+// Buffer string local → la saisie décimale ("8.1", "1.0") n'est jamais cassée.
+// Le commit dans parametres passe par sanitizeFinancier → jamais NaN/négatif.
+function ChampFinancier({ label, fieldKey, isTVA, value, onCommit }) {
+  const [buffer, setBuffer] = React.useState(value == null ? '' : String(value));
+  const handle = (raw) => {
+    setBuffer(raw);
+    onCommit(fieldKey, sanitizeFinancier(raw));
+  };
+  return (
+    <div style={{ background: isTVA ? 'rgba(16,185,129,0.05)' : 'var(--bg-glass-2)', border: `1px solid ${isTVA ? 'rgba(16,185,129,0.3)' : 'var(--border)'}`, borderRadius: '12px', padding: '15px' }}>
+      <label style={DS.label}>{label}</label>
+      <input type="number"
+        value={buffer}
+        placeholder={isTVA ? '8.1' : ''}
+        onChange={e => handle(e.target.value)}
+        style={{ ...DS.input, fontWeight: 'bold', fontSize: '18px', color: isTVA ? '#10b981' : C.primaire, borderColor: isTVA ? '#10b981' : C.primaire, borderWidth: '2px' }} />
+      {isTVA && (
+        <div style={{ marginTop: 8, fontSize: 11, color: 'var(--text-muted)', lineHeight: 1.5 }}>
+          {(value == null || isNaN(value) || value === 0)
+            ? <span style={{ color: '#10b981', fontWeight: 600 }}>✓ 8.1% appliqué automatiquement (taux légal CH 2024)</span>
+            : <span>Taux actif : <strong style={{ color: '#10b981' }}>{value}%</strong> — TTC = HT × {Math.round((1 + value / 100) * 1000) / 1000}</span>
+          }
+          <br />
+          <span style={{ color: 'var(--text-muted)', fontSize: 10 }}>Standard BTP Suisse : 8.1% · Pas de double comptage — appliqué une seule fois</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
 const inputStyle = DS.input;
 const labelStyle = DS.label;
 const carteStyle = DS.card;
@@ -250,30 +290,16 @@ function Parametres({ parametres, setParametres, clients = [], setClients = () =
         <div style={carteStyle}>
           <div className="ds-card-title" style={{ marginBottom: '20px' }}>Paramètres des Devis</div>
           <div style={{ display: 'grid', gridTemplateColumns: 'var(--g6)', gap: '15px' }}>
-            {[['Marge cible (%)', 'margeCible'], ['Seuil min. (%)', 'seuilRentabiliteMin'], ['Plafond crédibilité (%)', 'plafondCredi'], ['Frais généraux (%)', 'tauxFraisGeneraux'], ['Coeff. MO', 'coefficientMainOeuvre'], ['TVA (%)', 'tauxTVA']].map(([label, key]) => {
-              const isTVA = key === 'tauxTVA';
-              const val = parametres.parametres?.[key];
-              return (
-                <div key={key} style={{ background: isTVA ? 'rgba(16,185,129,0.05)' : 'var(--bg-glass-2)', border: `1px solid ${isTVA ? 'rgba(16,185,129,0.3)' : 'var(--border)'}`, borderRadius: '12px', padding: '15px' }}>
-                  <label style={labelStyle}>{label}</label>
-                  <input type="number"
-                    value={val ?? ''}
-                    placeholder={isTVA ? '8.1' : ''}
-                    onChange={e => sauv({ ...parametres, parametres: { ...parametres.parametres, [key]: parseFloat(e.target.value) } })}
-                    style={{ ...inputStyle, fontWeight: 'bold', fontSize: '18px', color: isTVA ? '#10b981' : C.primaire, borderColor: isTVA ? '#10b981' : C.primaire, borderWidth: '2px' }} />
-                  {isTVA && (
-                    <div style={{ marginTop: 8, fontSize: 11, color: 'var(--text-muted)', lineHeight: 1.5 }}>
-                      {(val == null || isNaN(val))
-                        ? <span style={{ color: '#10b981', fontWeight: 600 }}>✓ 8.1% appliqué automatiquement (taux légal CH 2024)</span>
-                        : <span>Taux actif : <strong style={{ color: '#10b981' }}>{val}%</strong> — TTC = HT × {Math.round((1 + val / 100) * 1000) / 1000}</span>
-                      }
-                      <br />
-                      <span style={{ color: 'var(--text-muted)', fontSize: 10 }}>Standard BTP Suisse : 8.1% · Pas de double comptage — appliqué une seule fois</span>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+            {[['Marge cible (%)', 'margeCible'], ['Seuil min. (%)', 'seuilRentabiliteMin'], ['Plafond crédibilité (%)', 'plafondCredi'], ['Frais généraux (%)', 'tauxFraisGeneraux'], ['Coeff. MO', 'coefficientMainOeuvre'], ['TVA (%)', 'tauxTVA']].map(([label, key]) => (
+              <ChampFinancier
+                key={key}
+                label={label}
+                fieldKey={key}
+                isTVA={key === 'tauxTVA'}
+                value={parametres.parametres?.[key]}
+                onCommit={(k, v) => sauv({ ...parametres, parametres: { ...parametres.parametres, [k]: v } })}
+              />
+            ))}
           </div>
         </div>
       )}

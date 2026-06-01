@@ -9,6 +9,11 @@ export function bootstrapAlertSystem(contextProvider, schedulerIntervalMs = 5 * 
   const router = new NotificationRouter();
   router.register(new InAppAdapter());
 
+  // Réhydrate l'état persisté (acquittements/snooze) avant le premier tick.
+  // Le premier reconcile (scheduler.start → tick initial) fait le ménage :
+  // condition encore active → reste acquittée ; condition disparue → auto-résolue.
+  useAlertsStore.getState().hydrateFromStorage();
+
   // Event-triggered and evaluateAll alerts: additive (no reconciliation needed).
   engine.subscribe(async (alerts) => {
     useAlertsStore.getState().add(alerts);

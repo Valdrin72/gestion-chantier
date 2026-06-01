@@ -35,7 +35,10 @@ function alerteSched(over = {}) {
 }
 
 describe('useAlertsStore', () => {
-  beforeEach(() => { store().clear(); });
+  beforeEach(() => {
+    if (typeof localStorage !== 'undefined') localStorage.clear();
+    store().clear();
+  });
 
   // ── add / getActive ──────────────────────────────────────────────
   it('add() empile en tête et getActive() les retourne', () => {

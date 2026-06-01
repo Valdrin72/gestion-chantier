@@ -1,8 +1,8 @@
 export class AlertEngine {
   constructor(rules) {
     this.rules = rules.filter(r => r.enabled !== false);
-    this.cooldowns = new Map();
     this.listeners = new Set();
+    this.scheduledListeners = new Set();
   }
 
   evaluateAll(ctx) {
@@ -18,12 +18,16 @@ export class AlertEngine {
 
   evaluateScheduled(ctx) {
     const scheduled = this.rules.filter(r => r.trigger === 'schedule');
-    return this._evaluateMatching(scheduled, ctx);
+    const newAlerts = this._evaluateMatchingRaw(scheduled, ctx);
+    // Always notify scheduled listeners — even with 0 results — so the store can
+    // auto-resolve conditions that have disappeared this tick.
+    // NOTE: _notify is NOT called here; scheduled alerts go through _notifyScheduled only.
+    this._notifyScheduled(newAlerts);
+    return newAlerts;
   }
 
-  _evaluateMatching(rules, ctx) {
-    const newAlerts = [];
-
+  _evaluateMatchingRaw(rules, ctx) {
+    const alerts = [];
     for (const rule of rules) {
       let generated = [];
       try {
@@ -32,21 +36,15 @@ export class AlertEngine {
         console.error(`[AlertEngine] Rule ${rule.id} failed:`, err);
         continue;
       }
-
       for (const g of generated) {
-        const cooldownKey = `${rule.id}:${g.contextRef?.id ?? 'global'}`;
-        const lastFired = this.cooldowns.get(cooldownKey);
-
-        if (lastFired && rule.cooldownMinutes) {
-          const elapsedMin = (ctx.now.getTime() - lastFired.getTime()) / 60_000;
-          if (elapsedMin < rule.cooldownMinutes) continue;
-        }
-
-        this.cooldowns.set(cooldownKey, ctx.now);
-        newAlerts.push(this._materialize(rule, g, ctx));
+        alerts.push(this._materialize(rule, g, ctx));
       }
     }
+    return alerts;
+  }
 
+  _evaluateMatching(rules, ctx) {
+    const newAlerts = this._evaluateMatchingRaw(rules, ctx);
     if (newAlerts.length > 0) this._notify(newAlerts);
     return newAlerts;
   }
@@ -56,6 +54,8 @@ export class AlertEngine {
       id: typeof crypto !== 'undefined' && crypto.randomUUID
         ? crypto.randomUUID()
         : `alert_${Date.now()}_${Math.random().toString(36).slice(2)}`,
+      stableKey: `${rule.id}:${g.contextRef?.id ?? 'global'}`,
+      triggerType: rule.trigger,
       ruleId: rule.id,
       severity: rule.severity,
       category: rule.category,
@@ -76,13 +76,25 @@ export class AlertEngine {
     return () => this.listeners.delete(listener);
   }
 
+  // Receives the full scheduled snapshot (always called, even with 0 alerts).
+  subscribeScheduled(listener) {
+    this.scheduledListeners.add(listener);
+    return () => this.scheduledListeners.delete(listener);
+  }
+
   _notify(alerts) {
     this.listeners.forEach(l => {
       try { l(alerts); } catch (err) { console.error('[AlertEngine] Listener error:', err); }
     });
   }
 
+  _notifyScheduled(alerts) {
+    this.scheduledListeners.forEach(l => {
+      try { l(alerts); } catch (err) { console.error('[AlertEngine] Scheduled listener error:', err); }
+    });
+  }
+
   reset() {
-    this.cooldowns.clear();
+    // No-op: cooldown removed in favour of store-level reconciliation via reconcile().
   }
 }

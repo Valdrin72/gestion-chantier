@@ -9,9 +9,18 @@ export function bootstrapAlertSystem(contextProvider, schedulerIntervalMs = 5 * 
   const router = new NotificationRouter();
   router.register(new InAppAdapter());
 
+  // Event-triggered and evaluateAll alerts: additive (no reconciliation needed).
   engine.subscribe(async (alerts) => {
     useAlertsStore.getState().add(alerts);
     await router.route(alerts);
+  });
+
+  // Scheduled evaluation: full snapshot every tick → reconcile the store.
+  // subscribeScheduled is always called, even with 0 alerts, so disappeared
+  // conditions are auto-resolved.
+  engine.subscribeScheduled(async (scheduledAlerts) => {
+    useAlertsStore.getState().reconcile(scheduledAlerts);
+    if (scheduledAlerts.length > 0) await router.route(scheduledAlerts);
   });
 
   const scheduler = new AlertScheduler(engine, contextProvider, schedulerIntervalMs);

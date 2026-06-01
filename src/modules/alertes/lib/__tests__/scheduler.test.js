@@ -55,17 +55,22 @@ describe('AlertScheduler', () => {
   });
 
   it("n'évalue QUE les règles 'schedule' (une règle 'event' ne se déclenche pas)", async () => {
-    // Engine réel avec UNE règle event ET UNE règle schedule
-    const received = [];
+    // Engine réel avec UNE règle event ET UNE règle schedule.
+    // evaluateScheduled → _notifyScheduled uniquement (pas _notify).
+    const scheduledReceived = [];
+    const subscribeReceived = [];
     const engine = new AlertEngine([RULE_EVENT, RULE_SCHEDULE]);
-    engine.subscribe(a => received.push(...a));
+    engine.subscribeScheduled(a => scheduledReceived.push(...a));
+    engine.subscribe(a => subscribeReceived.push(...a));
     const scheduler = new AlertScheduler(engine, vi.fn().mockResolvedValue(mockCtx()));
 
     await scheduler.runOnce();
 
-    // Seule la règle schedule a produit une alerte
-    expect(received).toHaveLength(1);
-    expect(received[0].ruleId).toBe('sched.always');
+    // subscribeScheduled reçoit la règle schedule uniquement
+    expect(scheduledReceived).toHaveLength(1);
+    expect(scheduledReceived[0].ruleId).toBe('sched.always');
+    // subscribe ne reçoit RIEN (la règle event n'est pas déclenchée par un tick)
+    expect(subscribeReceived).toHaveLength(0);
   });
 
   it('start() déclenche un tick initial immédiat', () => {

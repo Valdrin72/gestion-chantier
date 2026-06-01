@@ -4,7 +4,7 @@
  */
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { screen, fireEvent } from '@testing-library/react';
+import { screen, fireEvent, waitFor } from '@testing-library/react';
 import EmployesPage from '../../pages/EmployesPage';
 import ChantierDetail from '../../components/chantiers/ChantierDetail';
 import { renderWithApp } from '../../test-utils/renderWithApp';
@@ -59,6 +59,7 @@ function renderDetail(chantier = CHANTIER, overrides = {}) {
       parametres,
       setChantiers,
       agentState: {},
+      ...overrides.ctx,
     },
   );
 }
@@ -184,16 +185,19 @@ describe('ChantierDetail — extras (RTL)', () => {
     expect(screen.getByText(/= CHF 270/)).toBeInTheDocument();
   });
 
-  it('suppression extra → appelle setChantiers avec extras vide', () => {
+  it('suppression extra non facturé → confirmer puis setChantiers avec extras vide', async () => {
     const chantierAvecExtra = {
       ...CHANTIER,
       extras: [{ id: 'e1', description: 'À supprimer', mode: 'forfait', montantForfait: '500', heures: '', tarifHeure: '', employeId: '', factureId: null, dateCreation: '2026-05-29' }],
     };
     const setChantiers = vi.fn();
-    renderDetail(chantierAvecExtra, { setChantiers });
+    const confirmer = vi.fn().mockResolvedValue(true);
+    renderDetail(chantierAvecExtra, { setChantiers, ctx: { confirmer, afficherNotif: vi.fn() } });
 
     fireEvent.click(screen.getByRole('button', { name: '✕' }));
 
+    await waitFor(() => expect(confirmer).toHaveBeenCalledOnce());
+    await waitFor(() => expect(setChantiers).toHaveBeenCalledOnce());
     const updateFn = setChantiers.mock.calls[0][0];
     const résultat = updateFn([chantierAvecExtra]);
     expect(résultat[0].extras).toHaveLength(0);

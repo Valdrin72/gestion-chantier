@@ -2,11 +2,22 @@ import React, { useState } from 'react';
 import { ChevronRight, Pencil } from 'lucide-react';
 import { fmtN, C } from '../donnees';
 import { DS } from '../ds';
+import { useApp } from '../context/AppContext';
+import { clientEstReferencé } from '../utils/referenceGuard';
 import { EditEmployeRow } from './EmployesPage';
 
-function EditClientRow({ c, clients, setClients }) {
+function EditClientRow({ c, clients, setClients, chantiers = [], devis = [], factures = [] }) {
+  const { confirmer, afficherNotif } = useApp();
   const [ed, setEd] = useState({ ...c });
   const [editing, setEditing] = useState(false);
+
+  const supprimer = async () => {
+    const erreur = clientEstReferencé(c, { chantiers, devis, factures });
+    if (erreur) { afficherNotif(erreur, 'error'); return; }
+    if (!await confirmer(`Supprimer ${c.nom} ?`, { labelOui: 'Supprimer' })) return;
+    setClients(clients.filter(cl => String(cl.id) !== String(c.id)));
+  };
+
   if (!editing) return (
     <tr key={c.id}>
       <td style={DS.td}><strong>{c.nom}</strong></td>
@@ -17,7 +28,7 @@ function EditClientRow({ c, clients, setClients }) {
       <td style={DS.td}>
         <div style={{ display: 'flex', gap: 4 }}>
           <button onClick={() => setEditing(true)} style={{ ...DS.btnGhost, padding: '4px 10px', fontSize: 12 }}><Pencil size={12} /> Modifier</button>
-          <button onClick={() => { if (window.confirm(`Supprimer ${c.nom} ?`)) setClients(clients.filter(cl => cl.id !== c.id)); }} style={{ ...DS.btnDanger, padding: '4px 8px' }}>Suppr</button>
+          <button onClick={supprimer} style={{ ...DS.btnDanger, padding: '4px 8px' }}>Suppr</button>
         </div>
       </td>
     </tr>
@@ -615,7 +626,7 @@ function Parametres({ parametres, setParametres, clients = [], setClients = () =
               {['Nom', 'Prénom', 'Entreprise', 'Téléphone', 'Email', 'Action'].map(h => <th key={h} style={thStyle}>{h}</th>)}
             </tr></thead>
             <tbody>
-              {clients.map(c => <EditClientRow key={c.id} c={c} clients={clients} setClients={setClients} />)}
+              {clients.map(c => <EditClientRow key={c.id} c={c} clients={clients} setClients={setClients} chantiers={chantiers} devis={devis} factures={factures} />)}
             </tbody>
           </table>
           <div style={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', color: 'var(--text-muted)', marginBottom: '12px', marginTop: '24px' }}>Ajouter un client</div>

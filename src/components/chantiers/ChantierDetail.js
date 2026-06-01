@@ -26,7 +26,7 @@ const btnSucces = DS.btnSuccess;
 const btnDanger = DS.btnDanger;
 
 function ChantierDetail({ chantier, detailOnglet, setDetailOnglet, modeCompleter, onRetour, onModifier, onSupprimer, onPasserEnCours }) {
-  const { factures = [], clients, devis = [], parametres, setChantiers, naviguer, ouvrirSaisieHeures, agentState } = useApp();
+  const { factures = [], clients, devis = [], parametres, setChantiers, naviguer, ouvrirSaisieHeures, agentState, confirmer, afficherNotif } = useApp();
   const { etat, couts } = useChantierCalculs(chantier);
   const couleurStatut = couleurStatutDS;
 
@@ -610,7 +610,15 @@ function ChantierDetail({ chantier, detailOnglet, setDetailOnglet, modeCompleter
           };
           const ajouterExtra = () => sauverExtras([...extras, { id: Date.now(), description: '', mode: 'forfait', montantForfait: '', heures: '', tarifHeure: '', employeId: '', factureId: null, dateCreation: new Date().toISOString().slice(0, 10) }]);
           const modifierExtra = (id, patch) => sauverExtras(extras.map(e => String(e.id) === String(id) ? { ...e, ...patch } : e));
-          const supprimerExtra = (id) => sauverExtras(extras.filter(e => String(e.id) !== String(id)));
+          const supprimerExtra = async (id) => {
+            // Un extra déjà facturé garde une trace comptable : il ne se supprime pas.
+            if (estFacture(id)) {
+              if (afficherNotif) afficherNotif('Cet extra est déjà facturé — il ne peut pas être supprimé, sa trace comptable doit être conservée. Annule la facture si nécessaire.', 'error');
+              return;
+            }
+            if (confirmer && !await confirmer('Supprimer cet extra ?', { labelOui: 'Supprimer' })) return;
+            sauverExtras(extras.filter(e => String(e.id) !== String(id)));
+          };
           const facturerExtra = (extra) => {
             const montant = extra.mode === 'forfait'
               ? parseFloat(extra.montantForfait) || 0

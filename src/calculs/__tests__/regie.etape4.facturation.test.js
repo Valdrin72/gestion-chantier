@@ -4,7 +4,7 @@
  */
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { screen, fireEvent } from '@testing-library/react';
+import { screen, fireEvent, waitFor } from '@testing-library/react';
 import ChantierDetail from '../../components/chantiers/ChantierDetail';
 import Factures from '../../Factures';
 import { renderWithApp } from '../../test-utils/renderWithApp';
@@ -168,5 +168,72 @@ describe('Étape 4 — facturation standalone extra (RTL)', () => {
 
     expect(screen.getByText('✓ Facturé')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Facturer l'extra/i })).toBeInTheDocument();
+  });
+});
+
+// ── Suppression protégée d'un extra (principe "Rien ne se détruit") ──────────
+describe('Étape 4 — suppression protégée d\'un extra', () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  // Le bouton de suppression d'un extra est le "✕" dans l'en-tête de l'extra.
+  // (Le bouton du formulaire de facturation, lui, n'est pas un ✕.)
+  const clicSupprExtra = () => {
+    const btnSuppr = screen.getAllByRole('button').find(b => b.textContent === '✕');
+    expect(btnSuppr).toBeDefined();
+    fireEvent.click(btnSuppr);
+  };
+
+  it('extra NON facturé → suppression OK après confirmer (setChantiers appelé)', async () => {
+    const confirmer = vi.fn().mockResolvedValue(true);
+    const setChantiers = vi.fn();
+    renderWithApp(
+      <ChantierDetail
+        chantier={{ ...CHANTIER_BASE, extras: [EXTRA_FORFAIT] }}
+        detailOnglet="financier" setDetailOnglet={vi.fn()} modeCompleter={false}
+        onRetour={vi.fn()} onModifier={vi.fn()} onSupprimer={vi.fn()} onPasserEnCours={vi.fn()}
+      />,
+      { devis: DEVIS, factures: [], clients: CLIENTS, parametres: { employes: [] }, setChantiers, naviguer: vi.fn(), agentState: {}, confirmer, afficherNotif: vi.fn() },
+    );
+
+    clicSupprExtra();
+    await waitFor(() => expect(confirmer).toHaveBeenCalledOnce());
+    await waitFor(() => expect(setChantiers).toHaveBeenCalledOnce());
+  });
+
+  it('extra FACTURÉ (facture non annulée) → BLOQUÉ : afficherNotif error, pas de setChantiers', async () => {
+    const afficherNotif = vi.fn();
+    const setChantiers = vi.fn();
+    const factureExtra = { id: 'f-ex1', chantierId: 'c1', extraId: 'ex1', type: 'standard', statut: 'envoyee', montantHT: 2500 };
+    renderWithApp(
+      <ChantierDetail
+        chantier={{ ...CHANTIER_BASE, extras: [EXTRA_FORFAIT] }}
+        detailOnglet="financier" setDetailOnglet={vi.fn()} modeCompleter={false}
+        onRetour={vi.fn()} onModifier={vi.fn()} onSupprimer={vi.fn()} onPasserEnCours={vi.fn()}
+      />,
+      { devis: DEVIS, factures: [factureExtra], clients: CLIENTS, parametres: { employes: [] }, setChantiers, naviguer: vi.fn(), agentState: {}, confirmer: vi.fn().mockResolvedValue(true), afficherNotif },
+    );
+
+    clicSupprExtra();
+    await waitFor(() => expect(afficherNotif).toHaveBeenCalledOnce());
+    expect(afficherNotif.mock.calls[0][1]).toBe('error');
+    expect(setChantiers).not.toHaveBeenCalled();
+  });
+
+  it('extra dont la facture est ANNULÉE → redevient supprimable (OK)', async () => {
+    const confirmer = vi.fn().mockResolvedValue(true);
+    const setChantiers = vi.fn();
+    const factureAnnulee = { id: 'f-ex1', chantierId: 'c1', extraId: 'ex1', type: 'standard', statut: 'annulee', montantHT: 2500 };
+    renderWithApp(
+      <ChantierDetail
+        chantier={{ ...CHANTIER_BASE, extras: [EXTRA_FORFAIT] }}
+        detailOnglet="financier" setDetailOnglet={vi.fn()} modeCompleter={false}
+        onRetour={vi.fn()} onModifier={vi.fn()} onSupprimer={vi.fn()} onPasserEnCours={vi.fn()}
+      />,
+      { devis: DEVIS, factures: [factureAnnulee], clients: CLIENTS, parametres: { employes: [] }, setChantiers, naviguer: vi.fn(), agentState: {}, confirmer, afficherNotif: vi.fn() },
+    );
+
+    clicSupprExtra();
+    await waitFor(() => expect(confirmer).toHaveBeenCalledOnce());
+    await waitFor(() => expect(setChantiers).toHaveBeenCalledOnce());
   });
 });

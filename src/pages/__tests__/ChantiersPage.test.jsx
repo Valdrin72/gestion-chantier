@@ -250,33 +250,21 @@ describe('ChantiersPage — suppression protégée (Option 2)', () => {
     expect(arg.some(c => String(c.id) === '2')).toBe(true);
   });
 
-  it('🐛→✅ chantier AVEC pointages → suppression BLOQUÉE (zéro orphelin)', async () => {
+  it('🐛→✅ chantier AVEC pointages → PAS de bouton Supprimer (Archiver à la place)', () => {
     const pointages = [pointageLie('P1', 1), pointageLie('P2', 2)];
-    const { ctx } = supprimer('Bureaux Dupont', { pointages, factures: [] });
-    // message d'information affiché, AUCUNE mutation
-    await waitFor(() => expect(ctx.afficherNotif).toHaveBeenCalled());
-    expect(ctx.afficherNotif.mock.calls.at(-1)[0]).toMatch(/Terminé ou Annulé|heures pointées/i);
-    expect(ctx.setChantiers).not.toHaveBeenCalled();
-    expect(ctx.setPointages).not.toHaveBeenCalled(); // pas d'orphelin : le chantier reste
-    expect(ctx.setFactures).not.toHaveBeenCalled();
+    renderChantiers({ pointages, factures: [] });
+    const ligne = screen.getByText('Bureaux Dupont').closest('tr');
+    // Référencé → plus de hard delete, bouton Archiver présent
+    expect(within(ligne).queryByTitle('Supprimer')).toBeNull();
+    expect(within(ligne).getByTitle('Archiver')).toBeInTheDocument();
   });
 
-  it('chantier AVEC factures (sans pointage) → suppression BLOQUÉE', async () => {
+  it('chantier AVEC factures (sans pointage) → bouton Archiver, pas Supprimer', () => {
     const factures = [{ id: 'F1', chantierId: 1, montantTTC: 1000 }];
-    const { ctx } = supprimer('Bureaux Dupont', { factures, pointages: [] });
-    await waitFor(() => expect(ctx.afficherNotif).toHaveBeenCalled());
-    expect(ctx.setChantiers).not.toHaveBeenCalled();
-    expect(ctx.setFactures).not.toHaveBeenCalled();
-  });
-
-  it('chantier AVEC pointage ET facture → suppression BLOQUÉE', async () => {
-    const factures = [{ id: 'F1', chantierId: 1, montantTTC: 1000 }];
-    const pointages = [pointageLie('P1', 1)];
-    const { ctx } = supprimer('Bureaux Dupont', { factures, pointages });
-    await waitFor(() => expect(ctx.afficherNotif).toHaveBeenCalled());
-    expect(ctx.setChantiers).not.toHaveBeenCalled();
-    expect(ctx.setPointages).not.toHaveBeenCalled();
-    expect(ctx.setFactures).not.toHaveBeenCalled();
+    renderChantiers({ factures, pointages: [] });
+    const ligne = screen.getByText('Bureaux Dupont').closest('tr');
+    expect(within(ligne).queryByTitle('Supprimer')).toBeNull();
+    expect(within(ligne).getByTitle('Archiver')).toBeInTheDocument();
   });
 
   it('coquille vide + confirm=false → AUCUNE suppression', async () => {
@@ -301,6 +289,87 @@ describe('ChantiersPage — suppression protégée (Option 2)', () => {
     // rien n'est effacé : ni factures, ni pointages
     expect(ctx.setFactures).not.toHaveBeenCalled();
     expect(ctx.setPointages).not.toHaveBeenCalled();
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ARCHIVAGE (Phase 2a)
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('ChantiersPage — archivage', () => {
+  const pointageLie = (id, chantierId) => ({
+    id, date: '2026-01-01', employeId: 1,
+    repartitions: [{ chantierId, categorie: 'production', heures: 8 }],
+  });
+
+  it('archiver un chantier référencé → archive:true + dateArchivage, notif affichée', async () => {
+    const pointages = [pointageLie('P1', 1)];
+    const { ctx } = renderChantiers({ pointages, factures: [] });
+    const ligne = screen.getByText('Bureaux Dupont').closest('tr');
+
+    fireEvent.click(within(ligne).getByTitle('Archiver'));
+    // confirm léger (mocké true)
+    await waitFor(() => expect(ctx.confirmer).toHaveBeenCalled());
+    await waitFor(() => expect(ctx.setChantiers).toHaveBeenCalled());
+
+    const arg = ctx.setChantiers.mock.calls.at(-1)[0];
+    const archivé = arg.find(c => c.id === 1);
+    expect(archivé.archive).toBe(true);
+    expect(archivé.dateArchivage).toBeTruthy();
+    // l'autre chantier reste intact
+    expect(arg.find(c => c.id === 2).archive).toBeFalsy();
+    // notif "où c'est parti"
+    expect(ctx.afficherNotif).toHaveBeenCalledWith(expect.stringMatching(/archivé.*archivés/i));
+  });
+
+  it('un chantier archivé disparaît de la liste active', () => {
+    const archivé = { ...clone(CHANTIER_EN_COURS), archive: true, dateArchivage: '2026-06-01T10:00:00.000Z' };
+    renderChantiers({ chantiers: [archivé, clone(CHANTIER_TERMINE)] });
+    // absent de la liste active
+    expect(screen.queryByText('Bureaux Dupont')).toBeNull();
+    // l'actif reste
+    expect(screen.getByText('Villa Martin')).toBeInTheDocument();
+  });
+
+  it('toggle "Voir les archivés" → l\'archivé réapparaît grisé avec Restaurer', () => {
+    const archivé = { ...clone(CHANTIER_EN_COURS), archive: true, dateArchivage: '2026-06-01T10:00:00.000Z' };
+    renderChantiers({ chantiers: [archivé, clone(CHANTIER_TERMINE)] });
+
+    // masqué au départ
+    expect(screen.queryByText('Bureaux Dupont')).toBeNull();
+    // toggle présent (1 archivé)
+    fireEvent.click(screen.getByRole('button', { name: /Voir 1 chantier archivé/i }));
+    // réapparaît + bouton Restaurer
+    expect(screen.getByText('Bureaux Dupont')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Restaurer/i })).toBeInTheDocument();
+  });
+
+  it('Restaurer → archive:false, notif de restauration', () => {
+    const archivé = { ...clone(CHANTIER_EN_COURS), archive: true, dateArchivage: '2026-06-01T10:00:00.000Z' };
+    const { ctx } = renderChantiers({ chantiers: [archivé, clone(CHANTIER_TERMINE)] });
+
+    fireEvent.click(screen.getByRole('button', { name: /Voir 1 chantier archivé/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Restaurer/i }));
+
+    const arg = ctx.setChantiers.mock.calls.at(-1)[0];
+    const restauré = arg.find(c => c.id === 1);
+    expect(restauré.archive).toBe(false);
+    expect(restauré.dateArchivage).toBeUndefined();
+    expect(ctx.afficherNotif).toHaveBeenCalledWith(expect.stringMatching(/restauré/i));
+  });
+
+  it('le KPI "EN COURS" ne compte pas un chantier archivé', () => {
+    // 2 "En cours" dont 1 archivé → le compteur EN COURS doit valoir 1
+    const archivé = { ...clone(CHANTIER_EN_COURS), id: 3, numero: 'CH-2026-003', nom: 'Archivé EC', archive: true };
+    renderChantiers({ chantiers: [clone(CHANTIER_EN_COURS), archivé] });
+    const kpiEnCours = screen.getByText('EN COURS').closest('.kpi-card');
+    // 1 seul actif en cours
+    expect(within(kpiEnCours).getByText('1')).toBeInTheDocument();
+  });
+
+  it('aucun chantier archivé → pas de toggle "Voir les archivés"', () => {
+    renderChantiers();
+    expect(screen.queryByRole('button', { name: /Voir.*archivé/i })).toBeNull();
   });
 });
 

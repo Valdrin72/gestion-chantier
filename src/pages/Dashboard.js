@@ -76,6 +76,7 @@ function Dashboard() {
     // 3. RENTABILITÉ MOYENNE — même moteur que la fiche chantier (coefficient + FG inclus)
     // Exclus : chantiers sans CA, sans coûts réels saisis, ou données incomplètes
     const chantiersRenta = chantiers
+      .filter(c => c.archive !== true)
       .map(c => coutsMap.get(c.id))
       .filter(r => r && r.montantTotal > 0 && r.totalCoutsReel > 0 && !r.donneesIncompletes);
     const rentaMoyenne = chantiersRenta.length > 0

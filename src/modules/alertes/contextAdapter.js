@@ -59,7 +59,7 @@ export function adapterContexteAlertes({ chantiers = [], devis = [], factures = 
   const tauxFG = parseFloat(parametres?.tauxFraisGeneraux) || 12;
   const devisMap = new Map(devis.map(d => [String(d.id), d]));
 
-  const chantiersAdaptes = chantiers.map(c => {
+  const chantiersAdaptes = chantiers.filter(c => c.archive !== true).map(c => {
     const devisLie = devisMap.get(String(c.devisId));
     let etat = null;
     try {

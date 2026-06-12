@@ -792,7 +792,7 @@ export function runPlanningCoherence({ chantiers, devis, parametres }) {
   const alertes = [];
   const todayStr = new Date().toISOString().split('T')[0];
 
-  chantiers.forEach(c => {
+  chantiers.filter(c => c.archive !== true).forEach(c => {
     const devisLie = devis.find(d => String(d.id) === String(c.devisId));
     const journal = c.journal || [];
 
@@ -1059,7 +1059,7 @@ export function runConformiteBTP({ chantiers, parametres, agentContext }) {
   const alertes = [];
   const violations = [];
   // Vérifie dépassement 8h/jour par employé par chantier
-  chantiers.forEach(c => {
+  chantiers.filter(c => c.archive !== true).forEach(c => {
     (c.journal || []).forEach(entry => {
       (entry.employes || []).forEach(ej => {
         const h = parseFloat(ej.heuresTravaillees) || 0;
@@ -1302,7 +1302,7 @@ export function runCoutMOAnalyse({ chantiers, devis, parametres, agentContext, g
   const alertes = [];
   const analyse = [];
 
-  chantiers.forEach(c => {
+  chantiers.filter(c => c.archive !== true).forEach(c => {
     const ca = calculerCA(c, devis);
     if (!ca || ca <= 0) return;
     const couts = getCouts ? getCouts(c) : calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis);

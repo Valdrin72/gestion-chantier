@@ -173,11 +173,11 @@ export const sommeHeuresRegie = (devis) =>
     ? devis.heuresRegie.reduce((s, r) => s + (parseFloat(r.heures) || 0) * (parseFloat(r.tarifHeure) || 0), 0)
     : 0;
 
-/** Retourne true si le chantier est opérationnellement actif ("En cours"). */
-export const isChantierActif = (c) => c?.statut?.trim().toLowerCase() === 'en cours';
+/** Retourne true si le chantier est opérationnellement actif ("En cours"). Les archivés sont exclus du monitoring actif. */
+export const isChantierActif = (c) => c?.archive !== true && c?.statut?.trim().toLowerCase() === 'en cours';
 
-/** Retourne true si le chantier doit être comptabilisé dans le CA (En cours + Planifié). */
-export const isChantierComptable = (c) => ['en cours', 'planifié'].includes(c?.statut?.trim().toLowerCase());
+/** Retourne true si le chantier doit être comptabilisé dans le CA (En cours + Planifié). Les archivés sont exclus des KPIs actifs. */
+export const isChantierComptable = (c) => c?.archive !== true && ['en cours', 'planifié'].includes(c?.statut?.trim().toLowerCase());
 
 /**
  * CA FORFAIT = montantHT du devis lié + avenants + heures en régie (devis).

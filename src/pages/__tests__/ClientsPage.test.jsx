@@ -217,85 +217,109 @@ describe('ClientsPage', () => {
     });
   });
 
-  // ── 6. Suppression client RÉFÉRENCÉ — BLOQUÉE (historique conservé) ──────────
-  describe('Suppression client référencé → bloquée', () => {
-    it('AVEC chantiers → bloquée : aucun setter appelé, message affiché (ex-🐛 cascade → zéro orphelin)', async () => {
-      const setClients = vi.fn();
-      const afficherNotif = vi.fn();
-      const confirmer = vi.fn().mockResolvedValue(true);
-      renderClients(
-        { setClients, chantiers: [clone(CHANTIER_1)] },
-        { afficherNotif, confirmer },
-      );
-      const corbeilles = document.querySelectorAll('[title="Supprimer ce client"]');
-      fireEvent.click(corbeilles[0]); // client 1 = Marc Dupont (a un chantier)
-      await waitFor(() => expect(afficherNotif).toHaveBeenCalled());
+  // ── 6. Suppression client RÉFÉRENCÉ — ARCHIVAGE (rien ne se détruit) ─────────
+  describe('Client référencé → archivage (pas de suppression dure)', () => {
+    const QArchiver = '[title="Archiver ce client (historique conservé)"]';
+    const QSupprimer = '[title="Supprimer ce client"]';
 
-      // Bloqué : ni suppression, ni confirmation demandée
-      expect(setClients).not.toHaveBeenCalled();
-      expect(confirmer).not.toHaveBeenCalled();
-      expect(afficherNotif).toHaveBeenCalledWith(
-        expect.stringContaining('ne peut pas être supprimé'),
-        'error',
-      );
-    });
-
-    it('AVEC devis (sans chantier) → bloquée', async () => {
-      const setClients = vi.fn();
-      const afficherNotif = vi.fn();
-      renderClients(
-        { setClients, chantiers: [], devis: [clone(DEVIS_1)] }, // DEVIS_1.clientId === 1
-        { afficherNotif },
-      );
-      const corbeilles = document.querySelectorAll('[title="Supprimer ce client"]');
-      fireEvent.click(corbeilles[0]);
-      await waitFor(() => expect(afficherNotif).toHaveBeenCalled());
-      expect(setClients).not.toHaveBeenCalled();
-      expect(afficherNotif).toHaveBeenCalledWith(expect.stringContaining('ne peut pas être supprimé'), 'error');
-    });
-
-    it('AVEC factures (via devis du client, sans chantier) → bloquée', async () => {
-      const setClients = vi.fn();
-      const afficherNotif = vi.fn();
-      // Facture rattachée au devis 200 (client 1), aucun chantier
-      const factureSurDevis = { id: 301, chantierId: null, devisId: 200, montantTTC: '1000', statut: 'envoyee', montantPaye: '0' };
-      renderClients(
-        { setClients, chantiers: [], devis: [clone(DEVIS_1)], factures: [factureSurDevis] },
-        { afficherNotif },
-      );
-      const corbeilles = document.querySelectorAll('[title="Supprimer ce client"]');
-      fireEvent.click(corbeilles[0]);
-      await waitFor(() => expect(afficherNotif).toHaveBeenCalled());
-      expect(setClients).not.toHaveBeenCalled();
-    });
-
-    it('AVEC factures (via chantier du client) → bloquée', async () => {
-      const setClients = vi.fn();
-      const afficherNotif = vi.fn();
-      renderClients(
-        { setClients, chantiers: [clone(CHANTIER_1)], factures: [clone(FACTURE_1)] },
-        { afficherNotif },
-      );
-      const corbeilles = document.querySelectorAll('[title="Supprimer ce client"]');
-      fireEvent.click(corbeilles[0]);
-      await waitFor(() => expect(afficherNotif).toHaveBeenCalled());
-      expect(setClients).not.toHaveBeenCalled();
-    });
-
-    it('client 2 (Martin) sans aucun lien reste supprimable même si client 1 est référencé', async () => {
+    it('AVEC chantiers → bouton Archiver (pas Supprimer), clic → confirmer + setClients avec archive:true', async () => {
       const setClients = vi.fn();
       const confirmer = vi.fn().mockResolvedValue(true);
-      // client 1 a un chantier, client 2 n'a rien
       renderClients(
         { setClients, chantiers: [clone(CHANTIER_1)] },
         { confirmer },
       );
-      const corbeilles = document.querySelectorAll('[title="Supprimer ce client"]');
-      fireEvent.click(corbeilles[1]); // client 2 = Julie Martin (vierge)
+      // Le client référencé n'expose PAS de bouton Supprimer dur, mais un bouton Archiver
+      const archiver = document.querySelectorAll(QArchiver);
+      const supprimer = document.querySelectorAll(QSupprimer);
+      expect(archiver.length).toBe(1);          // Dupont (référencé)
+      expect(supprimer.length).toBe(1);          // Martin (vierge)
+
+      fireEvent.click(archiver[0]);
+      await waitFor(() => expect(setClients).toHaveBeenCalled());
+      expect(confirmer).toHaveBeenCalled();
+      const after = setClients.mock.calls[0][0];
+      const dupont = after.find(c => c.id === 1);
+      expect(dupont.archive).toBe(true);
+      expect(typeof dupont.dateArchivage).toBe('string');
+      // Martin (vierge) reste intact, non archivé
+      expect(after.find(c => c.id === 2).archive).toBeUndefined();
+    });
+
+    it('refuser la confirmation d\'archivage → setClients non appelé', async () => {
+      const setClients = vi.fn();
+      renderClients(
+        { setClients, chantiers: [clone(CHANTIER_1)] },
+        { confirmer: vi.fn().mockResolvedValue(false) },
+      );
+      fireEvent.click(document.querySelector(QArchiver));
+      await waitFor(() => {});
+      expect(setClients).not.toHaveBeenCalled();
+    });
+
+    it('AVEC devis (sans chantier) → bouton Archiver présent', () => {
+      renderClients({ chantiers: [], devis: [clone(DEVIS_1)] }); // DEVIS_1.clientId === 1
+      expect(document.querySelectorAll(QArchiver).length).toBe(1);
+    });
+
+    it('AVEC factures (via devis du client, sans chantier) → bouton Archiver présent', () => {
+      const factureSurDevis = { id: 301, chantierId: null, devisId: 200, montantTTC: '1000', statut: 'envoyee', montantPaye: '0' };
+      renderClients({ chantiers: [], devis: [clone(DEVIS_1)], factures: [factureSurDevis] });
+      expect(document.querySelectorAll(QArchiver).length).toBe(1);
+    });
+
+    it('AVEC factures (via chantier du client) → bouton Archiver présent', () => {
+      renderClients({ chantiers: [clone(CHANTIER_1)], factures: [clone(FACTURE_1)] });
+      expect(document.querySelectorAll(QArchiver).length).toBe(1);
+    });
+
+    it('client 2 (Martin) sans aucun lien reste SUPPRIMABLE (dur) même si client 1 est référencé', async () => {
+      const setClients = vi.fn();
+      const confirmer = vi.fn().mockResolvedValue(true);
+      renderClients(
+        { setClients, chantiers: [clone(CHANTIER_1)] },
+        { confirmer },
+      );
+      const supprimer = document.querySelectorAll(QSupprimer);
+      expect(supprimer.length).toBe(1); // uniquement Martin (vierge)
+      fireEvent.click(supprimer[0]);
       await waitFor(() => expect(setClients).toHaveBeenCalled());
       const restants = setClients.mock.calls[0][0];
-      expect(restants.find(c => c.id === 2)).toBeFalsy(); // Martin supprimé
+      expect(restants.find(c => c.id === 2)).toBeFalsy(); // Martin supprimé (dur)
       expect(restants.find(c => c.id === 1)).toBeTruthy(); // Dupont conservé
+    });
+  });
+
+  // ── 6b. Archivés : masqués de la liste active, toggle + restauration ─────────
+  describe('Clients archivés — toggle + restauration', () => {
+    it('un client archivé n\'apparaît pas dans la liste active', () => {
+      renderClients({
+        clients: [{ ...clone(CLIENT_1), archive: true, dateArchivage: '2026-06-01T00:00:00.000Z' }, clone(CLIENT_2)],
+      });
+      expect(screen.queryByText('Marc Dupont')).not.toBeInTheDocument(); // archivé → masqué
+      expect(screen.getByText('Julie Martin')).toBeInTheDocument();
+    });
+
+    it('toggle "Voir les archivés" → la ligne grisée + bouton Restaurer apparaissent', () => {
+      renderClients({
+        clients: [{ ...clone(CLIENT_1), archive: true, dateArchivage: '2026-06-01T00:00:00.000Z' }, clone(CLIENT_2)],
+      });
+      fireEvent.click(screen.getByRole('button', { name: /Voir 1 client archivé/i }));
+      expect(screen.getByText('Marc Dupont')).toBeInTheDocument(); // visible dans la section archivés
+      expect(screen.getByText(/Archivé le 01\.06\.26/)).toBeInTheDocument();
+    });
+
+    it('Restaurer → setClients avec archive:false', async () => {
+      const setClients = vi.fn();
+      renderClients({
+        clients: [{ ...clone(CLIENT_1), archive: true, dateArchivage: '2026-06-01T00:00:00.000Z' }, clone(CLIENT_2)],
+        setClients,
+      });
+      fireEvent.click(screen.getByRole('button', { name: /Voir 1 client archivé/i }));
+      fireEvent.click(screen.getByRole('button', { name: /Restaurer/i }));
+      await waitFor(() => expect(setClients).toHaveBeenCalled());
+      const after = setClients.mock.calls[0][0];
+      expect(after.find(c => c.id === 1).archive).toBe(false);
     });
   });
 

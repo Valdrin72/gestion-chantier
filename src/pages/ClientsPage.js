@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   Users, FileText, HardHat, DollarSign, Plus, Pencil, Trash2, Download,
-  Upload, X, CheckCircle, AlertCircle,
+  Upload, X, CheckCircle, AlertCircle, Archive,
 } from 'lucide-react';
 import { fmtN, C, calculerCA } from '../donnees';
 import { exportCSV } from '../utils/exportCSV';
@@ -10,6 +10,10 @@ import { DS } from '../ds';
 import { Badge } from '../components/SharedBadges';
 import { useApp } from '../context/AppContext';
 import useIsMobile from '../hooks/useIsMobile';
+import { clientEstReferencé } from '../utils/referenceGuard';
+import { archiver, restaurer, filtrerActifs, filtrerArchives } from '../utils/archiveHelpers';
+import ArchiveToggle from '../components/shared/ArchiveToggle';
+import ArchivedRow from '../components/shared/ArchivedRow';
 
 // Supprime les balises HTML des champs texte avant sauvegarde (protection XSS dans PDF)
 const sanitiser = (obj) => {
@@ -216,6 +220,12 @@ function Clients({ clients, setClients, chantiers, devis = [], factures = [], na
   const isMobile = useIsMobile();
   const [ajout, setAjout] = useState(false);
   const [showImport, setShowImport] = useState(false);
+  const [voirArchives, setVoirArchives] = useState(false);
+  // Liste active = clients non archivés. Les archivés restent en base, restaurables.
+  const clientsActifs = filtrerActifs(clients);
+  const clientsArchives = filtrerArchives(clients);
+  // Un client référencé (chantiers/devis/factures) ne se supprime pas → on l'archive.
+  const estReference = (c) => clientEstReferencé(c, { chantiers, devis, factures }) !== null;
   const [form, setForm] = useState({ nom: '', prenom: '', entreprise: '', telephone: '', email: '', adresse: '', ville: '', canton: '', type: 'Entreprise', notes: '' });
   const sauvegarder = () => {
     if (!form.nom || !form.prenom) {
@@ -251,24 +261,23 @@ function Clients({ clients, setClients, chantiers, devis = [], factures = [], na
     exportCSV(`clients_${new Date().toISOString().slice(0,10)}.csv`, entetes, lignes);
   };
 
-  // Un client référencé par chantiers, devis OU factures ne se supprime pas :
-  // son historique métier doit être conservé. Seul un client totalement vierge est supprimable.
+  // Client vierge (aucun chantier/devis/facture) → suppression dure autorisée.
   const supprimer = async (c) => {
-    const chantiersLies = chantiers.filter(ch => String(ch.clientId) === String(c.id));
-    const devisLies = devis.filter(dv => String(dv.clientId) === String(c.id));
-    const idsCh = new Set(chantiersLies.map(ch => String(ch.id)));
-    const idsDevis = new Set(devisLies.map(dv => String(dv.id)));
-    const facturesLiees = factures.filter(f =>
-      idsCh.has(String(f.chantierId)) || idsDevis.has(String(f.devisId))
-    );
-    if (chantiersLies.length > 0 || devisLies.length > 0 || facturesLiees.length > 0) {
-      const msgBloque = 'Ce client a des chantiers, devis ou factures — il ne peut pas être supprimé, son historique doit être conservé.';
-      if (afficherNotif) afficherNotif(msgBloque, 'error'); else alert(msgBloque);
-      return;
-    }
     if (!await confirmer(`Supprimer ${c.prenom} ${c.nom} ?\n\nCette action est irréversible.`, { labelOui: 'Supprimer' })) return;
     setClients(clients.filter(cl => String(cl.id) !== String(c.id)));
     if (afficherNotif) afficherNotif('Client supprimé');
+  };
+
+  // Client référencé → archivage (soft) : rangé hors de la liste active, rien n'est détruit.
+  const archiverClient = async (c) => {
+    if (!await confirmer(`Archiver ${c.prenom} ${c.nom} ?\n\nIl sera rangé hors de la liste active mais conservé (chantiers, devis, factures, historique).`, { labelOui: 'Archiver' })) return;
+    setClients(clients.map(cl => String(cl.id) === String(c.id) ? archiver(cl) : cl));
+    if (afficherNotif) afficherNotif('Client archivé — visible via « Voir les archivés »');
+  };
+
+  const restaurerClient = (c) => {
+    setClients(clients.map(cl => String(cl.id) === String(c.id) ? restaurer(cl) : cl));
+    if (afficherNotif) afficherNotif('Client restauré dans la liste active');
   };
 
   const handleImport = (nouveauxClients, mode) => {
@@ -287,7 +296,7 @@ function Clients({ clients, setClients, chantiers, devis = [], factures = [], na
       <div className="page-header-row">
         <div className="page-title-block">
           <div className="page-title-main">Clients</div>
-          <div className="page-title-sub">{clients.length} client{clients.length !== 1 ? 's' : ''} enregistré{clients.length !== 1 ? 's' : ''}</div>
+          <div className="page-title-sub">{clientsActifs.length} client{clientsActifs.length !== 1 ? 's' : ''} enregistré{clientsActifs.length !== 1 ? 's' : ''}</div>
         </div>
         <div className="page-actions-group">
           {clients.length > 0 && (
@@ -302,12 +311,12 @@ function Clients({ clients, setClients, chantiers, devis = [], factures = [], na
 
       {/* ── KPI GRID ── */}
       {(() => {
-        const caTotal = clients.reduce((s, c) => { const ch = chantiers.filter(ch => String(ch.clientId) === String(c.id)); return s + ch.reduce((t, ch) => t + (calculerCA(ch, devis) || 0), 0); }, 0);
-        const nbAvecChantier = clients.filter(c => chantiers.some(ch => String(ch.clientId) === String(c.id))).length;
-        const nbActifs = clients.filter(c => chantiers.some(ch => String(ch.clientId) === String(c.id) && (ch.statut || '').trim().toLowerCase() === 'en cours')).length;
-        const entreprises = clients.filter(c => c.type === 'Entreprise').length;
+        const caTotal = clientsActifs.reduce((s, c) => { const ch = chantiers.filter(ch => String(ch.clientId) === String(c.id)); return s + ch.reduce((t, ch) => t + (calculerCA(ch, devis) || 0), 0); }, 0);
+        const nbAvecChantier = clientsActifs.filter(c => chantiers.some(ch => String(ch.clientId) === String(c.id))).length;
+        const nbActifs = clientsActifs.filter(c => chantiers.some(ch => String(ch.clientId) === String(c.id) && (ch.statut || '').trim().toLowerCase() === 'en cours')).length;
+        const entreprises = clientsActifs.filter(c => c.type === 'Entreprise').length;
         const kpiItems = [
-          { label: 'TOTAL CLIENTS',    val: clients.length,      Icon: Users,      ...DS.kpi.blue,   badge: `${nbActifs} actifs` },
+          { label: 'TOTAL CLIENTS',    val: clientsActifs.length, Icon: Users,      ...DS.kpi.blue,   badge: `${nbActifs} actifs` },
           { label: 'CA TOTAL',         val: `CHF ${fmtN(caTotal)}`, Icon: DollarSign, ...DS.kpi.green },
           { label: 'AVEC CHANTIER',    val: nbAvecChantier,       Icon: HardHat,    ...DS.kpi.amber },
           { label: 'ENTREPRISES',       val: entreprises,           Icon: FileText,   ...DS.kpi.purple },
@@ -353,8 +362,19 @@ function Clients({ clients, setClients, chantiers, devis = [], factures = [], na
           </div>
         </div>
       )}
+      {clientsArchives.length > 0 && (
+        <div style={{ marginBottom: 16 }}>
+          <ArchiveToggle
+            voirArchives={voirArchives}
+            onToggle={() => setVoirArchives(v => !v)}
+            count={clientsArchives.length}
+            labelSingulier="client archivé"
+          />
+        </div>
+      )}
+
       <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'var(--g3)', gap: isMobile ? '10px' : '15px' }}>
-        {clients.map(c => {
+        {clientsActifs.map(c => {
           const chantiersC = chantiers.filter(ch => String(ch.clientId) === String(c.id));
           const ca = chantiersC.reduce((t, ch) => t + (calculerCA(ch, devis) ?? 0), 0);
           const idsCh = new Set(chantiersC.map(ch => String(ch.id)));
@@ -419,12 +439,31 @@ function Clients({ clients, setClients, chantiers, devis = [], factures = [], na
                 <button onClick={() => { setForm(c); setAjout(true); window.scrollTo({ top: 0, behavior: 'smooth' }); }} style={{ ...DS.btnGhost, fontSize: '12px', padding: '6px 11px' }}>
                   <Pencil size={13} /> Modifier
                 </button>
-                <button onClick={() => supprimer(c)} style={{ ...btnDanger, padding: '6px 10px' }} title="Supprimer ce client"><Trash2 size={13} /></button>
+                {estReference(c)
+                  ? <button onClick={() => archiverClient(c)} style={{ ...DS.btnGhost, padding: '6px 10px' }} title="Archiver ce client (historique conservé)"><Archive size={13} /></button>
+                  : <button onClick={() => supprimer(c)} style={{ ...btnDanger, padding: '6px 10px' }} title="Supprimer ce client"><Trash2 size={13} /></button>}
               </div>
             </div>
           );
         })}
       </div>
+      {voirArchives && clientsArchives.length > 0 && (
+        <div style={{ ...DS.card, padding: 0, overflow: 'hidden', marginTop: 16 }}>
+          <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)', fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px', color: 'var(--text-muted)' }}>
+            Clients archivés ({clientsArchives.length})
+          </div>
+          {clientsArchives.map(c => (
+            <ArchivedRow
+              key={c.id}
+              label={`${c.prenom || ''} ${c.nom || ''}`.trim() || c.entreprise || '—'}
+              sublabel={[c.entreprise, c.email].filter(Boolean).join(' · ')}
+              dateArchivage={c.dateArchivage}
+              onRestaurer={() => restaurerClient(c)}
+            />
+          ))}
+        </div>
+      )}
+
       {showImport && (
         <ImportCSVModal
           onClose={() => setShowImport(false)}

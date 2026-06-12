@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import {
   Plus, Pencil, Trash2, HardHat, Receipt,
-  DollarSign, Clock, FileText, TrendingUp, FileDown, Download,
+  DollarSign, Clock, FileText, TrendingUp, FileDown, Download, Archive,
 } from 'lucide-react';
 import { fmtN, C, creerFactureDepuisDevis, getIntervallesPeriode } from '../donnees';
 import { exportCSV } from '../utils/exportCSV';
@@ -10,6 +10,9 @@ import { useApp } from '../context/AppContext';
 import { exportDevis } from '../ExportPDF';
 import AssistantDevisIA from '../AssistantDevisIA';
 import { devisEstReferencé } from '../utils/referenceGuard';
+import { archiver, restaurer, filtrerActifs, filtrerArchives } from '../utils/archiveHelpers';
+import ArchiveToggle from '../components/shared/ArchiveToggle';
+import ArchivedRow from '../components/shared/ArchivedRow';
 
 const inputStyle = DS.input;
 const labelStyle = DS.label;
@@ -138,6 +141,32 @@ function Devis() {
   const [ajout, setAjout] = useState(false);
   const [filtreDevis, setFiltreDevis] = useState('Tous');
   const [page, setPage] = useState(0);
+  const [voirArchives, setVoirArchives] = useState(false);
+
+  // Liste active = devis non archivés. Les archivés restent en base, restaurables.
+  const devisActifs = useMemo(() => filtrerActifs(devis), [devis]);
+  const devisArchives = useMemo(() => filtrerArchives(devis), [devis]);
+  // Un devis référencé (chantier converti / factures) ne se supprime pas → on l'archive.
+  const estReferenceDevis = (d) => devisEstReferencé(d, { chantiers, factures }) !== null;
+
+  // Devis standalone (aucun chantier/facture) → suppression dure autorisée.
+  const supprimerDevis = async (d) => {
+    if (!await confirmer(`Supprimer le devis "${d.numero}" ?\n\nCette action est irréversible.`, { labelOui: 'Supprimer' })) return;
+    setDevis(devis.filter(dv => String(dv.id) !== String(d.id)));
+    if (afficherNotif) afficherNotif('Devis supprimé');
+  };
+
+  // Devis référencé → archivage (soft) : rangé hors de la liste active, rien n'est détruit.
+  const archiverDevis = async (d) => {
+    if (!await confirmer(`Archiver le devis "${d.numero}" ?\n\nIl sera rangé hors de la liste active mais conservé (chantier et/ou factures liés).`, { labelOui: 'Archiver' })) return;
+    setDevis(devis.map(dv => String(dv.id) === String(d.id) ? archiver(dv) : dv));
+    if (afficherNotif) afficherNotif('Devis archivé — visible via « Voir les archivés »');
+  };
+
+  const restaurerDevis = (d) => {
+    setDevis(devis.map(dv => String(dv.id) === String(d.id) ? restaurer(dv) : dv));
+    if (afficherNotif) afficherNotif('Devis restauré dans la liste active');
+  };
 
   React.useEffect(() => { setPage(0); }, [filtreDevis, periodeGlobale]);
   const [confirmConversion, setConfirmConversion] = useState(null); // { devis, nomChantier }
@@ -271,7 +300,7 @@ function Devis() {
       <div className="page-header-row">
         <div className="page-title-block">
           <div className="page-title-main">Devis</div>
-          <div className="page-title-sub">{devis.length} devis · {(() => { const { debut, fin } = getIntervallesPeriode(periodeGlobale); const ds = debut.toISOString().slice(0,10); const fs = fin.toISOString().slice(0,10); return devis.filter(d => { const dt = (d.dateEmission || d.date || ''); return d.statut?.toLowerCase() === 'accepté' && dt >= ds && dt <= fs; }).length; })()} acceptés ({periodeGlobale === 'semaine' ? 'semaine' : periodeGlobale === 'mois' ? 'ce mois' : "l'année"})</div>
+          <div className="page-title-sub">{devisActifs.length} devis · {(() => { const { debut, fin } = getIntervallesPeriode(periodeGlobale); const ds = debut.toISOString().slice(0,10); const fs = fin.toISOString().slice(0,10); return devisActifs.filter(d => { const dt = (d.dateEmission || d.date || ''); return d.statut?.toLowerCase() === 'accepté' && dt >= ds && dt <= fs; }).length; })()} acceptés ({periodeGlobale === 'semaine' ? 'semaine' : periodeGlobale === 'mois' ? 'ce mois' : "l'année"})</div>
         </div>
         <div className="page-actions-group">
           {devis.length > 0 && (
@@ -286,11 +315,11 @@ function Devis() {
         const { debut, fin } = getIntervallesPeriode(periodeGlobale);
         const debutStr = debut.toISOString().slice(0, 10);
         const finStr = fin.toISOString().slice(0, 10);
-        const devisPeriode = devis.filter(d => { const dt = d.dateEmission || d.date || ''; return dt >= debutStr && dt <= finStr; });
+        const devisPeriode = devisActifs.filter(d => { const dt = d.dateEmission || d.date || ''; return dt >= debutStr && dt <= finStr; });
         const devisAcceptes = devisPeriode.filter(d => d.statut?.toLowerCase() === 'accepté');
         const caSigné = devisAcceptes.reduce((s, d) => s + caDevis(d), 0);
         const tauxAcceptation = devisPeriode.length > 0 ? Math.round((devisAcceptes.length / devisPeriode.length) * 100) : 0;
-        const enAttente = devis.filter(d => d.statut?.toLowerCase() === 'envoyé');
+        const enAttente = devisActifs.filter(d => d.statut?.toLowerCase() === 'envoyé');
         const montantAttente = enAttente.reduce((s, d) => s + caDevis(d), 0);
         const now = Date.now();
         const delaisMoyen = enAttente.length > 0
@@ -631,9 +660,20 @@ function Devis() {
         </div>
       )}
 
-      {/* ── Liste des devis — tous les devis sans filtre période (KPIs seuls sont filtrés) ── */}
+      {devisArchives.length > 0 && (
+        <div style={{ marginBottom: 16 }}>
+          <ArchiveToggle
+            voirArchives={voirArchives}
+            onToggle={() => setVoirArchives(v => !v)}
+            count={devisArchives.length}
+            labelSingulier="devis archivé"
+          />
+        </div>
+      )}
+
+      {/* ── Liste des devis actifs — tous sans filtre période (KPIs seuls sont filtrés) ── */}
       {(() => {
-        const devisBase = [...devis].sort((a, b) => {
+        const devisBase = [...devisActifs].sort((a, b) => {
           const da = a.dateEmission || a.date || '';
           const db = b.dateEmission || b.date || '';
           return db.localeCompare(da); // plus récents en premier
@@ -754,16 +794,20 @@ function Devis() {
                             style={DS.iconBtn}
                             title="Modifier"
                           ><Pencil size={14} /></button>
-                          <button
-                            onClick={async () => {
-                              const erreur = devisEstReferencé(d, { chantiers, factures });
-                              if (erreur) { afficherNotif(erreur, 'error'); return; }
-                              if (!await confirmer(`Supprimer le devis "${d.numero}" ?`, { labelOui: 'Supprimer' })) return;
-                              setDevis(devis.filter(dv => String(dv.id) !== String(d.id)));
-                            }}
-                            style={{ ...DS.iconBtn, color: '#EF4444' }}
-                            title="Supprimer"
-                          ><Trash2 size={14} /></button>
+                          {estReferenceDevis(d)
+                            ? (
+                              <button
+                                onClick={() => archiverDevis(d)}
+                                style={DS.iconBtn}
+                                title="Archiver (chantier/factures liés conservés)"
+                              ><Archive size={14} /></button>
+                            ) : (
+                              <button
+                                onClick={() => supprimerDevis(d)}
+                                style={{ ...DS.iconBtn, color: '#EF4444' }}
+                                title="Supprimer"
+                              ><Trash2 size={14} /></button>
+                            )}
                         </div>
                       </td>
                     </tr>
@@ -785,6 +829,27 @@ function Devis() {
       </div>
         );
       })()}
+
+      {/* ── Section devis archivés (grisée, restaurable) ── */}
+      {voirArchives && devisArchives.length > 0 && (
+        <div style={{ ...DS.card, padding: 0, overflow: 'hidden', marginTop: 16 }}>
+          <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)', fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px', color: 'var(--text-muted)' }}>
+            Devis archivés ({devisArchives.length})
+          </div>
+          {devisArchives.map(d => {
+            const client = clients.find(c => String(c.id) === String(d.clientId));
+            return (
+              <ArchivedRow
+                key={d.id}
+                label={d.numero || 'Devis'}
+                sublabel={[client?.entreprise || `${client?.prenom || ''} ${client?.nom || ''}`.trim(), d.statut].filter(Boolean).join(' · ')}
+                dateArchivage={d.dateArchivage}
+                onRestaurer={() => restaurerDevis(d)}
+              />
+            );
+          })}
+        </div>
+      )}
 
       {/* ── Modale confirmation conversion devis → chantier ── */}
       {confirmConversion && (() => {

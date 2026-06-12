@@ -672,34 +672,44 @@ describe('DevisPage — suppression protégée', () => {
     expect(ctx.setFactures).not.toHaveBeenCalled();
   });
 
-  it('supprimer un devis avec chantier lié → BLOQUÉ, afficherNotif appelée', async () => {
+  it('devis avec chantier lié → bouton Archiver (pas Supprimer), clic → setDevis avec archive:true', async () => {
     const { ctx } = renderDevis({
       devis: [DEVIS_CASCADE],
       chantiers: [CHANTIER_LIE],
     });
 
-    fireEvent.click(screen.getByTitle('Supprimer'));
+    // Référencé → pas de bouton Supprimer dur, mais un bouton Archiver
+    expect(screen.queryByTitle('Supprimer')).toBeNull();
+    fireEvent.click(screen.getByTitle(/Archiver/));
 
-    await waitFor(() => expect(ctx.afficherNotif).toHaveBeenCalledOnce());
-    const [msg, type] = ctx.afficherNotif.mock.calls[0];
-    expect(msg).toMatch(/ne peut pas être supprimé/);
-    expect(type).toBe('error');
-
-    // Aucun setter appelé — rien n'est détruit
-    expect(ctx.setDevis).not.toHaveBeenCalled();
+    await waitFor(() => expect(ctx.setDevis).toHaveBeenCalledOnce());
+    const after = ctx.setDevis.mock.calls[0][0];
+    const dc = after.find(d => d.id === 'dc');
+    expect(dc.archive).toBe(true);
+    expect(typeof dc.dateArchivage).toBe('string');
+    // Pas de cascade — chantier/factures intacts
     expect(ctx.setChantiers).not.toHaveBeenCalled();
     expect(ctx.setFactures).not.toHaveBeenCalled();
   });
 
-  it('supprimer un devis avec facture directe → BLOQUÉ', async () => {
+  it('devis avec facture directe → bouton Archiver, clic → archive:true', async () => {
     const { ctx } = renderDevis({
       devis: [DEVIS_CASCADE],
       factures: [FACTURE_LIEE],
     });
 
-    fireEvent.click(screen.getByTitle('Supprimer'));
+    expect(screen.queryByTitle('Supprimer')).toBeNull();
+    fireEvent.click(screen.getByTitle(/Archiver/));
+    await waitFor(() => expect(ctx.setDevis).toHaveBeenCalledOnce());
+    expect(ctx.setDevis.mock.calls[0][0].find(d => d.id === 'dc').archive).toBe(true);
+  });
 
-    await waitFor(() => expect(ctx.afficherNotif).toHaveBeenCalledOnce());
+  it('refuser la confirmation d\'archivage → setDevis non appelé', async () => {
+    const confirmer = vi.fn().mockResolvedValue(false);
+    const { ctx } = renderDevis({ devis: [DEVIS_CASCADE], chantiers: [CHANTIER_LIE], confirmer });
+
+    fireEvent.click(screen.getByTitle(/Archiver/));
+    await waitFor(() => expect(confirmer).toHaveBeenCalledOnce());
     expect(ctx.setDevis).not.toHaveBeenCalled();
   });
 
@@ -711,6 +721,35 @@ describe('DevisPage — suppression protégée', () => {
     await waitFor(() => expect(confirmer).toHaveBeenCalledOnce());
 
     expect(ctx.setDevis).not.toHaveBeenCalled();
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 11b. ARCHIVAGE — liste active filtrée + toggle + restauration
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('DevisPage — devis archivés (toggle + restauration)', () => {
+  const DEVIS_ARCHIVE = { ...DEVIS_CASCADE, archive: true, dateArchivage: '2026-06-01T00:00:00.000Z' };
+
+  it('un devis archivé n\'apparaît pas dans la liste active', () => {
+    renderDevis({ devis: [DEVIS_ARCHIVE, DEVIS_BROUILLON] });
+    expect(screen.queryByText('DEV-2026-CAD')).toBeNull();   // archivé → masqué
+    expect(screen.getByText('DEV-2026-002')).toBeInTheDocument(); // brouillon actif
+  });
+
+  it('toggle "Voir les archivés" → la ligne grisée + Restaurer apparaissent', () => {
+    renderDevis({ devis: [DEVIS_ARCHIVE, DEVIS_BROUILLON] });
+    fireEvent.click(screen.getByRole('button', { name: /Voir 1 devis archivé/i }));
+    expect(screen.getByText('DEV-2026-CAD')).toBeInTheDocument();
+    expect(screen.getByText(/Archivé le 01\.06\.26/)).toBeInTheDocument();
+  });
+
+  it('Restaurer → setDevis avec archive:false', async () => {
+    const { ctx } = renderDevis({ devis: [DEVIS_ARCHIVE, DEVIS_BROUILLON] });
+    fireEvent.click(screen.getByRole('button', { name: /Voir 1 devis archivé/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Restaurer/i }));
+    await waitFor(() => expect(ctx.setDevis).toHaveBeenCalledOnce());
+    expect(ctx.setDevis.mock.calls[0][0].find(d => d.id === 'dc').archive).toBe(false);
   });
 });
 

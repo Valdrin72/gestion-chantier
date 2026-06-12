@@ -373,27 +373,42 @@ describe('Parametres — carnet clients : suppression protégée', () => {
     expect(arg.some(cl => String(cl.id) === 'CL-1')).toBe(false);
   });
 
-  it('supprimer un client avec chantier → BLOQUÉ (afficherNotif error, pas de setClients)', async () => {
-    const afficherNotif = vi.fn();
+  it('client avec chantier → bouton Archiver (pas Suppr), clic → setClients avec archive:true', async () => {
+    const confirmer = vi.fn().mockResolvedValue(true);
     const { props } = ouvrirClients(
       { chantiers: [{ id: 'CH-1', clientId: 'CL-1' }] },
-      { afficherNotif },
+      { confirmer },
     );
-    fireEvent.click(screen.getByRole('button', { name: /^Suppr$/i }));
-    await waitFor(() => expect(afficherNotif).toHaveBeenCalledOnce());
-    expect(afficherNotif.mock.calls[0][1]).toBe('error');
-    expect(props.setClients).not.toHaveBeenCalled();
+    // Référencé → pas de "Suppr" dur, mais un bouton "Archiver"
+    expect(screen.queryByRole('button', { name: /^Suppr$/i })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: /Archiver/i }));
+    await waitFor(() => expect(props.setClients).toHaveBeenCalledOnce());
+    const arg = props.setClients.mock.calls.at(-1)[0];
+    const cl = arg.find(c => String(c.id) === 'CL-1');
+    expect(cl.archive).toBe(true);
+    expect(typeof cl.dateArchivage).toBe('string');
   });
 
-  it('supprimer un client avec devis → BLOQUÉ', async () => {
-    const afficherNotif = vi.fn();
+  it('client avec devis → bouton Archiver présent', () => {
+    ouvrirClients({ devis: [{ id: 'D-1', clientId: 'CL-1' }] });
+    expect(screen.queryByRole('button', { name: /^Suppr$/i })).toBeNull();
+    expect(screen.getByRole('button', { name: /Archiver/i })).toBeInTheDocument();
+  });
+
+  it('client archivé masqué de la liste active ; toggle + Restaurer → archive:false', async () => {
+    const confirmer = vi.fn().mockResolvedValue(true);
     const { props } = ouvrirClients(
-      { devis: [{ id: 'D-1', clientId: 'CL-1' }] },
-      { afficherNotif },
+      { clients: [{ ...CLIENT, archive: true, dateArchivage: '2026-06-01T00:00:00.000Z' }] },
+      { confirmer },
     );
-    fireEvent.click(screen.getByRole('button', { name: /^Suppr$/i }));
-    await waitFor(() => expect(afficherNotif).toHaveBeenCalledOnce());
-    expect(props.setClients).not.toHaveBeenCalled();
+    // Masqué de la liste active
+    expect(screen.queryByText(/Pictet/)).toBeNull();
+    // Toggle → la ligne archivée apparaît avec Restaurer
+    fireEvent.click(screen.getByRole('button', { name: /Voir 1 client archivé/i }));
+    expect(screen.getByText(/Pictet/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /^Restaurer$/i }));
+    await waitFor(() => expect(props.setClients).toHaveBeenCalledOnce());
+    expect(props.setClients.mock.calls.at(-1)[0].find(c => String(c.id) === 'CL-1').archive).toBe(false);
   });
 
   it('n\'utilise plus window.confirm — passe par confirmer() du contexte', async () => {

@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import {
-  HardHat, X, Pencil, Trash2, AlertTriangle, ChevronRight, DollarSign, Clock, Eye, TrendingUp, Download, LayoutList, LayoutGrid,
+  HardHat, X, Pencil, Trash2, Archive, AlertTriangle, ChevronRight, DollarSign, Clock, Eye, TrendingUp, Download, LayoutList, LayoutGrid,
 } from 'lucide-react';
 import { exportCSV } from '../../utils/exportCSV';
 import KanbanChantiers from './KanbanChantiers';
@@ -11,24 +11,38 @@ import {
 import { DS, couleurStatut as couleurStatutDS } from '../../ds';
 import { useApp } from '../../context/AppContext';
 import useIsMobile from '../../hooks/useIsMobile';
+import { chantierEstReferencé } from '../../utils/referenceGuard';
+import ArchiveToggle from '../shared/ArchiveToggle';
+import ArchivedRow from '../shared/ArchivedRow';
 
 const PAGE_SIZE = 50;
 const STATUTS = ['Tous', 'Planifié', 'En cours', 'Suspendu', 'Terminé', 'Facturé', 'Clôturé'];
 
 function ChantiersListe({
   chantiersFiltres,
+  chantiersArchives = [],
   joursParChantier,
   filtre,
   setFiltre,
   onSelect,
   onModifier,
   onSupprimer,
+  onArchiver,
+  onRestaurer,
   formSlot,
 }) {
-  const { chantiers, clients, devis = [], parametres, naviguer, contexte, agentState, confirmer, periodeGlobale = 'mois' } = useApp();
+  const { chantiers, clients, devis = [], factures = [], pointages = [], parametres, naviguer, contexte, agentState, confirmer, periodeGlobale = 'mois' } = useApp();
   const isMobile = useIsMobile();
   const [page, setPage] = useState(0);
   const [vueMode, setVueMode] = useState('liste');
+  const [voirArchives, setVoirArchives] = useState(false);
+
+  // Un chantier référencé (heures/factures) ne se supprime pas → on l'archive.
+  // Vierge → suppression dure. Décide quel bouton afficher par ligne.
+  const estReference = React.useCallback(
+    (c) => chantierEstReferencé(c, { factures, pointages }) !== null,
+    [factures, pointages],
+  );
   useEffect(() => { setPage(0); }, [filtre, periodeGlobale, chantiersFiltres.length]);
 
   const deriveMap = React.useMemo(() => {
@@ -42,7 +56,7 @@ function ChantiersListe({
   const kpiItems = useMemo(() => {
     const { debut, fin } = getIntervallesPeriode(periodeGlobale);
     const chantiersPeriode = chantiersFiltres.filter(c => chantiersInPeriode(c, debut, fin));
-    const nbEnCours = chantiers.filter(c => (c.statut || '').toLowerCase() === 'en cours').length;
+    const nbEnCours = chantiers.filter(c => c.archive !== true && (c.statut || '').toLowerCase() === 'en cours').length;
     const nbEnRetard = chantiersFiltres.filter(c => { const j = joursParChantier[c.id]; return j !== null && j < 0; }).length;
     const caTotal = chantiersPeriode.reduce((t, c) => t + (calculerCA(c, devis) || 0), 0);
     const joursPlanifies = chantiersPeriode.reduce((t, c) => t + (parseInt(c.nombreJours) || 0), 0);
@@ -217,6 +231,17 @@ function ChantiersListe({
         ))}
       </div>
 
+      {chantiersArchives.length > 0 && (
+        <div style={{ marginBottom: 16 }}>
+          <ArchiveToggle
+            voirArchives={voirArchives}
+            onToggle={() => setVoirArchives(v => !v)}
+            count={chantiersArchives.length}
+            labelSingulier="chantier archivé"
+          />
+        </div>
+      )}
+
       {formSlot}
 
       {/* ── Vue Kanban ── */}
@@ -293,9 +318,13 @@ function ChantiersListe({
                   <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }} onClick={e => e.stopPropagation()}>
                     <button onClick={() => onSelect(c)} style={{ ...DS.iconBtn, width: 44, height: 44 }} title="Voir détail"><Eye size={16} /></button>
                     <button onClick={() => onModifier(c)} style={{ ...DS.iconBtn, width: 44, height: 44 }} title="Modifier"><Pencil size={16} /></button>
-                    {onSupprimer && (
-                      <button onClick={async () => { if (await confirmer(`Supprimer "${c.nom || c.numero}" ?\n\nCette action est irréversible.`, { labelOui: 'Supprimer' })) onSupprimer(c.id); }} style={{ ...DS.iconBtn, width: 44, height: 44, color: '#ef4444' }} title="Supprimer"><Trash2 size={16} /></button>
-                    )}
+                    {estReference(c)
+                      ? (onArchiver && (
+                          <button onClick={() => onArchiver(c.id)} style={{ ...DS.iconBtn, width: 44, height: 44 }} title="Archiver"><Archive size={16} /></button>
+                        ))
+                      : (onSupprimer && (
+                          <button onClick={async () => { if (await confirmer(`Supprimer "${c.nom || c.numero}" ?\n\nCette action est irréversible.`, { labelOui: 'Supprimer' })) onSupprimer(c.id); }} style={{ ...DS.iconBtn, width: 44, height: 44, color: '#ef4444' }} title="Supprimer"><Trash2 size={16} /></button>
+                        ))}
                   </div>
                 </div>
               );
@@ -385,13 +414,21 @@ function ChantiersListe({
                             style={DS.iconBtn}
                             title="Modifier"
                           ><Pencil size={14} /></button>
-                          {onSupprimer && (
-                            <button
-                              onClick={async () => { if (await confirmer(`Supprimer "${c.nom || c.numero}" ?\n\nCette action est irréversible.`, { labelOui: 'Supprimer' })) onSupprimer(c.id); }}
-                              style={{ ...DS.iconBtn, color: '#ef4444' }}
-                              title="Supprimer"
-                            ><Trash2 size={14} /></button>
-                          )}
+                          {estReference(c)
+                            ? (onArchiver && (
+                                <button
+                                  onClick={() => onArchiver(c.id)}
+                                  style={DS.iconBtn}
+                                  title="Archiver"
+                                ><Archive size={14} /></button>
+                              ))
+                            : (onSupprimer && (
+                                <button
+                                  onClick={async () => { if (await confirmer(`Supprimer "${c.nom || c.numero}" ?\n\nCette action est irréversible.`, { labelOui: 'Supprimer' })) onSupprimer(c.id); }}
+                                  style={{ ...DS.iconBtn, color: '#ef4444' }}
+                                  title="Supprimer"
+                                ><Trash2 size={14} /></button>
+                              ))}
                         </div>
                       </td>
                     </tr>
@@ -402,6 +439,25 @@ function ChantiersListe({
           </div>
         )}
       </div>}
+
+      {/* ── Section archivés (grisée, restaurable) ── */}
+      {voirArchives && chantiersArchives.length > 0 && (
+        <div style={{ ...DS.card, padding: 0, overflow: 'hidden', marginTop: 16 }}>
+          <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)', fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px', color: 'var(--text-muted)' }}>
+            Chantiers archivés ({chantiersArchives.length})
+          </div>
+          {chantiersArchives.map(c => (
+            <ArchivedRow
+              key={c.id}
+              label={c.nom || c.numero}
+              sublabel={`${c.numero || ''}${c.statut ? ` · ${c.statut}` : ''}`}
+              dateArchivage={c.dateArchivage}
+              onRestaurer={() => onRestaurer && onRestaurer(c.id)}
+              onClick={() => onSelect(c)}
+            />
+          ))}
+        </div>
+      )}
 
       {/* Pagination — liste seulement */}
       {vueMode === 'liste' && totalPages > 1 && (

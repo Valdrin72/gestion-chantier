@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { donneesInitiales, heuresEmploye } from '../donnees';
 import { useApp } from '../context/AppContext';
 import { useChantierFiltres } from '../hooks/useChantierFiltres';
+import { archiver, restaurer } from '../utils/archiveHelpers';
 import ChantierDetail from '../components/chantiers/ChantierDetail';
 import ChantierForm from '../components/chantiers/ChantierForm';
 import ChantiersListe from '../components/chantiers/ChantiersListe';
@@ -14,7 +15,7 @@ const sanitiser = (obj) => {
 
 function Chantiers() {
   const { chantiers, setChantiers, devis = [], factures = [], pointages = [], parametres, naviguer, contexte, afficherNotif, confirmer } = useApp();
-  const { filtre, setFiltre, chantiersFiltres, joursParChantier } = useChantierFiltres();
+  const { filtre, setFiltre, chantiersFiltres, chantiersArchives, joursParChantier } = useChantierFiltres();
 
   const [vue, setVue] = useState('liste');
   const [selected, setSelected] = useState(null);
@@ -125,6 +126,23 @@ function Chantiers() {
     setVue('liste');
   };
 
+  // Archiver — réservé aux chantiers référencés (heures/factures) : on les range
+  // hors de la vue active sans rien détruire. Restaurable via "Voir les archivés".
+  const archiverChantier = async (id) => {
+    const c = chantiers.find(ch => String(ch.id) === String(id));
+    if (!c) return;
+    if (!await confirmer(`Archiver le chantier "${c.nom}" ?\n\nIl sera rangé hors de la liste active mais conservé (heures, factures, historique).`, { labelOui: 'Archiver' })) return;
+    setChantiers(chantiers.map(ch => String(ch.id) === String(id) ? archiver(ch) : ch));
+    setSelected(null);
+    setVue('liste');
+    if (afficherNotif) afficherNotif('Chantier archivé — visible via « Voir les archivés »');
+  };
+
+  const restaurerChantier = (id) => {
+    setChantiers(chantiers.map(ch => String(ch.id) === String(id) ? restaurer(ch) : ch));
+    if (afficherNotif) afficherNotif('Chantier restauré dans la liste active');
+  };
+
   const ouvrirModification = (c) => {
     setSelected(null); setVue('liste'); setForm({ ...vide, ...c }); setAjout(true);
   };
@@ -154,12 +172,15 @@ function Chantiers() {
   return (
     <ChantiersListe
       chantiersFiltres={chantiersFiltres}
+      chantiersArchives={chantiersArchives}
       joursParChantier={joursParChantier}
       filtre={filtre}
       setFiltre={setFiltre}
       onSelect={(c) => { setSelected(c); setVue('detail'); setDetailOnglet('vue'); }}
       onModifier={ouvrirModification}
       onSupprimer={supprimer}
+      onArchiver={archiverChantier}
+      onRestaurer={restaurerChantier}
       formSlot={ajout && (
         <ChantierForm
           form={form}

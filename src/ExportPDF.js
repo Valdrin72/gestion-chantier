@@ -43,6 +43,20 @@ const CONDITIONS = `CONDITIONS GÉNÉRALES — CYNA Sàrl
 
 6. LITIGES : En cas de litige, les parties s'engagent à rechercher une solution amiable. À défaut, le tribunal compétent sera celui du canton de Genève.`;
 
+// ===== SANITISATION TEXTE LIBRE =====
+// Strip les vraies balises HTML (<b>, </b>, <br/>, etc.) des champs utilisateur
+// avant écriture dans le PDF. NE touche PAS <5mm ni "< 2 jours" (regex [a-zA-Z/]).
+const stripHtml = (val) => {
+  if (typeof val !== 'string') return val;
+  return val
+    .replace(/<[a-zA-Z/][^>]*>/g, '')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&quot;/gi, '"');
+};
+
 // ===== COULEURS =====
 const BLEU = [51, 130, 194];
 const BLEU_FONCE = [26, 90, 154];
@@ -199,7 +213,7 @@ export const exportFicheChantier = async (chantier, clients, parametres, devis =
   const couts = calculerCoutsChantier(chantier, parametres.employes, parametres.localites, parametres.parametres, devis);
   const dateFin = calculerDateFinOuvrables(chantier.dateDebut, chantier.nombreJours, chantier.inclusSamedi);
 
-  let y = await ajouterEntete(doc, 'FICHE CHANTIER', chantier.nom);
+  let y = await ajouterEntete(doc, 'FICHE CHANTIER', stripHtml(chantier.nom));
 
   // NUMÉRO ET STATUT
   doc.setFillColor(...GRIS_CLAIR);
@@ -217,15 +231,15 @@ export const exportFicheChantier = async (chantier, clients, parametres, devis =
   // INFORMATIONS GÉNÉRALES
   y = sectionTitre(doc, y, 'INFORMATIONS GÉNÉRALES');
   const col1 = [
-    ['Nom du chantier', chantier.nom],
-    ['Client', client ? `${client.prenom} ${client.nom}` : '-'],
-    ['Entreprise', client?.entreprise || '-'],
-    ['Téléphone client', client?.telephone || '-'],
-    ['Email client', client?.email || '-'],
+    ['Nom du chantier', stripHtml(chantier.nom)],
+    ['Client', client ? `${stripHtml(client.prenom)} ${stripHtml(client.nom)}` : '-'],
+    ['Entreprise', stripHtml(client?.entreprise) || '-'],
+    ['Téléphone client', stripHtml(client?.telephone) || '-'],
+    ['Email client', stripHtml(client?.email) || '-'],
   ];
   const col2 = [
-    ['Conducteur', chantier.conducteur || '-'],
-    ['Adresse chantier', `${chantier.adresse || ''}, ${chantier.ville || ''}`],
+    ['Conducteur', stripHtml(chantier.conducteur) || '-'],
+    ['Adresse chantier', `${stripHtml(chantier.adresse) || ''}, ${stripHtml(chantier.ville) || ''}`],
     ['Date de début', chantier.dateDebut || '-'],
     ['Date de fin prévue', dateFin || '-'],
     ['Surface', `${chantier.surface || 0} m²`],
@@ -271,7 +285,7 @@ export const exportFicheChantier = async (chantier, clients, parametres, devis =
       doc.rect(10, y, 190, 7, 'F');
       doc.setFont('helvetica', 'normal');
       doc.setTextColor(50, 50, 50);
-      doc.text(`▶ ${t}`, 15, y + 5);
+      doc.text(`▶ ${stripHtml(t)}`, 15, y + 5);
       y += 7;
     });
     y += 5;
@@ -358,7 +372,7 @@ export const exportFicheChantier = async (chantier, clients, parametres, devis =
     doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(50, 50, 50);
-    const lines = doc.splitTextToSize(chantier.notes, 180);
+    const lines = doc.splitTextToSize(stripHtml(chantier.notes), 180);
     doc.text(lines, 15, y);
     y += lines.length * 5 + 5;
   }
@@ -388,11 +402,11 @@ export const exportDevis = async (devis, clients, parametres) => {
   doc.setTextColor(50, 50, 50);
   doc.setFontSize(9);
   if (client) {
-    doc.text(`${client.prenom} ${client.nom}`, 15, y + 14);
-    doc.text(client.entreprise || '', 15, y + 20);
-    doc.text(client.adresse || '', 15, y + 26);
-    doc.text(`${client.ville || ''} (${client.canton || ''})`, 15, y + 32);
-    doc.text(client.telephone || '', 15, y + 38);
+    doc.text(`${stripHtml(client.prenom)} ${stripHtml(client.nom)}`, 15, y + 14);
+    doc.text(stripHtml(client.entreprise) || '', 15, y + 20);
+    doc.text(stripHtml(client.adresse) || '', 15, y + 26);
+    doc.text(`${stripHtml(client.ville) || ''} (${stripHtml(client.canton) || ''})`, 15, y + 32);
+    doc.text(stripHtml(client.telephone) || '', 15, y + 38);
   }
 
   doc.setFont('helvetica', 'bold');
@@ -412,12 +426,12 @@ export const exportDevis = async (devis, clients, parametres) => {
   autoTable(doc, {
     startY: y,
     body: [
-      ['Zone géographique', devis.zone || '-'],
-      ['Type de travaux', devis.typeTravaux || '-'],
+      ['Zone géographique', stripHtml(devis.zone) || '-'],
+      ['Type de travaux', stripHtml(devis.typeTravaux) || '-'],
       ['Surface', `${devis.surface || 0} m²`],
-      ['Complexité', devis.complexite || 'Normale'],
-      ['Urgence', devis.urgence || 'Non'],
-      ['Accès chantier', devis.acces || 'Normal'],
+      ['Complexité', stripHtml(devis.complexite) || 'Normale'],
+      ['Urgence', stripHtml(devis.urgence) || 'Non'],
+      ['Accès chantier', stripHtml(devis.acces) || 'Normal'],
     ],
     bodyStyles: { fontSize: 9 },
     columnStyles: { 0: { fontStyle: 'bold', cellWidth: 70, fillColor: GRIS_CLAIR } },
@@ -492,7 +506,7 @@ export const exportDevis = async (devis, clients, parametres) => {
     doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(50, 50, 50);
-    const lines = doc.splitTextToSize(devis.notes, 180);
+    const lines = doc.splitTextToSize(stripHtml(devis.notes), 180);
     doc.text(lines, 15, y);
     y += lines.length * 5 + 8;
   }
@@ -589,7 +603,7 @@ export const exportRapportMensuel = async (chantiers, clients, parametres, mois,
         const client = clients.find(cl => String(cl.id) === String(c.clientId));
         const couts = calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis);
         return [
-          c.nom, client?.entreprise || '-', c.ville || '-', c.statut,
+          stripHtml(c.nom), stripHtml(client?.entreprise) || '-', stripHtml(c.ville) || '-', c.statut,
           couts.montantTotal !== null ? Math.round(couts.montantTotal).toLocaleString() : '—',
           Math.round(couts.totalCoutsReel).toLocaleString(),
           couts.margeActuellePct !== null ? `${couts.margeActuellePct}%` : '—',
@@ -677,12 +691,12 @@ export const exportFacture = async (facture, client, chantier, devis, parametres
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(50, 50, 50);
   if (client) {
-    doc.text(`${client.prenom || ''} ${client.nom || ''}`.trim() || '—', 15, y + 14);
-    if (client.entreprise) doc.text(client.entreprise, 15, y + 20);
-    if (client.adresse)    doc.text(client.adresse,    15, y + 26);
-    const villeCantonClient = [client.ville, client.canton].filter(Boolean).join(' (') + (client.canton ? ')' : '');
+    doc.text(`${stripHtml(client.prenom || '')} ${stripHtml(client.nom || '')}`.trim() || '—', 15, y + 14);
+    if (client.entreprise) doc.text(stripHtml(client.entreprise), 15, y + 20);
+    if (client.adresse)    doc.text(stripHtml(client.adresse),    15, y + 26);
+    const villeCantonClient = [client.ville, client.canton].filter(Boolean).map(stripHtml).join(' (') + (client.canton ? ')' : '');
     if (villeCantonClient) doc.text(villeCantonClient, 15, y + 32);
-    if (client.telephone)  doc.text(client.telephone,  15, y + 38);
+    if (client.telephone)  doc.text(stripHtml(client.telephone),  15, y + 38);
   } else {
     doc.text('—', 15, y + 14);
   }
@@ -709,13 +723,13 @@ export const exportFacture = async (facture, client, chantier, devis, parametres
   const lignesFacture = [
     [
       'Travaux selon devis / chantier',
-      chantier?.nom || devis?.numero || '—',
+      stripHtml(chantier?.nom || devis?.numero || '—'),
       formatCHF(montantHT),
     ],
   ];
   if (facture.notes) {
     lignesFacture.push([
-      { content: `Notes : ${facture.notes}`, styles: { fontStyle: 'italic', textColor: [100, 100, 100] } },
+      { content: `Notes : ${stripHtml(facture.notes)}`, styles: { fontStyle: 'italic', textColor: [100, 100, 100] } },
       '',
       '',
     ]);
@@ -904,10 +918,10 @@ export const exportFacture = async (facture, client, chantier, devis, parametres
   doc.text('Payable par :', col3X, qrBaseY + 51);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(30, 30, 30);
-  const nomClient = [`${client?.prenom || ''} ${client?.nom || ''}`.trim() || '—'];
-  if (client?.entreprise) nomClient.push(client.entreprise);
-  if (client?.adresse)    nomClient.push(client.adresse);
-  if (client?.ville)      nomClient.push(client.ville);
+  const nomClient = [`${stripHtml(client?.prenom || '')} ${stripHtml(client?.nom || '')}`.trim() || '—'];
+  if (client?.entreprise) nomClient.push(stripHtml(client.entreprise));
+  if (client?.adresse)    nomClient.push(stripHtml(client.adresse));
+  if (client?.ville)      nomClient.push(stripHtml(client.ville));
   nomClient.forEach((ligne, i) => {
     doc.text(ligne, col3X, qrBaseY + 56 + i * 5);
   });

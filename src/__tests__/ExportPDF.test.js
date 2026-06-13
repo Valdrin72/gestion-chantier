@@ -189,13 +189,23 @@ describe('exportDevis — récapitulatif et lignes corrects', () => {
     expect(dernierDoc().savedAs).toBe('Devis_D-2026-042.pdf');
   });
 
-  it('🐛 DOCUMENTÉ : pas de strip HTML — les balises passent verbatim dans le PDF', async () => {
-    // ExportPDF.js n\'assainit AUCUN champ : une note "<b>urgent</b>" arrive
-    // telle quelle dans doc.text. Dans un PDF jsPDF c\'est du texte littéral
-    // (pas d\'exécution), mais le client voit les balises → bug cosmétique
-    // documenté, à corriger dans un PR dédié. Ce test fige le comportement actuel.
+  it('strip HTML : balises retirées des notes avant écriture PDF (ex-🐛)', async () => {
+    // "<b>urgent</b>" → "urgent" — les balises HTML ne partent plus chez Pictet
     await exportDevis({ ...devis, notes: '<b>urgent</b>' }, clients, PARAMETRES);
-    expect(dernierDoc().texts).toContain('<b>urgent</b>');
+    const texts = dernierDoc().texts;
+    expect(texts).toContain('urgent');
+    expect(texts.join(' ')).not.toMatch(/<b>/);
+    expect(texts.join(' ')).not.toMatch(/<\/b>/);
+  });
+
+  it('mesure technique "ép. <5mm" → NON mutilée (strip cible <tag>, pas tout "<")', async () => {
+    await exportDevis({ ...devis, notes: 'ép. <5mm, tolérance ±0.1' }, clients, PARAMETRES);
+    expect(dernierDoc().texts).toContain('ép. <5mm, tolérance ±0.1');
+  });
+
+  it('texte normal sans HTML → inchangé dans le PDF', async () => {
+    await exportDevis({ ...devis, notes: 'Travaux à prévoir en 2 semaines.' }, clients, PARAMETRES);
+    expect(dernierDoc().texts).toContain('Travaux à prévoir en 2 semaines.');
   });
 });
 

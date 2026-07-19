@@ -625,7 +625,7 @@ function buildChecks({ chantiers, devis, factures, clients, parametres, pointage
       titre: 'Taux de frais généraux configuré',
       description: 'Les frais généraux (FG) sont nécessaires au calcul de la marge nette (défaut 12%)',
       fn: () => {
-        const taux = parseFloat(cfg.tauxFG || cfg.fraisGeneraux);
+        const taux = parseFloat(cfg.tauxFraisGeneraux); // I1 — clé canonique (ni tauxFG ni fraisGeneraux n'existent)
         if (!isNaN(taux) && taux > 0 && taux < 50) return { niveau: NIV.ok, detail: `Frais généraux : ${taux}%` };
         return {
           niveau: NIV.info,

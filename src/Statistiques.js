@@ -36,7 +36,10 @@ export default function Statistiques({ chantiers, clients, devis = [], parametre
     const caTotal = filtresAvecDevis.reduce((t, c) => t + calculerCA(c, devis), 0);
     const coutsTotaux = filtresAvecDevis.reduce((t, c) => t + calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis, pointages).totalCoutsReel, 0);
     const rentabilite = caTotal - coutsTotaux;
-    const tauxFG = parseFloat(parametres?.parametres?.fraisGeneraux || parametres?.fraisGeneraux) || 12;
+    // I1 — clé canonique tauxFraisGeneraux (identique au moteur donnees.js:363). L'ancienne clé
+    // `fraisGeneraux` n'existe pas → la marge nette utilisait toujours 12% en dur, divergeant
+    // du Dashboard/ChantierDetail dès que les FG configurés ≠ 12%.
+    const tauxFG = parseFloat(parametres?.parametres?.tauxFraisGeneraux ?? parametres?.tauxFraisGeneraux) || 12;
     const margeNettePct = caTotal > 0 ? Math.round(((caTotal - coutsTotaux - caTotal * tauxFG / 100) / caTotal) * 1000) / 10 : 0;
     return { filtresAvecDevis, nbSansDevis, caTotal, rentabilite, margeNettePct };
   }, [chantiersFiltres, devis, parametres, pointages]);

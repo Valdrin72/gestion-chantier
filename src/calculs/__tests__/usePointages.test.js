@@ -132,14 +132,20 @@ describe('usePointages — CRUD', () => {
     expect(store.getState().length).toBe(1);
   });
 
-  it('upsertPointage met à jour si (date, employeId) existe déjà', () => {
+  it('upsertPointage FUSIONNE les répartitions si (date, employeId) existe déjà (C1 — n\'écrase plus)', () => {
+    // Avant C1, ce test asseyait l'ÉCRASEMENT (le chantier 42 disparaissait). C'était le bug
+    // de perte d'heures multi-chantier : upsert sur un 2e chantier le même jour effaçait le 1er.
+    // Comportement correct : les répartitions de chantiers différents COEXISTENT (fusion).
     const { hook, store } = makeHook();
-    hook.upsertPointage(ptgBase);
+    hook.upsertPointage(ptgBase); // chantier 42, 8h
     const h2 = usePointages({ pointages: store.getState(), setPointages: store.setState });
-    const nouvellesRep = [{ chantierId: '99', categorie: 'production', heures: 6 }];
-    h2.upsertPointage({ ...ptgBase, repartitions: nouvellesRep });
+    h2.upsertPointage({ ...ptgBase, repartitions: [{ chantierId: '99', categorie: 'production', heures: 6 }] });
+    // UN seul pointage (date, employeId), mais DEUX répartitions : 42 conservé + 99 ajouté.
     expect(store.getState().length).toBe(1);
-    expect(store.getState()[0].repartitions[0].chantierId).toBe('99');
+    const reps = store.getState()[0].repartitions;
+    expect(reps).toHaveLength(2);
+    expect(reps.find(r => r.chantierId === '42').heures).toBe(8);
+    expect(reps.find(r => r.chantierId === '99').heures).toBe(6);
   });
 
   it('Deux pointages même jour employés différents coexistent', () => {

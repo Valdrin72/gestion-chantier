@@ -27,13 +27,10 @@ const DEMO_VERSION   = 5;
 
 const LEGACY_STATUTS = { 'Validé': 'accepté', 'Signé': 'accepté', 'Envoyé': 'envoyé', 'Refusé': 'refusé', 'Brouillon': 'brouillon', 'Annulé': 'refusé' };
 
-// Numéros de factures de test créées par les agents — filtrées à chaque chargement
-const FACTURES_TEST = new Set([
-  'F-202605-001','F-202605-002','F-202605-003','F-202605-004','F-202605-005',
-  'F-2026-005','F-2026-006','F-2026-007','F-2026-008',
-  'F-2026-009','F-2026-010','F-2026-011','F-2026-012',
-  'F-2026-017','F-2026-018',
-]);
+// C2 — Le filtrage runtime de numéros de factures « de test » a été RETIRÉ : le format
+// F-2026-NNN est aussi le format RÉEL de numérotation CYNA, donc ce filtre effaçait
+// silencieusement de vraies factures (pièces comptables) à chaque chargement. Toute
+// donnée de démo indésirable se corrige à la source (donnees-demo.js), jamais au runtime.
 
 // Paramètres par défaut pour un nouveau compte réel : config BTP GE sans données démo.
 // On conserve typesTravaux/localites/zones (config standard GE utile dès le 1er jour)
@@ -86,8 +83,6 @@ export function resolveDataFromBlob(rawBlob, isDemo) {
   const c = (d.chantiers || []).map(ch => ({ ...ch, journal: migrerJournal(ch.journal || []) }));
   const dv = (d.devis || []).map(x => ({ ...x, statut: LEGACY_STATUTS[x.statut] || x.statut }));
   const facturesBrutes = d.factures || [];
-  const facturesPropres = facturesBrutes.filter(f => !FACTURES_TEST.has(f.numero));
-  const nettoyage = facturesPropres.length < facturesBrutes.length;
   const storedParams = d.parametres || {};
   const outdated = (storedParams.demoVersion || 0) < DEMO_VERSION;
 
@@ -98,7 +93,7 @@ export function resolveDataFromBlob(rawBlob, isDemo) {
     chantiers = (!outdated && c.length > 0) ? c : donneesInitiales.chantiers.map(ch => ({ ...ch, journal: migrerJournal(ch.journal || []) }));
     devis     = (!outdated && dv.length > 0) ? dv : donneesInitiales.devis;
     clients   = (!outdated && (d.clients || []).length > 0) ? (d.clients || []) : donneesInitiales.clients;
-    factures  = (!outdated && facturesPropres.length > 0) ? facturesPropres : (donneesInitiales.factures || []);
+    factures  = (!outdated && facturesBrutes.length > 0) ? facturesBrutes : (donneesInitiales.factures || []);
     parametres = outdated
       ? { ...donneesInitiales, demoVersion: DEMO_VERSION }
       : {
@@ -114,7 +109,7 @@ export function resolveDataFromBlob(rawBlob, isDemo) {
     // Vrai compte : JAMAIS de données démo, quelles que soient les conditions
     chantiers  = c;
     devis      = dv;
-    factures   = facturesPropres;
+    factures   = facturesBrutes;
     clients    = d.clients || [];
     parametres = {
       ...PARAMETRES_DEFAUT,
@@ -127,8 +122,8 @@ export function resolveDataFromBlob(rawBlob, isDemo) {
     };
   }
 
-  // needsSync uniquement si nettoyage nécessaire ou démo périmée
-  const needsSync = nettoyage || (isDemo && (outdated || c.length === 0 || dv.length === 0 || !storedParams.employes?.length));
+  // needsSync uniquement pour la démo périmée/vide (plus aucun « nettoyage » runtime de factures)
+  const needsSync = isDemo && (outdated || c.length === 0 || dv.length === 0 || !storedParams.employes?.length);
 
   return { chantiers, devis, factures, clients, parametres, pointages: d.pointages || [], needsSync };
 }

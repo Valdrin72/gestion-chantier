@@ -166,10 +166,26 @@ export function usePointages({ pointages, setPointages }) {
       p.date === pointage.date && String(p.employeId) === String(pointage.employeId)
     );
     if (existing) {
+      // C1 — FUSION des répartitions (ne JAMAIS écraser les heures des autres chantiers).
+      // Les widgets de saisie n'envoient que la répartition du chantier courant ; sans fusion,
+      // pointer un 2e chantier le même jour effaçait le 1er (perte d'heures silencieuse).
+      // Clé d'unicité : (chantierId, categorie). Une répartition entrante MET À JOUR celle de
+      // même (chantier, catégorie) — correction de saisie — et AJOUTE si absente — 2e chantier.
+      // Les répartitions non concernées (autre chantier, absence, atelier…) sont CONSERVÉES.
+      const cle = r => `${r.chantierId == null ? 'null' : String(r.chantierId)}__${r.categorie}`;
+      const parCle = new Map();
+      for (const r of (existing.repartitions || [])) parCle.set(cle(r), r);
+      for (const r of (pointage.repartitions || [])) parCle.set(cle(r), r); // remplace ou ajoute
+      const repartitionsFusion = [...parCle.values()];
+      // Majoration recalculée depuis les répartitions fusionnées (les heures ont changé).
+      const majoration = _calculerMajorationPourPointage(
+        { ...existing, repartitions: repartitionsFusion }, canton
+      );
       return updatePointage(existing.id, {
-        repartitions: pointage.repartitions,
+        repartitions: repartitionsFusion,
         deplacement: pointage.deplacement ?? existing.deplacement,
         saisi_par: pointage.saisi_par ?? existing.saisi_par,
+        majoration,
       });
     }
     return addPointage(pointage, canton);

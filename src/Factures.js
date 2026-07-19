@@ -9,6 +9,7 @@
 import React, { useState, useMemo } from 'react';
 import { FileDown, Download } from 'lucide-react';
 import { DS } from './ds';
+import { useApp } from './context/AppContext';
 import { exportCSV } from './utils/exportCSV';
 import { fmtN, getIntervallesPeriode, facturesInPeriode, genererNumeroFacture, calculerStatutFacture, calculerCAForfait } from './donnees';
 import { prochainRappel, niveauInfo, genererTexteRappel, marquerRappelEnvoye } from './relances';
@@ -117,6 +118,7 @@ function KpiCard({ label, value, couleur, icon, sous }) {
 
 // ── COMPOSANT PRINCIPAL ──────────────────────────────────────
 export default function Factures({ profil, clients = [], chantiers = [], devis = [], factures = [], onSave, paiementsData = {}, setPaiementsData, naviguer, hideHeader = false, periodeGlobale = 'mois', parametres = null, preRemplir = null, onConsumePreRemplir = null }) {
+  const { pointages = [] } = useApp();
   const [vue, setVue] = useState('liste');   // 'liste' | 'form' | 'detail'
   const [selected, setSelected] = useState(null);
   const [filtreStatut, setFiltreStatut] = useState('');
@@ -645,7 +647,7 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
                                 <button
                                   style={{ ...DS.iconBtn, padding: '5px 8px' }}
                                   title="Exporter fiche chantier PDF"
-                                  onClick={() => exportFicheChantier(chantierF, clients, parametres, devis)}
+                                  onClick={() => exportFicheChantier(chantierF, clients, parametres, devis, pointages)}
                                 ><FileDown size={13} /></button>
                               )}
                             </>
@@ -743,7 +745,7 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
                   <button
                     style={{ ...S.btnGhost, display: 'flex', alignItems: 'center', gap: 5 }}
                     title="Exporter fiche chantier PDF"
-                    onClick={() => exportFicheChantier(chantierDetail, clients, parametres, devis)}
+                    onClick={() => exportFicheChantier(chantierDetail, clients, parametres, devis, pointages)}
                   ><FileDown size={14} /> Fiche chantier</button>
                 )}
               </>

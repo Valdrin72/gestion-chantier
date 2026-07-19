@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { DS } from './ds';
 import { calculerCoutsChantier, fmtN, SEUILS, getIntervallesPeriode, chantiersInPeriode, getPeriodeLabel } from './donnees';
+import { useApp } from './context/AppContext';
 import KpiCard from './components/ui/KpiCard';
 
 const seuils = { bon: SEUILS.margeRentable, ok: SEUILS.margeLimite };
@@ -14,6 +15,7 @@ function statutMarge(pct) {
 }
 
 export default function Marges({ chantiers = [], clients = [], devis = [], parametres = {}, periodeGlobale = 'annee' }) {
+  const { pointages = [] } = useApp();
   const chantiersFiltres = useMemo(() => {
     const { debut, fin } = getIntervallesPeriode(periodeGlobale);
     return chantiers.filter(c => chantiersInPeriode(c, debut, fin));
@@ -27,7 +29,8 @@ export default function Marges({ chantiers = [], clients = [], devis = [], param
           parametres.employes,
           parametres.localites,
           parametres.parametres,
-          devis
+          devis,
+          pointages
         );
         const client = clients.find(cl => String(cl.id) === String(c.clientId));
         const hasCa    = couts.montantTotal > 0;
@@ -53,7 +56,7 @@ export default function Marges({ chantiers = [], clients = [], devis = [], param
         if (a.margeActuellePct === null && b.margeActuellePct === null) return 0;
         return a.margeActuellePct - b.margeActuellePct;
       });
-  }, [chantiersFiltres, clients, devis, parametres]);
+  }, [chantiersFiltres, clients, devis, parametres, pointages]);
 
   const kpi = useMemo(() => {
     const avecDonnees = rows.filter(r => r.ca !== null && r.coutsReel !== null);

@@ -1,9 +1,10 @@
 import { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { filtrerActifs, filtrerArchives } from '../utils/archiveHelpers';
+import { joursReelsChantier } from '../calculs/pointagesHelper';
 
 export function useChantierFiltres() {
-  const { chantiers, contexte } = useApp();
+  const { chantiers, contexte, pointages = [] } = useApp();
   const [filtre, setFiltre] = useState(contexte?.filtreStatut || 'Tous');
 
   // Liste de base après filtres statut + contexte (client/employé), AVANT séparation archive
@@ -23,11 +24,11 @@ export function useChantierFiltres() {
   const joursParChantier = useMemo(() => {
     const map = {};
     chantiersFiltres.forEach(c => {
-      const realises = new Set((c.journal || []).map(e => e.date).filter(Boolean)).size;
+      const realises = joursReelsChantier(pointages, c.id);
       map[c.id] = c.nombreJours > 0 ? c.nombreJours - realises : null;
     });
     return map;
-  }, [chantiersFiltres]);
+  }, [chantiersFiltres, pointages]);
 
   return { filtre, setFiltre, chantiersFiltres, chantiersArchives, joursParChantier };
 }

@@ -207,10 +207,10 @@ const boiteInfo = (doc, y, label, valeur, couleur = BLEU) => {
 };
 
 // ===== EXPORT FICHE CHANTIER =====
-export const exportFicheChantier = async (chantier, clients, parametres, devis = []) => {
+export const exportFicheChantier = async (chantier, clients, parametres, devis = [], pointages = []) => {
   const doc = new jsPDF();
   const client = clients.find(c => String(c.id) === String(chantier.clientId));
-  const couts = calculerCoutsChantier(chantier, parametres.employes, parametres.localites, parametres.parametres, devis);
+  const couts = calculerCoutsChantier(chantier, parametres.employes, parametres.localites, parametres.parametres, devis, pointages);
   const dateFin = calculerDateFinOuvrables(chantier.dateDebut, chantier.nombreJours, chantier.inclusSamedi);
 
   let y = await ajouterEntete(doc, 'FICHE CHANTIER', stripHtml(chantier.nom));
@@ -534,7 +534,7 @@ export const exportDevis = async (devis, clients, parametres) => {
 };
 
 // ===== EXPORT RAPPORT MENSUEL =====
-export const exportRapportMensuel = async (chantiers, clients, parametres, mois, annee, devis = []) => {
+export const exportRapportMensuel = async (chantiers, clients, parametres, mois, annee, devis = [], pointages = []) => {
   const doc = new jsPDF();
   const nomsMois = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
 
@@ -547,7 +547,7 @@ export const exportRapportMensuel = async (chantiers, clients, parametres, mois,
   });
 
   const caTotal = chantiersMois.reduce((t, c) => t + (calculerCA(c, devis) ?? 0), 0);
-  const coutsTotal = chantiersMois.reduce((t, c) => t + calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis).totalCoutsReel, 0);
+  const coutsTotal = chantiersMois.reduce((t, c) => t + calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis, pointages).totalCoutsReel, 0);
   const margeTotal = caTotal - coutsTotal;
   const margePct = caTotal > 0 ? Math.round((margeTotal / caTotal) * 1000) / 10 : 0;
 
@@ -601,7 +601,7 @@ export const exportRapportMensuel = async (chantiers, clients, parametres, mois,
       head: [['Chantier', 'Client', 'Ville', 'Statut', 'Devis CHF', 'Coûts CHF', 'Marge %', 'Gain CHF']],
       body: chantiersMois.map(c => {
         const client = clients.find(cl => String(cl.id) === String(c.clientId));
-        const couts = calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis);
+        const couts = calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis, pointages);
         return [
           stripHtml(c.nom), stripHtml(client?.entreprise) || '-', stripHtml(c.ville) || '-', c.statut,
           couts.montantTotal !== null ? Math.round(couts.montantTotal).toLocaleString() : '—',
@@ -629,7 +629,7 @@ export const exportRapportMensuel = async (chantiers, clients, parametres, mois,
     const cs = chantiersMois.filter(c => (c.typesTravaux || []).includes(t.nom));
     if (cs.length === 0) return null;
     const ca = cs.reduce((s, c) => s + calculerCA(c, devis), 0);
-    const couts = cs.reduce((s, c) => s + calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis).totalCoutsReel, 0);
+    const couts = cs.reduce((s, c) => s + calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis, pointages).totalCoutsReel, 0);
     return [t.nom, cs.length, `CHF ${ca.toLocaleString()}`, `CHF ${couts.toLocaleString()}`, `CHF ${(ca - couts).toLocaleString()}`, ca > 0 ? `${Math.round(((ca - couts) / ca) * 1000) / 10}%` : '-'];
   }).filter(Boolean);
 

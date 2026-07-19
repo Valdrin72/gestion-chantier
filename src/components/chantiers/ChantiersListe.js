@@ -64,7 +64,7 @@ function ChantiersListe({
     let margeMoyenne = null;
     if (chantiersAvecData.length > 0) {
       const sum = chantiersAvecData.reduce((s, c) => {
-        const couts = calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis);
+        const couts = calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis, pointages);
         return s + (couts.totalCoutsReel > 0 && couts.margeActuellePct !== null ? couts.margeActuellePct : 0);
       }, 0);
       margeMoyenne = Math.round(sum / chantiersAvecData.length);
@@ -77,7 +77,7 @@ function ChantiersListe({
       { label: 'MARGE MOYENNE',  val: margeMoyenne !== null ? `${margeMoyenne}%` : '—', Icon: TrendingUp, ...DS.kpi.amber },
       { label: 'JOURS PLANIFIÉS',val: `${fmtN(joursPlanifies)}j`, Icon: Clock, ...DS.kpi.purple },
     ];
-  }, [chantiersFiltres, chantiers, devis, parametres, joursParChantier, periodeGlobale]);
+  }, [chantiersFiltres, chantiers, devis, parametres, joursParChantier, periodeGlobale, pointages]);
 
   // Décisions/scoring chantiers
   const getDecisionChantier = (etatC) => {
@@ -108,7 +108,7 @@ function ChantiersListe({
   const scored = useMemo(() => {
     const todayStr = new Date().toISOString().split('T')[0];
     return [...chantiersFiltres].map(c => {
-      const etatC = calculerEtatChantier(c, parametres.employes, devis);
+      const etatC = calculerEtatChantier(c, parametres.employes, devis, parametres.parametres, pointages);
       const coherence = assertEtatCoherent(etatC);
       if (!coherence.ok)
         return { c, etatC, decision: DECISION_INVALIDE, indicateurs: [], actions: [] };
@@ -148,7 +148,7 @@ function ChantiersListe({
     const lignes = chantiersFiltres.map(c => {
       const clientNom = (clients.find(cl => String(cl.id) === String(c.clientId))?.nom || '') + ' ' + (clients.find(cl => String(cl.id) === String(c.clientId))?.prenom || '');
       const ca = calculerCA(c, devis);
-      const couts = calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis);
+      const couts = calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis, pointages);
       return [
         c.nom || '',
         clientNom.trim(),

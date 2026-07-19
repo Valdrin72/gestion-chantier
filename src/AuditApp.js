@@ -1,6 +1,8 @@
 import React, { useMemo, useState } from 'react';
 import { Shield, ShieldCheck, ShieldAlert, ShieldX, RefreshCw, ChevronDown, ChevronUp, CheckCircle, AlertTriangle, XCircle, Info, Lightbulb } from 'lucide-react';
 import { DS } from './ds';
+import { joursReelsChantier } from './calculs/pointagesHelper';
+import { useApp } from './context/AppContext';
 import { fmtN, calculerCA, calculerCoutsChantier, SEUILS } from './donnees';
 
 // ── Niveaux ──────────────────────────────────────────────────
@@ -74,7 +76,7 @@ function CheckCard({ check, ouvert, onToggle }) {
 }
 
 // ── Toutes les vérifications ──────────────────────────────────
-function buildChecks({ chantiers, devis, factures, clients, parametres }) {
+function buildChecks({ chantiers, devis, factures, clients, parametres, pointages = [] }) {
   const employes = parametres.employes || [];
   const cfg = parametres.parametres || {};
   const devisMap = Object.fromEntries(devis.map(d => [String(d.id), d]));
@@ -259,7 +261,7 @@ function buildChecks({ chantiers, devis, factures, clients, parametres }) {
       fn: () => {
         const pb = [];
         chantiers.forEach(c => {
-          const couts = calculerCoutsChantier(c, employes, parametres.localites, cfg, devis);
+          const couts = calculerCoutsChantier(c, employes, parametres.localites, cfg, devis, pointages);
           const m = couts.margeActuellePct;
           if (m !== null && !isNaN(m) && (m < -100 || m > 200)) {
             pb.push(`${c.nom || c.numero} — marge aberrante : ${Math.round(m * 10) / 10}%`);
@@ -283,7 +285,7 @@ function buildChecks({ chantiers, devis, factures, clients, parametres }) {
         const perdants = chantiers.filter(c => {
           const st = c.statut?.trim().toLowerCase();
           if (!['en cours', 'terminé', 'facturé', 'clôturé'].includes(st)) return false;
-          const couts = calculerCoutsChantier(c, employes, parametres.localites, cfg, devis);
+          const couts = calculerCoutsChantier(c, employes, parametres.localites, cfg, devis, pointages);
           return couts.margeActuellePct !== null && couts.margeActuellePct < 0;
         });
         if (perdants.length === 0) return { niveau: NIV.ok, detail: 'Aucun chantier à perte détecté' };
@@ -292,7 +294,7 @@ function buildChecks({ chantiers, devis, factures, clients, parametres }) {
           detail: `${perdants.length} chantier(s) avec marge négative`,
           recommandation: 'Analysez les coûts de ces chantiers et ajustez la facturation ou réduisez les charges',
           items: perdants.map(c => {
-            const co = calculerCoutsChantier(c, employes, parametres.localites, cfg, devis);
+            const co = calculerCoutsChantier(c, employes, parametres.localites, cfg, devis, pointages);
             return `${c.nom || c.numero} — marge ${co.margeActuellePct != null ? Math.round(co.margeActuellePct * 10) / 10 : '?'}%`;
           }),
         };
@@ -307,7 +309,7 @@ function buildChecks({ chantiers, devis, factures, clients, parametres }) {
         const faibles = chantiers.filter(c => {
           const st = c.statut?.trim().toLowerCase();
           if (!['en cours', 'terminé', 'facturé', 'clôturé'].includes(st)) return false;
-          const couts = calculerCoutsChantier(c, employes, parametres.localites, cfg, devis);
+          const couts = calculerCoutsChantier(c, employes, parametres.localites, cfg, devis, pointages);
           return couts.margeActuellePct !== null && couts.margeActuellePct >= 0 && couts.margeActuellePct < SEUILS.margeLimite;
         });
         if (faibles.length === 0) return { niveau: NIV.ok, detail: `Tous les chantiers sont au-dessus de ${SEUILS.margeLimite}%` };
@@ -316,7 +318,7 @@ function buildChecks({ chantiers, devis, factures, clients, parametres }) {
           detail: `${faibles.length} chantier(s) sous le seuil de rentabilité`,
           recommandation: `Visez ≥ ${SEUILS.margeRentable}% de marge nette (seuil cible BTP Genève)`,
           items: faibles.map(c => {
-            const co = calculerCoutsChantier(c, employes, parametres.localites, cfg, devis);
+            const co = calculerCoutsChantier(c, employes, parametres.localites, cfg, devis, pointages);
             return `${c.nom || c.numero} — marge ${co.margeActuellePct != null ? Math.round(co.margeActuellePct * 10) / 10 : '?'}%`;
           }),
         };
@@ -406,7 +408,7 @@ function buildChecks({ chantiers, devis, factures, clients, parametres }) {
         // Vérifie si des chantiers ont un champ joursRealises manuel qui diverge du journal
         const pb = [];
         chantiers.forEach(c => {
-          const joursJournal = new Set((c.journal || []).map(e => e.date).filter(Boolean)).size;
+          const joursJournal = joursReelsChantier(pointages, c.id);
           // Ancien champ manuel (legacy)
           const joursManuel = parseInt(c.joursRealises) || null;
           if (joursManuel !== null && joursManuel !== joursJournal && joursJournal > 0) {
@@ -640,14 +642,15 @@ function buildChecks({ chantiers, devis, factures, clients, parametres }) {
 
 // ── Composant principal ───────────────────────────────────────
 export default function AuditApp({ chantiers = [], devis = [], factures = [], clients = [], parametres = {} }) {
+  const { pointages = [] } = useApp();
   const [ouvert, setOuvert] = useState({});
   const [filtreCategorie, setFiltreCategorie] = useState('Tous');
   const [filtreNiveau, setFiltreNiveau] = useState('Tous');
   const [refresh, setRefresh] = useState(0);
 
-  const results = useMemo(() => buildChecks({ chantiers, devis, factures, clients, parametres }),
+  const results = useMemo(() => buildChecks({ chantiers, devis, factures, clients, parametres, pointages }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [chantiers, devis, factures, clients, parametres, refresh]);
+    [chantiers, devis, factures, clients, parametres, pointages, refresh]);
 
   const score = useMemo(() => {
     const base = 100;

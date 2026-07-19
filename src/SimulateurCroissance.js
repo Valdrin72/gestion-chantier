@@ -1,6 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import { TrendingUp, Users, DollarSign, Target, Info, CheckCircle, AlertTriangle } from 'lucide-react';
 import { DS } from './ds';
+import { joursReelsChantier } from './calculs/pointagesHelper';
+import { useApp } from './context/AppContext';
 import { fmtN, calculerCoutsChantier, SEUILS } from './donnees';
 
 const JOURS_AN_SUISSE = 220; // ~46 semaines × 5j (jours ouvrables Suisse hors vacances)
@@ -46,6 +48,7 @@ function Slider({ label, min, max, step, value, onChange, format = v => v, hint 
 }
 
 export default function SimulateurCroissance({ chantiers = [], devis = [], factures = [], parametres = {} }) {
+  const { pointages = [] } = useApp();
   const employes = parametres.employes || [];
   const actifs = employes.filter(e => e.actif !== false);
 
@@ -75,7 +78,7 @@ export default function SimulateurCroissance({ chantiers = [], devis = [], factu
     let margesMoyenne = 18; // défaut BTP Genève
     if (terminés.length > 0) {
       const marges = terminés.map(c => {
-        const couts = calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis);
+        const couts = calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis, pointages);
         return couts.margeActuellePct;
       }).filter(m => m !== null && !isNaN(m));
       if (marges.length > 0) margesMoyenne = Math.round(marges.reduce((s, m) => s + m, 0) / marges.length * 10) / 10;
@@ -83,13 +86,13 @@ export default function SimulateurCroissance({ chantiers = [], devis = [], factu
 
     // Jours facturés par employé par an (depuis le journal)
     const totalJoursJournal = chantiersCetteAnnee.reduce((s, c) => {
-      return s + new Set((c.journal || []).map(e => e.date).filter(Boolean)).size;
+      return s + joursReelsChantier(pointages, c.id);
     }, 0);
     const joursParEmploye = actifs.length > 0 ? Math.round(totalJoursJournal / actifs.length) : 0;
     const txUtilisation = joursParEmploye > 0 ? Math.min(100, Math.round(joursParEmploye / JOURS_AN_SUISSE * 100)) : 75;
 
     return { tarifMoyen, caAnnuel, margesMoyenne, nbEmployes: actifs.length, txUtilisation, joursParEmploye, nbChantiersAnnee: chantiersCetteAnnee.length };
-  }, [chantiers, devis, parametres, actifs]);
+  }, [chantiers, devis, parametres, actifs, pointages]);
 
   // ── Paramètres de simulation ──
   const [nbNouveaux, setNbNouveaux] = useState(1);

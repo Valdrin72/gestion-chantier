@@ -34,8 +34,8 @@ describe('Non-régression rentabilité — journal original vs journal régéné
     const chantierRegene = chantiersRegenes.find(c => String(c.id) === String(chantierOriginal.id));
 
     it(`CH${chantierOriginal.id} "${chantierOriginal.nom}" — coutEquipeReel identique (±0.1%)`, () => {
-      const coutsOrig   = calculerCoutsChantier(chantierOriginal, employes, [], cfg, devis);
-      const coutsRegene = calculerCoutsChantier(chantierRegene,   employes, [], cfg, devis);
+      const coutsOrig   = calculerCoutsChantier(chantierOriginal, employes, [], cfg, devis, pointagesMigres);
+      const coutsRegene = calculerCoutsChantier(chantierRegene,   employes, [], cfg, devis, pointagesMigres);
       expect(
         proches(coutsOrig.coutEquipeReel, coutsRegene.coutEquipeReel),
         `orig=${coutsOrig.coutEquipeReel} vs regene=${coutsRegene.coutEquipeReel}`
@@ -43,8 +43,8 @@ describe('Non-régression rentabilité — journal original vs journal régéné
     });
 
     it(`CH${chantierOriginal.id} — totalCoutsReel identique (±0.1%)`, () => {
-      const coutsOrig   = calculerCoutsChantier(chantierOriginal, employes, [], cfg, devis);
-      const coutsRegene = calculerCoutsChantier(chantierRegene,   employes, [], cfg, devis);
+      const coutsOrig   = calculerCoutsChantier(chantierOriginal, employes, [], cfg, devis, pointagesMigres);
+      const coutsRegene = calculerCoutsChantier(chantierRegene,   employes, [], cfg, devis, pointagesMigres);
       expect(
         proches(coutsOrig.totalCoutsReel, coutsRegene.totalCoutsReel),
         `orig=${coutsOrig.totalCoutsReel} vs regene=${coutsRegene.totalCoutsReel}`
@@ -52,8 +52,8 @@ describe('Non-régression rentabilité — journal original vs journal régéné
     });
 
     it(`CH${chantierOriginal.id} — margeActuellePct identique (±0.1%)`, () => {
-      const coutsOrig   = calculerCoutsChantier(chantierOriginal, employes, [], cfg, devis);
-      const coutsRegene = calculerCoutsChantier(chantierRegene,   employes, [], cfg, devis);
+      const coutsOrig   = calculerCoutsChantier(chantierOriginal, employes, [], cfg, devis, pointagesMigres);
+      const coutsRegene = calculerCoutsChantier(chantierRegene,   employes, [], cfg, devis, pointagesMigres);
       expect(
         proches(coutsOrig.margeActuellePct, coutsRegene.margeActuellePct),
         `orig=${coutsOrig.margeActuellePct} vs regene=${coutsRegene.margeActuellePct}`
@@ -61,8 +61,8 @@ describe('Non-régression rentabilité — journal original vs journal régéné
     });
 
     it(`CH${chantierOriginal.id} — coutMOReel (calculerEtatChantier) identique (±0.1%)`, () => {
-      const etatOrig   = calculerEtatChantier(chantierOriginal, employes, devis, cfg);
-      const etatRegene = calculerEtatChantier(chantierRegene,   employes, devis, cfg);
+      const etatOrig   = calculerEtatChantier(chantierOriginal, employes, devis, cfg, pointagesMigres);
+      const etatRegene = calculerEtatChantier(chantierRegene,   employes, devis, cfg, pointagesMigres);
       expect(
         proches(etatOrig.coutMOReel, etatRegene.coutMOReel),
         `orig=${etatOrig.coutMOReel} vs regene=${etatRegene.coutMOReel}`

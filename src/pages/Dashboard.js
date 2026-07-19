@@ -13,6 +13,7 @@ import {
 import { DS } from '../ds';
 import { STATUTS_CLOS } from '../constants/statuts';
 import { useApp } from '../context/AppContext';
+import { joursReelsChantier } from '../calculs/pointagesHelper';
 import useIsMobile from '../hooks/useIsMobile';
 import { calculerAlertes } from '../alertes';
 import SaisieRapideDashboard from '../components/SaisieRapideDashboard';
@@ -53,11 +54,11 @@ function Dashboard() {
   const joursParChantier = useMemo(() => {
     const map = {};
     chantiers.forEach(c => {
-      const realises = new Set((c.journal || []).map(e => e.date).filter(Boolean)).size;
+      const realises = joursReelsChantier(pointages, c.id);
       map[c.id] = c.nombreJours > 0 ? c.nombreJours - realises : null;
     });
     return map;
-  }, [chantiers]);
+  }, [chantiers, pointages]);
 
   // ── KPI dashboard ────────────────────────────────────────────
   const kpi = useMemo(() => {
@@ -114,7 +115,7 @@ function Dashboard() {
       const devisTotal = calculerCA(c, devis);
       if (devisTotal === null) return { id: c.id, nom: c.nom || c.numero, encaissementPrevu: 0 };
       // Règle BTP : avancement vient du journal des heures (source unique), avec fallback sur la valeur manuelle
-      const etat = calculerEtatChantier(c, parametres?.employes || [], devis, parametres?.parametres || parametres);
+      const etat = calculerEtatChantier(c, parametres?.employes || [], devis, parametres?.parametres || parametres, pointages);
       const avancement = etat?.avancementPct ?? 0;
       const montantFacture = (factures || [])
         .filter(f => String(f.chantierId) === String(c.id))
@@ -159,9 +160,9 @@ function Dashboard() {
   // ── Rentabilité réelle par chantier (basé sur jours réalisés) ─
   const rentaReelleParChantier = useMemo(() => {
     const map = {};
-    actifs.forEach(c => { map[c.id] = calculerRentabiliteReelle(c, parametres, devis); });
+    actifs.forEach(c => { map[c.id] = calculerRentabiliteReelle(c, parametres, devis, pointages); });
     return map;
-  }, [actifs, parametres, devis]);
+  }, [actifs, parametres, devis, pointages]);
 
   // ── KPI rentabilité réelle + écarts prévu/réel ───────────────
   const kpiReel = useMemo(() => {
@@ -318,7 +319,7 @@ function Dashboard() {
     const reel = rentaReelleParChantier[c.id];
     const retardJ = j !== null && j < 0 && !estRetardJustifie(c) ? Math.abs(j) : 0;
     // Avancement depuis journal (cohérent avec calculerEtatChantier) — fallback sur valeur manuelle
-    const joursRealisesForPrio = new Set((c.journal || []).map(e => e.date).filter(Boolean)).size;
+    const joursRealisesForPrio = joursReelsChantier(pointages, c.id);
     const joursPlannedForPrio = parseInt(c.nombreJours) || 0;
     const avancement = joursPlannedForPrio > 0
       ? Math.min(100, Math.round((joursRealisesForPrio / joursPlannedForPrio) * 100))
@@ -410,12 +411,12 @@ function Dashboard() {
   const avancementMoyen = useMemo(() => {
     if (actifs.length === 0) return 0;
     const sum = actifs.reduce((s, c) => {
-      const etat = calculerEtatChantier(c, parametres.employes, devis, parametres?.parametres || parametres);
+      const etat = calculerEtatChantier(c, parametres.employes, devis, parametres?.parametres || parametres, pointages);
       const pct = etat.totalJoursReels > 0 ? etat.avancementPct : (parseFloat(c.avancement) || 0);
       return s + pct;
     }, 0);
     return sum / actifs.length;
-  }, [actifs, parametres, devis]);
+  }, [actifs, parametres, devis, pointages]);
 
   const BADGE_STATUT_DASH = {
     ok:        { label: 'En cours',  bg: '#D1FAE5', color: '#065F46' },
@@ -509,7 +510,7 @@ function Dashboard() {
                   const montantCA = calculerCA(c, devis);
                   const couts = coutsMap.get(c.id) || {};
                   const joursTotal = c.nombreJours || 0;
-                  const joursRealises = new Set((c.journal || []).map(e => e.date).filter(Boolean)).size;
+                  const joursRealises = joursReelsChantier(pointages, c.id);
                   const avancementVal = joursTotal === 0 ? 0 : Math.min(Math.round((joursRealises / joursTotal) * 100), 100);
                   const mPct = couts.montantTotal > 0 && couts.totalCoutsReel > 0 && couts.margeActuellePct !== null ? Math.round(couts.margeActuellePct) : null;
                   const statBadge = joursRealises === 0 ? BADGE_STATUT_DASH.neutre : BADGE_STATUT_DASH[priorite.niveau];
@@ -963,7 +964,7 @@ function Dashboard() {
                   const mPct = couts.montantTotal > 0 && couts.totalCoutsReel > 0 && couts.margeActuellePct !== null ? Math.round(couts.margeActuellePct) : null;
                   const joursTotal = c.nombreJours || 0;
                   // Jours réellement travaillés = dates distinctes dans le journal des heures
-                  const joursRealises = new Set((c.journal || []).map(e => e.date).filter(Boolean)).size;
+                  const joursRealises = joursReelsChantier(pointages, c.id);
                   const statBadge = joursRealises === 0
                     ? BADGE_STATUT_DASH.neutre
                     : BADGE_STATUT_DASH[priorite.niveau];

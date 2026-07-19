@@ -7,6 +7,7 @@ import {
 import { useClaudeAI } from '../../hooks/useClaudeAI';
 import { useApp } from '../../context/AppContext';
 import { calculerCoutsChantier } from '../../donnees';
+import { joursReelsChantier } from '../../calculs/pointagesHelper';
 import { DS } from '../../ds';
 
 // ── Limite mémoire partagée ─────────────────────────────────────
@@ -298,7 +299,7 @@ function PanneauMemoire({ memoire, onSave }) {
 
 // ── Onglet : Analyser un chantier ─────────────────────────────
 function AnalyseChantier({ memoire, onSauvegarder, autoSave }) {
-  const { chantiers, devis, parametres } = useApp();
+  const { chantiers, devis, parametres, pointages = [] } = useApp();
   const { appeler, loading, error } = useClaudeAI();
   const [chantierId, setChantierId] = useState('');
   const [resultat, setResultat] = useState('');
@@ -307,8 +308,8 @@ function AnalyseChantier({ memoire, onSauvegarder, autoSave }) {
   const analyser = async () => {
     const c = chantiers.find(ch => String(ch.id) === String(chantierId));
     if (!c) return;
-    const couts = calculerCoutsChantier(c, parametres?.employes || [], parametres?.localites || [], parametres?.parametres || {}, devis);
-    const joursReels = new Set((c.journal || []).map(e => e.date).filter(Boolean)).size;
+    const couts = calculerCoutsChantier(c, parametres?.employes || [], parametres?.localites || [], parametres?.parametres || {}, devis, pointages);
+    const joursReels = joursReelsChantier(pointages, c.id);
     const texte = await appeler('analyser_chantier', {
       nom: c.nom || c.numero, ca: couts.montantTotal, coutReel: couts.totalCoutsReel,
       margePct: couts.margeActuellePct, avancement: parseFloat(c.avancement) || 0,
@@ -437,14 +438,14 @@ function ExplicationAlertes({ memoire, onSauvegarder, autoSave }) {
 
 // ── Onglet : Analyse globale ───────────────────────────────────
 function AnalysePortefeuille({ memoire, onSauvegarder, autoSave }) {
-  const { chantiers, devis, factures, parametres } = useApp();
+  const { chantiers, devis, factures, parametres, pointages = [] } = useApp();
   const { appeler, loading, error } = useClaudeAI();
   const [resultat, setResultat] = useState('');
 
   const analyser = async () => {
     const actifs = chantiers.filter(c => c.statut?.trim().toLowerCase() !== 'annulé');
     const chantiersData = actifs.map(c => {
-      const couts = calculerCoutsChantier(c, parametres?.employes || [], parametres?.localites || [], parametres?.parametres || {}, devis);
+      const couts = calculerCoutsChantier(c, parametres?.employes || [], parametres?.localites || [], parametres?.parametres || {}, devis, pointages);
       return { nom: c.nom || c.numero, ca: couts.montantTotal, marge: couts.margeActuellePct, statut: c.statut };
     });
     const caTotal = chantiersData.reduce((s, c) => s + (c.ca || 0), 0);
@@ -482,7 +483,7 @@ function AnalysePortefeuille({ memoire, onSauvegarder, autoSave }) {
 
 // ── Onglet : Anticiper ─────────────────────────────────────────
 function Anticiper({ memoire, onSauvegarder, autoSave }) {
-  const { chantiers, devis, factures, parametres, agentState } = useApp();
+  const { chantiers, devis, factures, parametres, agentState, pointages = [] } = useApp();
   const { appeler, loading, error } = useClaudeAI();
   const [horizon, setHorizon] = useState('30');
   const [resultat, setResultat] = useState('');
@@ -491,7 +492,7 @@ function Anticiper({ memoire, onSauvegarder, autoSave }) {
     const chantiersData = chantiers
       .filter(c => c.statut?.trim().toLowerCase() !== 'annulé')
       .map(c => {
-        const couts = calculerCoutsChantier(c, parametres?.employes || [], parametres?.localites || [], parametres?.parametres || {}, devis);
+        const couts = calculerCoutsChantier(c, parametres?.employes || [], parametres?.localites || [], parametres?.parametres || {}, devis, pointages);
         return {
           nom: c.nom || c.numero,
           statut: c.statut,

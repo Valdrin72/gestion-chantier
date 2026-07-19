@@ -26,6 +26,7 @@ import {
 } from '../../donnees';
 import { runAllAgents } from '../../AgentEngine';
 import { resolveDataFromBlob, PARAMETRES_DEFAUT } from '../../hooks/useSupabaseData';
+import { pointagesDepuisChantier, fusionnerPointages } from './__fixtures__/pointagesDepuisFixture';
 
 // ════════════════════════════════════════════════════════════════════════════
 // FIXTURES COMMUNES
@@ -34,10 +35,11 @@ import { resolveDataFromBlob, PARAMETRES_DEFAUT } from '../../hooks/useSupabaseD
 // tarifH = 800 / 8 = 100 CHF/h
 const EMPLOYE = { id: 1, nom: 'Müller', tarifJour: 800, tarifDejaCharge: true };
 
-// 8 jours normaux (lun-ven, semaines du 18 et 25 mai 2026)
+// 8 jours normaux ouvrés (lun-ven hors fériés GE). NB : 2026-05-25 = Lundi de Pentecôte
+// (férié GE) → remplacé par 2026-05-28 pour rester un vrai jour normal (fe=1).
 const JOURS_NORMAUX = [
   '2026-05-18','2026-05-19','2026-05-20','2026-05-21','2026-05-22',
-  '2026-05-25','2026-05-26','2026-05-27',
+  '2026-05-26','2026-05-27','2026-05-28',
 ];
 // → 8 jours × 8h = 64h → coutEquipeReelBase = 8 × 800 = 6 400 CHF
 
@@ -78,7 +80,12 @@ const PARAMS_BASE = {
   parametres: {},
 };
 
-const POINTAGES = [PTAG_SAM, PTAG_DIM];
+// Phase 7b bis — source UNIQUE complète : base (8 jours ouvrés du journal, via la vraie
+// migration) FUSIONNÉE avec les 2 pointages week-end explicites (majorations). Dédup (date, employeId).
+const POINTAGES = fusionnerPointages(
+  pointagesDepuisChantier(CHANTIER_BASE, [EMPLOYE]),
+  [PTAG_SAM, PTAG_DIM]
+);
 
 // ════════════════════════════════════════════════════════════════════════════
 // STEP 1 — CA de base (devis uniquement, sans avenant ni extras)
@@ -115,15 +122,21 @@ describe('E2E Step 2 — Majorations CCT dans calculerCoutsChantier', () => {
     expect(r.coutMajorations).toBeCloseTo(600, 0);
   });
 
-  it('avec Sat+Dim : coutEquipeReel = 7 000 CHF (6 400 base + 600 maj)', () => {
+  it('avec Sat+Dim : coutEquipeReel = 8 600 CHF (8 000 base + 600 maj)', () => {
     const r = calculerCoutsChantier(CHANTIER_BASE, [EMPLOYE], [], {}, devis, POINTAGES);
-    expect(r.coutEquipeReel).toBeCloseTo(7_000, 0);
+    // Source unique (bascule 7b) : les 2 jours WE sont de vrais jours payés (base incluse).
+    // 8j ouvrés×800 = 6400 + 2j WE×800 = 1600 (base) = 8000 ; + maj CCT (sam 8h×100×0.25=200
+    // + dim 8h×100×0.50=400) = 600 → coutEquipeReel = 8600. (7000 = ancien artefact 2 sources :
+    // il payait la majoration du WE sans son salaire de base, ce qui n'existe pas.)
+    expect(r.coutEquipeReel).toBeCloseTo(8_600, 0);
   });
 
-  it('delta totalCoutsReel = +600 CHF (majorations uniquement)', () => {
+  it('delta totalCoutsReel = 8 600 CHF (source complète − rien saisi)', () => {
     const sans = calculerCoutsChantier(CHANTIER_BASE, [EMPLOYE], [], {}, devis, []);
     const avec = calculerCoutsChantier(CHANTIER_BASE, [EMPLOYE], [], {}, devis, POINTAGES);
-    expect(avec.totalCoutsReel - sans.totalCoutsReel).toBeCloseTo(600, 0);
+    // Post-bascule, sans pointages = aucun coût engagé (0). avec = source unique complète = 8600.
+    // Le delta est donc le coût réel total engagé : 8600 − 0 = 8600.
+    expect(avec.totalCoutsReel - sans.totalCoutsReel).toBeCloseTo(8_600, 0);
   });
 });
 
@@ -133,9 +146,12 @@ describe('E2E Step 2 — Majorations CCT dans calculerCoutsChantier', () => {
 describe('E2E Step 3 — Invariant des deux moteurs (calculerCoutsChantier ≡ calculerEtatChantier)', () => {
   const devis = [DEVIS_BASE];
 
-  it('avancementPct = 80% (64h réelles / 80h prévues)', () => {
+  it('avancementPct = 100% (10 jours travaillés / 10 prévus)', () => {
     const etat = calculerEtatChantier(CHANTIER_BASE, [EMPLOYE], devis, {}, POINTAGES);
-    expect(etat.avancementPct).toBe(80);
+    // Source unique : 8 jours ouvrés + 2 jours WE = 10 jours réellement travaillés.
+    // nombreJours (prévu) = 10 → avancement = 10/10 = 100%. (80% = ancien artefact 2 sources :
+    // les 2 jours WE faisaient bien avancer le chantier mais n'étaient pas comptés comme jours.)
+    expect(etat.avancementPct).toBe(100);
   });
 
   it('coutMajorations identiques dans les deux moteurs', () => {
@@ -220,8 +236,10 @@ describe('E2E Step 5 — Extras régie dans calculerCA vs calculerCAForfait', ()
 
   it('margeActuellePct utilise calculerCA comme base (inclut extras)', () => {
     const couts = calculerCoutsChantier(chantierAvecExtras, [EMPLOYE], [], {}, devisAvenant, POINTAGES);
-    // base CA = 58 900, coûts = 7 000 → marge ≈ 88.1%
-    expect(couts.margeActuellePct).toBeCloseTo(88.1, 0);
+    // base CA = 58 900 (55 000 forfait+avenant + 3 000 extra forfait + 900 régie).
+    // coûts = coutEquipeReel source unique = 8 600 (cf. Step 2). Aucun matériel/autre.
+    // marge = (58 900 − 8 600) / 58 900 × 100 = 85.4%. (88.1 = ancien, avec coûts 7000 sous-évalués.)
+    expect(couts.margeActuellePct).toBeCloseTo(85.4, 0);
   });
 });
 
@@ -237,7 +255,10 @@ describe('E2E Step 6 — Situation : potentiel basé sur caForfait × avancement
 
   // Formule FinancesPage : potentiel = max(0, caForfait × avancement/100 - dejaFacture)
   const caForfait  = 55_000;
-  const avancement = 80; // confirmé step 3
+  // Entrée LOCALE de test de formule (potentiel = caForfait × avancement/100), indépendante
+  // du moteur : 80 est un pourcentage d'exemple pour vérifier l'arithmétique, PAS l'avancement
+  // réel du chantier (le moteur, lui, calcule 100% — cf. Step 3).
+  const avancement = 80;
   const caForfaitAvancement = caForfait * avancement / 100; // 44 000
 
   it('caForfait × 80% = 44 000 (potentiel brut sans déductions)', () => {
@@ -280,22 +301,32 @@ describe('E2E Step 6 — Situation : potentiel basé sur caForfait × avancement
 // STEP 7 — runAllAgents : coûts reflètent les majorations (alerte marge)
 // ════════════════════════════════════════════════════════════════════════════
 describe('E2E Step 7 — runAllAgents avec/sans pointages Sat+Dim', () => {
-  // CA serré : marge NETTE passe dans la zone limite/danger quand les majorations s'ajoutent
+  // CA serré : l'alerte marge doit se DÉCLENCHER quand la marge nette tombe en zone danger.
   // FG = 12% (défaut) — marge nette = (CA - coûts - CA×12%) / CA
-  // Sans maj : (10 000 - 6 400 - 1 200) / 10 000 = 24% → aucune alerte (≥ 20%)
-  // Avec maj : (10 000 - 7 000 - 1 200) / 10 000 = 18% → ATTENTION (15% ≤ 18% < 20%)
+  // Sans pointages (rien saisi) : coûts 0 → (10 000 - 0 - 1 200)/10 000 = 88% → aucune alerte.
+  // Avec source complète (8 ouvrés + Sat + Dim) : coûts = 8j×800 + 2j WE×800 (base) + 600 maj
+  //   = 6400 + 1600 + 600 = 8 600 → marge nette = (10 000 - 8 600 - 1 200)/10 000 = 2% → DANGER (<15%).
   const DEVIS_TIGHT = [{ id: 'd2', montantHT: 10_000, avenants: [], heuresRegie: [] }];
-  // JOURNAL = 8 jours normaux × 800 = 6 400 CHF base
-  // + Sat (200) + Dim (400) = 7 000 → marge (7800-7000)/7800 = 10.3%
+  // Journal 8 jours ouvrés (mêmes dates que JOURNAL) sur le chantier c2.
+  const JOURNAL_C2 = JOURS_NORMAUX.map(date => ({
+    date, employes: [{ employeId: 1, heuresTravaillees: 8 }], categorie: 'production',
+  }));
   const CHANTIER_TIGHT = {
     id: 'c2', nom: 'Test tight', devisId: 'd2', clientId: 'cl2',
     statut: 'en cours', nombreJours: 10, canton: 'GE',
-    journal: JOURNAL,
+    journal: JOURNAL_C2,
     extras: [], avenants: [],
   };
   const PARAMS_AGENTS = { employes: [EMPLOYE], localites: [], typesTravaux: [], parametres: {} };
+  // Source UNIQUE complète pour c2 : 8 jours ouvrés (dérivés du journal) FUSIONNÉS avec les 2 WE.
+  const ptgSam = { ...PTAG_SAM, repartitions: [{ chantierId: 'c2', categorie: 'production', heures: 8 }] };
+  const ptgDim = { ...PTAG_DIM, repartitions: [{ chantierId: 'c2', categorie: 'production', heures: 8 }] };
+  const POINTAGES_TIGHT = fusionnerPointages(
+    pointagesDepuisChantier(CHANTIER_TIGHT, [EMPLOYE]),
+    [ptgSam, ptgDim]
+  );
 
-  it('sans pointages → aucune alerte marge (marge nette ≈ 24% ≥ 20%)', () => {
+  it('sans pointages → aucune alerte marge (rien saisi → marge nette ≈ 88% ≥ 20%)', () => {
     const result = runAllAgents({
       chantiers: [CHANTIER_TIGHT], devis: DEVIS_TIGHT, factures: [], clients: [],
       parametres: PARAMS_AGENTS, pointages: [],
@@ -304,14 +335,13 @@ describe('E2E Step 7 — runAllAgents avec/sans pointages Sat+Dim', () => {
     expect(alertesMarge).toHaveLength(0);
   });
 
-  it('avec pointages Sat+Dim → alerte marge (marge nette ≈ 18% < 20% → ATTENTION)', () => {
-    const ptgSam = { ...PTAG_SAM, repartitions: [{ chantierId: 'c2', categorie: 'production', heures: 8 }] };
-    const ptgDim = { ...PTAG_DIM, repartitions: [{ chantierId: 'c2', categorie: 'production', heures: 8 }] };
+  it('avec source complète (8 ouvrés + Sat + Dim) → alerte marge PRÉSENTE (marge nette ≈ 2% < 15% → DANGER)', () => {
     const result = runAllAgents({
       chantiers: [CHANTIER_TIGHT], devis: DEVIS_TIGHT, factures: [], clients: [],
-      parametres: PARAMS_AGENTS, pointages: [ptgSam, ptgDim],
+      parametres: PARAMS_AGENTS, pointages: POINTAGES_TIGHT,
     });
     const alertesMarge = result.alertes.filter(a => a.type === 'marge' && a.chantier_id === 'c2');
+    // L'intention du test survit : la marge tombe réellement sous le seuil → l'alerte DOIT exister.
     expect(alertesMarge.length).toBeGreaterThan(0);
     expect(alertesMarge[0].niveau).toMatch(/ATTENTION|DANGER/);
   });

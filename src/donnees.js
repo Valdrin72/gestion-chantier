@@ -4,6 +4,8 @@
 import { donneesDemo } from './donnees-demo';
 import { calculerMajorationDate, calculerPartSemaine, facteurEffectif } from './calculs/majorations';
 import { COEF_MO_DEFAUT } from './calculs/constants';
+// Phase 7b bis — bascule : les deux moteurs lisent les pointages via ces helpers.
+import { joursReelsChantier, heuresEmployeChantier, empIdsChantier } from './calculs/pointagesHelper';
 
 // ===== SEUILS DE RENTABILITÉ BTP SUISSE — SOURCE UNIQUE DE VÉRITÉ =====
 // Tous les modules (Dashboard, Marges, Analyse, Statistiques, ChantierDetail)
@@ -352,31 +354,26 @@ export const calculerCoutsChantier = (chantier, employes = [], localites = [], c
   // Coût déplacement PRÉVU : basé sur les jours planifiés (nombreJours)
   const nbJours = parseInt(chantier.nombreJours || 0);
   const coutDeplacementPrevu = tarifDeplacement * nbJours;
-  // Coût déplacement RÉEL : basé sur les jours uniques du journal (source de vérité)
-  const joursReelsJournal = new Set((chantier.journal || []).map(e => e.date).filter(Boolean)).size;
+  // Coût déplacement RÉEL : jours uniques travaillés (Phase 7b bis : lus depuis les pointages)
+  const joursReelsJournal = joursReelsChantier(pointages, chantier.id);
   const coutDeplacementReel = tarifDeplacement * joursReelsJournal;
-  // Alias rétrocompat — utilisé dans les exports (représente le réel si journal disponible, sinon prévu)
+  // Alias rétrocompat — utilisé dans les exports (représente le réel si des heures existent, sinon prévu)
   const coutDeplacement = joursReelsJournal > 0 ? coutDeplacementReel : coutDeplacementPrevu;
-
-  // Source unique : journal (heuresTravaillees) — aucun fallback
-  const journalCouts = chantier.journal || [];
 
   const coutEquipePrevu = chantier.equipe?.reduce((total, membre) => {
     const emp = employes.find(e => String(e.id) === String(membre.employeId));
     return total + getTarifJour(emp) * parseFloat(membre.joursPlannifies || 0);
   }, 0) || 0;
 
-  // Source unique : journal — tous les employés ayant des heures, sans nécessiter c.equipe
-  const empIdsAvecHeures = [...new Set(
-    journalCouts.flatMap(e => (e.employes || []).map(em => parseInt(em.employeId))).filter(Boolean)
-  )];
+  // Phase 7b bis — employés ayant des heures, lus depuis les pointages (source de vérité)
+  const empIdsAvecHeures = empIdsChantier(pointages, chantier.id);
   // Compléter avec les membres de l'équipe planifiée sans heures encore
   const empIdsEquipeSansHeures = (chantier.equipe || [])
     .map(m => parseInt(m.employeId))
     .filter(id => !empIdsAvecHeures.includes(id));
   const coutEquipeReelDetaille = [...empIdsAvecHeures, ...empIdsEquipeSansHeures].map(empId => {
     const emp = employes.find(e => String(e.id) === String(empId));
-    const joursReels = heuresEmploye(journalCouts, empId) / 8;
+    const joursReels = heuresEmployeChantier(pointages, empId, chantier.id) / 8;
     const tarif = getTarifJour(emp);
     return { employeId: empId, joursReels, tarif, cout: tarif * joursReels };
   });
@@ -442,9 +439,9 @@ export const calculerCoutsChantier = (chantier, employes = [], localites = [], c
   const budgetRestant = totalCoutsPrevu - totalCoutsReel;
   // rad = estimation du coût pour finir à ce rythme (RAD réel métier BTP)
   // = (coutReel / avancement%) × (100 - avancement%)
-  // Source avancement : journal si des jours sont saisis (cohérent avec calculerEtatChantier),
+  // Source avancement : pointages si des jours sont saisis (cohérent avec calculerEtatChantier),
   // sinon fallback sur la valeur manuelle (chantier non démarré).
-  const joursReelsPourAv = new Set(journalCouts.map(e => e.date).filter(Boolean)).size;
+  const joursReelsPourAv = joursReelsChantier(pointages, chantier.id);
   const avancementJournal = nbJours > 0 && joursReelsPourAv > 0
     ? Math.min(100, Math.round((joursReelsPourAv / nbJours) * 100))
     : 0;
@@ -1024,7 +1021,6 @@ export const heuresJour = (journal, date) => {
  */
 export const calculerEtatChantier = (chantier, employes = [], devisList = [], parametres = null, pointages = []) => {
   const equipe     = chantier.equipe     || [];
-  const journal    = chantier.journal    || [];
   const imprevus   = chantier.imprevus   || [];
   // CA = devis accepté lié (montantHT) + avenants. Si aucun devis : CA = 0.
   const devisTotal = calculerCA(chantier, devisList);
@@ -1032,11 +1028,9 @@ export const calculerEtatChantier = (chantier, employes = [], devisList = [], pa
   // Coefficient MO (défaut 1.0 — tarifs journaliers déjà tout compris, charges incluses)
   const coefficientMO = parseFloat(parametres?.coefficientMainOeuvre) || COEF_MO_DEFAUT;
 
-  // ── A. Jours réels par employé (source : journal uniquement) ──────────
-  // Tous les employés ayant des heures dans le journal — sans nécessiter c.equipe
-  const empIdsJournal = [...new Set(
-    journal.flatMap(e => (e.employes || []).map(em => parseInt(em.employeId))).filter(Boolean)
-  )];
+  // ── A. Jours réels par employé (Phase 7b bis : source = pointages) ────
+  // Tous les employés ayant des heures — sans nécessiter c.equipe
+  const empIdsJournal = empIdsChantier(pointages, chantier.id);
   // Compléter avec les membres de l'équipe planifiée (joursPrevus) qui n'ont pas encore d'heures
   const empIdsEquipe = equipe.map(m => parseInt(m.employeId)).filter(id => !empIdsJournal.includes(id));
   const tousEmpIds = [...empIdsJournal, ...empIdsEquipe];
@@ -1048,8 +1042,8 @@ export const calculerEtatChantier = (chantier, employes = [], devisList = [], pa
     const tarifJour  = (parseFloat(emp?.tarifJour) || 0) * coeff;
     const tarifHeure = tarifJour / 8;  // dérivé — 8h/jour convention BTP
 
-    // Heures réelles depuis le journal (format unique — aucun fallback)
-    const heuresReelles = heuresEmploye(journal, empId);
+    // Heures réelles depuis les pointages (source de vérité — aucun fallback)
+    const heuresReelles = heuresEmployeChantier(pointages, empId, chantier.id);
     const joursReels    = heuresReelles / 8;
 
     // Jours prévus depuis c.equipe si disponible
@@ -1075,7 +1069,7 @@ export const calculerEtatChantier = (chantier, employes = [], devisList = [], pa
   // Règle métier : les jours chantier sont à la granularité CHANTIER, pas employé.
   // 3 employés pendant 15 jours = 15 jours chantier (pas 45).
   const totalJoursPrevus   = parseInt(chantier.nombreJours) || 0;
-  const totalJoursReels    = new Set(journal.map(e => e.date).filter(Boolean)).size;
+  const totalJoursReels    = joursReelsChantier(pointages, chantier.id);
   // Heures : somme réelle des saisies par employé (base des coûts MO)
   const totalHeuresPrevues = membreDetail.reduce((s, m) => s + m.heuresPrevues, 0);
   const totalHeuresReelles = membreDetail.reduce((s, m) => s + m.heuresReelles, 0);

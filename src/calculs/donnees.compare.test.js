@@ -20,6 +20,7 @@ import {
   calculerEtatChantier,
   donneesInitiales,
 } from '../donnees.js';
+import { pointagesDepuisChantier, pointagesDepuisChantiers } from './__tests__/__fixtures__/pointagesDepuisFixture';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -46,6 +47,9 @@ function equivPct(a, b, tolerancePct = 0.1) {
 
 const { chantiers, employes, devis, parametres } = donneesInitiales;
 
+// Phase 7b bis — pointages dérivés des journaux démo (vraie migration prod).
+const POINTAGES_DEMO = pointagesDepuisChantiers(chantiers, employes);
+
 const cfg = {
   coefficientMainOeuvre: parametres?.coefficientMainOeuvre ?? 1.35,
   tauxFraisGeneraux: parametres?.tauxFraisGeneraux ?? 12,
@@ -56,8 +60,8 @@ const cfg = {
 describe('Invariant coûts — calculerCoutsChantier vs calculerEtatChantier', () => {
   for (const chantier of chantiers) {
     it(`chantier #${chantier.id} "${chantier.nom}" — coûts identiques`, () => {
-      const ancien = calculerCoutsChantier(chantier, employes, [], cfg, devis);
-      const nouveau = calculerEtatChantier(chantier, employes, devis, cfg);
+      const ancien = calculerCoutsChantier(chantier, employes, [], cfg, devis, POINTAGES_DEMO);
+      const nouveau = calculerEtatChantier(chantier, employes, devis, cfg, POINTAGES_DEMO);
 
       // CA — source unique : devis.montantHT
       expect(equivPct(ancien.montantTotal, nouveau.devisTotal),
@@ -104,8 +108,8 @@ describe('Observation — divergences par design (pas d\'assertion)', () => {
     console.log('════════════════════════════════════════════════════════════════');
 
     for (const chantier of chantiers) {
-      const ancien = calculerCoutsChantier(chantier, employes, [], cfg, devis);
-      const nouveau = calculerEtatChantier(chantier, employes, devis, cfg);
+      const ancien = calculerCoutsChantier(chantier, employes, [], cfg, devis, POINTAGES_DEMO);
+      const nouveau = calculerEtatChantier(chantier, employes, devis, cfg, POINTAGES_DEMO);
 
       const actuelle  = ancien.margeActuellePct;
       const projetee  = nouveau.margeProjeteePct;
@@ -155,20 +159,23 @@ describe('Invariant F2 — déplacement hors totalCoutsReel', () => {
   // 3 jours journal × CHF 60/j → coutDeplacementReel = 180
 
   it('coutDeplacementReel exposé dans le retour et non nul', () => {
-    const r = calculerCoutsChantier(chantierAvecVille, empTest, localiteTest, {}, []);
+    const ptg = pointagesDepuisChantier(chantierAvecVille, empTest);
+    const r = calculerCoutsChantier(chantierAvecVille, empTest, localiteTest, {}, [], ptg);
     expect(r.coutDeplacementReel).toBe(180);
   });
 
   it('totalCoutsReel n\'inclut PAS coutDeplacementReel (F2 : déplacement → FG)', () => {
-    const r = calculerCoutsChantier(chantierAvecVille, empTest, localiteTest, {}, []);
+    const ptg = pointagesDepuisChantier(chantierAvecVille, empTest);
+    const r = calculerCoutsChantier(chantierAvecVille, empTest, localiteTest, {}, [], ptg);
     // Coût MO = 3j × 400 CHF/j = 1200. Pas de matériaux ni autres.
     expect(r.totalCoutsReel).toBe(r.coutEquipeReel); // déplacement absent
     expect(r.totalCoutsReel).not.toBe(r.coutEquipeReel + r.coutDeplacementReel);
   });
 
   it('invariant : totalCoutsReel moteur1 == coutTotalReel moteur2 (même chantier avec localité)', () => {
-    const r1 = calculerCoutsChantier(chantierAvecVille, empTest, localiteTest, {}, []);
-    const r2 = calculerEtatChantier(chantierAvecVille, empTest, [], {});
+    const ptg = pointagesDepuisChantier(chantierAvecVille, empTest);
+    const r1 = calculerCoutsChantier(chantierAvecVille, empTest, localiteTest, {}, [], ptg);
+    const r2 = calculerEtatChantier(chantierAvecVille, empTest, [], {}, ptg);
     expect(equivPct(r1.totalCoutsReel, r2.coutTotalReel)).toBe(true);
   });
 });

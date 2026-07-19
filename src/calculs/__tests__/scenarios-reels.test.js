@@ -21,6 +21,8 @@ import {
   SEUILS,
 } from '../../donnees.js';
 import { calculerAlertes } from '../../alertes.js';
+import { pointagesDepuisChantier } from './__fixtures__/pointagesDepuisFixture';
+import { calculerMajorationDate } from '../../calculs/majorations';
 
 // ── Mocks pour les smoke tests ────────────────────────────────────────────────
 vi.mock('../../hooks/usePointages', () => ({
@@ -56,14 +58,21 @@ function makeChantier(opts = {}) {
     dateDebut = '2025-01-02', avancement = 0,
   } = opts;
 
-  const journal = Array.from({ length: joursReels }, (_, i) => {
-    const d = new Date('2025-01-02');
-    d.setDate(d.getDate() + i);
-    return {
-      date: d.toISOString().slice(0, 10),
-      employes: [{ employeId: empId, heuresTravaillees: heuresParJour }],
-    };
-  });
+  // Phase 7b bis — jours OUVRÉS uniquement (lun-ven hors fériés GE) pour éviter les
+  // majorations CCT week-end/férié. Réutilise la vraie calculerMajorationDate (null = jour normal).
+  // 5 jours/semaine × 8h = 40h < 45h → aucune heure sup hebdomadaire non plus.
+  const journal = [];
+  const dCursor = new Date('2025-01-02');
+  while (journal.length < joursReels) {
+    const iso = dCursor.toISOString().slice(0, 10);
+    if (calculerMajorationDate(iso, 'GE') === null) {
+      journal.push({
+        date: iso,
+        employes: [{ employeId: empId, heuresTravaillees: heuresParJour }],
+      });
+    }
+    dCursor.setDate(dCursor.getDate() + 1);
+  }
 
   return {
     id, statut, nombreJours, journal,
@@ -97,8 +106,10 @@ function equiv(a, b, tol = 0.15) {
 function runScenario({ chantier, devis, employes, label = '' }) {
   const devLst = [devis].filter(Boolean);
   const empLst = employes;
-  const r1 = calculerCoutsChantier(chantier, empLst, [], CFG, devLst, []);
-  const r2 = calculerEtatChantier(chantier, empLst, devLst, CFG, []);
+  // Phase 7b bis — pointages dérivés du journal-fixture (vraie migration prod).
+  const pointages = pointagesDepuisChantier(chantier, empLst);
+  const r1 = calculerCoutsChantier(chantier, empLst, [], CFG, devLst, pointages);
+  const r2 = calculerEtatChantier(chantier, empLst, devLst, CFG, pointages);
   const st = statutRentabilite(r1.margeActuellePct);
 
   assertNoNaN(r1, `r1[${label}]`);
@@ -329,8 +340,9 @@ describe('D3 — CA inconnu (devis absent ou non accepté)', () => {
   it('CA inconnu, 50% avancement : coûts calculés, marges null — dégradation propre', () => {
     const emp = makeEmploye(400);
     const chantier = makeChantier({ joursReels: 50, empId: emp.id, devisId: undefined, nombreJours: 100 });
-    const r1 = calculerCoutsChantier(chantier, [emp], [], CFG, [], []);
-    const r2 = calculerEtatChantier(chantier, [emp], [], CFG, []);
+    const pointages = pointagesDepuisChantier(chantier, [emp]);
+    const r1 = calculerCoutsChantier(chantier, [emp], [], CFG, [], pointages);
+    const r2 = calculerEtatChantier(chantier, [emp], [], CFG, pointages);
     // Les coûts sont calculés même sans CA
     expect(r1.coutEquipeReel).toBe(50 * 400);
     expect(r1.totalCoutsReel).toBe(50 * 400);

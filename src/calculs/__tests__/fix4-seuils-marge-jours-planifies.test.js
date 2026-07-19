@@ -18,6 +18,7 @@ import { describe, it, expect } from 'vitest';
 import { calculerCoutsChantier } from '../../donnees';
 import { adapterContexteAlertes } from '../../modules/alertes/contextAdapter';
 import { runAlerteChantier } from '../../AgentEngine';
+import { pointagesDepuisChantier } from './__fixtures__/pointagesDepuisFixture';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -220,9 +221,10 @@ describe('Fix #4-G — cohérence marge nette alertes == fiche (< 0.5 point d\'�
   // tauxFraisGeneraux = 12 (pourcent) → FG = CA × 12/100 = 10000 × 0.12 = 1200 CHF
   // marge nette attendue = (10000 - 2400 - 1200) / 10000 × 100 = 64%
   const PARAMS = { employes: [EMP], localites: [], typesTravaux: [], tauxFraisGeneraux: 12 };
+  const PTG = pointagesDepuisChantier(CH, [EMP]);
 
   it('FG réel = 12% du CA (pas 0.12%, pas 18%)', () => {
-    const couts = calculerCoutsChantier(CH, [EMP], [], { tauxFraisGeneraux: 12 }, DV, []);
+    const couts = calculerCoutsChantier(CH, [EMP], [], { tauxFraisGeneraux: 12 }, DV, PTG);
     // fraisGeneraux = montantTotal × tauxFG/100 = 10000 × 12/100 = 1200 CHF
     expect(couts.fraisGeneraux).toBeCloseTo(1_200, 0);
     // marge nette % = (10000 - 2400 - 1200) / 10000 × 100 = 64%
@@ -231,13 +233,13 @@ describe('Fix #4-G — cohérence marge nette alertes == fiche (< 0.5 point d\'�
 
   it('marge_nette_actuelle (contextAdapter) == margeNettePct (calculerCoutsChantier) à < 0.5 pt', () => {
     // Chemin fiche (AgentEngine utilise calculerCoutsChantier)
-    const couts = calculerCoutsChantier(CH, [EMP], [], { tauxFraisGeneraux: 12 }, DV, []);
+    const couts = calculerCoutsChantier(CH, [EMP], [], { tauxFraisGeneraux: 12 }, DV, PTG);
     const margeNetteFiche = couts.margeNettePct; // en %
 
     // Chemin alertes (contextAdapter utilise calculerEtatChantier)
     const ctx = adapterContexteAlertes({
       chantiers: [CH], devis: DV, factures: [], clients: [],
-      parametres: PARAMS, pointages: [],
+      parametres: PARAMS, pointages: PTG,
     });
     const ch = ctx.chantiers[0];
     // marge_nette_actuelle est en CHF absolu → convertir en %
@@ -250,7 +252,7 @@ describe('Fix #4-G — cohérence marge nette alertes == fiche (< 0.5 point d\'�
   });
 
   it('le taux FG ne vaut PAS 18% ni 0.12% : FG = 1200 ≠ CA×18/100=1800 ≠ CA×0.12/100=12', () => {
-    const couts = calculerCoutsChantier(CH, [EMP], [], { tauxFraisGeneraux: 12 }, DV, []);
+    const couts = calculerCoutsChantier(CH, [EMP], [], { tauxFraisGeneraux: 12 }, DV, PTG);
     expect(couts.fraisGeneraux).not.toBeCloseTo(1_800, 0); // pas 18%
     expect(couts.fraisGeneraux).not.toBeCloseTo(12, 0);    // pas 0.12%
     expect(couts.fraisGeneraux).toBeCloseTo(1_200, 0);     // bien 12%

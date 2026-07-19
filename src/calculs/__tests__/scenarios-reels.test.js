@@ -307,8 +307,8 @@ describe('D3 — CA inconnu (devis absent ou non accepté)', () => {
   it('sans devisId → CA = null, aucune marge affichée', () => {
     const emp = makeEmploye(400);
     const chantier = makeChantier({ joursReels: 5, empId: emp.id, devisId: undefined });
-    const r1 = calculerCoutsChantier(chantier, [emp], [], CFG, [], []);
-    const r2 = calculerEtatChantier(chantier, [emp], [], CFG, []);
+    const r1 = calculerCoutsChantier(chantier, [emp], [], CFG, [], pointagesDepuisChantier(chantier, [emp]));
+    const r2 = calculerEtatChantier(chantier, [emp], [], CFG, pointagesDepuisChantier(chantier, [emp]));
     assertNoNaN(r1, 'D3.r1');
     assertNoNaN(r2, 'D3.r2');
     expect(r1.montantTotal).toBeNull();
@@ -321,7 +321,7 @@ describe('D3 — CA inconnu (devis absent ou non accepté)', () => {
   it('devisId présent mais devis introuvable dans la liste → CA = null', () => {
     const emp = makeEmploye(400);
     const chantier = makeChantier({ joursReels: 5, empId: emp.id, devisId: 'introuvable' });
-    const r1 = calculerCoutsChantier(chantier, [emp], [], CFG, [], []);
+    const r1 = calculerCoutsChantier(chantier, [emp], [], CFG, [], pointagesDepuisChantier(chantier, [emp]));
     expect(r1.montantTotal).toBeNull();
     expect(r1.margeActuellePct).toBeNull();
     assertNoNaN(r1, 'D3.introuvable');
@@ -331,7 +331,7 @@ describe('D3 — CA inconnu (devis absent ou non accepté)', () => {
     const emp = makeEmploye(400);
     const devis = makeDevis(0);
     const chantier = makeChantier({ joursReels: 5, empId: emp.id });
-    const r1 = calculerCoutsChantier(chantier, [emp], [], CFG, [devis], []);
+    const r1 = calculerCoutsChantier(chantier, [emp], [], CFG, [devis], pointagesDepuisChantier(chantier, [emp]));
     assertNoNaN(r1, 'D3.ca0');
     expect(r1.montantTotal).toBe(0);
     expect(r1.margeActuellePct).toBeNull(); // guard CA > 0
@@ -360,8 +360,8 @@ describe('D4 — Robustesse', () => {
     const emp = makeEmploye(400);
     const devis = makeDevis(50_000);
     const chantier = makeChantier({ nombreJours: 0, joursReels: 0, empId: emp.id });
-    const r1 = calculerCoutsChantier(chantier, [emp], [], CFG, [devis], []);
-    const r2 = calculerEtatChantier(chantier, [emp], [devis], CFG, []);
+    const r1 = calculerCoutsChantier(chantier, [emp], [], CFG, [devis], pointagesDepuisChantier(chantier, [emp]));
+    const r2 = calculerEtatChantier(chantier, [emp], [devis], CFG, pointagesDepuisChantier(chantier, [emp]));
     assertNoNaN(r1, 'D4.0j.r1');
     assertNoNaN(r2, 'D4.0j.r2');
     expect(r1.avancementPct).toBe(0);
@@ -371,7 +371,7 @@ describe('D4 — Robustesse', () => {
   it('employé introuvable dans la liste → coût = 0, aucun crash', () => {
     const devis = makeDevis(50_000);
     const chantier = makeChantier({ joursReels: 5, empId: 999 }); // empId 999 absent
-    const r1 = calculerCoutsChantier(chantier, [], [], CFG, [devis], []);
+    const r1 = calculerCoutsChantier(chantier, [], [], CFG, [devis], pointagesDepuisChantier(chantier, []));
     assertNoNaN(r1, 'D4.emp_manquant');
     expect(r1.coutEquipeReel).toBe(0);
   });
@@ -380,8 +380,8 @@ describe('D4 — Robustesse', () => {
     const emp = makeEmploye(400);
     const devis = makeDevis(50_000);
     const chantier = makeChantier({ joursReels: 0, empId: emp.id, nombreJours: 20 });
-    const r1 = calculerCoutsChantier(chantier, [emp], [], CFG, [devis], []);
-    const r2 = calculerEtatChantier(chantier, [emp], [devis], CFG, []);
+    const r1 = calculerCoutsChantier(chantier, [emp], [], CFG, [devis], pointagesDepuisChantier(chantier, [emp]));
+    const r2 = calculerEtatChantier(chantier, [emp], [devis], CFG, pointagesDepuisChantier(chantier, [emp]));
     assertNoNaN(r1, 'D4.journal_vide');
     assertNoNaN(r2, 'D4.journal_vide.r2');
     expect(r1.coutEquipeReel).toBe(0);
@@ -396,8 +396,8 @@ describe('D4 — Robustesse', () => {
       ...makeChantier({ joursReels: 0, empId: emp.id, nombreJours: 10, autresCoutsReels: 5000 }),
       avancement: 150,
     };
-    const r1 = calculerCoutsChantier(chantier, [emp], [], CFG, [devis], []);
-    const r2 = calculerEtatChantier(chantier, [emp], [devis], CFG, []);
+    const r1 = calculerCoutsChantier(chantier, [emp], [], CFG, [devis], pointagesDepuisChantier(chantier, [emp]));
+    const r2 = calculerEtatChantier(chantier, [emp], [devis], CFG, pointagesDepuisChantier(chantier, [emp]));
     assertNoNaN(r1, 'D4.avt>100.r1');
     assertNoNaN(r2, 'D4.avt>100.r2');
     // Avancement plafonné à 100 dans les deux moteurs
@@ -413,7 +413,7 @@ describe('D4 — Robustesse', () => {
     const emp = makeEmploye(400);
     const devis = makeDevis(50_000);
     const chantier = makeChantier({ joursReels: 10, empId: emp.id, autresCoutsReels: -100_000 });
-    const r1 = calculerCoutsChantier(chantier, [emp], [], CFG, [devis], []);
+    const r1 = calculerCoutsChantier(chantier, [emp], [], CFG, [devis], pointagesDepuisChantier(chantier, [emp]));
     assertNoNaN(r1, 'D4.negatif');
     // Coûts négatifs clampés → autresCoutsReel = 0, marge physiquement possible
     expect(r1.autresCoutsReel).toBe(0);
@@ -426,8 +426,8 @@ describe('D4 — Robustesse', () => {
     const emp = makeEmploye(400);
     const devis = makeDevis(0);
     const chantier = makeChantier({ joursReels: 5, empId: emp.id });
-    const r1 = calculerCoutsChantier(chantier, [emp], [], CFG, [devis], []);
-    const r2 = calculerEtatChantier(chantier, [emp], [devis], CFG, []);
+    const r1 = calculerCoutsChantier(chantier, [emp], [], CFG, [devis], pointagesDepuisChantier(chantier, [emp]));
+    const r2 = calculerEtatChantier(chantier, [emp], [devis], CFG, pointagesDepuisChantier(chantier, [emp]));
     assertNoNaN(r1, 'D4.devis0.r1');
     assertNoNaN(r2, 'D4.devis0.r2');
   });
@@ -441,8 +441,8 @@ describe('D4 — Robustesse', () => {
     }));
 
     chantiers.forEach((c, i) => {
-      const r1 = calculerCoutsChantier(c, employes, [], CFG, devis, []);
-      const r2 = calculerEtatChantier(c, employes, devis, CFG, []);
+      const r1 = calculerCoutsChantier(c, employes, [], CFG, devis, pointagesDepuisChantier(c, employes));
+      const r2 = calculerEtatChantier(c, employes, devis, CFG, pointagesDepuisChantier(c, employes));
       assertNoNaN(r1, `D4.volume[${i}].r1`);
       assertNoNaN(r2, `D4.volume[${i}].r2`);
     });
@@ -452,8 +452,8 @@ describe('D4 — Robustesse', () => {
     const emp = makeEmploye(400);
     const devis = makeDevis(50_000);
     const chantier = { ...makeChantier({ joursReels: 0, empId: emp.id }), nombreJours: -5 };
-    const r1 = calculerCoutsChantier(chantier, [emp], [], CFG, [devis], []);
-    const r2 = calculerEtatChantier(chantier, [emp], [devis], CFG, []);
+    const r1 = calculerCoutsChantier(chantier, [emp], [], CFG, [devis], pointagesDepuisChantier(chantier, [emp]));
+    const r2 = calculerEtatChantier(chantier, [emp], [devis], CFG, pointagesDepuisChantier(chantier, [emp]));
     assertNoNaN(r1, 'D4.jours_negatifs.r1');
     assertNoNaN(r2, 'D4.jours_negatifs.r2');
   });
@@ -505,6 +505,8 @@ describe('D5 — Smoke tests pages React', () => {
       chantiers: [chantier],
       devis: [devis],
       clients: [{ id: 'cl1', nom: 'Client Test', type: 'prive' }],
+      // Cohérence : les pointages sont la source du journal (comme en prod).
+      pointages: pointagesDepuisChantier(chantier, [emp]),
       parametres: {
         employes: [emp], localites: [], parametres: CFG,
         tauxFraisGeneraux: 12, coefficientMainOeuvre: 1.0,

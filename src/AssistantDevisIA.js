@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Sparkles, ChevronDown, ChevronUp, Check, Award } from 'lucide-react';
 import { DS } from './ds';
+import { useApp } from './context/AppContext';
 import { fmtN, calculerCoutsChantier, SEUILS } from './donnees';
 
 function StatBarre({ label, val, min, max, couleur = '#0d3d6e', unite = '' }) {
@@ -22,6 +23,7 @@ function StatBarre({ label, val, min, max, couleur = '#0d3d6e', unite = '' }) {
 }
 
 export default function AssistantDevisIA({ chantiers = [], devis = [], parametres = {}, form, onApply }) {
+  const { pointages = [] } = useApp();
   const [ouvert, setOuvert] = useState(false);
   const [typeSelectionne, setTypeSelectionne] = useState('');
 
@@ -42,7 +44,7 @@ export default function AssistantDevisIA({ chantiers = [], devis = [], parametre
         const montant = parseFloat(devisLie?.montantHT) || 0;
         const duree = parseInt(c.nombreJours) || 0;
         const personnes = parseInt(c.nombrePersonnes) || 0;
-        const couts = calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis);
+        const couts = calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis, pointages);
         const marge = couts.margeActuellePct;
         if (montant > 0) parType[t].push({ montant, duree, personnes, marge, nom: c.nom || c.numero });
       });
@@ -68,7 +70,7 @@ export default function AssistantDevisIA({ chantiers = [], devis = [], parametre
       };
     });
     return result;
-  }, [chantiers, devis, parametres]);
+  }, [chantiers, devis, parametres, pointages]);
 
   const typesDisponibles = typesTravaux.filter(t => stats[t.nom]);
   // Auto-sélectionne le premier type avec données si aucun sélectionné

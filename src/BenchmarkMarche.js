@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { TrendingUp, TrendingDown, Award, AlertTriangle, CheckCircle, Lightbulb } from 'lucide-react';
 import { DS } from './ds';
+import { useApp } from './context/AppContext';
 import { fmtN, calculerCoutsChantier, calculerCA, SEUILS } from './donnees';
 
 const STATUTS_TERMINES = ['terminé', 'facturé', 'clôturé'];
@@ -19,6 +20,7 @@ function BadgeMarge({ pct }) {
 
 
 export default function BenchmarkMarche({ chantiers = [], devis = [], parametres = {}, agentData = {} }) {
+  const { pointages = [] } = useApp();
   const [vue, setVue] = useState('type'); // 'type' | 'client' | 'taille'
   const [triBenchmark, setTriBenchmark] = useState('marge'); // 'marge' | 'ca' | 'nb'
 
@@ -30,7 +32,7 @@ export default function BenchmarkMarche({ chantiers = [], devis = [], parametres
     termines.forEach(c => {
       const ca = calculerCA(c, devis);
       if (!ca) return;
-      const couts = calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis);
+      const couts = calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis, pointages);
       const types = c.typesTravaux?.length > 0 ? c.typesTravaux : [c.typeChantier || 'Non classifié'];
       types.forEach(t => {
         if (!t) return;
@@ -43,7 +45,7 @@ export default function BenchmarkMarche({ chantiers = [], devis = [], parametres
     return Object.values(map).map(g => {
       const marge = g.caTotal > 0 ? ((g.caTotal - g.coutTotal) / g.caTotal) * 100 : null;
       const marges = g.chantiers.map(c => {
-        const co = calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis);
+        const co = calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis, pointages);
         return co.margeActuellePct;
       }).filter(m => m !== null && !isNaN(m));
       const margeMediane = marges.length > 0
@@ -53,7 +55,7 @@ export default function BenchmarkMarche({ chantiers = [], devis = [], parametres
       const caMax = Math.max(...g.chantiers.map(c => calculerCA(c, devis) || 0));
       return { ...g, marge, margeMediane, caMin, caMax, nbChantiers: g.chantiers.length };
     });
-  }, [termines, devis, parametres]);
+  }, [termines, devis, parametres, pointages]);
 
   // ── Benchmark par client ──
   const benchmarkClient = useMemo(() => {
@@ -61,7 +63,7 @@ export default function BenchmarkMarche({ chantiers = [], devis = [], parametres
     termines.forEach(c => {
       const ca = calculerCA(c, devis);
       if (!ca) return;
-      const couts = calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis);
+      const couts = calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis, pointages);
       const key = String(c.clientId || 'Inconnu');
       if (!map[key]) map[key] = { clientId: c.clientId, chantiers: [], caTotal: 0, coutTotal: 0 };
       map[key].chantiers.push(c);
@@ -72,7 +74,7 @@ export default function BenchmarkMarche({ chantiers = [], devis = [], parametres
       const marge = g.caTotal > 0 ? ((g.caTotal - g.coutTotal) / g.caTotal) * 100 : null;
       return { ...g, marge, nbChantiers: g.chantiers.length };
     });
-  }, [termines, devis, parametres]);
+  }, [termines, devis, parametres, pointages]);
 
   // ── Benchmark par taille ──
   const benchmarkTaille = useMemo(() => {
@@ -87,7 +89,7 @@ export default function BenchmarkMarche({ chantiers = [], devis = [], parametres
     termines.forEach(c => {
       const ca = calculerCA(c, devis);
       if (!ca) return;
-      const couts = calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis);
+      const couts = calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis, pointages);
       const bucket = Object.entries(buckets).find(([, r]) => ca >= r.min && ca < r.max);
       if (!bucket) return;
       map[bucket[0]].chantiers.push(c);
@@ -98,7 +100,7 @@ export default function BenchmarkMarche({ chantiers = [], devis = [], parametres
       const marge = g.caTotal > 0 ? ((g.caTotal - g.coutTotal) / g.caTotal) * 100 : null;
       return { ...g, marge, nbChantiers: g.chantiers.length };
     });
-  }, [termines, devis, parametres]);
+  }, [termines, devis, parametres, pointages]);
 
   const donneesActives = (vue === 'type' ? benchmarkType : vue === 'client' ? benchmarkClient : benchmarkTaille)
     .sort((a, b) => {

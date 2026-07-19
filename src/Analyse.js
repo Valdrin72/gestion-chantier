@@ -1,6 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import { fmtN, calculerCoutsChantier, calculerCA, statutRentabilite, isChantierActif, heuresEmploye, getIntervallesPeriode, chantiersInPeriode, couleurMarge, SEUILS } from './donnees';
 import { DS } from './ds';
+import { joursReelsChantier } from './calculs/pointagesHelper';
+import { useApp } from './context/AppContext';
 import Statistiques from './Statistiques';
 import Rapport from './Rapport';
 import Marges from './Marges';
@@ -8,6 +10,7 @@ import Marges from './Marges';
 const carteStyle = DS.card;
 
 export default function Analyse({ chantiers, clients, devis = [], parametres, setParametres, paiementsData, periodeGlobale = 'annee' }) {
+  const { pointages = [] } = useApp();
   const [onglet, setOnglet] = useState('rentabilite');
   const [tauxChargesSociales, setTauxChargesSociales] = useState(parametres.parametres?.tauxChargesSociales || 25);
   const [tauxImpots, setTauxImpots] = useState(parametres.parametres?.tauxImpots || 15);
@@ -36,8 +39,8 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
     [chantiersAvecDevis, devis]
   );
   const coutsTotal = useMemo(
-    () => chantiersAvecDevis.reduce((t, c) => t + calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis).totalCoutsReel, 0),
-    [chantiersAvecDevis, parametres.employes, parametres.localites, parametres.parametres, devis]
+    () => chantiersAvecDevis.reduce((t, c) => t + calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis, pointages).totalCoutsReel, 0),
+    [chantiersAvecDevis, parametres.employes, parametres.localites, parametres.parametres, devis, pointages]
   );
   const margeAvantCharges = caTotal - coutsTotal;
   // Coûts MO calculés avec coefficientMainOeuvre (1.0 si tarifs tout compris).
@@ -70,14 +73,14 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
 
   // ===== DONNÉES PAR CHANTIER (filtrés par période) =====
   const donneesChantiers = useMemo(() => chantiersPeriode.map(c => {
-    const couts = calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis);
+    const couts = calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis, pointages);
     const montantTotal = calculerCA(c, devis); // null si aucun devis lié
     const caDisponible = montantTotal !== null;
     const heuresPrevu = (c.equipe || []).reduce((s, m) => s + (parseFloat(m.joursPlannifies) || 0) * 8, 0);
     const heuresRealise = (c.journal || []).flatMap(e => e.employes || []).reduce((s, e) => s + (parseFloat(e.heuresTravaillees) || 0), 0);
     const surface = parseFloat(c.surface) || 0;
     const joursPrevu = parseInt(c.nombreJours) || 0;
-    const joursReelJournal = new Set((c.journal || []).map(e => e.date).filter(Boolean)).size;
+    const joursReelJournal = joursReelsChantier(pointages, c.id);
     const joursReel = joursReelJournal;
 
     const ecartBudget = couts.totalCoutsReel > 0 && couts.totalCoutsPrevu > 0
@@ -98,7 +101,7 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
     if (couts.margeActuellePct !== null && Number.isFinite(couts.margeActuellePct) && couts.margeActuellePct < SEUILS.margeLimite) depassements.push(`Marge critique ${couts.margeActuellePct}%`);
 
     return { ...c, couts, montantTotal, ecartBudget, coutParHeure, caParHeure, coutParM2, caParM2, margeParM2, ecartJours, tauxFacturation, heuresPrevu, heuresRealise, joursPrevu, joursReel, depassements };
-  }), [chantiersPeriode, parametres.employes, parametres.localites, parametres.parametres, devis]);
+  }), [chantiersPeriode, parametres.employes, parametres.localites, parametres.parametres, devis, pointages]);
 
   // ===== DONNÉES PAR EMPLOYÉ (filtrés par période) =====
   const donneesEmployes = useMemo(() => (parametres.employes || []).map(emp => {
@@ -132,14 +135,14 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
     const avecDevis = tous.filter(c => calculerCA(c, devis) !== null);
     const surface = avecDevis.reduce((s, c) => s + (parseFloat(c.surface) || 0), 0);
     const ca = avecDevis.reduce((s, c) => s + calculerCA(c, devis), 0);
-    const couts = avecDevis.reduce((s, c) => s + calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis).totalCoutsReel, 0);
+    const couts = avecDevis.reduce((s, c) => s + calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis, pointages).totalCoutsReel, 0);
     const marge = ca - couts;
     const caParM2 = surface > 0 ? Math.round(ca / surface) : 0;
     const coutParM2 = surface > 0 ? Math.round(couts / surface) : 0;
     const margeParM2 = surface > 0 ? Math.round(marge / surface) : 0;
     const margePct = ca > 0 ? Math.round((marge / ca) * 1000) / 10 : 0;
     return { nom: t.nom, count: tous.length, nbAvecDevis: avecDevis.length, surface, ca, couts, marge, caParM2, coutParM2, margeParM2, margePct };
-  }).filter(t => t.count > 0), [chantiersPeriode, parametres.typesTravaux, parametres.employes, parametres.localites, parametres.parametres, devis]);
+  }).filter(t => t.count > 0), [chantiersPeriode, parametres.typesTravaux, parametres.employes, parametres.localites, parametres.parametres, devis, pointages]);
 
   // ===== DONNÉES PAR CLIENT (uniquement chantiers avec devis pour CA/marge, période filtrée) =====
   const donneesClients = useMemo(() => clients.map(cl => {
@@ -147,13 +150,13 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
     const avecDevis = tous.filter(c => calculerCA(c, devis) !== null);
     const cs = avecDevis; // alias pour clarté
     const ca = cs.reduce((t, c) => t + calculerCA(c, devis), 0);
-    const couts = cs.reduce((t, c) => t + calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis).totalCoutsReel, 0);
+    const couts = cs.reduce((t, c) => t + calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis, pointages).totalCoutsReel, 0);
     const marge = ca - couts;
     const margePct = ca > 0 ? Math.round((marge / ca) * 1000) / 10 : 0;
     const enCours = tous.filter(isChantierActif).length;
     const termines = tous.filter(c => c.statut?.trim().toLowerCase() === 'terminé').length;
     return { ...cl, nbChantiers: tous.length, nbAvecDevis: avecDevis.length, ca, couts, marge, margePct, enCours, termines };
-  }).filter(cl => cl.nbChantiers > 0).sort((a, b) => b.ca - a.ca), [clients, chantiersPeriode, parametres, devis]);
+  }).filter(cl => cl.nbChantiers > 0).sort((a, b) => b.ca - a.ca), [clients, chantiersPeriode, parametres, devis, pointages]);
 
   // ===== OBJECTIFS =====
   const chargerObjectifs = () => {
@@ -178,8 +181,8 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
 
     const lignes = chantiersDuType.map(c => {
       const joursPrevu  = parseInt(c.nombreJours) || 0;
-      const joursReel   = new Set((c.journal || []).map(e => e.date).filter(Boolean)).size;
-      const couts       = calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis);
+      const joursReel   = joursReelsChantier(pointages, c.id);
+      const couts       = calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis, pointages);
       const ca          = calculerCA(c, devis);
       const coutsPrevu  = couts.totalCoutsPrevu;
       const coutsReel   = couts.totalCoutsReel;
@@ -210,7 +213,7 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
     })();
 
     return { nom: t.nom, count: lignes.length, lignes, ecartJoursMoyen, ecartCoutMoyen, margePrevuMoyenne, margeReelMoyenne, perteMarge, signal };
-  }).filter(Boolean).sort((a, b) => (b.ecartCoutMoyen ?? 0) - (a.ecartCoutMoyen ?? 0)), [chantiersPeriode, devis, parametres]);
+  }).filter(Boolean).sort((a, b) => (b.ecartCoutMoyen ?? 0) - (a.ecartCoutMoyen ?? 0)), [chantiersPeriode, devis, parametres, pointages]);
 
   const onglets = [
     { id: 'marges',       label: 'Marges' },
@@ -924,7 +927,7 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
         const lignesM2 = chantiersM2.map(c => {
           const surface = parseFloat(c.surface);
           const ca = calculerCA(c, devis);
-          const couts = calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis);
+          const couts = calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis, pointages);
           const cout = couts.totalCoutsReel || 0;
           const marge = couts.margeReel !== null ? couts.margeReel : (ca - cout);
           const caM2 = surface > 0 ? Math.round(ca / surface) : null;

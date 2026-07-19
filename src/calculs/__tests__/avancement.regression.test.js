@@ -26,14 +26,14 @@ describe('Non-régression avancement — journal original vs journal régénér�
     const chantierRegene = chantiersRegenes.find(c => String(c.id) === String(chantierOriginal.id));
 
     it(`CH${chantierOriginal.id} "${chantierOriginal.nom}" — avancementPct identique`, () => {
-      const etatOriginal = calculerEtatChantier(chantierOriginal, employes, devis, cfg);
-      const etatRegene   = calculerEtatChantier(chantierRegene,   employes, devis, cfg);
+      const etatOriginal = calculerEtatChantier(chantierOriginal, employes, devis, cfg, pointagesMigres);
+      const etatRegene   = calculerEtatChantier(chantierRegene,   employes, devis, cfg, pointagesMigres);
       expect(etatRegene.avancementPct).toBe(etatOriginal.avancementPct);
     });
 
     it(`CH${chantierOriginal.id} — totalJoursReels identique`, () => {
-      const etatOriginal = calculerEtatChantier(chantierOriginal, employes, devis, cfg);
-      const etatRegene   = calculerEtatChantier(chantierRegene,   employes, devis, cfg);
+      const etatOriginal = calculerEtatChantier(chantierOriginal, employes, devis, cfg, pointagesMigres);
+      const etatRegene   = calculerEtatChantier(chantierRegene,   employes, devis, cfg, pointagesMigres);
       expect(etatRegene.totalJoursReels).toBe(etatOriginal.totalJoursReels);
     });
   }
@@ -42,14 +42,14 @@ describe('Non-régression avancement — journal original vs journal régénér�
     const chantiClos = { ...chantiers[0], statut: 'terminé' };
     const chantiClosRegene = chantiersRegenes.find(c => String(c.id) === String(chantiers[0].id));
     const chantiClosRegeneStatut = { ...chantiClosRegene, statut: 'terminé' };
-    expect(calculerEtatChantier(chantiClos, employes, devis, cfg).avancementPct).toBe(100);
-    expect(calculerEtatChantier(chantiClosRegeneStatut, employes, devis, cfg).avancementPct).toBe(100);
+    expect(calculerEtatChantier(chantiClos, employes, devis, cfg, pointagesMigres).avancementPct).toBe(100);
+    expect(calculerEtatChantier(chantiClosRegeneStatut, employes, devis, cfg, pointagesMigres).avancementPct).toBe(100);
   });
 
   it('chantier 7 (journal vide) → avancementPct = 0 inchangé', () => {
     const ch7 = chantiers.find(c => String(c.id) === '7');
     const ch7Regene = chantiersRegenes.find(c => String(c.id) === '7');
-    expect(calculerEtatChantier(ch7, employes, devis, cfg).avancementPct).toBe(0);
-    expect(calculerEtatChantier(ch7Regene, employes, devis, cfg).avancementPct).toBe(0);
+    expect(calculerEtatChantier(ch7, employes, devis, cfg, pointagesMigres).avancementPct).toBe(0);
+    expect(calculerEtatChantier(ch7Regene, employes, devis, cfg, pointagesMigres).avancementPct).toBe(0);
   });
 });

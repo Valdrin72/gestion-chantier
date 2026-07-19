@@ -334,7 +334,31 @@ function _surcoutMajorations(chantier, employes, pointages, coefficient) {
  * Les deux moteurs partagent la même logique de coûts (équivalents à <0.01% près)
  * mais répondent à des questions différentes.
  */
+/**
+ * Garde-fou anti-récidive (Phase 7c) — dev uniquement.
+ * Depuis la bascule 7b, les moteurs lisent les pointages. Un appelant qui oublie de
+ * les passer reçoit coûtMO=0 / jours=0 SILENCIEUSEMENT. Ce garde-fou hurle exactement
+ * dans ce cas : pointages vide/absent ALORS QUE le journal contient des heures (signature
+ * du bug). Un chantier légitimement vide (journal sans heures) ne déclenche rien → 0 faux
+ * positif. Signature des moteurs inchangée.
+ */
+function _avertirSansPointages(chantier, pointages, fnName) {
+  if (process.env.NODE_ENV === 'production') return;
+  if (pointages && pointages.length > 0) return;
+  const journalAvecHeures = (chantier?.journal || []).some(e =>
+    (e.employes || []).some(em => (parseFloat(em.heuresTravaillees) || 0) > 0)
+  );
+  if (journalAvecHeures) {
+    // eslint-disable-next-line no-console
+    console.error(
+      `[CYNA][GARDE-POINTAGES] ${fnName}('${chantier?.id}') appelé SANS pointages alors que ` +
+      `le journal contient des heures → coûtMO/jours = 0 (faux). Passez les pointages en dernier argument.`
+    );
+  }
+}
+
 export const calculerCoutsChantier = (chantier, employes = [], localites = [], cfg = {}, devisList = [], pointages = []) => {
+  _avertirSansPointages(chantier, pointages, 'calculerCoutsChantier');
   const coefficient = parseFloat(cfg.coefficientMainOeuvre) || COEF_MO_DEFAUT;
   const tauxFG = parseFloat(cfg.tauxFraisGeneraux) || 12;
 
@@ -722,10 +746,10 @@ export const calculerEcartChantier = (chantier) => {
  *   coût MO réel = joursRealises × (somme des tarifJour de tous les membres)
  *   rentabilité  = montantDevis - (coût MO réel + autres coûts réels)
  */
-export const calculerRentabiliteReelle = (chantier, parametres, devisList = []) => {
+export const calculerRentabiliteReelle = (chantier, parametres, devisList = [], pointages = []) => {
   // ── Source unique : calculerEtatChantier ─────────────────────────────────
   const employes = parametres?.employes || [];
-  const etat = calculerEtatChantier(chantier, employes, devisList, parametres?.parametres || parametres);
+  const etat = calculerEtatChantier(chantier, employes, devisList, parametres?.parametres || parametres, pointages);
 
   const joursPrevu    = parseInt(chantier.nombreJours) || 0;
   const joursRealises = etat.totalJoursReels;
@@ -1020,6 +1044,7 @@ export const heuresJour = (journal, date) => {
  * mais répondent à des questions différentes.
  */
 export const calculerEtatChantier = (chantier, employes = [], devisList = [], parametres = null, pointages = []) => {
+  _avertirSansPointages(chantier, pointages, 'calculerEtatChantier');
   const equipe     = chantier.equipe     || [];
   const imprevus   = chantier.imprevus   || [];
   // CA = devis accepté lié (montantHT) + avenants. Si aucun devis : CA = 0.

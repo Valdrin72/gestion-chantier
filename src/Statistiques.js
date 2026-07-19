@@ -6,6 +6,8 @@ import {
 import { TrendingUp, DollarSign, HardHat, Calendar } from 'lucide-react';
 import { calculerCoutsChantier, calculerCA, C, fmtN, getIntervallesPeriode, getPeriodeLabel, chantiersInPeriode, calculerEcartChantier, calculerRentabiliteEquipe, couleurMarge } from './donnees';
 import { DS } from './ds';
+import { joursReelsChantier } from './calculs/pointagesHelper';
+import { useApp } from './context/AppContext';
 
 const carteStyle = DS.card;
 const COULEURS_GRAPHIQUE = ['#0d3d6e', '#10b981', '#f97316', '#8b5cf6', '#06b6d4', '#f59e0b'];
@@ -17,6 +19,7 @@ const COL_COUT  = '#8b5cf6';
 const COL_MARGE = '#10b981';
 
 export default function Statistiques({ chantiers, clients, devis = [], parametres, periodeGlobale = 'annee' }) {
+  const { pointages = [] } = useApp();
   const anneeActuelle = new Date().getFullYear();
   const [periode, setPeriode] = useState(String(anneeActuelle));
 
@@ -31,12 +34,12 @@ export default function Statistiques({ chantiers, clients, devis = [], parametre
     const filtresAvecDevis = chantiersFiltres.filter(c => calculerCA(c, devis) !== null);
     const nbSansDevis = chantiersFiltres.length - filtresAvecDevis.length;
     const caTotal = filtresAvecDevis.reduce((t, c) => t + calculerCA(c, devis), 0);
-    const coutsTotaux = filtresAvecDevis.reduce((t, c) => t + calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis).totalCoutsReel, 0);
+    const coutsTotaux = filtresAvecDevis.reduce((t, c) => t + calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis, pointages).totalCoutsReel, 0);
     const rentabilite = caTotal - coutsTotaux;
     const tauxFG = parseFloat(parametres?.parametres?.fraisGeneraux || parametres?.fraisGeneraux) || 12;
     const margeNettePct = caTotal > 0 ? Math.round(((caTotal - coutsTotaux - caTotal * tauxFG / 100) / caTotal) * 1000) / 10 : 0;
     return { filtresAvecDevis, nbSansDevis, caTotal, rentabilite, margeNettePct };
-  }, [chantiersFiltres, devis, parametres]);
+  }, [chantiersFiltres, devis, parametres, pointages]);
 
   // ===== DONNÉES MENSUELLES (sur TOUS les chantiers filtrés par l'année du picker) =====
   // Le picker "année" contrôle le graphique mensuel indépendamment de periodeGlobale.
@@ -48,30 +51,30 @@ export default function Statistiques({ chantiers, clients, devis = [], parametre
     });
     const avecDevisMois = tousMois.filter(c => calculerCA(c, devis) !== null);
     const ca = avecDevisMois.reduce((t, c) => t + calculerCA(c, devis), 0);
-    const couts = avecDevisMois.reduce((t, c) => t + calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis).totalCoutsReel, 0);
+    const couts = avecDevisMois.reduce((t, c) => t + calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis, pointages).totalCoutsReel, 0);
     const marge = ca - couts;
     const margePct = ca > 0 ? Math.round((marge / ca) * 1000) / 10 : 0;
     return { mois: m, CA: ca, Coûts: couts, Marge: marge, 'Marge %': margePct, chantiers: tousMois.length };
-  }), [chantiers, devis, parametres, periode]);
+  }), [chantiers, devis, parametres, periode, pointages]);
 
   // ===== DONNÉES PAR TYPE DE TRAVAUX (uniquement chantiers avec devis) =====
   const donneesTravaux = useMemo(() => parametres.typesTravaux.map(t => {
     const tous = chantiersFiltres.filter(c => (c.typesTravaux || []).includes(t.nom));
     const avecDevis = tous.filter(c => calculerCA(c, devis) !== null);
     const ca = avecDevis.reduce((s, c) => s + calculerCA(c, devis), 0);
-    const couts = avecDevis.reduce((s, c) => s + calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis).totalCoutsReel, 0);
+    const couts = avecDevis.reduce((s, c) => s + calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis, pointages).totalCoutsReel, 0);
     const m2 = avecDevis.reduce((s, c) => s + (parseFloat(c.surface) || 0), 0);
     return { nom: t.nom, CA: ca, Coûts: couts, Marge: ca - couts, m2, count: tous.length, nbAvecDevis: avecDevis.length, margePct: ca > 0 ? Math.round(((ca - couts) / ca) * 1000) / 10 : 0 };
-  }).filter(t => t.count > 0), [chantiersFiltres, devis, parametres]);
+  }).filter(t => t.count > 0), [chantiersFiltres, devis, parametres, pointages]);
 
   // ===== DONNÉES CLIENTS (uniquement chantiers avec devis pour le CA) =====
   const donneesClients = useMemo(() => clients.map(cl => {
     const tous = chantiersFiltres.filter(c => String(c.clientId) === String(cl.id));
     const avecDevis = tous.filter(c => calculerCA(c, devis) !== null);
     const ca = avecDevis.reduce((s, c) => s + calculerCA(c, devis), 0);
-    const couts = avecDevis.reduce((s, c) => s + calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis).totalCoutsReel, 0);
+    const couts = avecDevis.reduce((s, c) => s + calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis, pointages).totalCoutsReel, 0);
     return { nom: cl.entreprise || `${cl.prenom} ${cl.nom}`, CA: ca, Marge: ca - couts, chantiers: tous.length };
-  }).filter(c => c.CA > 0).sort((a, b) => b.CA - a.CA), [clients, chantiersFiltres, devis, parametres]);
+  }).filter(c => c.CA > 0).sort((a, b) => b.CA - a.CA), [clients, chantiersFiltres, devis, parametres, pointages]);
 
   // ===== DONNÉES EMPLOYÉS (top utilisés + coût moyen) =====
   const donneesEmployes = useMemo(() => (parametres.employes || [])
@@ -114,7 +117,7 @@ export default function Statistiques({ chantiers, clients, devis = [], parametre
   const { donneesEcarts, moyenneEcart } = useMemo(() => {
     const donneesEcarts = chantiersFiltres
       .filter(c => {
-        const joursReels = new Set((c.journal || []).map(e => e.date).filter(Boolean)).size;
+        const joursReels = joursReelsChantier(pointages, c.id);
         return joursReels > 0 && parseInt(c.nombreJours) > 0;
       })
       .map(c => {
@@ -135,7 +138,7 @@ export default function Statistiques({ chantiers, clients, devis = [], parametre
       : null;
 
     return { donneesEcarts, moyenneEcart };
-  }, [chantiersFiltres]);
+  }, [chantiersFiltres, pointages]);
 
   return (
     <div>

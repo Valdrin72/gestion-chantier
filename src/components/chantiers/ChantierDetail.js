@@ -13,6 +13,7 @@ import { DS, couleurStatut as couleurStatutDS } from '../../ds';
 import { STATUTS_CLOS } from '../../constants/statuts';
 import { Badge, CoutBadge, BarreAvancement, BadgeRentabilite } from '../SharedBadges';
 import { useApp } from '../../context/AppContext';
+import { joursReelsChantier } from '../../calculs/pointagesHelper';
 import { useChantierCalculs } from '../../hooks/useChantierCalculs';
 import DetailVelocite from './detail/DetailVelocite';
 import DetailProjection from './detail/DetailProjection';
@@ -26,7 +27,7 @@ const btnSucces = DS.btnSuccess;
 const btnDanger = DS.btnDanger;
 
 function ChantierDetail({ chantier, detailOnglet, setDetailOnglet, modeCompleter, onRetour, onModifier, onSupprimer, onPasserEnCours }) {
-  const { factures = [], clients, devis = [], parametres, setChantiers, naviguer, ouvrirSaisieHeures, agentState, confirmer, afficherNotif } = useApp();
+  const { factures = [], clients, devis = [], parametres, setChantiers, naviguer, ouvrirSaisieHeures, agentState, confirmer, afficherNotif, pointages = [] } = useApp();
   const { etat, couts } = useChantierCalculs(chantier);
   const couleurStatut = couleurStatutDS;
 
@@ -37,7 +38,7 @@ function ChantierDetail({ chantier, detailOnglet, setDetailOnglet, modeCompleter
   const coherenceDetail = assertEtatCoherent(etat);
 
   // Source unique : journal des heures (même logique que le dashboard)
-  const joursRealises = new Set((c.journal || []).map(e => e.date).filter(Boolean)).size;
+  const joursRealises = joursReelsChantier(pointages, c.id);
   const joursPlannedTotal = c.nombreJours || 0;
   const joursRestants = joursPlannedTotal > 0 ? joursPlannedTotal - joursRealises : null;
 

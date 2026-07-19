@@ -1,6 +1,8 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { Zap, Calendar, LayoutList } from 'lucide-react';
 import { calculerDateFinOuvrables, getAlerte } from './donnees';
+import { joursReelsChantier } from './calculs/pointagesHelper';
+import { useApp } from './context/AppContext';
 import { DS } from './ds';
 import { TOUS_STATUTS } from './constants/statuts';
 
@@ -204,6 +206,7 @@ function GanttView({ chantiers, chantiersNonPlanifies, offsetSemaines, ouvrirMod
 }
 
 export default function Planning({ chantiers, setChantiers, clients, parametres, naviguer }) {
+  const { pointages = [] } = useApp();
   const [moisActuel, setMoisActuel] = useState(new Date().getMonth());
   const [anneeActuelle, setAnneeActuelle] = useState(new Date().getFullYear());
   const [modal, setModal] = useState(null); // null ou { chantier, form }
@@ -370,7 +373,7 @@ export default function Planning({ chantiers, setChantiers, clients, parametres,
         return s === 'en cours' || s === 'planifié';
       })
       .map(c => {
-        const joursR = new Set((c.journal || []).map(e => e.date).filter(Boolean)).size;
+        const joursR = joursReelsChantier(pointages, c.id);
         const joursRestants = c.nombreJours > 0 ? c.nombreJours - joursR : null;
         return { ...c, _joursRestants: joursRestants };
       })
@@ -420,7 +423,7 @@ export default function Planning({ chantiers, setChantiers, clients, parametres,
     });
 
     return { employes, suggestions };
-  }, [chantiers, parametres]);
+  }, [chantiers, parametres, pointages]);
 
   // ── Style pills toggle ──────────────────────────────────────
   const pillActive   = { background: 'rgba(13,61,110,0.12)', color: '#0d3d6e', border: '1px solid rgba(13,61,110,0.35)', borderRadius: 8, padding: '6px 14px', cursor: 'pointer', fontSize: 13, fontWeight: 700, fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', gap: 6, transition: 'all 0.15s' };
@@ -627,7 +630,7 @@ export default function Planning({ chantiers, setChantiers, clients, parametres,
             </div>
           ) : (
             chantiersDuMois.map(c => {
-              const joursRealises_ = new Set((c.journal || []).map(e => e.date).filter(Boolean)).size;
+              const joursRealises_ = joursReelsChantier(pointages, c.id);
               const jours = c.nombreJours > 0 ? c.nombreJours - joursRealises_ : null;
               const progress = Math.max(0, Math.min(100, parseFloat(c.avancement) || 0));
               const dateFin = calculerDateFinOuvrables(c.dateDebut, parseInt(c.nombreJours) || 0, c.inclusSamedi);

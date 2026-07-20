@@ -394,6 +394,46 @@ function Parametres({ parametres, setParametres, clients = [], setClients = () =
               />
             ))}
           </div>
+
+          {/* Trésorerie — solde bancaire SAISI et HORODATÉ (jamais calculé automatiquement) */}
+          <div className="ds-card-title" style={{ margin: '24px 0 12px' }}>Trésorerie</div>
+          <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 12 }}>
+            Le solde bancaire est saisi manuellement (l'app ne voit pas salaires/charges/achats directs).
+            La surveillance de trésorerie s'active uniquement avec un solde à jour (≤ 14 jours).
+            <strong> La projection est optimiste : elle ajoute les encaissements attendus mais ne
+            soustrait AUCUNE sortie (salaires, charges sociales, fournisseurs — non modélisées).</strong>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'var(--g6)', gap: '15px' }}>
+            <div>
+              <label style={labelStyle}>Solde bancaire (CHF)</label>
+              <input
+                type="number"
+                value={parametres.parametres?.soldeBancaire ?? ''}
+                placeholder="ex. 45000"
+                onChange={e => sauv({ ...parametres, parametres: { ...parametres.parametres, soldeBancaire: e.target.value } })}
+                style={inputStyle}
+              />
+            </div>
+            <div>
+              <label style={labelStyle}>Solde au (date, obligatoire)</label>
+              <input
+                type="date"
+                value={parametres.parametres?.soldeBancaireDate ?? ''}
+                onChange={e => sauv({ ...parametres, parametres: { ...parametres.parametres, soldeBancaireDate: e.target.value } })}
+                style={inputStyle}
+              />
+            </div>
+            <div>
+              <label style={labelStyle}>Seuil alerte trésorerie (CHF)</label>
+              <input
+                type="number"
+                value={parametres.parametres?.seuilTresorerie ?? ''}
+                placeholder="20000"
+                onChange={e => sauv({ ...parametres, parametres: { ...parametres.parametres, seuilTresorerie: e.target.value } })}
+                style={inputStyle}
+              />
+            </div>
+          </div>
         </div>
       )}
 

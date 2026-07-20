@@ -13,6 +13,7 @@
  */
 
 import { calculerCA, calculerCoutsChantier, isChantierActif, fmtN, heuresEmploye, SEUILS } from './donnees';
+import { CYNA_PARAMS } from './calculs/constants';
 
 const uid = (prefix) => `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
 const isDev = process.env.NODE_ENV !== 'production';
@@ -153,7 +154,9 @@ export function runSuiviDevis({ devis, factures, clients }) {
 export function runTresoreriePredictor({ chantiers, factures, devis, parametres }) {
   try {
     const now = new Date();
-    const SEUIL_ALERTE = parseFloat(parametres?.parametres?.seuilTresorerie) || 10000;
+    // I2 — défaut unifié sur la source unique CYNA_PARAMS.TRESORERIE_SEUIL_ALERTE (20 000),
+    // qui était en conflit : 10000 ici vs 20000 dans Dashboard pour la MÊME alerte trésorerie.
+    const SEUIL_ALERTE = parseFloat(parametres?.parametres?.seuilTresorerie) || CYNA_PARAMS.TRESORERIE_SEUIL_ALERTE;
     const chargesMensuelles = parseFloat(parametres?.parametres?.chargesMensuelles) || 0;
     const facturesOuvertes = (factures || []).filter(f => ['envoyee', 'partielle', 'retard'].includes(f.statut));
     const totalEncaissement = facturesOuvertes.reduce((s, f) =>

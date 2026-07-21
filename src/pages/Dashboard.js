@@ -12,6 +12,7 @@ import {
 } from '../donnees';
 import { DS } from '../ds';
 import { STATUTS_CLOS } from '../constants/statuts';
+import { CYNA_PARAMS } from '../calculs/constants';
 import { useApp } from '../context/AppContext';
 import { joursReelsChantier } from '../calculs/pointagesHelper';
 import useIsMobile from '../hooks/useIsMobile';
@@ -127,7 +128,7 @@ function Dashboard() {
     }).filter(x => x.encaissementPrevu > 0);
     const total = chantiersActifsAvecFactures.reduce((s, x) => s + x.encaissementPrevu, 0);
     const top3 = [...chantiersActifsAvecFactures].sort((a, b) => b.encaissementPrevu - a.encaissementPrevu).slice(0, 3);
-    const seuil = parseFloat(parametres.parametres?.seuilTresorerie) || 20000;
+    const seuil = parseFloat(parametres.parametres?.seuilTresorerie) || CYNA_PARAMS.TRESORERIE_SEUIL_ALERTE; // I2 — source unique (était 20000 en dur, 10000 dans AgentEngine)
     const charges = parseFloat(parametres.parametres?.chargesMensuelles) || 0;
     const couverture = charges > 0 ? total / charges : null;
     const interpretation = couverture === null ? null

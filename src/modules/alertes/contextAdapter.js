@@ -1,5 +1,6 @@
 import { calculerEtatChantier } from '../../donnees.js';
 import { calculerDSO } from '../../calculs/tresorerie.js';
+import { CYNA_PARAMS } from '../../calculs/constants.js';
 
 const STATUT_CHANTIER_MAP = {
   'en cours':    'actif',
@@ -56,14 +57,21 @@ export function adapterContexteAlertes({ chantiers = [], devis = [], factures = 
   const now = new Date();
   const employesList = Array.isArray(parametres?.employes) ? parametres.employes : [];
 
-  const tauxFG = parseFloat(parametres?.tauxFraisGeneraux) || 12;
+  // La config vit sous parametres.parametres (le top-level porte employes/localites/zones…).
+  const cfg = parametres?.parametres ?? parametres ?? {};
+  // I2 — FG au bon niveau (comme le moteur donnees.js). L'ancienne lecture top-level
+  // `parametres.tauxFraisGeneraux` valait undefined → marge nette TOUJOURS à 12% dans les
+  // alertes → l'alerte "marge danger/limite" était aveugle aux vrais FG (trop optimiste).
+  const tauxFG = parseFloat(cfg.tauxFraisGeneraux ?? parametres?.tauxFraisGeneraux) || 12;
   const devisMap = new Map(devis.map(d => [String(d.id), d]));
 
   const chantiersAdaptes = chantiers.filter(c => c.archive !== true).map(c => {
     const devisLie = devisMap.get(String(c.devisId));
     let etat = null;
     try {
-      etat = calculerEtatChantier(c, employesList, devis, parametres, rawPointages);
+      // I2 — le moteur lit coefficientMainOeuvre depuis son 4e arg ; il vit sous cfg
+      // (parametres.parametres), pas au top-level → passer cfg pour honorer le coefficient réel.
+      etat = calculerEtatChantier(c, employesList, devis, cfg, rawPointages);
     } catch { /* skip */ }
 
     const ca = parseFloat(etat?.devisTotal ?? devisLie?.montantHT ?? 0) || 0;
@@ -92,7 +100,8 @@ export function adapterContexteAlertes({ chantiers = [], devis = [], factures = 
       pourcent_temps_ecoule: pctTemps,
       pourcent_travaux_realises: avancement,
       couts_engages: couts,
-      marge_brute_prevue: ca > 0 && devisLie ? ca * (parseFloat(parametres?.tauxMargeObjectif ?? 0.25)) : null,
+      // I2 — tauxMargeObjectif lu au bon niveau (n'alimente aujourd'hui aucune règle, mais lecture corrigée).
+      marge_brute_prevue: ca > 0 && devisLie ? ca * (parseFloat(cfg.tauxMargeObjectif ?? parametres?.tauxMargeObjectif ?? 0.25)) : null,
       marge_brute_actuelle: ca > 0 ? ca - couts : null,
       marge_nette_actuelle: ca > 0 ? (ca - couts) - ca * (tauxFG / 100) : null,
     };
@@ -151,14 +160,31 @@ export function adapterContexteAlertes({ chantiers = [], devis = [], factures = 
   const caTotal = devisAdaptes.filter(d => d.statut === 'accepte').reduce((s, d) => s + d.total_ht, 0);
   const dsoActuel = calculerDSO(totalCreances, caTotal, 30);
 
-  const facturespayees30j = facturesAdaptees.filter(f => {
-    if (f.statut !== 'payee') return false;
-    const recente = (now.getTime() - f.date_emission.getTime()) < 30 * 86400000;
-    return recente;
-  });
-  const encaissements30j = facturespayees30j.reduce((s, f) => s + f.total_ttc, 0);
-  const decaissements30j = 0; // pas encore modélisé dans l'app
-  const soldeActuel = parseFloat(parametres?.soldeActuel ?? 0) || 0;
+  // ── Solde bancaire : SAISIE MANUELLE HORODATÉE uniquement (décision métier) ──────────────
+  // L'app ne voit ni salaires, ni charges sociales, ni achats payés en direct → un solde
+  // reconstruit serait faux et faussement rassurant. On n'utilise donc QUE la valeur saisie
+  // par l'utilisateur, avec sa date. Jamais de calcul silencieux sur 0.
+  const soldeSaisiRaw = cfg.soldeBancaire;
+  const soldeSaisi = (soldeSaisiRaw === '' || soldeSaisiRaw == null || isNaN(parseFloat(soldeSaisiRaw)))
+    ? null : parseFloat(soldeSaisiRaw);
+  const soldeDate = safeDate(cfg.soldeBancaireDate);
+  const soldeConfigure = soldeSaisi !== null && soldeDate !== null;
+  const soldeAgeJours = soldeDate ? Math.floor((now.getTime() - soldeDate.getTime()) / 86400000) : null;
+  const fraicheurMax = CYNA_PARAMS.TRESORERIE_FRAICHEUR_JOURS;
+  const soldeFrais = soldeConfigure && soldeAgeJours !== null && soldeAgeJours <= fraicheurMax && soldeAgeJours >= 0;
+  const seuilTreso = parseFloat(cfg.seuilTresorerie) || CYNA_PARAMS.TRESORERIE_SEUIL_ALERTE;
+
+  // Encaissements ATTENDUS à 30j : soldes restant dus des factures émises/partiellement payées
+  // dont l'échéance tombe dans les 30 prochains jours (argent réellement à venir).
+  const horizon = now.getTime() + 30 * 86400000;
+  const encaissementsAttendus30j = facturesAdaptees
+    .filter(f => (f.statut === 'emise' || f.statut === 'partiellement_payee') && f.date_echeance.getTime() <= horizon)
+    .reduce((s, f) => s + Math.max(0, f.total_ttc - f.total_paye), 0);
+  const chargesConnues30j = 0; // non modélisé (salaires/charges/achats directs) — voir décision métier
+
+  const soldeProjete30j = soldeConfigure
+    ? soldeSaisi + encaissementsAttendus30j - chargesConnues30j
+    : null;
 
   return {
     now,
@@ -172,10 +198,16 @@ export function adapterContexteAlertes({ chantiers = [], devis = [], factures = 
     pvs: [],
     audit: [],
     treso: {
-      solde_actuel: soldeActuel,
-      encaissements_prevus_30j: encaissements30j,
-      decaissements_prevus_30j: decaissements30j,
-      solde_projete_30j: soldeActuel + encaissements30j - decaissements30j,
+      solde_configure: soldeConfigure,
+      solde_frais: soldeFrais,
+      solde_saisi: soldeConfigure ? soldeSaisi : null,
+      solde_date: soldeDate,
+      solde_age_jours: soldeAgeJours,
+      fraicheur_max_jours: fraicheurMax,
+      seuil_alerte: seuilTreso,
+      encaissements_attendus_30j: encaissementsAttendus30j,
+      charges_connues_30j: chargesConnues30j,
+      solde_projete_30j: soldeProjete30j,
       dso_actuel: dsoActuel,
     },
   };

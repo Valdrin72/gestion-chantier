@@ -2,7 +2,7 @@
 // CYNA SÀRL — DONNÉES & CALCULS MÉTIER
 // =============================================
 import { donneesDemo } from './donnees-demo';
-import { calculerMajorationDate, calculerPartSemaine, facteurEffectif } from './calculs/majorations';
+import { calculerMajorationDate, calculerPartSemaine } from './calculs/majorations';
 import { COEF_MO_DEFAUT } from './calculs/constants';
 // Phase 7b bis — bascule : les deux moteurs lisent les pointages via ces helpers.
 import { joursReelsChantier, heuresEmployeChantier, empIdsChantier } from './calculs/pointagesHelper';
@@ -199,11 +199,14 @@ export const calculerCAForfait = (chantier, devisList = []) => {
   const devisLie = devisList.find(d => String(d.id) === String(chantier.devisId));
   if (!devisLie) return null;
   const montantBase = parseFloat(devisLie.montantHT || devisLie.prixPropose) || 0;
-  const avenantDevis = Array.isArray(devisLie.avenants)
+  // Source unique : dès que le devis PORTE des avenants (tableau non vide), ils font foi —
+  // y compris un avoir/moins-value négocié (montant NÉGATIF). Le fallback legacy
+  // chantier.avenants ne s'applique QUE si le devis n'a aucun avenant renseigné.
+  // (Ne jamais tester `> 0` : un avenant négatif est légitime et ne doit pas disparaître.)
+  const devisAAvenants = Array.isArray(devisLie.avenants) && devisLie.avenants.length > 0;
+  const avenants = devisAAvenants
     ? devisLie.avenants.reduce((s, a) => s + (parseFloat(a.montant) || 0), 0)
-    : 0;
-  // Si devis.avenants est renseigné → source unique ; sinon fallback legacy chantier.avenants
-  const avenants = avenantDevis > 0 ? avenantDevis : sommeAvenants(chantier);
+    : sommeAvenants(chantier);
   return montantBase + avenants + sommeHeuresRegie(devisLie);
 };
 
@@ -276,6 +279,12 @@ function _surcoutMajorations(chantier, employes, pointages, coefficient) {
     atelier:    { heures: 0, cout: 0 },
   };
 
+  // NOTE MÉTIER : ce calcul estime le COÛT INTERNE pour le pilotage des marges, ce n'est PAS
+  // le bulletin de salaire. La règle CCT de rémunération exacte relève de la fiduciaire.
+  // Règles retenues (validées) : heures sup = au-delà de 45h/semaine ISO/employé, attribuées
+  // CHRONOLOGIQUEMENT (les dernières heures de la semaine), réparties au PRORATA entre chantiers
+  // d'un jour, majorées ×1.25. Cumul samedi/dimanche/férié + sup = le facteur le plus élevé (MAX,
+  // pas de cumul multiplicatif).
   for (const p of ptgsChantier) {
     const emp = employes.find(e => String(e.id) === String(p.employeId));
     const tarifJourCharge = emp
@@ -290,21 +299,35 @@ function _surcoutMajorations(chantier, employes, pointages, coefficient) {
 
     if (heuresCeChantier <= 0) continue;
 
-    // Facteur date dérivé depuis date + canton du chantier (Option A — par répartition)
-    const majDate = calculerMajorationDate(p.date, canton);
-    const majSem  = calculerPartSemaine(p.date, p.employeId, pointages);
-    const fe      = facteurEffectif(majDate, majSem);
+    // Facteur DATE (samedi/dimanche/férié) — s'applique à toutes les heures du jour.
+    const dateFactor = calculerMajorationDate(p.date, canton)?.facteur ?? 1.0;
+    // Split heures sup du JOUR (tous chantiers) via l'attribution chronologique hebdo.
+    const majSem = calculerPartSemaine(p.date, p.employeId, pointages);
+    const heuresJourTotal = majSem ? (majSem.heuresNormales + majSem.heuresMaj) : heuresCeChantier;
+    const heuresSupJour = majSem ? majSem.heuresMaj : 0;
+    // PRORATA : la part d'heures sup du jour portée par CE chantier.
+    const chantierSup = heuresJourTotal > 0 ? heuresSupJour * (heuresCeChantier / heuresJourTotal) : 0;
+    const chantierNormal = heuresCeChantier - chantierSup;
+
+    // Facteur des heures sup = MAX(date, 1.25) — pas de cumul.
+    const overtimeFactor = Math.max(dateFactor, 1.25);
+    const majNormal = chantierNormal * tarifH * (dateFactor - 1.0);       // portion normale : facteur date
+    const majSup    = chantierSup    * tarifH * (overtimeFactor - 1.0);   // portion sup : max(date, 1.25)
 
     const coutBase = heuresCeChantier * tarifH;
     coutMOSansMajoration += coutBase;
-    coutMajorations      += coutBase * (fe - 1.0);
-    if (fe > 1.0) heuresMajorees += heuresCeChantier;
+    coutMajorations      += majNormal + majSup;
+    // Heures majorées : normales seulement si jour majoré (samedi/dim/férié) + toutes les heures sup.
+    if (dateFactor > 1.0) heuresMajorees += chantierNormal;
+    heuresMajorees += chantierSup;
 
-    // Répartition par catégorie
+    // Répartition par catégorie — facteur effectif moyen du chantier-jour (cohérent avec le total).
+    const coutTotalChantierJour = coutBase + majNormal + majSup;
+    const effFactor = coutBase > 0 ? coutTotalChantierJour / coutBase : 1;
     for (const r of p.repartitions.filter(r => String(r.chantierId) === chantierId)) {
       if (repartitionCategories[r.categorie]) {
         repartitionCategories[r.categorie].heures += r.heures;
-        repartitionCategories[r.categorie].cout   += r.heures * tarifH * fe;
+        repartitionCategories[r.categorie].cout   += (parseFloat(r.heures) || 0) * tarifH * effFactor;
       }
     }
   }
@@ -898,7 +921,7 @@ export const calculerStatutFacture = (facture) => {
 };
 
 export const creerFactureDepuisDevis = (devis, chantier, factures, tva = 8.1) => {
-  // Si le devis a déjà des lignes avec TVA, on les propage telles quelles
+  // Base facturée : soit les lignes détaillées du devis, soit un poste unique au montantHT.
   let lignes;
   if (Array.isArray(devis.lignes) && devis.lignes.length > 0) {
     lignes = devis.lignes.map(l => ({
@@ -911,16 +934,24 @@ export const creerFactureDepuisDevis = (devis, chantier, factures, tva = 8.1) =>
     const montantBase = parseFloat(devis.montantHT || devis.prixPropose) || 0;
     lignes = [
       { description: `Travaux selon devis ${devis.numero}`, quantite: 1, prixUnitaire: montantBase, tva },
-      ...(Array.isArray(devis.avenants) ? devis.avenants
-        .filter(a => parseFloat(a.montant) > 0)
-        .map(a => ({ description: a.description || 'Avenant', quantite: 1, prixUnitaire: parseFloat(a.montant) || 0, tva }))
-        : []),
-      ...(Array.isArray(devis.heuresRegie) ? devis.heuresRegie
-        .filter(r => parseFloat(r.heures) > 0)
-        .map(r => ({ description: r.description || 'Heures en régie', quantite: parseFloat(r.heures) || 0, prixUnitaire: parseFloat(r.tarifHeure) || 0, tva }))
-        : []),
     ];
   }
+
+  // Avenants et heures en régie s'ajoutent TOUJOURS à la base — que le devis soit
+  // détaillé en lignes ou non. Auparavant ils n'étaient greffés que dans la branche
+  // sans lignes → un devis avec lignes + avenant était SOUS-facturé (avenant perdu).
+  // On garde les avenants non nuls (un avoir/moins-value négatif réduit la facture).
+  lignes = [
+    ...lignes,
+    ...(Array.isArray(devis.avenants) ? devis.avenants
+      .filter(a => (parseFloat(a.montant) || 0) !== 0)
+      .map(a => ({ description: a.description || 'Avenant', quantite: 1, prixUnitaire: parseFloat(a.montant) || 0, tva }))
+      : []),
+    ...(Array.isArray(devis.heuresRegie) ? devis.heuresRegie
+      .filter(r => parseFloat(r.heures) > 0)
+      .map(r => ({ description: r.description || 'Heures en régie', quantite: parseFloat(r.heures) || 0, prixUnitaire: parseFloat(r.tarifHeure) || 0, tva }))
+      : []),
+  ];
 
   const totalHT = lignes.reduce((s, l) => s + (parseFloat(l.quantite) || 0) * (parseFloat(l.prixUnitaire) || 0), 0);
   const montantTVA = lignes.reduce((s, l) => s + (parseFloat(l.quantite) || 0) * (parseFloat(l.prixUnitaire) || 0) * (parseFloat(l.tva) || 0) / 100, 0);

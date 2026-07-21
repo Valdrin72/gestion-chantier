@@ -358,11 +358,10 @@ describe('calculerStatutFacture', () => {
 // 7bis. SONDES CIBLÉES — chemins où l'argent peut être faux
 // ════════════════════════════════════════════════════════════════════
 describe('SONDES — bugs argent suspectés', () => {
-  it.fails('🔴 BUG CONFIRMÉ: avenant devis NÉGATIF (avoir) ignoré par calculerCAForfait → CA surévalué', () => {
+  it('FIX #2 : avenant devis NÉGATIF (avoir) pris en compte par calculerCAForfait → CA correct', () => {
     // devis.avenants = -1000 (un avoir/moins-value négocié).
-    // Le garde `avenantDevis > 0 ? avenantDevis : sommeAvenants(chantier)`
-    // fait que -1000 n'est PAS > 0 → fallback sur chantier.avenants (=0) →
-    // l'avoir de -1000 disparaît du CA. CA attendu 49000, mais calculé 50000.
+    // Le devis PORTE un avenant (tableau non vide) → il fait foi, y compris négatif.
+    // CA attendu 50000 − 1000 = 49000 (avant : le garde `> 0` droppait l'avoir → 50000).
     const chantier = { id: 'ch1', devisId: 'd1' };
     const devis = [{ id: 'd1', montantHT: 50000, avenants: [{ montant: -1000 }] }];
     expect(calculerCAForfait(chantier, devis)).toBeCloseTo(49000, 2);
@@ -378,9 +377,9 @@ describe('SONDES — bugs argent suspectés', () => {
     expect(calculerCAForfait(chantier, devis)).toBeCloseTo(55000, 2);
   });
 
-  it.fails('🔴 BUG CONFIRMÉ: devis avec lignes ET avenants → avenants ignorés dans la facture → sous-facturation', () => {
-    // Si devis.lignes existe, creerFactureDepuisDevis ne prend QUE les lignes.
-    // Un avenant présent mais non intégré aux lignes → facturé en moins.
+  it('FIX #3 : devis avec lignes ET avenants → avenant facturé (plus de sous-facturation)', () => {
+    // Avant : si devis.lignes existait, creerFactureDepuisDevis ne prenait QUE les lignes.
+    // Désormais l'avenant s'ajoute toujours à la base → facturé correctement.
     const devis = {
       id: 'x', numero: 'D-2026-X', clientId: 'c1',
       lignes: [{ description: 'Base', quantite: 1, prixUnitaire: 10000, tva: 8.1 }],

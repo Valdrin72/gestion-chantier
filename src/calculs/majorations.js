@@ -81,41 +81,36 @@ export function calculerMajorationDate(dateStr, canton = 'GE') {
 export function calculerPartSemaine(dateStr, employeId, allPointages) {
   const lundiISO    = getLundiSemaine(dateStr);
   const dimancheISO = getDimancheSemaine(dateStr);
+  const prod = (p) => (p.repartitions || [])
+    .filter(r => ['production', 'atelier'].includes(r.categorie))
+    .reduce((s, r) => s + (parseFloat(r.heures) || 0), 0);
 
   // Tous les pointages de cet employé sur la semaine ISO (lun–dim)
   const ptgsSemaine = allPointages.filter(p =>
     String(p.employeId) === String(employeId) &&
     p.date >= lundiISO && p.date <= dimancheISO
   );
-
-  // Heures productives de la semaine (production + atelier uniquement)
-  const heuresProductivesSemaine = ptgsSemaine.reduce((sum, p) =>
-    sum + p.repartitions
-      .filter(r => ['production', 'atelier'].includes(r.categorie))
-      .reduce((s, r) => s + r.heures, 0)
-  , 0);
+  const heuresProductivesSemaine = ptgsSemaine.reduce((s, p) => s + prod(p), 0);
 
   const SEUIL_SUP = 45;
-  if (heuresProductivesSemaine <= SEUIL_SUP) return null;
+  if (heuresProductivesSemaine <= SEUIL_SUP) return null; // ≤45h → aucune heure sup
 
-  // Heures productives du pointage courant (ce jour seulement)
-  const ptgCourant = allPointages.find(p =>
-    p.date === dateStr && String(p.employeId) === String(employeId)
-  );
-  if (!ptgCourant) return null;
-
-  const heuresCeJour = ptgCourant.repartitions
-    .filter(r => ['production', 'atelier'].includes(r.categorie))
-    .reduce((s, r) => s + r.heures, 0);
-
+  // ── Attribution CHRONOLOGIQUE (bug corrigé) ────────────────────────────────
+  // Les heures sup sont celles qui viennent APRÈS les 45h cumulées de la semaine :
+  // on somme les jours STRICTEMENT antérieurs, puis on ne majore de CE jour que la
+  // portion qui franchit le seuil. Ainsi le dépassement n'est compté qu'UNE fois sur
+  // la semaine (avant : min(jour, sup) était appliqué à CHAQUE jour → 5h comptées 5×).
+  const cumAvant = ptgsSemaine.filter(p => p.date < dateStr).reduce((s, p) => s + prod(p), 0);
+  const ptgCourant = ptgsSemaine.find(p => p.date === dateStr);
+  const heuresCeJour = ptgCourant ? prod(ptgCourant) : 0;
   if (heuresCeJour <= 0) return null;
 
-  const heuresSupSemaine     = heuresProductivesSemaine - SEUIL_SUP;
-  const heuresMajCeJour      = Math.min(heuresCeJour, heuresSupSemaine);
-  const heuresNormalesCeJour = heuresCeJour - heuresMajCeJour;
+  const supAvant = Math.max(0, cumAvant - SEUIL_SUP);
+  const supApres = Math.max(0, cumAvant + heuresCeJour - SEUIL_SUP);
+  const heuresMajCeJour = supApres - supAvant; // heures de CE jour au-delà du cumul 45h
 
   return {
-    heuresNormales: heuresNormalesCeJour,
+    heuresNormales: heuresCeJour - heuresMajCeJour,
     heuresMaj:      heuresMajCeJour,
     facteurMaj:     1.25,
   };

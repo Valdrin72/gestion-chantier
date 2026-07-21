@@ -343,26 +343,62 @@ describe('calculerEtatChantier — majorations selon canton', () => {
 // Le split est donc IGNORÉ : sur une semaine de 50h, les 5 heures sup entraînent
 // une majoration ×1.25 sur les 50 heures productives de la semaine.
 
-describe('CASSE — heures sup semaine sur-majorées (split ignoré par le moteur)', () => {
-  // 5 jours ouvrés × 10h = 50h productives, aucun week-end, aucun férié.
-  const semaine50h = [
-    ptg('2025-06-02', 1, 10),
-    ptg('2025-06-03', 1, 10),
-    ptg('2025-06-04', 1, 10),
-    ptg('2025-06-05', 1, 10),
-    ptg('2025-06-06', 1, 10),
-  ];
+describe('FIX #1 — heures sup semaine : seules les heures au-delà de 45h sont majorées', () => {
   const chantier = chantierBase({ canton: 'VD' }); // VD : juin sans férié
+  const jours = (heuresParJour) => heuresParJour.map((h, i) => ptg(`2025-06-0${i + 2}`, 1, h)); // lun→ven
 
-  it.fails('CASSE: surcoût CCT attendu = 5h sup × 50 × 0.25 = 62.5 CHF | obtenu ≈ 625 (×10) | gravité HAUTE', () => {
-    const etat = calculerEtatChantier(chantier, EMP, [], CFG, semaine50h);
-    // Attendu métier : seules les 5 heures au-delà de 45h sont majorées.
-    expect(etat.coutMajorations).toBeCloseTo(62.5, 1);
+  it('semaine 50h (lun-ven 10h/j) → majoration = 5h × 50 CHF × 0.25 = 62.5 CHF (PAS 625)', () => {
+    const etat = calculerEtatChantier(chantier, EMP, [], CFG, jours([10, 10, 10, 10, 10]));
+    expect(etat.coutMajorations).toBeCloseTo(62.5, 1);   // et non 625 (×10)
+    expect(etat.heuresMajorees).toBeCloseTo(5, 1);
   });
 
-  it.fails('CASSE: heures majorées attendues = 5 | obtenu = 50 (toutes les heures de la semaine)', () => {
-    const etat = calculerEtatChantier(chantier, EMP, [], CFG, semaine50h);
-    expect(etat.heuresMajorees).toBeCloseTo(5, 1);
+  it('BORD : semaine 45h pile → ZÉRO majoration heures sup', () => {
+    const etat = calculerEtatChantier(chantier, EMP, [], CFG, jours([9, 9, 9, 9, 9]));
+    expect(etat.coutMajorations).toBeCloseTo(0, 1);
+    expect(etat.heuresMajorees).toBeCloseTo(0, 1);
+  });
+
+  it('BORD : 44h → 0 majoration ; 46h → exactement 1h majorée (12.5 CHF)', () => {
+    const e44 = calculerEtatChantier(chantier, EMP, [], CFG, jours([9, 9, 9, 9, 8]));
+    expect(e44.coutMajorations).toBeCloseTo(0, 1);
+    const e46 = calculerEtatChantier(chantier, EMP, [], CFG, jours([9, 9, 9, 9, 10]));
+    expect(e46.heuresMajorees).toBeCloseTo(1, 1);
+    expect(e46.coutMajorations).toBeCloseTo(1 * 50 * 0.25, 1); // 12.5
+  });
+
+  it('PRORATA multi-chantiers le jour de dépassement : A 6h → 3h maj, B 4h → 2h maj', () => {
+    // Lun-jeu 10h chantier A (40h), vendredi : A 6h + B 4h (10h). Semaine 50h → 5h sup le vendredi.
+    const pts = [
+      ptg('2025-06-02', 1, 10, { chantierId: 'A' }),
+      ptg('2025-06-03', 1, 10, { chantierId: 'A' }),
+      ptg('2025-06-04', 1, 10, { chantierId: 'A' }),
+      ptg('2025-06-05', 1, 10, { chantierId: 'A' }),
+      { id: 'p-ven', date: '2025-06-06', employeId: 1, deplacement: null, majoration: null,
+        repartitions: [
+          { chantierId: 'A', categorie: 'production', heures: 6 },
+          { chantierId: 'B', categorie: 'production', heures: 4 },
+        ] },
+    ];
+    const chA = chantierBase({ id: 'A', canton: 'VD' });
+    const chB = chantierBase({ id: 'B', canton: 'VD' });
+    const eA = calculerEtatChantier(chA, EMP, [], CFG, pts);
+    const eB = calculerEtatChantier(chB, EMP, [], CFG, pts);
+    expect(eA.heuresMajorees).toBeCloseTo(3, 1); // 5h × 6/10
+    expect(eB.heuresMajorees).toBeCloseTo(2, 1); // 5h × 4/10
+    // Somme des majorations des deux chantiers = 5h × 50 × 0.25 = 62.5 (rien perdu ni doublé).
+    expect(eA.coutMajorations + eB.coutMajorations).toBeCloseTo(62.5, 1);
+  });
+
+  it('CUMUL : samedi qui est aussi en heures sup → facteur 1.25 (MAX), pas de cumul', () => {
+    // Lun-ven 9h (45h) + samedi 5h → semaine 50h ; le samedi porte les 5h sup ET est samedi.
+    const pts = [
+      ...jours([9, 9, 9, 9, 9]),
+      ptg('2025-06-07', 1, 5), // samedi
+    ];
+    const etat = calculerEtatChantier(chantier, EMP, [], CFG, pts);
+    // Samedi 5h : max(1.25 samedi, 1.25 sup) = 1.25 → 5h × 50 × 0.25 = 62.5 (pas de cumul à 1.5625).
+    expect(etat.coutMajorations).toBeCloseTo(62.5, 1);
   });
 });
 

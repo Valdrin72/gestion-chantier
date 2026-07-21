@@ -6,6 +6,7 @@ import {
 import { fmtN, C, calculerCA } from '../donnees';
 import { exportCSV } from '../utils/exportCSV';
 import { parseCSV, mapClientsFromCSV } from '../utils/importCSV';
+import { remplacerClientsAvecGarde } from '../utils/importGuard';
 import { DS } from '../ds';
 import { Badge } from '../components/SharedBadges';
 import { useApp } from '../context/AppContext';
@@ -158,7 +159,7 @@ function ImportCSVModal({ onClose, onImport }) {
               {mode === 'remplacer' && (
                 <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 10, padding: '10px 14px' }}>
                   <AlertCircle size={13} color="#ef4444" style={{ flexShrink: 0, marginTop: 1 }} />
-                  <span style={{ fontSize: 12, color: '#ef4444' }}>Mode Remplacer : tous les clients actuels seront supprimés et remplacés par ceux du fichier CSV.</span>
+                  <span style={{ fontSize: 12, color: '#ef4444' }}>Mode Remplacer : les clients vierges seront remplacés par le CSV. Les clients référencés (chantiers/devis/factures) sont CONSERVÉS (jamais supprimés). Le détail s'affiche avant validation.</span>
                 </div>
               )}
               {/* Preview table */}
@@ -282,13 +283,24 @@ function Clients({ clients, setClients, chantiers, devis = [], factures = [], na
 
   const handleImport = (nouveauxClients, mode) => {
     // Re-assign fresh IDs to avoid collisions
-    const withIds = nouveauxClients.map(c => ({ ...c, id: Date.now() + Math.floor(Math.random() * 1000000) }));
+    const withIds = nouveauxClients.map((c, i) => ({ ...c, id: Date.now() + i * 1000 + Math.floor(Math.random() * 1000) }));
     if (mode === 'remplacer') {
-      setClients(withIds);
+      // C4 — un client référencé (chantiers/devis/factures) n'est JAMAIS supprimé : il est CONSERVÉ.
+      const { resultat, conserves, remplaces } = remplacerClientsAvecGarde(clients, withIds, { chantiers, devis, factures });
+      const ok = window.confirm(
+        `Remplacer la liste clients ?\n\n` +
+        `• ${conserves} client(s) CONSERVÉ(s) car référencé(s) (chantiers/devis/factures) — jamais supprimés\n` +
+        `• ${remplaces} client(s) vierge(s) remplacé(s)\n` +
+        `• ${withIds.length} client(s) importé(s)\n\n` +
+        `Total après import : ${resultat.length} clients.`
+      );
+      if (!ok) return;
+      setClients(resultat);
+      if (afficherNotif) afficherNotif(`Import : ${conserves} conservé(s) (référencés), ${withIds.length} importé(s)`, 'succes');
     } else {
       setClients(prev => [...prev, ...withIds]);
+      if (afficherNotif) afficherNotif(`${withIds.length} client${withIds.length > 1 ? 's' : ''} importé${withIds.length > 1 ? 's' : ''} avec succès`, 'succes');
     }
-    if (afficherNotif) afficherNotif(`${withIds.length} client${withIds.length > 1 ? 's' : ''} importé${withIds.length > 1 ? 's' : ''} avec succès`, 'succes');
   };
 
   return (

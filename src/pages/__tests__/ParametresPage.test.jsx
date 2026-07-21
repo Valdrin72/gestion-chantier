@@ -569,15 +569,17 @@ describe('Parametres — IMPORT backup', () => {
     expect(second.props.setPointages).toHaveBeenCalledWith(exportData.pointages);
   });
 
-  it('rétrocompat : backup ANCIEN FORMAT (sans pointages) → pas de crash, setPointages([]), alerte avertissement', async () => {
+  it('C3 : backup ANCIEN FORMAT (sans pointages) → pointages CONSERVÉS (jamais écrasés à []), alerte', async () => {
     confirmSpy.mockReturnValue(true);
-    const { container, props } = renderParametres({ pointages: clone(POINTAGES_FIXTURE) });
+    const fixture = clone(POINTAGES_FIXTURE);
+    const { container, props } = renderParametres({ pointages: fixture });
     fireEvent.change(getFileInput(container), { target: { files: [makeFile(BACKUP_ANCIEN)] } });
     await waitFor(() => expect(props.setChantiers).toHaveBeenCalled());
-    // Pas de crash — comportement gracieux
-    expect(props.setPointages).toHaveBeenCalledWith([]);
-    // Avertissement visible pour signaler la perte potentielle
-    expect(alertSpy).toHaveBeenCalledWith(expect.stringMatching(/pointages|version antérieure/i));
+    // C3 — les heures actuelles sont CONSERVÉES (l'ancien code faisait setPointages([]) → perte).
+    expect(props.setPointages).toHaveBeenCalledWith(fixture);
+    expect(props.setPointages).not.toHaveBeenCalledWith([]);
+    // Avertissement explicite de conservation
+    expect(alertSpy).toHaveBeenCalledWith(expect.stringMatching(/conserv/i));
   });
 
   it('rétrocompat : data.pointages non-array (malformé) → traité comme absent, setPointages([])', async () => {

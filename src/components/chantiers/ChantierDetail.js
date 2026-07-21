@@ -7,7 +7,7 @@ import {
   fmtN, calculerDateFinOuvrables,
   getChantierStatus, C,
   assertEtatValide, assertEtatCoherent,
-  sommeAvenants, calculerCA, calculerCAForfait, isChantierActif,
+  sommeAvenants, calculerCA, calculerCAForfait, isChantierActif, tauxTVAParam,
 } from '../../donnees';
 import { DS, couleurStatut as couleurStatutDS } from '../../ds';
 import { STATUTS_CLOS } from '../../constants/statuts';
@@ -624,9 +624,10 @@ function ChantierDetail({ chantier, detailOnglet, setDetailOnglet, modeCompleter
             const montant = extra.mode === 'forfait'
               ? parseFloat(extra.montantForfait) || 0
               : (parseFloat(extra.heures) || 0) * (parseFloat(extra.tarifHeure) || 0);
+            const tvaDefaut = tauxTVAParam(parametres);
             const ligne = extra.mode === 'forfait'
-              ? { description: extra.description || 'Extra forfait', quantite: 1, prixUnitaire: montant, tva: 8.1 }
-              : { description: extra.description || 'Extra heures', quantite: parseFloat(extra.heures) || 0, prixUnitaire: parseFloat(extra.tarifHeure) || 0, tva: 8.1 };
+              ? { description: extra.description || 'Extra forfait', quantite: 1, prixUnitaire: montant, tva: tvaDefaut }
+              : { description: extra.description || 'Extra heures', quantite: parseFloat(extra.heures) || 0, prixUnitaire: parseFloat(extra.tarifHeure) || 0, tva: tvaDefaut };
             naviguer('finances', {
               preRemplirExtra: {
                 chantierId: String(c.id),

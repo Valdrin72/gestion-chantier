@@ -7,7 +7,7 @@ import {
 import { Sidebar, Topbar, MobileNav } from './components/Layout';
 import { migrerDevisId, donneesInitiales, migrerJournal } from './donnees';
 import { migrerJournalVersPointages } from './migration/migrerJournalVersPointages';
-import { completerPointagesDepuisJournal } from './migration/completerPointagesDepuisJournal';
+import { completerPointagesDepuisJournal, aChantierLegacy } from './migration/completerPointagesDepuisJournal';
 import { calculerMajorationDate } from './calculs/majorations';
 import Finances from './pages/FinancesPage';
 import Login from './Login';
@@ -275,38 +275,33 @@ function AppInner({ profil, deconnecter, userId, isDemo = false }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dataLoading, parametres.backfillCoefMO10Done]);
 
-  // Phase 7a — Complétude des pointages (pré-condition du switchover).
-  // Détecte les chantiers legacy : journal avec heures MAIS aucun pointage référençant
-  // leur id. Sans ça, la régénération ci-dessous mettrait leur journal à [] → perte
-  // silencieuse des heures (risque 🔴). DOIT s'exécuter AVANT la régénération : celle-ci
-  // est explicitement gardée par completudePointagesPhase7aDone pour éviter la course.
+  // C5 — Complétude des pointages, REJOUÉE à chaque chargement (plus de drapeau one-time).
+  // Détecte les chantiers legacy (journal avec heures MAIS aucun pointage sur leur id) et crée
+  // les pointages manquants. Idempotente : migres=0 quand il n'y a rien à faire (aucun coût).
+  // Un chantier legacy arrivant TARD (restauration, autre appareil, synchro) est donc re-complété
+  // au lieu d'être ignoré et effacé par la régénération ci-dessous.
   useEffect(() => {
     if (dataLoading) return;
-    if (parametres.completudePointagesPhase7aDone) return;
     const { pointages: completes, migres, chantiersMigres } = completerPointagesDepuisJournal(
       chantiers, pointages, parametres.employes || []
     );
     if (migres > 0) {
       setPointages(completes);
       if (process.env.NODE_ENV !== 'production') {
-        console.log(`[CYNA] Complétude Phase 7a : ${migres} pointage(s) créé(s) pour ${chantiersMigres.length} chantier(s) legacy (${chantiersMigres.join(', ')})`);
+        console.log(`[CYNA] Complétude : ${migres} pointage(s) créé(s) pour ${chantiersMigres.length} chantier(s) legacy (${chantiersMigres.join(', ')})`);
       }
     }
-    // ⚠️ Flag one-time par compte. Un import futur de données legacy (journal sans pointages)
-    // dans un compte déjà flaggé ne rejouera PAS la complétude → à gérer explicitement
-    // au moment de l'import. Tout ce mécanisme disparaît en Phase 7c (retrait du journal).
-    setParametres(prev => ({ ...prev, completudePointagesPhase7aDone: true }));
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dataLoading, parametres.completudePointagesPhase7aDone]);
+  }, [dataLoading, chantiers, pointages, parametres.employes]);
 
   // Phase 5a — Régénération du journal dérivé depuis pointages (strangler fig).
-  // Dépendance sur pointages uniquement (pas chantiers) pour éviter la boucle infinie.
+  // C5 : anti-course désormais DATA-DRIVEN (plus de drapeau) — on NE régénère PAS tant qu'un
+  // chantier legacy n'est pas complété, sinon son journal partirait à [] (perte d'heures).
   // La garde JSON.stringify évite setChantiers si le journal n'a pas changé.
-  // Phase 7a : attend la complétude des pointages avant de régénérer (anti-course).
   useEffect(() => {
     if (dataLoading) return;
-    if (!parametres.completudePointagesPhase7aDone) return;
     if (pointages.length === 0) return;
+    if (aChantierLegacy(chantiers, pointages)) return; // attendre la complétude
     setChantiers(prev => {
       const regenes = regenererJournalDepuisPointages(pointages, prev);
       const changed = regenes.some((c, i) =>
@@ -315,7 +310,7 @@ function AppInner({ profil, deconnecter, userId, isDemo = false }) {
       return changed ? regenes : prev;
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dataLoading, pointages, parametres.completudePointagesPhase7aDone]);
+  }, [dataLoading, pointages, chantiers]);
 
   const agentState = useAgents({ chantiers, devis, factures, clients, parametres, pointages });
 

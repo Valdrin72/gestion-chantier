@@ -27,17 +27,20 @@ import { migrerJournalVersPointages } from './migrerJournalVersPointages';
  * @param {Object[]} employes - parametres.employes
  * @returns {{ pointages: import('../types/pointage').Pointage[], migres: number, chantiersMigres: (string|number)[] }}
  */
-export function completerPointagesDepuisJournal(chantiers, pointages = [], employes = []) {
-  // Chantiers déjà couverts par au moins un pointage.
+/**
+ * Détecte les chantiers "legacy" : journal avec des heures réelles MAIS aucun pointage
+ * référençant leur id. Pur, bon marché. Sert de garde anti-course (C5) à la régénération
+ * ET de condition de rejeu de la complétude (plus de drapeau one-time).
+ * @returns {Object[]} les chantiers legacy (vide si aucun)
+ */
+export function detecterChantiersLegacy(chantiers, pointages = []) {
   const chantiersAvecPointage = new Set();
   for (const p of (pointages || [])) {
     for (const r of (p.repartitions || [])) {
       if (r.chantierId != null) chantiersAvecPointage.add(String(r.chantierId));
     }
   }
-
-  // Chantiers à migrer : journal avec heures réelles MAIS aucun pointage sur leur id.
-  const aMigrer = (chantiers || []).filter(c => {
+  return (chantiers || []).filter(c => {
     const journal = c?.journal;
     if (!Array.isArray(journal) || journal.length === 0) return false;
     const aDesHeures = journal.some(e =>
@@ -45,6 +48,16 @@ export function completerPointagesDepuisJournal(chantiers, pointages = [], emplo
     );
     return aDesHeures && !chantiersAvecPointage.has(String(c.id));
   });
+}
+
+/** true s'il reste au moins un chantier legacy (journal-avec-heures sans pointage). */
+export function aChantierLegacy(chantiers, pointages = []) {
+  return detecterChantiersLegacy(chantiers, pointages).length > 0;
+}
+
+export function completerPointagesDepuisJournal(chantiers, pointages = [], employes = []) {
+  // Chantiers à migrer : journal avec heures réelles MAIS aucun pointage sur leur id.
+  const aMigrer = detecterChantiersLegacy(chantiers, pointages);
 
   if (aMigrer.length === 0) {
     return { pointages, migres: 0, chantiersMigres: [] };

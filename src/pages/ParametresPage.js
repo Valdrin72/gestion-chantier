@@ -4,6 +4,7 @@ import { fmtN, C } from '../donnees';
 import { DS } from '../ds';
 import { useApp } from '../context/AppContext';
 import { clientEstReferencé } from '../utils/referenceGuard';
+import { pointagesApresRestauration, totalHeuresPointages } from '../utils/importGuard';
 import { archiver, restaurer, filtrerActifs, filtrerArchives } from '../utils/archiveHelpers';
 import ArchiveToggle from '../components/shared/ArchiveToggle';
 import ArchivedRow from '../components/shared/ArchivedRow';
@@ -217,25 +218,44 @@ function Parametres({ parametres, setParametres, clients = [], setClients = () =
         alert('Fichier de sauvegarde invalide — structure incorrecte (chantiers, devis, factures ou clients manquants).');
         return;
       }
-      const hasPointages = Array.isArray(data.pointages);
+      // C3 — décision sur les pointages selon le format du backup (jamais d'écrasement à [] silencieux).
+      const { ancienFormat, pointages: pointagesRestaures } = pointagesApresRestauration(data, pointages);
+      const heuresActuelles = totalHeuresPointages(pointages);
+      const heuresBackup = ancienFormat ? 0 : totalHeuresPointages(data.pointages);
+
       const ok = window.confirm(
         `Restaurer la sauvegarde du ${data.meta?.date || 'date inconnue'} ?\n\n` +
-        `Cette action remplacera TOUTES les données actuelles :\n` +
+        `Cette action remplacera les données actuelles :\n` +
         `• ${(data.chantiers || []).length} chantiers\n` +
         `• ${(data.devis || []).length} devis\n` +
         `• ${(data.factures || []).length} factures\n` +
         `• ${(data.clients || []).length} clients\n` +
-        `• ${hasPointages ? data.pointages.length : 0} pointages${hasPointages ? '' : ' (backup ancien format — pointages réinitialisés)'}`
+        (ancienFormat
+          ? `• Pointages : backup ANCIEN FORMAT (aucun pointage) → vos ${heuresActuelles}h pointées actuelles sont CONSERVÉES.`
+          : `• Pointages : ${heuresBackup}h du backup remplaceront vos ${heuresActuelles}h actuelles (confirmation requise).`)
       );
       if (!ok) return;
+
+      // C3 — remplacement d'heures pointées = confirmation TYPÉE (l'utilisateur écrit un mot).
+      if (!ancienFormat && heuresActuelles > 0) {
+        const saisie = window.prompt(
+          `⚠️ Ce backup va REMPLACER ${heuresActuelles}h pointées actuelles par ${heuresBackup}h du backup.\n\n` +
+          `Cette action est irréversible. Pour confirmer, tapez REMPLACER (en majuscules) :`
+        );
+        if (saisie !== 'REMPLACER') {
+          alert('Import annulé — le remplacement des heures pointées n\'a pas été confirmé.');
+          return;
+        }
+      }
+
       if (data.parametres) setParametres(data.parametres);
       if (data.clients) setClients(data.clients);
       if (data.chantiers) setChantiers(data.chantiers);
       if (data.devis) setDevis(data.devis);
       if (data.factures) setFactures(data.factures);
-      setPointages(hasPointages ? data.pointages : []);
-      if (!hasPointages) {
-        alert('Attention : ce backup ne contient pas de pointages (version antérieure). Les heures pointées ont été réinitialisées. Vérifiez vos coûts MO avant utilisation.');
+      setPointages(pointagesRestaures);
+      if (ancienFormat) {
+        alert(`Sauvegarde restaurée. Backup ancien format sans pointages → vos ${heuresActuelles}h pointées ont été CONSERVÉES (non écrasées).`);
       } else {
         alert('Sauvegarde restaurée avec succès — chantiers, devis, factures, clients, paramètres et pointages.');
       }

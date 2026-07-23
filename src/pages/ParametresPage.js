@@ -295,7 +295,7 @@ function Parametres({ parametres, setParametres, clients = [], setClients = () =
     { id: 'localites', label: 'Localités', desc: 'Frais déplacement' },
     { id: 'travaux', label: 'Travaux', desc: 'Types et tarifs' },
     { id: 'zones', label: 'Zones géo.', desc: 'Tarifs par région' },
-    { id: 'societe', label: 'Société', desc: 'IBAN · N° TVA · Coordonnées' },
+    { id: 'societe', label: 'Société', desc: 'N° TVA · Coordonnées' },
     { id: 'paiements', label: 'Paiements', desc: 'Délais et rappels' },
     { id: 'rapport', label: 'Rapport', desc: 'Alertes hebdo' },
     { id: 'agents', label: 'Agents IA', desc: 'Seuils des alertes' },
@@ -620,26 +620,6 @@ function Parametres({ parametres, setParametres, clients = [], setClients = () =
                 onChange={e => sauv({ ...parametres, parametres: { ...parametres.parametres, nTVA: e.target.value } })}
                 style={{ ...inputStyle, borderColor: '#10b981', fontWeight: 700 }} />
               <div style={{ fontSize: 11, color: '#10b981', marginTop: 6 }}>Format : CHE-XXX.XXX.XXX TVA</div>
-            </div>
-          </div>
-          <div style={{ background: 'rgba(13,61,110,0.04)', border: '2px solid rgba(13,61,110,0.3)', borderRadius: 12, padding: 18, marginBottom: 15 }}>
-            <label style={{ ...labelStyle, color: '#0d3d6e', fontSize: 13 }}>IBAN (obligatoire — apparaît sur toutes les factures)</label>
-            <input type="text" placeholder="CH44 3199 9123 0008 8901 2"
-              value={parametres.parametres?.iban || ''}
-              onChange={e => sauv({ ...parametres, parametres: { ...parametres.parametres, iban: e.target.value } })}
-              style={{ ...inputStyle, borderColor: '#0d3d6e', fontWeight: 700, fontSize: 16, letterSpacing: '0.05em' }} />
-            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 6 }}>
-              Format IBAN suisse : CH + 2 chiffres contrôle + 17 chiffres (26 caractères sans espaces)
-            </div>
-            {parametres.parametres?.iban && !/^CH\d{2}[0-9A-Z]{17}$/.test((parametres.parametres.iban || '').replace(/\s/g, '')) && (
-              <div style={{ fontSize: 11, color: '#ef4444', fontWeight: 600, marginTop: 4 }}>⚠ Format IBAN invalide — vérifiez votre numéro</div>
-            )}
-            <div style={{ marginTop: 12 }}>
-              <label style={labelStyle}>Nom de la banque (apparaît sur les factures)</label>
-              <input type="text" placeholder="Ex : Banque Cantonale de Genève"
-                value={parametres.parametres?.banque || ''}
-                onChange={e => sauv({ ...parametres, parametres: { ...parametres.parametres, banque: e.target.value } })}
-                style={inputStyle} />
             </div>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 15, marginBottom: 15 }}>

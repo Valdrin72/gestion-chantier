@@ -71,7 +71,7 @@ const chfDefaut = (v) => `CHF ${Math.round(v).toLocaleString()}`;
 // exportFacture — totaux HT / TVA 8.1% / TTC + solde
 // ═════════════════════════════════════════════════════════════════════════
 
-describe('exportFacture — bloc de paiement clair (PAS de QR-code)', () => {
+describe('exportFacture — document INTERNE de suivi (aucun bloc bancaire)', () => {
   const facture = {
     id: 'f-pay', numero: 'F-2026-050', montantHT: 10000, tva: 8.1,
     dateEmission: '2026-06-01', dateEcheance: '2026-07-01',
@@ -80,33 +80,52 @@ describe('exportFacture — bloc de paiement clair (PAS de QR-code)', () => {
   const chantier = { id: 'c-1', nom: 'Villa Cologny', clientId: 'cl-1' };
   const withParams = (extra) => ({ ...PARAMETRES, parametres: { ...PARAMETRES.parametres, ...extra } });
 
-  it('IBAN configuré → apparaît dans le PDF ; "[SWISS QR CODE]" a disparu', async () => {
-    const params = withParams({ iban: 'CH44 3199 9123 0008 8901 2', banque: 'BCGE', nomSociete: 'CYNA Sàrl' });
+  it('aucun IBAN dans le PDF, même si un IBAN est configuré (bloc bancaire supprimé)', async () => {
+    const params = withParams({ iban: 'CH44 3199 9123 0008 8901 2', banque: 'BCGE' });
     await exportFacture(facture, client, chantier, null, params);
-    const texts = dernierDoc().texts;
-    expect(texts).toContain('COORDONNÉES DE PAIEMENT');
-    expect(texts).toContain('CH44 3199 9123 0008 8901 2');   // IBAN réel présent
-    expect(texts).toContain('BCGE');                          // nom de banque présent
-    // Le placeholder QR inachevé ne doit plus jamais sortir chez un client :
-    expect(texts.join(' ')).not.toContain('[SWISS QR CODE]');
-    expect(texts.join(' ')).not.toContain('Généré par votre banque');
+    const joined = dernierDoc().texts.join(' ');
+    expect(joined).not.toContain('CH44 3199 9123 0008 8901 2');
+    expect(joined).not.toContain('BCGE');
+    expect(joined).not.toContain('COORDONNÉES DE PAIEMENT');
+    expect(joined).not.toContain('IBAN');
+    // Anciens placeholders : disparus depuis longtemps, on verrouille.
+    expect(joined).not.toContain('[SWISS QR CODE]');
   });
 
-  it('IBAN NON renseigné → mention explicite, aucun bloc cassé, export réussi', async () => {
-    await exportFacture(facture, client, chantier, null, PARAMETRES); // pas d'iban
+  it('sans IBAN configuré → AUCUNE mention "à configurer", export réussi', async () => {
+    await exportFacture(facture, client, chantier, null, PARAMETRES);
     const texts = dernierDoc().texts;
-    expect(texts.some(t => t.includes('à configurer dans Paramètres'))).toBe(true);
-    expect(texts.join(' ')).not.toContain('[SWISS QR CODE]');
+    expect(texts.some(t => t.includes('à configurer'))).toBe(false);
     expect(texts.some(t => t.includes('NaN') || t.includes('undefined'))).toBe(false);
-    expect(dernierDoc().savedAs).toBe('Facture_F-2026-050_2026-06-01.pdf'); // le PDF sort quand même
   });
 
-  it('IBAN placeholder factice (CH00 0000…) → traité comme NON renseigné', async () => {
-    const params = withParams({ iban: 'CH00 0000 0000 0000 0000 0' });
-    await exportFacture(facture, client, chantier, null, params);
+  it('marquage INTERNE sur 3 niveaux : titre, bandeau, pied de page', async () => {
+    await exportFacture(facture, client, chantier, null, PARAMETRES);
     const texts = dernierDoc().texts;
-    expect(texts.some(t => t.includes('à configurer dans Paramètres'))).toBe(true);
-    expect(texts).not.toContain('CH00 0000 0000 0000 0000 0'); // le faux IBAN n'est pas affiché
+    // 1. Titre : plus jamais « FACTURE » seul comme titre principal
+    expect(texts).toContain('SUIVI DE FACTURATION — DOCUMENT INTERNE');
+    expect(texts).not.toContain('FACTURE');
+    // 2. Bandeau sous l'en-tête
+    expect(texts.some(t => t.includes('ne constitue pas une facture'))).toBe(true);
+    // 3. Pied de page
+    expect(texts.some(t => t.includes('sans valeur comptable ni fiscale'))).toBe(true);
+  });
+
+  it('nom de fichier « suivi-facturation_… », plus « Facture_… »', async () => {
+    await exportFacture(facture, client, chantier, null, PARAMETRES);
+    expect(dernierDoc().savedAs).toBe('suivi-facturation_F-2026-050_2026-06-01.pdf');
+    expect(dernierDoc().savedAs).not.toMatch(/^Facture_/);
+  });
+
+  it('le contenu de travail est CONSERVÉ : montants et lignes toujours présents', async () => {
+    await exportFacture(facture, client, chantier, null, PARAMETRES);
+    const texts = dernierDoc().texts;
+    expect(texts).toContain(chfSuisse(10000));   // HT
+    expect(texts).toContain(chfSuisse(810));     // TVA 8.1%
+    expect(texts).toContain(chfSuisse(10810));   // TTC
+    // Réf chantier : présente dans le tableau de détail (corps autoTable).
+    const tableau = tousLesTableaux().find(t => t.head?.[0]?.includes('Description'));
+    expect(JSON.stringify(tableau.body)).toContain('Villa Cologny');
   });
 });
 
@@ -171,7 +190,7 @@ describe('exportFacture — totaux corrects (HT, TVA 8.1% EXACT, TTC)', () => {
     const chantierArchive = { ...chantier, archive: true, dateArchivage: '2026-01-01T00:00:00.000Z' };
     await exportFacture(facture, client, chantierArchive, null, PARAMETRES);
 
-    expect(dernierDoc().savedAs).toBe('Facture_F-2026-001_2026-06-01.pdf');
+    expect(dernierDoc().savedAs).toBe('suivi-facturation_F-2026-001_2026-06-01.pdf');
     expect(dernierDoc().texts).toContain(chfSuisse(10810));
   });
 });

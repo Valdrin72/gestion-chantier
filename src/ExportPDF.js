@@ -25,10 +25,6 @@ const getCYNA = (parametres) => ({
   tel2:       parametres?.parametres?.tel2Soc     || '079 480 94 41',
   email:      parametres?.parametres?.emailSoc    || 'info@cyna.ch',
   nTVA:       parametres?.parametres?.nTVA        || 'CHE-xxx.xxx.xxx TVA',
-  // IBAN et banque : PAS de placeholder factice — vide si non renseigné, pour que le
-  // bloc de paiement affiche une mention explicite plutôt qu'un faux IBAN.
-  iban:       parametres?.parametres?.iban        || '',
-  banque:     parametres?.parametres?.banque      || '',
 });
 
 // ===== CONDITIONS GÉNÉRALES =====
@@ -121,9 +117,9 @@ const ajouterEntete = async (doc, titre, sousTitre = '') => {
     doc.text('Sàrl', 42, 25);
   }
 
-  // TITRE DOCUMENT
+  // TITRE DOCUMENT (rétréci si long, pour ne pas chevaucher les coordonnées à droite)
   doc.setTextColor(255, 255, 255);
-  doc.setFontSize(18);
+  doc.setFontSize(titre.length > 24 ? 12 : 18);
   doc.setFont('helvetica', 'bold');
   doc.text(titre, 50, 20);
   if (sousTitre) {
@@ -151,11 +147,21 @@ const ajouterEntete = async (doc, titre, sousTitre = '') => {
 };
 
 // ===== PIED DE PAGE PROFESSIONNEL =====
-const ajouterPiedPage = (doc, avecConditions = false) => {
+const ajouterPiedPage = (doc, avecConditions = false, mentionInterne = '') => {
   const pageCount = doc.internal.getNumberOfPages();
   for (let i = 1; i <= pageCount; i++) {
     doc.setPage(i);
     const pageHeight = doc.internal.pageSize.height;
+
+    // Mention « document interne » sur CHAQUE page, juste au-dessus du bandeau bleu.
+    if (mentionInterne) {
+      doc.setFontSize(7.5);
+      doc.setFont('helvetica', 'italic');
+      doc.setTextColor(120, 120, 120);
+      doc.text(mentionInterne, 105, pageHeight - 15, { align: 'center' });
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(0, 0, 0);
+    }
 
     if (avecConditions && i === pageCount) {
       // CONDITIONS GÉNÉRALES SUR LA DERNIÈRE PAGE
@@ -672,13 +678,32 @@ export const exportFacture = async (facture, client, chantier, devis, parametres
   const formatCHF = (val) => `CHF ${Math.round(val).toLocaleString('fr-CH')}`;
 
   // ─────────────────────────────────────────────
-  // 1. EN-TÊTE
+  // 1. EN-TÊTE — titre « document interne » (le mot FACTURE seul n'est plus le titre)
   // ─────────────────────────────────────────────
   let y = await ajouterEntete(
     doc,
-    'FACTURE',
+    'SUIVI DE FACTURATION — DOCUMENT INTERNE',
     `N° ${facture.numero || '—'}  ·  ${facture.dateEmission || '—'}`
   );
+
+  // ─────────────────────────────────────────────
+  // 1bis. BANDEAU « document interne » — visible immédiatement sous l'en-tête
+  // ─────────────────────────────────────────────
+  doc.setFillColor(...GRIS_CLAIR);
+  doc.rect(10, y, 190, 12, 'F');
+  doc.setDrawColor(150, 150, 150);
+  doc.setLineWidth(0.3);
+  doc.rect(10, y, 190, 12);
+  doc.setFontSize(8.5);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(90, 90, 90);
+  doc.text(
+    'Document de suivi interne — ne constitue pas une facture. La facture officielle est émise séparément.',
+    105, y + 7.5, { align: 'center' }
+  );
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(0, 0, 0);
+  y += 18;
 
   // ─────────────────────────────────────────────
   // 2. BLOC CLIENT + PRESTATAIRE
@@ -816,64 +841,9 @@ export const exportFacture = async (facture, client, chantier, devis, parametres
   y += infoBoxHeight + 10;
 
   // ─────────────────────────────────────────────
-  // 5. COORDONNÉES DE PAIEMENT (bloc clair — pas de QR-code)
+  // 5. PIED DE PAGE — mention interne sur chaque page
   // ─────────────────────────────────────────────
-  if (y > 210) { doc.addPage(); y = 20; }
-  y = sectionTitre(doc, y, 'COORDONNÉES DE PAIEMENT', BLEU);
+  ajouterPiedPage(doc, false, 'Document interne CYNA Sàrl — sans valeur comptable ni fiscale.');
 
-  // IBAN considéré « renseigné » seulement s'il est réel (ni vide, ni placeholder factice).
-  const ibanBrut = (cyna.iban || '').replace(/\s/g, '');
-  const ibanRenseigne = ibanBrut.length > 0 && !/^CH0+$/i.test(ibanBrut);
-  const delaiPaiement = parseInt(parametres?.parametres?.delaiPaiement) || 30;
-
-  const payBoxH = ibanRenseigne ? 48 : 22;
-  doc.setFillColor(...GRIS_CLAIR);
-  doc.rect(10, y, 190, payBoxH, 'F');
-
-  if (ibanRenseigne) {
-    const payLines = [
-      ['Titulaire :',  cyna.nom],
-      ['IBAN :',       cyna.iban],
-      ['Banque :',     cyna.banque || '—'],
-      ['Référence :',  facture.numero || '—'],
-      ['Montant dû :', `${formatCHF(montantRestant)}  (net à ${delaiPaiement} jours)`],
-    ];
-    payLines.forEach(([label, val], i) => {
-      const py = y + 8 + i * 8;
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(9);
-      doc.setTextColor(...BLEU);
-      doc.text(label, 15, py);
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(30, 30, 30);
-      doc.text(String(val), 55, py);
-    });
-    // Conditions & échéance
-    doc.setFont('helvetica', 'italic');
-    doc.setFontSize(8);
-    doc.setTextColor(100, 100, 100);
-    doc.text(
-      `Paiement net à ${delaiPaiement} jours — échéance : ${facture.dateEcheance || '—'}. Merci d'indiquer la référence lors du virement.`,
-      15, y + payBoxH - 4
-    );
-  } else {
-    // Pas d'IBAN configuré → mention explicite, jamais un bloc vide/cassé.
-    doc.setFont('helvetica', 'italic');
-    doc.setFontSize(9);
-    doc.setTextColor(150, 60, 60);
-    doc.text(
-      'Coordonnées bancaires à configurer dans Paramètres → Société (IBAN).',
-      15, y + 13
-    );
-  }
-  y += payBoxH + 6;
-
-  doc.setTextColor(0, 0, 0);
-
-  // ─────────────────────────────────────────────
-  // 6. PIED DE PAGE
-  // ─────────────────────────────────────────────
-  ajouterPiedPage(doc, false);
-
-  doc.save(`Facture_${facture.numero || 'sans-numero'}_${facture.dateEmission || 'date'}.pdf`);
+  doc.save(`suivi-facturation_${facture.numero || 'sans-numero'}_${facture.dateEmission || 'date'}.pdf`);
 };

@@ -201,7 +201,7 @@ function Dashboard() {
       const j = joursParChantier[c.id];
       if (j !== null && j < 0) {
         const absEffectif = Math.abs(j);
-        const dateFin = calculerDateFinOuvrables(c.dateDebut, parseInt(c.nombreJours) || 0, c.inclusSamedi);
+        const dateFin = calculerDateFinOuvrables(c.dateDebut, parseInt(c.nombreJours) || 0, c.inclusSamedi, c.canton ?? 'GE');
         const dateFinStr = dateFin ? new Date(dateFin).toLocaleDateString('fr-CH', { day: '2-digit', month: '2-digit' }) : null;
         list.push({
           id: `retard-${c.id}`,

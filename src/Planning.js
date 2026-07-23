@@ -47,7 +47,7 @@ function GanttView({ chantiers, chantiersNonPlanifies, offsetSemaines, ouvrirMod
         const debut = new Date(c.dateDebut); debut.setHours(0,0,0,0);
         let fin;
         if (c.nombreJours) {
-          const finStr = calculerDateFinOuvrables(c.dateDebut, parseInt(c.nombreJours) || 0, c.inclusSamedi);
+          const finStr = calculerDateFinOuvrables(c.dateDebut, parseInt(c.nombreJours) || 0, c.inclusSamedi, c.canton ?? 'GE');
           fin = finStr ? new Date(finStr) : new Date(debut);
           fin.setHours(0,0,0,0);
         } else {
@@ -277,7 +277,7 @@ export default function Planning({ chantiers, setChantiers, clients, parametres,
     if (statut === 'en cours') return true;
     if (!c.nombreJours) return false;
     const debut = new Date(c.dateDebut);
-    const fin = new Date(calculerDateFinOuvrables(c.dateDebut, (c.nombreJours || 0), c.inclusSamedi));
+    const fin = new Date(calculerDateFinOuvrables(c.dateDebut, (c.nombreJours || 0), c.inclusSamedi, c.canton ?? 'GE'));
     const debutMois = new Date(anneeActuelle, moisActuel, 1);
     const finMois = new Date(anneeActuelle, moisActuel + 1, 0);
     return debut <= finMois && fin >= debutMois;
@@ -309,7 +309,7 @@ export default function Planning({ chantiers, setChantiers, clients, parametres,
       map[jour] = chantiers.filter(c => {
         if (!c.dateDebut || !c.nombreJours) return false;
         const debut = new Date(c.dateDebut);
-        const fin = new Date(calculerDateFinOuvrables(c.dateDebut, (c.nombreJours || 0), c.inclusSamedi));
+        const fin = new Date(calculerDateFinOuvrables(c.dateDebut, (c.nombreJours || 0), c.inclusSamedi, c.canton ?? 'GE'));
         return date >= debut && date <= fin;
       });
     });
@@ -340,7 +340,7 @@ export default function Planning({ chantiers, setChantiers, clients, parametres,
           list.push({ label: c.nom || c.numero, type: 'Début', date: d, color });
       }
       if (c.dateDebut && c.nombreJours) {
-        const finStr = calculerDateFinOuvrables(c.dateDebut, parseInt(c.nombreJours) || 0, c.inclusSamedi);
+        const finStr = calculerDateFinOuvrables(c.dateDebut, parseInt(c.nombreJours) || 0, c.inclusSamedi, c.canton ?? 'GE');
         if (finStr) {
           const d = new Date(finStr); d.setHours(0,0,0,0);
           if (d >= today && d <= limit)
@@ -633,7 +633,7 @@ export default function Planning({ chantiers, setChantiers, clients, parametres,
               const joursRealises_ = joursReelsChantier(pointages, c.id);
               const jours = c.nombreJours > 0 ? c.nombreJours - joursRealises_ : null;
               const progress = Math.max(0, Math.min(100, parseFloat(c.avancement) || 0));
-              const dateFin = calculerDateFinOuvrables(c.dateDebut, parseInt(c.nombreJours) || 0, c.inclusSamedi);
+              const dateFin = calculerDateFinOuvrables(c.dateDebut, parseInt(c.nombreJours) || 0, c.inclusSamedi, c.canton ?? 'GE');
               const barColor = jours === null ? '#94a3b8' : jours < 0 ? '#ef4444' : jours <= 3 ? '#f59e0b' : '#10b981';
               const cs = DS.statuts[c.statut] || { bg: '#F1F5F9', color: '#475569' };
               const client = clients.find(cl => String(cl.id) === String(c.clientId));
@@ -809,7 +809,7 @@ export default function Planning({ chantiers, setChantiers, clients, parametres,
               <input type="number" min="1" value={modal.form.nombreJours} onChange={e => setModal({ ...modal, form: { ...modal.form, nombreJours: e.target.value } })} style={{ ...DS.input, width: '100%' }} />
               {modal.form.dateDebut && modal.form.nombreJours && (
                 <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 6 }}>
-                  Fin prévue : <strong style={{ color: 'var(--text-primary)' }}>{calculerDateFinOuvrables(modal.form.dateDebut, modal.form.nombreJours || 0, modal.form.inclusSamedi)}</strong>
+                  Fin prévue : <strong style={{ color: 'var(--text-primary)' }}>{calculerDateFinOuvrables(modal.form.dateDebut, modal.form.nombreJours || 0, modal.form.inclusSamedi, modal.form.canton ?? 'GE')}</strong>
                 </div>
               )}
             </div>

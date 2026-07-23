@@ -211,7 +211,7 @@ export const exportFicheChantier = async (chantier, clients, parametres, devis =
   const doc = new jsPDF();
   const client = clients.find(c => String(c.id) === String(chantier.clientId));
   const couts = calculerCoutsChantier(chantier, parametres.employes, parametres.localites, parametres.parametres, devis, pointages);
-  const dateFin = calculerDateFinOuvrables(chantier.dateDebut, chantier.nombreJours, chantier.inclusSamedi);
+  const dateFin = calculerDateFinOuvrables(chantier.dateDebut, chantier.nombreJours, chantier.inclusSamedi, chantier.canton ?? 'GE');
 
   let y = await ajouterEntete(doc, 'FICHE CHANTIER', stripHtml(chantier.nom));
 

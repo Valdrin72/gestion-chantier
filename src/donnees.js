@@ -3,6 +3,7 @@
 // =============================================
 import { donneesDemo } from './donnees-demo';
 import { calculerMajorationDate, calculerPartSemaine } from './calculs/majorations';
+import { estFerie } from './calculs/feries';
 import { COEF_MO_DEFAUT } from './calculs/constants';
 // Phase 7b bis — bascule : les deux moteurs lisent les pointages via ces helpers.
 import { joursReelsChantier, heuresEmployeChantier, empIdsChantier } from './calculs/pointagesHelper';
@@ -34,36 +35,71 @@ export const fmtN = (n, dec = 0) => {
 };
 
 // ===== JOURS OUVRABLES =====
-export const calculerDateFinOuvrables = (dateDebut, nombreJours, inclusSamedi = false) => {
+
+/** Formate une Date en 'YYYY-MM-DD' avec les composants LOCAUX (aligné sur feries._toISO). */
+const _isoLocal = (d) => {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const j = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${j}`;
+};
+
+/**
+ * Parse une date en la REJETANT si elle est impossible.
+ * #6 — sous Node, new Date('2025-02-29') ne renvoie pas Invalid Date : il roule
+ * silencieusement au 1er mars. On compare les composants ISO d'entrée à la date
+ * obtenue (en UTC, car une date ISO seule est parsée en UTC) → une date roulée est
+ * rejetée explicitement (null) au lieu de produire une échéance fantaisiste.
+ */
+const _parseDateStricte = (dateStr) => {
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return null;
+  const m = typeof dateStr === 'string' && dateStr.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (m && (d.getUTCFullYear() !== +m[1] || d.getUTCMonth() + 1 !== +m[2] || d.getUTCDate() !== +m[3])) {
+    return null; // date ISO impossible (ex. 29 fév non bissextile)
+  }
+  return d;
+};
+
+/** true si ce jour n'est PAS ouvré : week-end (selon inclusSamedi) OU férié du canton. */
+const _estNonOuvre = (date, inclusSamedi, canton) => {
+  const jour = date.getDay(); // 0=dim, 6=sam
+  if (jour === 0) return true;
+  if (!inclusSamedi && jour === 6) return true;
+  return estFerie(_isoLocal(date), canton); // #7 — un férié n'est jamais un jour ouvré
+};
+
+/**
+ * Date de fin d'un chantier en comptant nombreJours jours OUVRÉS depuis dateDebut.
+ * Exclut samedi (sauf inclusSamedi), dimanche, ET les jours fériés du canton (#7).
+ * Rejette une date de début impossible (#6).
+ * @param {'GE'|'VD'} canton - canton du chantier (fériés cantonaux différents)
+ */
+export const calculerDateFinOuvrables = (dateDebut, nombreJours, inclusSamedi = false, canton = 'GE') => {
   if (!dateDebut || !nombreJours) return null;
   const nb = parseInt(nombreJours);
   if (isNaN(nb) || nb <= 0) return null;
-  const date = new Date(dateDebut);
-  if (isNaN(date.getTime())) return null; // Protection date invalide
+  const date = _parseDateStricte(dateDebut);
+  if (!date) return null; // date invalide ou impossible (#6)
   let joursComptés = 0;
   let iterations = 0;
   const maxIterations = nb * 3 + 30;
   while (joursComptés < nb) {
     if (++iterations > maxIterations) break;
     date.setDate(date.getDate() + 1);
-    const jour = date.getDay();
-    if (inclusSamedi) {
-      if (jour !== 0) joursComptés++; // Exclure dimanche
-    } else {
-      if (jour !== 0 && jour !== 6) joursComptés++; // Exclure sam+dim
-    }
+    if (!_estNonOuvre(date, inclusSamedi, canton)) joursComptés++;
   }
   return date.toISOString().split('T')[0];
 };
 
-export const joursOuvrableRestants = (dateDebut, nombreJours, inclusSamedi = false) => {
+export const joursOuvrableRestants = (dateDebut, nombreJours, inclusSamedi = false, canton = 'GE') => {
   if (!dateDebut || !nombreJours) return null;
-  const datefinStr = calculerDateFinOuvrables(dateDebut, nombreJours, inclusSamedi);
+  const datefinStr = calculerDateFinOuvrables(dateDebut, nombreJours, inclusSamedi, canton);
   if (!datefinStr) return null; // Protection : date invalide ou paramètres manquants
   const dateFin = new Date(datefinStr);
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  
+
   const maxIter = nombreJours * 3 + 400;
   if (dateFin < today) {
     let joursDepasse = 0;
@@ -71,8 +107,7 @@ export const joursOuvrableRestants = (dateDebut, nombreJours, inclusSamedi = fal
     const d = new Date(today);
     while (d > dateFin && ++iter < maxIter) {
       d.setDate(d.getDate() - 1);
-      const jour = d.getDay();
-      if (inclusSamedi ? jour !== 0 : (jour !== 0 && jour !== 6)) joursDepasse++;
+      if (!_estNonOuvre(d, inclusSamedi, canton)) joursDepasse++;
     }
     return -joursDepasse;
   }
@@ -82,8 +117,7 @@ export const joursOuvrableRestants = (dateDebut, nombreJours, inclusSamedi = fal
   const d = new Date(today);
   while (d < dateFin && ++iter < maxIter) {
     d.setDate(d.getDate() + 1);
-    const jour = d.getDay();
-    if (inclusSamedi ? jour !== 0 : (jour !== 0 && jour !== 6)) joursRestants++;
+    if (!_estNonOuvre(d, inclusSamedi, canton)) joursRestants++;
   }
   return joursRestants;
 };
@@ -99,8 +133,9 @@ export const getAlerte = (jours) => {
 
 export const getAlerteChantier = (chantier) => {
   const { dateDebut, nombreJours, inclusSamedi = false } = chantier;
+  const canton = chantier.canton ?? 'GE';
   const base = parseInt(nombreJours) || 0;
-  const jours = joursOuvrableRestants(dateDebut, base, inclusSamedi);
+  const jours = joursOuvrableRestants(dateDebut, base, inclusSamedi, canton);
   if (jours === null) return null;
   if (jours >= 0) return getAlerte(jours);
   const abs = Math.abs(jours);
@@ -903,7 +938,7 @@ export const chantiersInPeriode = (chantier, debut, fin) => {
     return ['en cours', 'planifié'].includes(s);
   }
   const debutChantier = new Date(chantier.dateDebut);
-  const finStr = calculerDateFinOuvrables(chantier.dateDebut, chantier.nombreJours, chantier.inclusSamedi);
+  const finStr = calculerDateFinOuvrables(chantier.dateDebut, chantier.nombreJours, chantier.inclusSamedi, chantier.canton ?? 'GE');
   const finChantier = finStr && finStr !== '-' ? new Date(finStr) : new Date(debutChantier);
   // Chevauchement : le chantier commence avant la fin de la période ET se termine après le début
   return debutChantier <= fin && finChantier >= debut;

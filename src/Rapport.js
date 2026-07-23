@@ -82,7 +82,7 @@ export default function Rapport({ chantiers, clients, devis = [], parametres, pa
     const debut = new Date(c.dateDebut);
     const debutSP = new Date(semaineSuivante.debut);
     const finSP = new Date(semaineSuivante.fin);
-    const fin = new Date(calculerDateFinOuvrables(c.dateDebut, c.nombreJours, c.inclusSamedi));
+    const fin = new Date(calculerDateFinOuvrables(c.dateDebut, c.nombreJours, c.inclusSamedi, c.canton ?? 'GE'));
     return debut <= finSP && fin >= debutSP;
   });
 
@@ -246,7 +246,7 @@ export default function Rapport({ chantiers, clients, devis = [], parametres, pa
                     <td style={{ padding: '12px 15px' }}><strong>{c.nom}</strong></td>
                     <td style={{ padding: '12px 15px' }}>{client?.entreprise || '-'}</td>
                     <td style={{ padding: '12px 15px' }}>{c.dateDebut}</td>
-                    <td style={{ padding: '12px 15px' }}>{calculerDateFinOuvrables(c.dateDebut, c.nombreJours, c.inclusSamedi)}</td>
+                    <td style={{ padding: '12px 15px' }}>{calculerDateFinOuvrables(c.dateDebut, c.nombreJours, c.inclusSamedi, c.canton ?? 'GE')}</td>
                     <td style={{ padding: '12px 15px', fontWeight: 700, color: 'var(--text-primary)' }}>
                       {calculerCA(c, devis) !== null ? `CHF ${fmtN(calculerCA(c, devis))}` : '— Aucun devis lié'}
                     </td>

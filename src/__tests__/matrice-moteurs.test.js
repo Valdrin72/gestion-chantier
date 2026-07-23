@@ -4,7 +4,7 @@
  * réels (calculerCoutsChantier / calculerEtatChantier). Un test rouge = un scénario qui casse.
  */
 import { describe, it, expect } from 'vitest';
-import { calculerCoutsChantier, calculerEtatChantier } from '../donnees';
+import { calculerCoutsChantier, calculerEtatChantier, assertEtatValide, assertEtatCoherent } from '../donnees';
 import { migrerJournalVersPointages } from '../migration/migrerJournalVersPointages';
 
 const CFG = { coefficientMainOeuvre: 1.0, tauxFraisGeneraux: 12 };
@@ -156,26 +156,72 @@ describe('🔴 CASSE — coût réel NÉGATIF : les deux moteurs divergent', () 
     };
   };
 
-  it.fails('materielReel négatif → coûts identiques entre moteurs (ÉCHOUE : 0 vs -5000)', () => {
+  it('FIX #4 : materielReel négatif (avoir) → coûts IDENTIQUES entre moteurs (-5000 des deux côtés)', () => {
     const { couts, etat } = runDeux({ materielReel: -5000 });
-    expect(couts.totalCoutsReel).toBe(etat.coutTotalReel); // 0 (clampé) vs -5000 → diffère
+    expect(couts.totalCoutsReel).toBe(etat.coutTotalReel); // plus de clamp → alignés
   });
 
-  it.fails('sousTraitanceReelle négative → coûts identiques entre moteurs (ÉCHOUE)', () => {
+  it('FIX #4 : sousTraitanceReelle négative → coûts identiques entre moteurs', () => {
     const { couts, etat } = runDeux({ sousTraitanceReelle: -3000 });
     expect(couts.totalCoutsReel).toBe(etat.coutTotalReel);
   });
 
-  it.fails('autresCoutsReels négatifs → coûts identiques entre moteurs (ÉCHOUE)', () => {
+  it('FIX #4 : autresCoutsReels négatifs → coûts identiques entre moteurs', () => {
     const { couts, etat } = runDeux({ autresCoutsReels: -2000 });
     expect(couts.totalCoutsReel).toBe(etat.coutTotalReel);
   });
 
-  // PREUVE explicite de l'asymétrie (ce test-là est VERT — il documente le comportement observé).
-  it('DOCUMENTE l\'asymétrie : Couts clampe le négatif à 0, Etat le conserve', () => {
+  // L'avoir est désormais CONSERVÉ par les DEUX moteurs (plus de clamp Math.max(0,…)).
+  it('FIX #4 : l\'avoir est conservé identiquement par les deux moteurs (-5000 = -5000)', () => {
     const { couts, etat } = runDeux({ materielReel: -5000 });
-    expect(couts.coutMaterielReel).toBe(0);        // clampé
-    expect(etat.coutMateriel).toBe(-5000);          // conservé → source de la divergence
+    expect(couts.coutMaterielReel).toBe(-5000);     // conservé (avant : 0 clampé)
+    expect(etat.coutMateriel).toBe(-5000);          // conservé → même valeur
+    expect(couts.coutMaterielReel).toBe(etat.coutMateriel);
+  });
+});
+
+// ── #4 — mordants métier exigés : net positif, avoir > dépenses, cohérence inter-écrans ──
+describe('FIX #4 — avoirs : cohérence des deux moteurs, aucune aberration', () => {
+  const emp = [{ id: 1, nom: 'A', tarifJour: 400, tarifDejaCharge: true }];
+  const devis = [{ id: 'd1', montantHT: 100000, statut: 'accepté' }];
+  const run = (over) => {
+    const ch = { id: 'C1', statut: 'en cours', nombreJours: 100, devisId: 'd1', journal: [], ...over };
+    return {
+      couts: calculerCoutsChantier(ch, emp, LOC, CFG, devis, []),
+      etat: calculerEtatChantier(ch, emp, devis, CFG, []),
+    };
+  };
+
+  it('MORDANT net : matériel 5000 puis avoir −2000 → coût réel 3000 dans les DEUX moteurs', () => {
+    // matérialisé par le net saisi (5000 − 2000). Pas de MO, pas d'autres coûts.
+    const { couts, etat } = run({ materielReel: 3000 });
+    expect(couts.totalCoutsReel).toBe(3000);
+    expect(etat.coutTotalReel).toBe(3000);
+    expect(couts.totalCoutsReel).toBe(etat.coutTotalReel); // même chiffre partout
+  });
+
+  it('MORDANT avoir > dépenses : total NÉGATIF cohérent, sans NaN ni Infinity, identique entre moteurs', () => {
+    // Avoir de 12000 alors qu'on n'a dépensé que 2000 ailleurs → total = 2000 − 12000 = -10000.
+    const { couts, etat } = run({ autresCoutsReels: 2000, materielReel: -12000 });
+    expect(couts.totalCoutsReel).toBe(-10000);
+    expect(etat.coutTotalReel).toBe(-10000);
+    expect(couts.totalCoutsReel).toBe(etat.coutTotalReel);      // MÊME chiffre partout
+    // aucune aberration : tout est fini, jamais NaN ni Infinity
+    for (const v of [couts.totalCoutsReel, couts.margeReel, couts.margeActuellePct,
+                     etat.coutTotalReel, etat.avancementPct]) {
+      expect(Number.isFinite(v)).toBe(true);
+    }
+  });
+
+  it('MORDANT invariants : un total négatif légitime N\'EST PAS rejeté par les asserts', () => {
+    const { etat } = run({ materielReel: -12000, autresCoutsReels: 2000 });
+    expect(assertEtatValide(etat)).toBe(true);          // total -10000 accepté (avoir légitime)
+    expect(assertEtatCoherent(etat).ok).toBe(true);     // pas de critique
+  });
+
+  it('MORDANT anti-NaN : coutTotalReel = NaN serait bien rejeté (la garde vise le non-fini, pas le signe)', () => {
+    expect(assertEtatValide({ totalJoursPrevus: 0, totalJoursReels: 0, avancementPct: 0, deriveJours: 0,
+      coutMOReel: 0, coutTotalReel: NaN, projectionDisponible: false, coutFinalEstime: null, equipe: [] })).toBe(false);
   });
 });
 
@@ -189,12 +235,14 @@ describe('🔴 CASSE — nombreJours NÉGATIF : avancement non borné dans calcu
     journal: [{ date: '2025-06-02', employes: [{ employeId: 1, heuresTravaillees: 8 }] }] };
   const pts = migrerJournalVersPointages([ch], emp);
 
-  it.fails('avancement borné à [0,100] même si nombreJours < 0 (ÉCHOUE : avancement négatif)', () => {
+  it('FIX #5 : avancement borné [0,100] même si nombreJours < 0 (0, jamais négatif)', () => {
     const etat = calculerEtatChantier(ch, emp, devis, CFG, pts);
     expect(etat.avancementPct).toBeGreaterThanOrEqual(0);
+    expect(etat.avancementPct).toBeLessThanOrEqual(100);
+    expect(etat.avancementPct).toBe(0); // nombreJours ≤ 0 → 0
   });
 
-  it.fails('les deux moteurs donnent le même avancement même si nombreJours < 0 (ÉCHOUE)', () => {
+  it('FIX #5 : les deux moteurs donnent le même avancement même si nombreJours < 0 (0 = 0)', () => {
     const couts = calculerCoutsChantier(ch, emp, LOC, CFG, devis, pts);
     const etat = calculerEtatChantier(ch, emp, devis, CFG, pts);
     expect(couts.avancementPct).toBe(etat.avancementPct);

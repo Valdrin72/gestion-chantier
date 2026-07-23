@@ -46,7 +46,7 @@ const CONDITIONS = `CONDITIONS GÉNÉRALES — CYNA Sàrl
 // ===== SANITISATION TEXTE LIBRE =====
 // Strip les vraies balises HTML (<b>, </b>, <br/>, etc.) des champs utilisateur
 // avant écriture dans le PDF. NE touche PAS <5mm ni "< 2 jours" (regex [a-zA-Z/]).
-const stripHtml = (val) => {
+export const stripHtml = (val) => {
   if (typeof val !== 'string') return val;
   return val
     .replace(/<[a-zA-Z/][^>]*>/g, '')

@@ -409,17 +409,21 @@ describe('D4 — Robustesse', () => {
     }
   });
 
-  it('montants négatifs dans autresCoutsReels → clampés à 0, marge ≤ 100% (OBS-1 corrigé)', () => {
+  it('montants négatifs dans autresCoutsReels (avoir) → CONSERVÉS, cohérents entre moteurs, sans NaN', () => {
+    // Décision métier #4 : un montant négatif est légitime (avoir fournisseur, matériel repris).
+    // Il n'est PLUS clampé à 0 : il réduit le coût réel dans les DEUX moteurs, à l'identique.
     const emp = makeEmploye(400);
     const devis = makeDevis(50_000);
     const chantier = makeChantier({ joursReels: 10, empId: emp.id, autresCoutsReels: -100_000 });
-    const r1 = calculerCoutsChantier(chantier, [emp], [], CFG, [devis], pointagesDepuisChantier(chantier, [emp]));
+    const pts = pointagesDepuisChantier(chantier, [emp]);
+    const r1 = calculerCoutsChantier(chantier, [emp], [], CFG, [devis], pts);
+    const r2 = calculerEtatChantier(chantier, [emp], [devis], CFG, pts);
     assertNoNaN(r1, 'D4.negatif');
-    // Coûts négatifs clampés → autresCoutsReel = 0, marge physiquement possible
-    expect(r1.autresCoutsReel).toBe(0);
-    if (r1.margeActuellePct !== null) {
-      expect(r1.margeActuellePct).toBeLessThanOrEqual(100);
-    }
+    expect(r1.autresCoutsReel).toBe(-100_000);              // conservé (avant : clampé à 0)
+    expect(r1.totalCoutsReel).toBe(r2.coutTotalReel);        // MÊME chiffre entre les deux moteurs
+    // L'avoir dépasse les dépenses → total négatif, marge > 100% : légitime, mais TOUJOURS fini.
+    expect(Number.isFinite(r1.totalCoutsReel)).toBe(true);
+    expect(Number.isFinite(r1.margeActuellePct)).toBe(true);
   });
 
   it('devis.montantHT = 0 → aucune division par zéro', () => {

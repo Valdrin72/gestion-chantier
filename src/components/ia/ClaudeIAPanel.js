@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import {
   Sparkles, Building2, FileText, Bell, BarChart2, Loader, AlertCircle,
   ChevronRight, MessageSquare, Mail, GitCompare, FileSearch,
@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { useClaudeAI } from '../../hooks/useClaudeAI';
 import { useApp } from '../../context/AppContext';
+import { construireCorrespondance, pseudonymiserTexte, reidentifier } from '../../lib/pseudonymisation';
 import { calculerCoutsChantier } from '../../donnees';
 import { joursReelsChantier } from '../../calculs/pointagesHelper';
 import { DS } from '../../ds';
@@ -20,38 +21,40 @@ function trimMemoire(texte) {
 }
 
 // ── Mémoire CYNA partagée (localStorage) ──────────────────────
+// La mémoire est stockée DÉJÀ PSEUDONYMISÉE (aucun nom identifiant sur le disque local),
+// et ré-identifiée uniquement pour l'affichage (memoireLisible).
 function useMemoire() {
+  const { chantiers = [], clients = [], parametres } = useApp();
+  const corr = useMemo(
+    () => construireCorrespondance({ chantiers, clients, employes: parametres?.employes || [] }),
+    [chantiers, clients, parametres]
+  );
   const [memoire, setMemoireState] = useState(() => localStorage.getItem('cyna_ia_memoire') || '');
+  const ecrire = (v) => { localStorage.setItem('cyna_ia_memoire', v); return v; };
 
   const setMemoire = useCallback((texte) => {
-    setMemoireState(texte);
-    localStorage.setItem('cyna_ia_memoire', texte);
-  }, []);
+    setMemoireState(ecrire(pseudonymiserTexte(texte, corr)));
+  }, [corr]);
 
   // Sauvegarde explicite (PanneauMemoire)
   const sauvegarder = useCallback((extrait) => {
     const date = new Date().toLocaleDateString('fr-CH');
-    const ligne = `[${date}] ${extrait.slice(0, 400)}`;
-    setMemoireState(prev => {
-      const update = trimMemoire(prev ? `${prev}\n${ligne}` : ligne);
-      localStorage.setItem('cyna_ia_memoire', update);
-      return update;
-    });
-  }, []);
+    const ligne = pseudonymiserTexte(`[${date}] ${extrait.slice(0, 400)}`, corr);
+    setMemoireState(prev => ecrire(trimMemoire(prev ? `${prev}\n${ligne}` : ligne)));
+  }, [corr]);
 
-  // Auto-save : extrait compact (1-2 phrases max) ajouté automatiquement
+  // Auto-save : extrait compact (1-2 phrases max) ajouté automatiquement, pseudonymisé.
   const autoSave = useCallback((contexte, reponse) => {
     const date = new Date().toLocaleDateString('fr-CH');
     const apercu = reponse.replace(/\n+/g, ' ').replace(/\*\*/g, '').slice(0, 200);
-    const ligne = `[${date}][${contexte}] ${apercu}`;
-    setMemoireState(prev => {
-      const update = trimMemoire(prev ? `${prev}\n${ligne}` : ligne);
-      localStorage.setItem('cyna_ia_memoire', update);
-      return update;
-    });
-  }, []);
+    const ligne = pseudonymiserTexte(`[${date}][${contexte}] ${apercu}`, corr);
+    setMemoireState(prev => ecrire(trimMemoire(prev ? `${prev}\n${ligne}` : ligne)));
+  }, [corr]);
 
-  return { memoire, setMemoire, sauvegarder, autoSave };
+  // Version lisible (vrais noms) pour l'affichage uniquement — jamais stockée ni envoyée.
+  const memoireLisible = useMemo(() => reidentifier(memoire, corr), [memoire, corr]);
+
+  return { memoire, memoireLisible, setMemoire, sauvegarder, autoSave };
 }
 
 // ── Compteur d'insights mémoire ────────────────────────────────
@@ -228,11 +231,18 @@ function ConversationSuite({ contexteInitial, memoire, autoSave, placeholder }) 
 // ── Panneau mémoire CYNA (global + condenseur) ────────────────
 function PanneauMemoire({ memoire, onSave }) {
   const { appeler, loading } = useClaudeAI();
-  const [texte, setTexte] = useState(memoire);
+  const { chantiers = [], clients = [], parametres } = useApp();
+  const corr = useMemo(
+    () => construireCorrespondance({ chantiers, clients, employes: parametres?.employes || [] }),
+    [chantiers, clients, parametres]
+  );
+  // La mémoire est stockée pseudonymisée → on l'affiche/édite en clair (vrais noms).
+  const memoireLisible = useMemo(() => reidentifier(memoire, corr), [memoire, corr]);
+  const [texte, setTexte] = useState(memoireLisible);
   const [sauve, setSauve] = useState(false);
   const nb = compteurInsights(memoire);
 
-  useEffect(() => { setTexte(memoire); }, [memoire]);
+  useEffect(() => { setTexte(memoireLisible); }, [memoireLisible]);
 
   const sauver = () => {
     onSave(texte);
@@ -1008,12 +1018,12 @@ function IADesactivee() {
         <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>Assistant IA désactivé</h3>
       </div>
       <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-        L'Assistant IA est <strong>désactivé par défaut</strong> pour protéger la confidentialité de tes données.
-        Tant qu'il est désactivé, <strong>aucune donnée de chantier ne quitte l'application</strong>.
+        Tu as <strong>désactivé l'Assistant IA</strong> dans les paramètres. Tant qu'il est coupé,
+        <strong> aucune donnée ne quitte l'application</strong>.
       </p>
       <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-        Pour l'activer : <strong>Paramètres → Confidentialité → Assistant IA</strong>. Tu verras alors précisément
-        quelles données seraient envoyées à un service externe, et il te sera demandé de confirmer.
+        Pour le réactiver : <strong>Paramètres → Confidentialité → Assistant IA</strong>. Les données envoyées
+        sont anonymisées (aucun nom identifiant ne sort) ; seuls des montants et indicateurs sont transmis.
       </p>
     </div>
   );
@@ -1028,17 +1038,18 @@ function IAConsentement({ onAccept }) {
         <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>Avant d'utiliser l'Assistant IA</h3>
       </div>
       <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-        Les analyses IA envoient certaines données de tes chantiers à un <strong>service externe (API Anthropic)</strong>
-        pour générer les réponses. Selon l'analyse demandée, cela peut inclure :
+        Les analyses IA s'appuient sur un <strong>service externe (API Anthropic)</strong>. Avant chaque envoi,
+        les données sont <strong>anonymisées</strong> : les noms de chantier, de client, d'employé, les adresses
+        et les villes sont remplacés par des étiquettes neutres (« Chantier 1 », « Client A »…), puis les vrais
+        noms sont restaurés dans la réponse affichée.
       </p>
       <ul style={{ fontSize: 13, color: 'var(--text-main)', lineHeight: 1.8, margin: '10px 0 16px', paddingLeft: 20 }}>
-        <li><strong>Noms de chantier</strong> (qui peuvent contenir un nom de client)</li>
-        <li><strong>Montants : CA, coûts réels, marges, EAC/RAD</strong></li>
-        <li>Le texte que tu saisis dans le chat et, le cas échéant, le contenu d'un PDF importé</li>
+        <li>Seuls partent des <strong>montants et indicateurs sans nom</strong> : CA, coûts, marges, %, EAC/RAD, dates, heures.</li>
+        <li><strong>Aucun nom identifiant</strong> ne quitte l'application (ni chantier, ni client, ni employé, ni adresse).</li>
+        <li>Le texte du chat et le contenu d'un PDF importé sont eux aussi anonymisés avant l'envoi.</li>
       </ul>
       <p style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.6, marginBottom: 18 }}>
-        Aucune adresse, aucun téléphone ni email client n'est transmis. Tu peux désactiver l'Assistant IA
-        à tout moment dans Paramètres → Confidentialité.
+        Tu peux désactiver complètement l'Assistant IA à tout moment dans Paramètres → Confidentialité.
       </p>
       <button onClick={onAccept}
         style={{ ...DS.btnPrimary, display: 'inline-flex', alignItems: 'center', gap: 8 }}>
@@ -1051,7 +1062,7 @@ function IAConsentement({ onAccept }) {
 export default function ClaudeIAPanel() {
   const [feature, setFeature] = useState('anticiper');
   const { parametres, setParametres } = useApp();
-  const iaActivee = parametres?.parametres?.iaActivee === true;
+  const iaActivee = parametres?.parametres?.iaActivee !== false; // activé par défaut
   const iaConsentement = parametres?.parametres?.iaConsentement === true;
   const { memoire, setMemoire, sauvegarder, autoSave } = useMemoire();
   const nb = compteurInsights(memoire);

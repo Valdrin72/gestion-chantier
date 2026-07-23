@@ -40,10 +40,10 @@ describe('useClaudeAI — kill-switch confidentialité', () => {
     expect(supabase.functions.invoke).not.toHaveBeenCalled(); // MORDANT : zéro appel
   });
 
-  it('paramètre absent / non défini → traité comme OFF (aucun appel)', async () => {
+  it('paramètre absent → ON par défaut (l\'appel part) — le kill-switch n\'agit que si explicitement false', async () => {
     const { result } = renderHook(() => useClaudeAI(), { wrapper: wrapper({}) });
     await act(async () => { await result.current.appeler('anticiper', {}); });
-    expect(supabase.functions.invoke).not.toHaveBeenCalled();
+    expect(supabase.functions.invoke).toHaveBeenCalledTimes(1);
   });
 
   it('iaActivee=true → l\'appel part (invoke appelé une fois)', async () => {

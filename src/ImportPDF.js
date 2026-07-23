@@ -362,7 +362,9 @@ export default function ImportPDF({ parametres, onCreerDevis, onCreerChantier, o
 
     try {
       const pdfjsLib = await import('pdfjs-dist');
-      pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js`;
+      // Worker auto-hébergé (public/pdf.worker.min.mjs) — aucun appel à cdnjs.cloudflare.com,
+      // et version alignée sur pdfjs-dist installé (fini le mismatch 3.11 vs 4.x).
+      pdfjsLib.GlobalWorkerOptions.workerSrc = `${process.env.PUBLIC_URL}/pdf.worker.min.mjs`;
 
       const arrayBuffer = await fichier.arrayBuffer();
       const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;

@@ -502,10 +502,13 @@ export const calculerCoutsChantier = (chantier, employes = [], localites = [], c
   const coutSousTraitanceReelRaw = _reel(chantier.sousTraitanceReelle) ?? _reel(chantier.coutSousTraitanceReel);
   const autresCoutsReelRaw     = _reel(chantier.autresCoutsReels)   ?? _reel(chantier.autresCoutsReel);
 
-  // Pour les calculs arithmétiques, null → 0 (valeur neutre) + clamp ≥ 0 (saisie négative impossible métier)
-  const coutMaterielReel    = Math.max(0, coutMaterielReelRaw    ?? 0);
-  const coutSousTraitanceReel = Math.max(0, coutSousTraitanceReelRaw ?? 0);
-  const autresCoutsReel     = Math.max(0, autresCoutsReelRaw     ?? 0);
+  // Pour les calculs arithmétiques, null → 0 (valeur neutre). PAS de clamp ≥ 0 :
+  // un montant NÉGATIF est légitime en second œuvre (avoir fournisseur, matériel repris,
+  // remise après coup). Il DOIT réduire le coût réel — comme dans calculerEtatChantier —
+  // sinon les deux moteurs divergent (l'avoir disparaît d'un côté).
+  const coutMaterielReel    = coutMaterielReelRaw    ?? 0;
+  const coutSousTraitanceReel = coutSousTraitanceReelRaw ?? 0;
+  const autresCoutsReel     = autresCoutsReelRaw     ?? 0;
 
   // P8 : détection des champs non renseignés (coûts attendus mais absents)
   const hasEquipe = (chantier.equipe?.length || 0) > 0 || empIdsAvecHeures.length > 0;
@@ -1196,11 +1199,14 @@ export const calculerEtatChantier = (chantier, employes = [], devisList = [], pa
   // ── C. Avancement (0–100, calculé, jamais saisi) ──────────────────────
   const _statutChantierLower = (chantier.statut || '').trim().toLowerCase();
   const _chantiClos = ['terminé', 'termine', 'clôturé', 'cloture', 'facturé', 'facture'].includes(_statutChantierLower);
+  // Avancement borné [0,100]. Un nombreJours ≤ 0 (import corrompu / typo) → 0, jamais
+  // un pourcentage négatif : Math.max(0,…) aligne les deux moteurs (calculerCoutsChantier
+  // renvoie déjà 0 via sa garde nbJours > 0) et respecte l'invariant [0,100] partout.
   const avancementPct = _chantiClos
     ? 100
-    : totalJoursPrevus === 0
+    : totalJoursPrevus <= 0
       ? 0
-      : Math.min(100, Math.round((totalJoursReels / totalJoursPrevus) * 100));
+      : Math.min(100, Math.max(0, Math.round((totalJoursReels / totalJoursPrevus) * 100)));
 
   // ── D. Dérive temps ───────────────────────────────────────────────────
   const deriveJours = totalJoursReels - totalJoursPrevus;
@@ -1305,13 +1311,13 @@ export const assertEtatValide = (etat) => {
 
   const erreurs = [];
 
-  // Vérifications numériques — NaN interdit
+  // Vérifications numériques — NaN ET Infinity interdits (finis obligatoires)
   const numeriques = [
     'totalJoursPrevus', 'totalJoursReels', 'avancementPct', 'deriveJours',
     'coutMOReel', 'coutTotalReel',
   ];
   for (const champ of numeriques) {
-    if (typeof etat[champ] !== 'number' || isNaN(etat[champ])) {
+    if (typeof etat[champ] !== 'number' || !Number.isFinite(etat[champ])) {
       erreurs.push(`${champ} invalide : ${etat[champ]}`);
     }
   }
@@ -1321,14 +1327,11 @@ export const assertEtatValide = (etat) => {
     erreurs.push(`avancementPct hors limites : ${etat.avancementPct}`);
   }
 
-  // Coûts non négatifs
+  // Coût MO jamais négatif (heures × tarif ≥ 0 → un MO négatif est un vrai bug).
   if (etat.coutMOReel < 0) erreurs.push(`coutMOReel négatif : ${etat.coutMOReel}`);
-  if (etat.coutTotalReel < 0) erreurs.push(`coutTotalReel négatif : ${etat.coutTotalReel}`);
-
-  // Cohérence : coutMOReel <= coutTotalReel
-  if (etat.coutMOReel > etat.coutTotalReel + 1) {
-    erreurs.push(`coutMOReel (${etat.coutMOReel}) > coutTotalReel (${etat.coutTotalReel})`);
-  }
+  // NB : coutTotalReel PEUT être négatif (avoir supérieur aux dépenses) et coutMOReel PEUT
+  // dépasser coutTotalReel dans ce cas — c'est légitime, pas une anomalie. On ne vérifie
+  // donc plus « total ≥ 0 » ni « MO ≤ total » : seule la finitude (ci-dessus) est exigée.
 
   // Projection : si disponible, coutFinalEstime doit être un nombre
   if (etat.projectionDisponible && (etat.coutFinalEstime === null || isNaN(etat.coutFinalEstime))) {
@@ -1367,8 +1370,10 @@ export const assertEtatCoherent = (etat) => {
   // ── CRITIQUES — données inexploitables ──────────────────────────
   if (typeof etat.avancementPct !== 'number' || isNaN(etat.avancementPct) || etat.avancementPct < 0 || etat.avancementPct > 100)
     critique.push(`avancementPct invalide: ${etat.avancementPct}`);
-  if (etat.coutTotalReel < 0)
-    critique.push(`coutTotalReel négatif: ${etat.coutTotalReel}`);
+  // coutTotalReel négatif = avoir légitime (matériel repris, avoir fournisseur) → PAS une
+  // erreur. On ne signale que le non-fini (NaN / Infinity), vraie donnée inexploitable.
+  if (typeof etat.coutTotalReel !== 'number' || !Number.isFinite(etat.coutTotalReel))
+    critique.push(`coutTotalReel non fini: ${etat.coutTotalReel}`);
   // Ne pas signaler si aucune heure saisie — normal pour un chantier planifié non démarré
   if (etat.deriveJours !== 0 && etat.totalJoursReels === 0 && etat.totalJoursPrevus === 0)
     critique.push(`deriveJours=${etat.deriveJours} avec totalJoursReels=0`);

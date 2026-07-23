@@ -426,11 +426,10 @@ describe('FIX #1 — heures sup semaine : seules les heures au-delà de 45h sont
 // testée par le vrai chemin de code (règle 7 : pas de logic-mirror).
 // Ce bloc documente la casse "non-testabilité" et vérifie la surface d'export.
 
-describe('CASSE — stripHtml non exporté : logique d\'échappement PDF non testable', () => {
-  it.fails('CASSE: stripHtml devrait être exporté pour être testé unitairement | gravité MOYENNE', async () => {
+describe('FIX #8 — stripHtml exporté : la sanitisation PDF est testable', () => {
+  it('stripHtml est désormais exporté (test complet dans stripHtml.test.js)', async () => {
     const mod = await import('../ExportPDF.js');
-    // Attendu : la fonction de sanitisation est exposée pour test.
-    // Obtenu : undefined (const privée). Recommandation : `export const stripHtml`.
     expect(typeof mod.stripHtml).toBe('function');
+    expect(mod.stripHtml('<b>x</b>')).toBe('x'); // sanity : balise retirée par le vrai code
   });
 });

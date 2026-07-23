@@ -25,7 +25,10 @@ const getCYNA = (parametres) => ({
   tel2:       parametres?.parametres?.tel2Soc     || '079 480 94 41',
   email:      parametres?.parametres?.emailSoc    || 'info@cyna.ch',
   nTVA:       parametres?.parametres?.nTVA        || 'CHE-xxx.xxx.xxx TVA',
-  iban:       parametres?.parametres?.iban        || 'CH00 0000 0000 0000 0000 0',
+  // IBAN et banque : PAS de placeholder factice — vide si non renseigné, pour que le
+  // bloc de paiement affiche une mention explicite plutôt qu'un faux IBAN.
+  iban:       parametres?.parametres?.iban        || '',
+  banque:     parametres?.parametres?.banque      || '',
 });
 
 // ===== CONDITIONS GÉNÉRALES =====
@@ -813,137 +816,57 @@ export const exportFacture = async (facture, client, chantier, devis, parametres
   y += infoBoxHeight + 10;
 
   // ─────────────────────────────────────────────
-  // 5. SECTION QR-PAIEMENT SIX GROUP
+  // 5. COORDONNÉES DE PAIEMENT (bloc clair — pas de QR-code)
   // ─────────────────────────────────────────────
-  if (y > 200) { doc.addPage(); y = 20; }
+  if (y > 210) { doc.addPage(); y = 20; }
+  y = sectionTitre(doc, y, 'COORDONNÉES DE PAIEMENT', BLEU);
 
-  // Ligne de découpe pointillée
-  doc.setLineDashPattern([2, 2], 0);
-  doc.setDrawColor(150, 150, 150);
-  doc.line(10, y + 10, 200, y + 10);
-  // Petits ciseaux en texte
-  doc.setFontSize(7);
-  doc.setTextColor(150, 150, 150);
-  doc.text('✂', 6, y + 11);
-  doc.setLineDashPattern([], 0);
-  y += 18;
+  // IBAN considéré « renseigné » seulement s'il est réel (ni vide, ni placeholder factice).
+  const ibanBrut = (cyna.iban || '').replace(/\s/g, '');
+  const ibanRenseigne = ibanBrut.length > 0 && !/^CH0+$/i.test(ibanBrut);
+  const delaiPaiement = parseInt(parametres?.parametres?.delaiPaiement) || 30;
 
-  const qrBaseY = y;
+  const payBoxH = ibanRenseigne ? 48 : 22;
+  doc.setFillColor(...GRIS_CLAIR);
+  doc.rect(10, y, 190, payBoxH, 'F');
 
-  // ── Colonne 1 : Récépissé (x=10, largeur=60) ──────────────────
-  const col1X = 10;
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8);
-  doc.setTextColor(...BLEU_FONCE);
-  doc.text('RÉCÉPISSÉ', col1X, qrBaseY + 5);
-
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(7);
-  doc.setTextColor(80, 80, 80);
-  doc.text('Compte / Payable à :', col1X, qrBaseY + 12);
-
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(7);
-  doc.setTextColor(30, 30, 30);
-  doc.text(cyna.iban,       col1X, qrBaseY + 17);
-  doc.text(cyna.nom,        col1X, qrBaseY + 22);
-  doc.text(cyna.adresse,    col1X, qrBaseY + 27);
-  doc.text(cyna.codePostal, col1X, qrBaseY + 32);
-
-  doc.setDrawColor(150, 150, 150);
-  doc.line(col1X, qrBaseY + 35, col1X + 55, qrBaseY + 35);
-
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(7);
-  doc.setTextColor(80, 80, 80);
-  doc.text('Montant :', col1X, qrBaseY + 41);
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(30, 30, 30);
-  doc.text(formatCHF(montantTTC), col1X + 20, qrBaseY + 41);
-
-  doc.line(col1X, qrBaseY + 45, col1X + 55, qrBaseY + 45);
-
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(7);
-  doc.setTextColor(80, 80, 80);
-  doc.text('Monnaie :', col1X, qrBaseY + 51);
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(30, 30, 30);
-  doc.text('CHF', col1X + 20, qrBaseY + 51);
-
-  // ── Colonne 2 : Zone QR (x=75, largeur=60) ────────────────────
-  const col2X = 75;
-  // Carré QR 46×46mm
-  doc.setDrawColor(100, 100, 100);
-  doc.setLineWidth(0.3);
-  doc.rect(col2X, qrBaseY, 46, 46);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(7);
-  doc.setTextColor(150, 150, 150);
-  doc.text('[SWISS QR CODE]', col2X + 23, qrBaseY + 20, { align: 'center' });
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(6);
-  doc.text('(Généré par votre banque)', col2X + 23, qrBaseY + 27, { align: 'center' });
-  doc.setLineWidth(0.2);
-
-  // ── Colonne 3 : Section paiement (x=130, largeur=80) ──────────
-  const col3X = 130;
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8);
-  doc.setTextColor(...BLEU_FONCE);
-  doc.text('SECTION PAIEMENT', col3X, qrBaseY + 5);
-
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(7);
-  doc.setTextColor(80, 80, 80);
-  doc.text('Payable à :', col3X, qrBaseY + 12);
-
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(7);
-  doc.setTextColor(30, 30, 30);
-  doc.text(cyna.iban,       col3X, qrBaseY + 17);
-  doc.text(cyna.nom,        col3X, qrBaseY + 22);
-  doc.text(cyna.adresse,    col3X, qrBaseY + 27);
-  doc.text(cyna.codePostal, col3X, qrBaseY + 32);
-
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(7);
-  doc.setTextColor(80, 80, 80);
-  doc.text('Référence :', col3X, qrBaseY + 39);
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(30, 30, 30);
-  doc.text(facture.numero || '—', col3X, qrBaseY + 44);
-
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(7);
-  doc.setTextColor(80, 80, 80);
-  doc.text('Payable par :', col3X, qrBaseY + 51);
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(30, 30, 30);
-  const nomClient = [`${stripHtml(client?.prenom || '')} ${stripHtml(client?.nom || '')}`.trim() || '—'];
-  if (client?.entreprise) nomClient.push(stripHtml(client.entreprise));
-  if (client?.adresse)    nomClient.push(stripHtml(client.adresse));
-  if (client?.ville)      nomClient.push(stripHtml(client.ville));
-  nomClient.forEach((ligne, i) => {
-    doc.text(ligne, col3X, qrBaseY + 56 + i * 5);
-  });
-
-  const montantY = qrBaseY + 56 + nomClient.length * 5 + 3;
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(7);
-  doc.setTextColor(80, 80, 80);
-  doc.text('Montant :', col3X, montantY);
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(30, 30, 30);
-  doc.text(formatCHF(montantTTC), col3X + 20, montantY);
-
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(7);
-  doc.setTextColor(80, 80, 80);
-  doc.text('Monnaie :', col3X, montantY + 6);
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(30, 30, 30);
-  doc.text('CHF', col3X + 20, montantY + 6);
+  if (ibanRenseigne) {
+    const payLines = [
+      ['Titulaire :',  cyna.nom],
+      ['IBAN :',       cyna.iban],
+      ['Banque :',     cyna.banque || '—'],
+      ['Référence :',  facture.numero || '—'],
+      ['Montant dû :', `${formatCHF(montantRestant)}  (net à ${delaiPaiement} jours)`],
+    ];
+    payLines.forEach(([label, val], i) => {
+      const py = y + 8 + i * 8;
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(9);
+      doc.setTextColor(...BLEU);
+      doc.text(label, 15, py);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(30, 30, 30);
+      doc.text(String(val), 55, py);
+    });
+    // Conditions & échéance
+    doc.setFont('helvetica', 'italic');
+    doc.setFontSize(8);
+    doc.setTextColor(100, 100, 100);
+    doc.text(
+      `Paiement net à ${delaiPaiement} jours — échéance : ${facture.dateEcheance || '—'}. Merci d'indiquer la référence lors du virement.`,
+      15, y + payBoxH - 4
+    );
+  } else {
+    // Pas d'IBAN configuré → mention explicite, jamais un bloc vide/cassé.
+    doc.setFont('helvetica', 'italic');
+    doc.setFontSize(9);
+    doc.setTextColor(150, 60, 60);
+    doc.text(
+      'Coordonnées bancaires à configurer dans Paramètres → Société (IBAN).',
+      15, y + 13
+    );
+  }
+  y += payBoxH + 6;
 
   doc.setTextColor(0, 0, 0);
 

@@ -71,6 +71,45 @@ const chfDefaut = (v) => `CHF ${Math.round(v).toLocaleString()}`;
 // exportFacture — totaux HT / TVA 8.1% / TTC + solde
 // ═════════════════════════════════════════════════════════════════════════
 
+describe('exportFacture — bloc de paiement clair (PAS de QR-code)', () => {
+  const facture = {
+    id: 'f-pay', numero: 'F-2026-050', montantHT: 10000, tva: 8.1,
+    dateEmission: '2026-06-01', dateEcheance: '2026-07-01',
+  };
+  const client = { id: 'cl-1', prenom: 'Jean', nom: 'Dupont', entreprise: 'Dupont SA', adresse: 'Rue du Lac 1', ville: 'Genève' };
+  const chantier = { id: 'c-1', nom: 'Villa Cologny', clientId: 'cl-1' };
+  const withParams = (extra) => ({ ...PARAMETRES, parametres: { ...PARAMETRES.parametres, ...extra } });
+
+  it('IBAN configuré → apparaît dans le PDF ; "[SWISS QR CODE]" a disparu', async () => {
+    const params = withParams({ iban: 'CH44 3199 9123 0008 8901 2', banque: 'BCGE', nomSociete: 'CYNA Sàrl' });
+    await exportFacture(facture, client, chantier, null, params);
+    const texts = dernierDoc().texts;
+    expect(texts).toContain('COORDONNÉES DE PAIEMENT');
+    expect(texts).toContain('CH44 3199 9123 0008 8901 2');   // IBAN réel présent
+    expect(texts).toContain('BCGE');                          // nom de banque présent
+    // Le placeholder QR inachevé ne doit plus jamais sortir chez un client :
+    expect(texts.join(' ')).not.toContain('[SWISS QR CODE]');
+    expect(texts.join(' ')).not.toContain('Généré par votre banque');
+  });
+
+  it('IBAN NON renseigné → mention explicite, aucun bloc cassé, export réussi', async () => {
+    await exportFacture(facture, client, chantier, null, PARAMETRES); // pas d'iban
+    const texts = dernierDoc().texts;
+    expect(texts.some(t => t.includes('à configurer dans Paramètres'))).toBe(true);
+    expect(texts.join(' ')).not.toContain('[SWISS QR CODE]');
+    expect(texts.some(t => t.includes('NaN') || t.includes('undefined'))).toBe(false);
+    expect(dernierDoc().savedAs).toBe('Facture_F-2026-050_2026-06-01.pdf'); // le PDF sort quand même
+  });
+
+  it('IBAN placeholder factice (CH00 0000…) → traité comme NON renseigné', async () => {
+    const params = withParams({ iban: 'CH00 0000 0000 0000 0000 0' });
+    await exportFacture(facture, client, chantier, null, params);
+    const texts = dernierDoc().texts;
+    expect(texts.some(t => t.includes('à configurer dans Paramètres'))).toBe(true);
+    expect(texts).not.toContain('CH00 0000 0000 0000 0000 0'); // le faux IBAN n'est pas affiché
+  });
+});
+
 describe('exportFacture — totaux corrects (HT, TVA 8.1% EXACT, TTC)', () => {
   const facture = {
     id: 'f-1', numero: 'F-2026-001', montantHT: 10000, tva: 8.1,

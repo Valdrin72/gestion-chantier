@@ -619,6 +619,13 @@ function Parametres({ parametres, setParametres, clients = [], setClients = () =
             {parametres.parametres?.iban && !/^CH\d{2}[0-9A-Z]{17}$/.test((parametres.parametres.iban || '').replace(/\s/g, '')) && (
               <div style={{ fontSize: 11, color: '#ef4444', fontWeight: 600, marginTop: 4 }}>⚠ Format IBAN invalide — vérifiez votre numéro</div>
             )}
+            <div style={{ marginTop: 12 }}>
+              <label style={labelStyle}>Nom de la banque (apparaît sur les factures)</label>
+              <input type="text" placeholder="Ex : Banque Cantonale de Genève"
+                value={parametres.parametres?.banque || ''}
+                onChange={e => sauv({ ...parametres, parametres: { ...parametres.parametres, banque: e.target.value } })}
+                style={inputStyle} />
+            </div>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 15, marginBottom: 15 }}>
             <div style={{ background: 'var(--bg-glass-2)', border: '1px solid var(--border)', borderRadius: 12, padding: 15 }}>

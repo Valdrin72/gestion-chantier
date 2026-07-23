@@ -191,6 +191,21 @@ function Parametres({ parametres, setParametres, clients = [], setClients = () =
   const [saved, setSaved] = useState(false);
   const timerSaved = React.useRef(null);
   const importRef = React.useRef(null);
+  const { confirmer, afficherNotif } = useApp();
+  const [memoireVidee, setMemoireVidee] = useState(false);
+
+  const iaActivee = parametres.parametres?.iaActivee === true;
+  const toggleIA = (valeur) => {
+    // Activer/désactiver l'Assistant IA. Désactiver ré-arme aussi le consentement
+    // (une prochaine activation redemandera confirmation avant tout envoi).
+    sauv({ ...parametres, parametres: { ...parametres.parametres, iaActivee: valeur, iaConsentement: valeur ? parametres.parametres?.iaConsentement : false } });
+  };
+  const effacerMemoireIA = async () => {
+    if (confirmer && !await confirmer('Effacer la mémoire de l\'Assistant IA ?\n\nLes insights accumulés (localStorage) seront supprimés. Aucune donnée métier n\'est touchée.', { labelOui: 'Effacer' })) return;
+    localStorage.removeItem('cyna_ia_memoire');
+    setMemoireVidee(true);
+    if (afficherNotif) afficherNotif('Mémoire IA effacée');
+  };
 
   const exporterDonnees = () => {
     const date = new Date().toISOString().slice(0, 10);
@@ -653,6 +668,32 @@ function Parametres({ parametres, setParametres, clients = [], setClients = () =
                   style={inputStyle} />
               </div>
             ))}
+          </div>
+
+          {/* ── Confidentialité — Assistant IA ─────────────────────────── */}
+          <div className="ds-card-title" style={{ margin: '28px 0 8px' }}>Confidentialité — Assistant IA</div>
+          <div style={{ background: iaActivee ? 'rgba(245,158,11,0.06)' : 'var(--bg-glass-2)', border: `2px solid ${iaActivee ? 'rgba(245,158,11,0.4)' : 'var(--border)'}`, borderRadius: 12, padding: 18 }}>
+            <label style={{ display: 'flex', alignItems: 'flex-start', gap: 12, cursor: 'pointer' }}>
+              <input type="checkbox" checked={iaActivee} onChange={e => toggleIA(e.target.checked)}
+                style={{ width: 20, height: 20, marginTop: 2, flexShrink: 0, cursor: 'pointer' }} />
+              <span>
+                <span style={{ fontWeight: 700, fontSize: 14 }}>Assistant IA (envoie des données de chantier à un service externe)</span>
+                <span style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginTop: 4, lineHeight: 1.5 }}>
+                  <strong>Désactivé par défaut.</strong> Tant qu'il est désactivé, aucune donnée ne quitte l'application.
+                  Une fois activé, les analyses envoient des <strong>noms de chantier, CA et marges</strong> à l'API Anthropic
+                  (une confirmation est demandée avant le premier envoi).
+                </span>
+              </span>
+            </label>
+            <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+              <button onClick={effacerMemoireIA}
+                style={{ ...DS.btnDanger, display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
+                Effacer la mémoire IA
+              </button>
+              <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                {memoireVidee ? 'Mémoire IA effacée.' : 'Supprime les insights accumulés localement (localStorage). N\'affecte aucune donnée métier.'}
+              </span>
+            </div>
           </div>
         </div>
       )}

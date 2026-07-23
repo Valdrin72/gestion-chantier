@@ -999,11 +999,74 @@ const FEATURES = [
   { id: 'analyser_pdf',   label: 'Analyser PDF',          Icon: FileSearch,    hasMemoire: true },
 ];
 
+// ── Écran : Assistant IA désactivé (interrupteur OFF) ──────────
+function IADesactivee() {
+  return (
+    <div style={{ background: 'var(--bg-card)', borderRadius: 12, border: '1px solid var(--border)', padding: '28px 24px', maxWidth: 620 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+        <Brain size={20} color={DS.brand.secondary} />
+        <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>Assistant IA désactivé</h3>
+      </div>
+      <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+        L'Assistant IA est <strong>désactivé par défaut</strong> pour protéger la confidentialité de tes données.
+        Tant qu'il est désactivé, <strong>aucune donnée de chantier ne quitte l'application</strong>.
+      </p>
+      <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+        Pour l'activer : <strong>Paramètres → Confidentialité → Assistant IA</strong>. Tu verras alors précisément
+        quelles données seraient envoyées à un service externe, et il te sera demandé de confirmer.
+      </p>
+    </div>
+  );
+}
+
+// ── Écran : consentement avant le premier envoi (IA activée, pas encore confirmée) ──
+function IAConsentement({ onAccept }) {
+  return (
+    <div style={{ background: 'var(--bg-card)', borderRadius: 12, border: `2px solid ${DS.brand.secondary}55`, padding: '28px 24px', maxWidth: 640 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+        <AlertCircle size={20} color={DS.brand.secondary} />
+        <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>Avant d'utiliser l'Assistant IA</h3>
+      </div>
+      <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+        Les analyses IA envoient certaines données de tes chantiers à un <strong>service externe (API Anthropic)</strong>
+        pour générer les réponses. Selon l'analyse demandée, cela peut inclure :
+      </p>
+      <ul style={{ fontSize: 13, color: 'var(--text-main)', lineHeight: 1.8, margin: '10px 0 16px', paddingLeft: 20 }}>
+        <li><strong>Noms de chantier</strong> (qui peuvent contenir un nom de client)</li>
+        <li><strong>Montants : CA, coûts réels, marges, EAC/RAD</strong></li>
+        <li>Le texte que tu saisis dans le chat et, le cas échéant, le contenu d'un PDF importé</li>
+      </ul>
+      <p style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.6, marginBottom: 18 }}>
+        Aucune adresse, aucun téléphone ni email client n'est transmis. Tu peux désactiver l'Assistant IA
+        à tout moment dans Paramètres → Confidentialité.
+      </p>
+      <button onClick={onAccept}
+        style={{ ...DS.btnPrimary, display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+        <Sparkles size={14} /> J'ai compris — activer les analyses
+      </button>
+    </div>
+  );
+}
+
 export default function ClaudeIAPanel() {
   const [feature, setFeature] = useState('anticiper');
+  const { parametres, setParametres } = useApp();
+  const iaActivee = parametres?.parametres?.iaActivee === true;
+  const iaConsentement = parametres?.parametres?.iaConsentement === true;
   const { memoire, setMemoire, sauvegarder, autoSave } = useMemoire();
   const nb = compteurInsights(memoire);
   const active = FEATURES.find(f => f.id === feature);
+
+  // Interrupteur maître OFF → panneau inactif, rien ne part.
+  if (!iaActivee) return <IADesactivee />;
+  // Activé mais pas encore confirmé → écran de consentement (avant tout premier envoi).
+  if (!iaConsentement) {
+    return (
+      <IAConsentement
+        onAccept={() => setParametres({ ...parametres, parametres: { ...parametres.parametres, iaConsentement: true } })}
+      />
+    );
+  }
 
   const renderFeature = () => {
     const props = { memoire, onSauvegarder: sauvegarder, autoSave };

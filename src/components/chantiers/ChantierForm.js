@@ -101,7 +101,7 @@ function ChantierForm({ form, setForm, erreurs, setErreurs, modeCompleter, onSau
       {form.dateDebut && form.nombreJours && (
         <div style={{ background: 'rgba(13,61,110,0.07)', border: '1px solid rgba(13,61,110,0.18)', padding: '14px 18px', borderRadius: '12px', marginBottom: '15px' }}>
           <div style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px', color: 'var(--text-muted)', marginBottom: '4px' }}>Date de fin prévue</div>
-          <div style={{ fontWeight: 700, color: C.primaire, fontSize: '15px' }}>{calculerDateFinOuvrables(form.dateDebut, form.nombreJours, form.inclusSamedi)}</div>
+          <div style={{ fontWeight: 700, color: C.primaire, fontSize: '15px' }}>{calculerDateFinOuvrables(form.dateDebut, form.nombreJours, form.inclusSamedi, form.canton ?? 'GE')}</div>
         </div>
       )}
 

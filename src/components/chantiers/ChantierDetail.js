@@ -489,7 +489,7 @@ function ChantierDetail({ chantier, detailOnglet, setDetailOnglet, modeCompleter
             ['Adresse', `${c.adresse || ''}${c.ville ? ', ' + c.ville : ''}${c.canton ? ' (' + c.canton + ')' : ''}`],
             ['Dir. travaux', directeurTravaux ? `${directeurTravaux.nom} — ${directeurTravaux.poste || ''}` : (c.conducteur || '—')],
             ['Début', c.dateDebut],
-            ['Fin prévue', c.dateDebut && c.nombreJours ? calculerDateFinOuvrables(c.dateDebut, c.nombreJours, c.inclusSamedi) : '—'],
+            ['Fin prévue', c.dateDebut && c.nombreJours ? calculerDateFinOuvrables(c.dateDebut, c.nombreJours, c.inclusSamedi, c.canton ?? 'GE') : '—'],
             ['Jours prévus', c.nombreJours ? `${c.nombreJours} jours` : '—'],
             ['Surface', c.surface ? `${c.surface} m²` : '—'],
             ['Travaux', c.typesTravaux?.join(', ') || '—'],

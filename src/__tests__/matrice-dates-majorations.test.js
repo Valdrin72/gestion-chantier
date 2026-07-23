@@ -213,12 +213,15 @@ describe('calculerDateFinOuvrables', () => {
     expect(calculerDateFinOuvrables('pas-une-date', 5)).toBeNull();
   });
 
-  it.fails('CASSE: 29 fév non-bissextile silencieusement roulé au 1er mars | attendu null | gravité MOYENNE', () => {
+  it('FIX #6 : 29 fév non-bissextile rejeté (null), pas de date fantaisiste roulée au 1er mars', () => {
     // new Date('2025-02-29') ne renvoie PAS Invalid Date sous Node : il roule au
-    // 2025-03-01. La garde isNaN(getTime()) ne le voit pas → un délai de chantier
-    // saisi sur une date impossible produit une date de fin fantaisiste au lieu
-    // d'être rejeté. Ici on obtient '2025-03-07' au lieu de null.
-    expect(calculerDateFinOuvrables('2025-02-29', 5)).toBeNull();
+    // 2025-03-01. _parseDateStricte compare les composants ISO d'entrée à la date
+    // obtenue → une date impossible est rejetée explicitement (null), au lieu de
+    // produire une échéance de chantier fantaisiste.
+    expect(calculerDateFinOuvrables('2025-02-29', 5)).toBeNull();       // MORDANT : pas '2025-03-07'
+    expect(calculerDateFinOuvrables('2024-02-29', 5)).not.toBeNull();   // 2024 bissextile → date valide
+    expect(calculerDateFinOuvrables('2025-13-01', 5)).toBeNull();       // mois impossible
+    expect(calculerDateFinOuvrables('2025-04-31', 5)).toBeNull();       // 31 avril n'existe pas
   });
 
   it('nombreJours 0 ou négatif → null', () => {
@@ -226,12 +229,24 @@ describe('calculerDateFinOuvrables', () => {
     expect(calculerDateFinOuvrables('2025-06-02', -3)).toBeNull();
   });
 
-  it('passage d\'année : 5 jours ouvrés depuis lundi 29 déc 2025', () => {
-    // Le calcul exclut sam/dim mais IGNORE les fériés (1er janvier compté comme
-    // jour ouvré). Comportement documenté : "ouvrables" = jours de semaine.
-    // CASSE potentielle (gravité MOYENNE) : un planning à cheval sur le Nouvel An
-    // sous-estime la date de fin réelle car il ne saute pas les fériés.
-    expect(calculerDateFinOuvrables('2025-12-29', 5)).toBe('2026-01-05');
+  it('FIX #7 : planning à cheval sur le Nouvel An → le 1er janvier n\'est PAS ouvré, fin repoussée d\'un jour (MORDANT)', () => {
+    // Départ mercredi 31 déc 2025, 5 jours ouvrés, canton GE.
+    // Sans fériés (ancien bug) : Jan1(1) Jan2(2) Jan5(3) Jan6(4) Jan7(5) → '2026-01-07'.
+    // Avec fériés : Jan1 est férié (les deux cantons) → sauté → un jour de plus.
+    // Jan2(1) Jan5(2) Jan6(3) Jan7(4) Jan8(5) → '2026-01-08'.
+    expect(calculerDateFinOuvrables('2025-12-31', 5, false, 'GE')).toBe('2026-01-08');
+    expect(calculerDateFinOuvrables('2025-12-31', 5, false, 'GE')).not.toBe('2026-01-07'); // MORDANT
+  });
+
+  it('FIX #7 canton : Jeûne genevois (11 sept 2025) exclu à GE, compté à VD → date de fin différente (MORDANT)', () => {
+    // Départ mardi 9 sept 2025, 2 jours ouvrés. Jeudi 11 = Jeûne genevois (férié GE, PAS VD).
+    // GE : Sep10(1), Sep11 sauté (férié), Sep12(2) → '2025-09-12'.
+    // VD : Sep10(1), Sep11(2) compté → '2025-09-11'.
+    const ge = calculerDateFinOuvrables('2025-09-09', 2, false, 'GE');
+    const vd = calculerDateFinOuvrables('2025-09-09', 2, false, 'VD');
+    expect(ge).toBe('2025-09-12');
+    expect(vd).toBe('2025-09-11');
+    expect(ge).not.toBe(vd); // MORDANT : le canton change le résultat
   });
 
   it('samedi inclus décale la date de fin', () => {

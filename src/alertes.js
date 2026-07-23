@@ -36,7 +36,7 @@ export function calculerAlertes({ chantiers = [], devis = [], factures = [], pai
   if (['cyna', 'cynatech'].includes(profilId)) {
     chantiers.forEach(c => {
       if (c.statut?.trim().toLowerCase() === 'en cours') {
-        const dateFinStr = calculerDateFinOuvrables(c.dateDebut, c.nombreJours, c.inclusSamedi);
+        const dateFinStr = calculerDateFinOuvrables(c.dateDebut, c.nombreJours, c.inclusSamedi, c.canton ?? 'GE');
         const dateFin = dateFinStr && dateFinStr !== '-' ? new Date(dateFinStr) : null;
         if (dateFin && !isNaN(dateFin.getTime()) && dateFin < now) {
           const joursRetard = Math.floor((now - dateFin) / 86400000);

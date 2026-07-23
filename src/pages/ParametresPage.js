@@ -194,7 +194,7 @@ function Parametres({ parametres, setParametres, clients = [], setClients = () =
   const { confirmer, afficherNotif } = useApp();
   const [memoireVidee, setMemoireVidee] = useState(false);
 
-  const iaActivee = parametres.parametres?.iaActivee === true;
+  const iaActivee = parametres.parametres?.iaActivee !== false; // activé par défaut
   const toggleIA = (valeur) => {
     // Activer/désactiver l'Assistant IA. Désactiver ré-arme aussi le consentement
     // (une prochaine activation redemandera confirmation avant tout envoi).
@@ -677,11 +677,12 @@ function Parametres({ parametres, setParametres, clients = [], setClients = () =
               <input type="checkbox" checked={iaActivee} onChange={e => toggleIA(e.target.checked)}
                 style={{ width: 20, height: 20, marginTop: 2, flexShrink: 0, cursor: 'pointer' }} />
               <span>
-                <span style={{ fontWeight: 700, fontSize: 14 }}>Assistant IA (envoie des données de chantier à un service externe)</span>
+                <span style={{ fontWeight: 700, fontSize: 14 }}>Assistant IA (données anonymisées avant envoi)</span>
                 <span style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginTop: 4, lineHeight: 1.5 }}>
-                  <strong>Désactivé par défaut.</strong> Tant qu'il est désactivé, aucune donnée ne quitte l'application.
-                  Une fois activé, les analyses envoient des <strong>noms de chantier, CA et marges</strong> à l'API Anthropic
-                  (une confirmation est demandée avant le premier envoi).
+                  <strong>Activé.</strong> Avant chaque envoi, les <strong>noms de chantier, clients, employés, adresses et villes
+                  sont remplacés par des étiquettes neutres</strong> ; seuls des montants et indicateurs sans nom sont transmis à
+                  l'API Anthropic, et les vrais noms sont restaurés dans la réponse. Décoche pour couper complètement l'Assistant IA
+                  (plus aucun appel réseau).
                 </span>
               </span>
             </label>

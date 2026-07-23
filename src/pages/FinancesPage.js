@@ -6,7 +6,7 @@ import { DollarSign, FileText, Clock, AlertTriangle, CreditCard, TrendingUp, Cal
 import Factures from '../Factures';
 import Paiements from '../Paiements';
 import RelancesTab from '../RelancesTab';
-import { getIntervallesPeriode, getPeriodeLabel, facturesInPeriode, calculerCA, calculerCAForfait, calculerStatutFacture, calculerEtatChantier } from '../donnees';
+import { getIntervallesPeriode, getPeriodeLabel, facturesInPeriode, calculerCA, calculerCAForfait, calculerStatutFacture, calculerEtatChantier, tauxTVAParam } from '../donnees';
 import { useApp } from '../context/AppContext';
 import { prochainRappel } from '../relances';
 
@@ -488,9 +488,10 @@ export default function Finances({
   }, [contexte?.preRemplirExtra]);
 
   const onEmettreExtra = useCallback((extra) => {
+    const tvaDefaut = tauxTVAParam(parametres);
     const lignes = extra.mode === 'forfait'
-      ? [{ description: extra.description, quantite: 1, prixUnitaire: parseFloat(extra.montantForfait) || 0, tva: 8.1 }]
-      : [{ description: extra.description, quantite: parseFloat(extra.heures) || 0, prixUnitaire: parseFloat(extra.tarifHeure) || 0, tva: 8.1 }];
+      ? [{ description: extra.description, quantite: 1, prixUnitaire: parseFloat(extra.montantForfait) || 0, tva: tvaDefaut }]
+      : [{ description: extra.description, quantite: parseFloat(extra.heures) || 0, prixUnitaire: parseFloat(extra.tarifHeure) || 0, tva: tvaDefaut }];
     setPreRemplirFacture({
       chantierId: String(extra.chantierId),
       devisId: extra.devisId || '',
@@ -501,7 +502,7 @@ export default function Finances({
       lignes,
     });
     setOnglet('factures');
-  }, []);
+  }, [parametres]);
 
   const onEmettreFacture = useCallback((chantierData) => {
     const chantierObj = chantiers.find(ch => String(ch.id) === String(chantierData.id));
@@ -518,11 +519,11 @@ export default function Finances({
         description: `Situation n°${situationNum} — avancement ${Math.round(chantierData.avancement)}%`,
         quantite: 1,
         prixUnitaire: Math.round(chantierData.potentiel * 100) / 100,
-        tva: 8.1,
+        tva: tauxTVAParam(parametres),
       }],
     });
     setOnglet('factures');
-  }, [chantiers, factures]);
+  }, [chantiers, factures, parametres]);
 
   // ── Exclure les factures orphelines (chantier, devis ou client supprimé, ou sans ancrage) ──
   const facturesOrphelines = useMemo(() =>

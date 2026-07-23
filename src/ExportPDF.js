@@ -1,6 +1,6 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { calculerDateFinOuvrables, calculerCoutsChantier, calculerCA, heuresEmploye } from './donnees';
+import { calculerDateFinOuvrables, calculerCoutsChantier, calculerCA, heuresEmploye, tauxDocumentFige } from './donnees';
 
 // ===== COORDONNÉES CYNA =====
 const CYNA = {
@@ -483,10 +483,12 @@ export const exportDevis = async (devis, clients, parametres) => {
   doc.setTextColor(...BLEU);
   doc.text('RÉCAPITULATIF', recapX + 5, y + 8);
 
+  // Taux FIGÉ du devis : le document fait foi, jamais le paramètre courant.
+  const tauxDevis = tauxDocumentFige(devis, parametres);
   [
     [`Prix HT :`, `CHF ${prixPropose.toLocaleString()}`],
-    [`TVA ${parseFloat(devis.tva) || parseFloat(parametres.parametres?.tauxTVA) || 8.1}% :`, `CHF ${Math.round(prixPropose * ((parseFloat(devis.tva) || parseFloat(parametres.parametres?.tauxTVA) || 8.1) / 100)).toLocaleString()}`],
-    [`TOTAL TTC :`, `CHF ${Math.round(prixPropose * (1 + (parseFloat(devis.tva) || parseFloat(parametres.parametres?.tauxTVA) || 8.1) / 100)).toLocaleString()}`],
+    [`TVA ${tauxDevis}% :`, `CHF ${Math.round(prixPropose * (tauxDevis / 100)).toLocaleString()}`],
+    [`TOTAL TTC :`, `CHF ${Math.round(prixPropose * (1 + tauxDevis / 100)).toLocaleString()}`],
   ].forEach(([label, val], i) => {
     doc.setFont('helvetica', i === 2 ? 'bold' : 'normal');
     doc.setFontSize(i === 2 ? 12 : 10);
@@ -657,7 +659,7 @@ export const exportFacture = async (facture, client, chantier, devis, parametres
 
   // --- Protections calculs (règles CYNA SÀRL) ---
   const montantHT    = parseFloat(facture.montantHT) || 0;
-  const tva          = parseFloat(facture.tva) || 8.1;
+  const tva          = tauxDocumentFige(facture, parametres);   // taux FIGÉ du document, jamais le paramètre courant
   const montantTVA   = montantHT * (tva / 100);
   const montantTTC   = montantHT * (1 + tva / 100);   // recalculé, jamais depuis facture.montantTTC
   const montantPaye  = parseFloat(facture.montantPaye) || 0;

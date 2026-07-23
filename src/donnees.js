@@ -175,6 +175,34 @@ export const sommeHeuresRegie = (devis) =>
     ? devis.heuresRegie.reduce((s, r) => s + (parseFloat(r.heures) || 0) * (parseFloat(r.tarifHeure) || 0), 0)
     : 0;
 
+// ===== TVA — SOURCE UNIQUE DE VÉRITÉ =====
+// I3 : le taux légal CH change (7.7 → 8.1 en 2024, et rechangera). Un seul défaut,
+// un seul point de lecture du paramètre, et un taux FIGÉ au moment de l'émission.
+/** Taux légal CH standard par défaut (secours si le paramètre n'est pas renseigné). */
+export const TVA_DEFAUT = 8.1;
+
+/**
+ * Taux de TVA COURANT à appliquer à un NOUVEAU document (réglable dans Paramètres → Devis).
+ * À utiliser à l'ÉCRITURE d'une ligne de facture/devis — jamais un 8.1 en dur.
+ */
+export const tauxTVAParam = (parametres) =>
+  parseFloat(parametres?.parametres?.tauxTVA) || TVA_DEFAUT;
+
+/**
+ * Taux FIGÉ d'un document DÉJÀ ÉMIS (facture/devis). Le document fait foi, JAMAIS le
+ * paramètre courant : une facture émise à 7.7% reste à 7.7% même si le paramètre passe à 9%.
+ * Ordre : taux stocké sur le document → taux stocké sur ses lignes → paramètre courant (secours).
+ */
+export const tauxDocumentFige = (doc, parametres) => {
+  const t = parseFloat(doc?.tva);
+  if (!Number.isNaN(t) && t >= 0) return t;
+  const ligne = Array.isArray(doc?.lignes)
+    ? doc.lignes.find(l => !Number.isNaN(parseFloat(l?.tva)) && parseFloat(l?.tva) >= 0)
+    : null;
+  if (ligne) return parseFloat(ligne.tva);
+  return tauxTVAParam(parametres);
+};
+
 /** Retourne true si le chantier est opérationnellement actif ("En cours"). Les archivés sont exclus du monitoring actif. */
 export const isChantierActif = (c) => c?.archive !== true && c?.statut?.trim().toLowerCase() === 'en cours';
 
@@ -920,7 +948,7 @@ export const calculerStatutFacture = (facture) => {
   return facture.statut || 'envoyee';
 };
 
-export const creerFactureDepuisDevis = (devis, chantier, factures, tva = 8.1) => {
+export const creerFactureDepuisDevis = (devis, chantier, factures, tva = TVA_DEFAUT) => {
   // Base facturée : soit les lignes détaillées du devis, soit un poste unique au montantHT.
   let lignes;
   if (Array.isArray(devis.lignes) && devis.lignes.length > 0) {

@@ -11,7 +11,7 @@ import { FileDown, Download } from 'lucide-react';
 import { DS } from './ds';
 import { useApp } from './context/AppContext';
 import { exportCSV } from './utils/exportCSV';
-import { fmtN, getIntervallesPeriode, facturesInPeriode, genererNumeroFacture, calculerStatutFacture, calculerCAForfait } from './donnees';
+import { fmtN, getIntervallesPeriode, facturesInPeriode, genererNumeroFacture, calculerStatutFacture, calculerCAForfait, tauxTVAParam, tauxDocumentFige } from './donnees';
 import { prochainRappel, niveauInfo, genererTexteRappel, marquerRappelEnvoye } from './relances';
 import { exportFicheChantier, exportFacture } from './ExportPDF';
 
@@ -125,6 +125,8 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
   const [filtreType, setFiltreType] = useState('');
   const [recherche, setRecherche] = useState('');
   const [form, setForm] = useState(null);
+  // I3 — taux TVA courant réglable dans Paramètres, appliqué à toute NOUVELLE ligne.
+  const tvaDefaut = tauxTVAParam(parametres);
   const [paiementModal, setPaiementModal] = useState(null); // facture sur laquelle on enregistre
   const [paiementForm, setPaiementForm] = useState({ montant: '', date: new Date().toISOString().slice(0, 10), note: '' });
   const [rappelModal, setRappelModal] = useState(null); // { facture, niveau, contenu }
@@ -137,7 +139,7 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
     if (!preRemplir) return;
     const dateEmissionDefaut = new Date().toISOString().slice(0, 10);
     const dateEcheanceDefaut = new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10);
-    const lignes = preRemplir.lignes || [{ description: '', quantite: 1, prixUnitaire: 0, tva: 8.1 }];
+    const lignes = preRemplir.lignes || [{ description: '', quantite: 1, prixUnitaire: 0, tva: tvaDefaut }];
     const montantHT  = lignes.reduce((s, l) => s + (l.quantite || 0) * (l.prixUnitaire || 0), 0);
     const montantTVA = lignes.reduce((s, l) => s + (l.quantite || 0) * (l.prixUnitaire || 0) * (l.tva || 0) / 100, 0);
     setForm({
@@ -278,7 +280,7 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
         dateEmission: dateEmissionDefaut,
         dateEcheance: dateEcheanceDefaut,
         objet: '',
-        lignes: [{ description: '', quantite: 1, prixUnitaire: 0, tva: 8.1 }],
+        lignes: [{ description: '', quantite: 1, prixUnitaire: 0, tva: tvaDefaut }],
         montantHT: 0,
         montantTVA: 0,
         montantTTC: 0,
@@ -306,7 +308,7 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
   };
 
   const ajouterLigne = () => {
-    const lignes = [...form.lignes, { _uid: Date.now(), description: '', quantite: 1, prixUnitaire: 0, tva: 8.1 }];
+    const lignes = [...form.lignes, { _uid: Date.now(), description: '', quantite: 1, prixUnitaire: 0, tva: tvaDefaut }];
     const totaux = calculerTotaux(lignes);
     setForm(f => ({ ...f, lignes, ...totaux }));
   };
@@ -477,7 +479,7 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
         f.dateEmission || '',
         f.dateEcheance || '',
         Math.round(parseFloat(f.montantHT) || 0),
-        parseFloat(f.tva) || 8.1,
+        tauxDocumentFige(f, parametres),
         Math.round(parseFloat(f.montantTTC) || 0),
         Math.round(parseFloat(f.montantPaye) || 0),
       ];
@@ -1230,7 +1232,7 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
                 onClick={() => {
                   const montantHT = Math.round((caRef * pct / 100) * 100) / 100;
                   const refLabel = chantierObj?.nom || devisObj?.numero || '';
-                  const lignes = [{ description: `Acompte ${pct}% — ${refLabel}`.trim(), quantite: 1, prixUnitaire: montantHT, tva: 8.1 }];
+                  const lignes = [{ description: `Acompte ${pct}% — ${refLabel}`.trim(), quantite: 1, prixUnitaire: montantHT, tva: tvaDefaut }];
                   const totaux = calculerTotaux(lignes);
                   setForm(f => ({ ...f, lignes, ...totaux }));
                 }}

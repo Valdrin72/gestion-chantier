@@ -297,7 +297,10 @@ function NotificationBell({ naviguer }) {
                     key={a.id}
                     onClick={() => {
                       if (a.page) {
-                        const ctx = (a.page === 'chantiers' && a.entityId) ? { chantierActif: a.entityId } : undefined;
+                        // onglet cible (ex. Finances → Paiements) ; sinon chantier ciblé
+                        const ctx = a.onglet ? { onglet: a.onglet }
+                          : (a.page === 'chantiers' && a.entityId) ? { chantierActif: a.entityId }
+                          : undefined;
                         naviguer(a.page, ctx);
                       }
                       setOuvert(false);

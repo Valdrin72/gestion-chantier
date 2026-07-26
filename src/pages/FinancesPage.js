@@ -479,6 +479,13 @@ export default function Finances({
   const [onglet, setOnglet] = useState('tresorerie');
   const [preRemplirFacture, setPreRemplirFacture] = useState(null);
 
+  // Ouverture directe d'un onglet via naviguer('finances', { onglet: 'paiements' })
+  // (ex. clic sur une alerte de paiement). Ids valides = les 4 onglets de Finances.
+  React.useEffect(() => {
+    const cible = contexte?.onglet;
+    if (cible && ['tresorerie', 'factures', 'relances', 'paiements'].includes(cible)) setOnglet(cible);
+  }, [contexte?.onglet]);
+
   // Déclenchement depuis ChantierDetail via naviguer('finances', { preRemplirExtra: {...} })
   React.useEffect(() => {
     if (!contexte?.preRemplirExtra) return;

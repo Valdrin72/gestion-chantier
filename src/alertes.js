@@ -125,7 +125,8 @@ export function calculerAlertes({ chantiers = [], devis = [], factures = [], pai
         type: 'factures_brouillon',
         niveau: 'info',
         message: `${brouillons.length} facture${brouillons.length > 1 ? 's' : ''} en brouillon non émise${brouillons.length > 1 ? 's' : ''}`,
-        page: 'factures',
+        page: 'finances',        // écran réel (l'onglet Factures vit dans Finances)
+        onglet: 'factures',
         entityId: null,
       });
     }
@@ -188,7 +189,8 @@ export function calculerAlertes({ chantiers = [], devis = [], factures = [], pai
               type: 'paiement_en_attente',
               niveau: joursAttente > 60 ? 'critique' : 'warning',
               message: `Paiement ${p.type || ''} de ${(p.montant || 0).toLocaleString('fr-CH')} CHF en attente depuis ${joursAttente} jours`,
-              page: 'paiements',
+              page: 'finances',        // écran réel (l'onglet Paiements vit dans Finances)
+              onglet: 'paiements',
               entityId: p.chantierId || null,
             });
           }
@@ -210,7 +212,8 @@ export function calculerAlertes({ chantiers = [], devis = [], factures = [], pai
         type: 'paiements_sans_facture',
         niveau: 'info',
         message: `${countSansFacture} paiement${countSansFacture > 1 ? 's' : ''} non rattaché${countSansFacture > 1 ? 's' : ''} à une facture`,
-        page: 'paiements',
+        page: 'finances',        // écran réel (l'onglet Paiements vit dans Finances)
+        onglet: 'paiements',
         entityId: null,
       });
     }

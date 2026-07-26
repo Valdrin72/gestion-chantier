@@ -75,7 +75,7 @@ describe('ModalSaisieHeures', () => {
 
   it('bouton Valider désactivé si 0 heures saisies', () => {
     renderModal();
-    expect(screen.getByRole('button', { name: /valider/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Enregistrer les heures' })).toBeDisabled();
   });
 
   it('quick fill 8h → compteur affiche "1 employé · 8h"', () => {
@@ -100,7 +100,7 @@ describe('ModalSaisieHeures', () => {
     const btns8h = screen.getAllByRole('button', { name: '8h' });
     fireEvent.click(btns8h[0]); // Marie 8h
 
-    const validateBtn = screen.getByRole('button', { name: /valider/i });
+    const validateBtn = screen.getByRole('button', { name: 'Enregistrer les heures' });
     expect(validateBtn).not.toBeDisabled();
     fireEvent.click(validateBtn);
 
@@ -121,7 +121,7 @@ describe('ModalSaisieHeures', () => {
     const btns8h = screen.getAllByRole('button', { name: '8h' });
     fireEvent.click(btns8h[0]); // Marie 8h
     fireEvent.click(btns8h[1]); // Paul 8h
-    fireEvent.click(screen.getByRole('button', { name: /valider/i }));
+    fireEvent.click(screen.getByRole('button', { name: 'Enregistrer les heures' }));
     expect(mockUpsertPointage).toHaveBeenCalledTimes(2);
   });
 
@@ -131,7 +131,7 @@ describe('ModalSaisieHeures', () => {
     fireEvent.click(btns8h[0]);
     expect(screen.getByText(/1 employé/i)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /effacer/i }));
-    expect(screen.getByRole('button', { name: /valider/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Enregistrer les heures' })).toBeDisabled();
   });
 
   it('clic sur la superposition ferme la modale via onFermer', () => {

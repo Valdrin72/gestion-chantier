@@ -70,11 +70,10 @@ describe('SaisieRapideDashboard', () => {
     expect(screen.getByRole('option', { name: 'Chantier Alpha' })).toBeInTheDocument();
   });
 
-  it('sélection d\'un chantier → grille employés + titre "Heures par employé"', () => {
+  it('sélection d\'un chantier → grille employés affichée', () => {
     renderComp();
     fireEvent.click(screen.getByText('Saisie rapide d\'heures'));
     fireEvent.change(screen.getByRole('combobox'), { target: { value: 'CH1' } });
-    expect(screen.getByText('Heures par employé')).toBeInTheDocument();
     expect(screen.getByText('Jean Dupont')).toBeInTheDocument();
   });
 
@@ -95,8 +94,7 @@ describe('SaisieRapideDashboard', () => {
   });
 
   it('clic Enregistrer → upsertPointage appelé avec les bonnes repartitions', () => {
-    const afficherNotif = vi.fn();
-    renderComp({ afficherNotif });
+    const { ctx } = renderComp();
     fireEvent.click(screen.getByText('Saisie rapide d\'heures'));
     fireEvent.change(screen.getByRole('combobox'), { target: { value: 'CH1' } });
     fireEvent.change(screen.getByRole('spinbutton'), { target: { value: '8' } });
@@ -113,7 +111,8 @@ describe('SaisieRapideDashboard', () => {
     ]);
     expect(pointage.deplacement).toBeNull();
     expect(canton).toBe('GE');
-    expect(afficherNotif).toHaveBeenCalledWith('Heures enregistrées — Chantier Alpha');
+    // afficherNotif vient désormais du contexte (composant unifié), pas d'un prop.
+    expect(ctx.afficherNotif).toHaveBeenCalledWith('Heures enregistrées — Chantier Alpha');
   });
 
   it('après enregistrement : champ heures remis à vide', () => {

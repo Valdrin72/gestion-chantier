@@ -8,7 +8,7 @@ import {
   fmtN, calculerDateFinOuvrables, estRetardJustifie,
   calculerCoutsChantier, statutRentabilite, C, getIntervallesPeriode,
   facturesInPeriode, calculerRentabiliteReelle, calculerEtatChantier,
-  calculerCA, isChantierActif, isChantierComptable, SEUILS,
+  calculerCA, isChantierActif, isChantierComptable, SEUILS, margeMoyennePonderee,
 } from '../donnees';
 import { DS } from '../ds';
 import { STATUTS_CLOS } from '../constants/statuts';
@@ -81,9 +81,8 @@ function Dashboard() {
       .filter(c => c.archive !== true)
       .map(c => coutsMap.get(c.id))
       .filter(r => r && r.montantTotal > 0 && r.totalCoutsReel > 0 && !r.donneesIncompletes);
-    const rentaMoyenne = chantiersRenta.length > 0
-      ? chantiersRenta.reduce((sum, r) => sum + (r.margeActuellePct ?? 0), 0) / chantiersRenta.length
-      : null;
+    // Marge moyenne PONDÉRÉE par le CA (source unique — même chiffre bureau ET mobile).
+    const rentaMoyenne = margeMoyennePonderee(chantiersRenta);
     const nbChantiersRenta = chantiersRenta.length;
 
     // 4. HEURES ENGAGÉES — depuis journal, filtrées par periodeGlobale
@@ -303,7 +302,7 @@ function Dashboard() {
           id,
           message: a.message,
           page: a.page || 'chantiers',
-          ctx: a.entityId ? { chantierActif: a.entityId } : {},
+          ctx: a.onglet ? { onglet: a.onglet } : a.entityId ? { chantierActif: a.entityId } : {},
           critique: a.niveau === 'critique',
         });
       });
@@ -858,10 +857,10 @@ function Dashboard() {
             desc: 'Σ montantHT des devis liés aux chantiers actifs',
             ...DS.kpi.blue },
           { label: 'Marge moyenne', Icon: TrendingUp, page: 'rapport', ctx: { onglet: 'analyse' },
-            valeur: kpiReel.margeReellePct !== null ? `${kpiReel.margeReellePct}%` : '—',
-            sous: kpiReel.nbActives > 0 ? `${kpiReel.nbActives} chantier${kpiReel.nbActives > 1 ? 's' : ''} analysé${kpiReel.nbActives > 1 ? 's' : ''}` : 'Aucun coût saisi',
+            valeur: kpi.rentaMoyenne !== null ? `${Math.round(kpi.rentaMoyenne)}%` : '—',
+            sous: kpi.nbChantiersRenta > 0 ? `${kpi.nbChantiersRenta} chantier${kpi.nbChantiersRenta > 1 ? 's' : ''} analysé${kpi.nbChantiersRenta > 1 ? 's' : ''}` : 'Aucun coût saisi',
             desc: 'Σ marge réelle / Σ CA (pondérée, hors chantiers sans saisie)',
-            ...(kpiReel.margeReellePct === null || kpiReel.margeReellePct >= 15 ? DS.kpi.green : kpiReel.margeReellePct >= 0 ? DS.kpi.amber : DS.kpi.red) },
+            ...(kpi.rentaMoyenne === null || kpi.rentaMoyenne >= 15 ? DS.kpi.green : kpi.rentaMoyenne >= 0 ? DS.kpi.amber : DS.kpi.red) },
           { label: 'Chantiers actifs', Icon: HardHat, page: 'chantiers',
             valeur: `${kpi.nbChantiersActifs}`,
             sous: kpiReel.nbDepassement > 0 ? `${kpiReel.nbDepassement} en retard` : 'Tous dans les temps',

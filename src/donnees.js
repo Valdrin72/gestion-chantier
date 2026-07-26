@@ -25,6 +25,23 @@ export const couleurMarge = (pct) => {
   return '#ef4444';
 };
 
+/**
+ * Marge moyenne d'un portefeuille de chantiers — PONDÉRÉE par le CA (source unique).
+ * Un chantier à 500k CHF pèse plus qu'un à 5k : Σ marge / Σ CA (et non la moyenne
+ * simple des %). À utiliser PARTOUT (bureau = mobile) pour éviter deux chiffres divergents.
+ *
+ * @param {Array} coutsList - résultats de calculerCoutsChantier (champs montantTotal, margeReel, …)
+ * @returns {number|null} pourcentage pondéré, ou null si aucun CA exploitable
+ */
+export const margeMoyennePonderee = (coutsList = []) => {
+  const valides = (coutsList || []).filter(r =>
+    r && (parseFloat(r.montantTotal) || 0) > 0 && (parseFloat(r.totalCoutsReel) || 0) > 0 && !r.donneesIncompletes
+  );
+  const ca    = valides.reduce((s, r) => s + (parseFloat(r.montantTotal) || 0), 0);
+  const marge = valides.reduce((s, r) => s + (parseFloat(r.margeReel)     || 0), 0);
+  return ca > 0 ? (marge / ca) * 100 : null;
+};
+
 // ===== FORMATEUR DE NOMBRE — APOSTROPHE SUISSE =====
 // Usage : fmtN(12000) → "12'000"  |  fmtN(1500.5, 2) → "1'500.50"
 export const fmtN = (n, dec = 0) => {

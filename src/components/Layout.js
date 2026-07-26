@@ -4,7 +4,30 @@ import { useApp } from '../context/AppContext';
 import { calculerAlertes } from '../alertes';
 import GlobalSearch from './GlobalSearch';
 
-export function Sidebar({ sidebarOuvert, setSidebarOuvert, navAutorisees, page, naviguer, darkMode, toggleDarkMode, profil, deconnecter }) {
+// Petit badge rouge réutilisable (compteur d'alertes / factures en retard)
+function BadgeCompteur({ valeur }) {
+  if (!valeur) return null;
+  return (
+    <span style={{ marginLeft: 'auto', background: '#ef4444', color: '#fff', borderRadius: 20, padding: '1px 7px', fontSize: 10, fontWeight: 700, lineHeight: 1.6, flexShrink: 0 }}>
+      {valeur}
+    </span>
+  );
+}
+
+export function Sidebar({ sidebarOuvert, setSidebarOuvert, maisons = [], page, naviguer, darkMode, toggleDarkMode, profil, deconnecter }) {
+  // Une maison est « active » si sa page principale ou un de ses enfants est affiché.
+  const maisonActive = (m) => m.page === page || (m.enfants || []).some(e => e.id === page);
+  // Maisons dépliées : par défaut, celle qui contient la page courante.
+  const [ouverts, setOuverts] = useState({});
+  const estOuvert = (m) => ouverts[m.id] ?? maisonActive(m);
+  const toggle = (m) => setOuverts(o => ({ ...o, [m.id]: !estOuvert(m) }));
+
+  const allerA = (m) => {
+    naviguer(m.page);
+    if ((m.enfants || []).length > 0) setOuverts(o => ({ ...o, [m.id]: true })); // ouvrir en naviguant
+    setSidebarOuvert(false);
+  };
+
   return (
     <>
       {sidebarOuvert && <div className="sidebar-overlay" onClick={() => setSidebarOuvert(false)} />}
@@ -23,22 +46,46 @@ export function Sidebar({ sidebarOuvert, setSidebarOuvert, navAutorisees, page, 
           />
         </div>
         <nav className="sidebar-nav">
-          {navAutorisees.map(item => (
-            <button
-              key={item.id}
-              className={`sidebar-item${page === item.id ? ' active' : ''}`}
-              data-label={item.label}
-              onClick={() => { naviguer(item.id); setSidebarOuvert(false); }}
-            >
-              <item.Icon size={17} strokeWidth={page === item.id ? 2.2 : 1.8} />
-              <span>{item.label}</span>
-              {item.badge && (
-                <span style={{ marginLeft: 'auto', background: '#ef4444', color: '#fff', borderRadius: 20, padding: '1px 7px', fontSize: 10, fontWeight: 700, lineHeight: 1.6, flexShrink: 0 }}>
-                  {item.badge}
-                </span>
-              )}
-            </button>
-          ))}
+          {maisons.map(m => {
+            const enfants = m.enfants || [];
+            const ouvert = estOuvert(m);
+            return (
+              <div key={m.id}>
+                <button
+                  className={`sidebar-item${page === m.page ? ' active' : ''}`}
+                  data-label={m.label}
+                  onClick={() => allerA(m)}
+                >
+                  <m.Icon size={17} strokeWidth={maisonActive(m) ? 2.2 : 1.8} />
+                  <span>{m.label}</span>
+                  <BadgeCompteur valeur={m.badge} />
+                  {enfants.length > 0 && (
+                    <span
+                      role="button"
+                      aria-label={ouvert ? `Réduire ${m.label}` : `Développer ${m.label}`}
+                      onClick={(e) => { e.stopPropagation(); toggle(m); }}
+                      style={{ marginLeft: m.badge ? 6 : 'auto', display: 'flex', flexShrink: 0, cursor: 'pointer' }}
+                    >
+                      <ChevronRight size={14} style={{ transform: ouvert ? 'rotate(90deg)' : 'none', transition: 'transform 0.15s' }} />
+                    </span>
+                  )}
+                </button>
+                {enfants.length > 0 && ouvert && enfants.map(e => (
+                  <button
+                    key={e.id}
+                    className={`sidebar-item${page === e.id ? ' active' : ''}`}
+                    data-label={e.label}
+                    onClick={() => { naviguer(e.id); setSidebarOuvert(false); }}
+                    style={{ paddingLeft: 34 }}
+                  >
+                    {e.Icon && <e.Icon size={15} strokeWidth={page === e.id ? 2.2 : 1.8} />}
+                    <span>{e.label}</span>
+                    <BadgeCompteur valeur={e.badge} />
+                  </button>
+                ))}
+              </div>
+            );
+          })}
         </nav>
         <button className="sidebar-cta" onClick={() => { naviguer('devis', { ouvrirNouveau: true }); setSidebarOuvert(false); }}>
           <Plus size={16} strokeWidth={2.6} /> Nouveau devis
@@ -323,7 +370,7 @@ const PERIODES = [
 // Pages où le filtre période a du sens (données temporelles)
 const PAGES_AVEC_PERIODE = ['dashboard', 'finances', 'rapport', 'chantiers', 'devis', 'heures'];
 
-export function Topbar({ setSidebarOuvert, canGoBack, page, revenirArriere, navAutorisees, darkMode, toggleDarkMode, profil, naviguer }) {
+export function Topbar({ setSidebarOuvert, canGoBack, page, revenirArriere, darkMode, toggleDarkMode, profil, naviguer }) {
   const { periodeGlobale, setPeriodeGlobale } = useApp();
   const montrerPeriode = PAGES_AVEC_PERIODE.includes(page);
 
@@ -404,14 +451,17 @@ export function Topbar({ setSidebarOuvert, canGoBack, page, revenirArriere, navA
   );
 }
 
-export function MobileNav({ navMobileItems, page, naviguer, mobileMenuOuvert, setMobileMenuOuvert, navAutorisees }) {
+export function MobileNav({ maisons = [], page, naviguer, mobileMenuOuvert, setMobileMenuOuvert }) {
+  const maisonActive = (m) => m.page === page || (m.enfants || []).some(e => e.id === page);
+  // Barre du bas : les 4 premières maisons + « Plus » (qui ouvre le tiroir complet).
+  const barre = maisons.slice(0, 4);
   return (
     <>
       <nav className="bottom-nav">
-        {navMobileItems.map(item => (
-          <button key={item.id} className={`bottom-nav-item${page === item.id ? ' active' : ''}`} onClick={() => naviguer(item.id)}>
-            <span className="bottom-nav-icon"><item.Icon size={22} strokeWidth={page === item.id ? 2.2 : 1.8} /></span>
-            <span className="bottom-nav-label">{item.labelCourt}</span>
+        {barre.map(m => (
+          <button key={m.id} className={`bottom-nav-item${maisonActive(m) ? ' active' : ''}`} onClick={() => naviguer(m.page)}>
+            <span className="bottom-nav-icon"><m.Icon size={22} strokeWidth={maisonActive(m) ? 2.2 : 1.8} /></span>
+            <span className="bottom-nav-label">{m.labelCourt}</span>
           </button>
         ))}
         <button className={`bottom-nav-item${mobileMenuOuvert ? ' active' : ''}`} onClick={() => setMobileMenuOuvert(v => !v)}>
@@ -430,12 +480,22 @@ export function MobileNav({ navMobileItems, page, naviguer, mobileMenuOuvert, se
               <button onClick={() => setMobileMenuOuvert(false)}><X size={16} /></button>
             </div>
             <div className="drawer-items">
-              {navAutorisees.map(item => (
-                <button key={item.id} className={`drawer-item${page === item.id ? ' active' : ''}`}
-                  onClick={() => { naviguer(item.id); setMobileMenuOuvert(false); }}>
-                  <span className="drawer-item-icon"><item.Icon size={26} strokeWidth={1.7} /></span>
-                  <span className="drawer-item-label">{item.labelCourt}</span>
-                </button>
+              {maisons.map(m => (
+                <React.Fragment key={m.id}>
+                  <button className={`drawer-item${page === m.page ? ' active' : ''}`}
+                    onClick={() => { naviguer(m.page); setMobileMenuOuvert(false); }}>
+                    <span className="drawer-item-icon"><m.Icon size={26} strokeWidth={1.7} /></span>
+                    <span className="drawer-item-label">{m.labelCourt}</span>
+                  </button>
+                  {(m.enfants || []).map(e => (
+                    <button key={e.id} className={`drawer-item${page === e.id ? ' active' : ''}`}
+                      style={{ paddingLeft: 28, opacity: 0.92 }}
+                      onClick={() => { naviguer(e.id); setMobileMenuOuvert(false); }}>
+                      <span className="drawer-item-icon">{e.Icon ? <e.Icon size={22} strokeWidth={1.7} /> : null}</span>
+                      <span className="drawer-item-label">{e.label}</span>
+                    </button>
+                  ))}
+                </React.Fragment>
               ))}
             </div>
           </div>

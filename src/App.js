@@ -1,10 +1,7 @@
 import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
-import {
-  LayoutDashboard, HardHat, FileText, Calendar,
-  ClipboardList, Settings, DollarSign, Clock, Bot,
-  Users, UserCog, ChevronRight, Sparkles, Calculator, Bell,
-} from 'lucide-react';
+import { HardHat, FileText, Users, ChevronRight, Sparkles } from 'lucide-react';
 import { Sidebar, Topbar, MobileNav } from './components/Layout';
+import { construireMaisons, filtrerMaisons } from './nav/maisons';
 import { migrerDevisId, donneesInitiales, migrerJournal } from './donnees';
 import { migrerJournalVersPointages } from './migration/migrerJournalVersPointages';
 import { completerPointagesDepuisJournal, aChantierLegacy } from './migration/completerPointagesDepuisJournal';
@@ -333,25 +330,14 @@ function AppInner({ profil, deconnecter, userId, isDemo = false }) {
       (statut === 'envoyee' && f.dateEcheance && new Date(f.dateEcheance) < new Date());
   }).length;
 
-  const navItems = [
-    { id: 'dashboard',  label: 'Dashboard',   Icon: LayoutDashboard, labelCourt: 'Accueil' },
-    { id: 'chantiers',  label: 'Chantiers',   Icon: HardHat,         labelCourt: 'Chantiers' },
-    { id: 'devis',      label: 'Devis',       Icon: FileText,        labelCourt: 'Devis' },
-    { id: 'finances',   label: 'Finances',    Icon: DollarSign,      labelCourt: 'Finances', badge: nbFacturesRetard || null },
-    { id: 'clients',    label: 'Clients',     Icon: Users,           labelCourt: 'Clients' },
-    { id: 'employes',   label: 'Employés',    Icon: UserCog,         labelCourt: 'Équipe' },
-    { id: 'heures',     label: 'Heures',      Icon: Clock,           labelCourt: 'Heures' },
-    { id: 'planning',   label: 'Planning',    Icon: Calendar,        labelCourt: 'Planning' },
-    { id: 'rapport',    label: 'Rapports',    Icon: ClipboardList,   labelCourt: 'Rapports' },
-    { id: 'agents',     label: 'Centre IA',   Icon: Bot,             labelCourt: 'Centre IA' },
-    { id: 'calculs',    label: 'Calculs',     Icon: Calculator,      labelCourt: 'Calculs' },
-    { id: 'alertes',    label: 'Alertes',     Icon: Bell,            labelCourt: 'Alertes', badge: urgentAlerteCount || null },
-    { id: 'parametres', label: 'Paramètres',  Icon: Settings,        labelCourt: 'Config' },
-  ];
-
+  // ── NAVIGATION — 5 « maisons » (regroupement du menu, écrans inchangés) ──
+  // Le routage par `page` (rendu ci-dessous) est TOTALEMENT inchangé : on ne fait
+  // que regrouper les entrées de menu. Config = source unique dans src/nav/maisons.js.
   const pagesAutorisees = profil?.pages || ['dashboard'];
-  const navAutorisees = navItems.filter(item => pagesAutorisees.includes(item.id));
-  const navMobileItems = navAutorisees.slice(0, 4);
+  const maisonsAutorisees = filtrerMaisons(
+    construireMaisons({ urgentAlerteCount, nbFacturesRetard }),
+    pagesAutorisees
+  );
 
   const appValue = useMemo(() => ({
     chantiers, setChantiers, clients, setClients, devis, setDevis,
@@ -371,14 +357,14 @@ function AppInner({ profil, deconnecter, userId, isDemo = false }) {
     <div data-theme={darkMode ? 'dark' : 'light'} className="app-layout">
       <Sidebar
         sidebarOuvert={sidebarOuvert} setSidebarOuvert={setSidebarOuvert}
-        navAutorisees={navAutorisees} page={page} naviguer={naviguer}
+        maisons={maisonsAutorisees} page={page} naviguer={naviguer}
         darkMode={darkMode} toggleDarkMode={toggleDarkMode}
         profil={profil} deconnecter={deconnecter}
       />
       <div className="main-area">
         <Topbar
           setSidebarOuvert={setSidebarOuvert} canGoBack={canGoBack} page={page}
-          revenirArriere={revenirArriere} navAutorisees={navAutorisees}
+          revenirArriere={revenirArriere}
           darkMode={darkMode} toggleDarkMode={toggleDarkMode} profil={profil}
           deconnecter={deconnecter} naviguer={naviguer}
         />
@@ -447,9 +433,8 @@ function AppInner({ profil, deconnecter, userId, isDemo = false }) {
           );
         })()}
         <MobileNav
-          navMobileItems={navMobileItems} page={page} naviguer={naviguer}
+          maisons={maisonsAutorisees} page={page} naviguer={naviguer}
           mobileMenuOuvert={mobileMenuOuvert} setMobileMenuOuvert={setMobileMenuOuvert}
-          navAutorisees={navAutorisees}
         />
       </div>
     </div>

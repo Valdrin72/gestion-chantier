@@ -1,138 +1,10 @@
 import React, { useState } from 'react';
-import { ChevronRight, Pencil, Archive } from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
 import { fmtN, C } from '../donnees';
 import { DS } from '../ds';
 import { useApp } from '../context/AppContext';
-import { clientEstReferencé } from '../utils/referenceGuard';
 import { pointagesApresRestauration, totalHeuresPointages } from '../utils/importGuard';
-import { archiver, restaurer, filtrerActifs, filtrerArchives } from '../utils/archiveHelpers';
-import ArchiveToggle from '../components/shared/ArchiveToggle';
-import ArchivedRow from '../components/shared/ArchivedRow';
-import { EditEmployeRow } from './EmployesPage';
 
-function EditClientRow({ c, clients, setClients, chantiers = [], devis = [], factures = [] }) {
-  const { confirmer, afficherNotif } = useApp();
-  const [ed, setEd] = useState({ ...c });
-  const [editing, setEditing] = useState(false);
-  const estReference = clientEstReferencé(c, { chantiers, devis, factures }) !== null;
-
-  // Client vierge → suppression dure. Référencé → archivage (cohérent avec ClientsPage).
-  const supprimer = async () => {
-    if (!await confirmer(`Supprimer ${c.nom} ?`, { labelOui: 'Supprimer' })) return;
-    setClients(clients.filter(cl => String(cl.id) !== String(c.id)));
-    if (afficherNotif) afficherNotif('Client supprimé');
-  };
-
-  const archiverClient = async () => {
-    if (!await confirmer(`Archiver ${c.nom} ?\n\nConservé (chantiers, devis, factures) mais rangé hors du carnet actif.`, { labelOui: 'Archiver' })) return;
-    setClients(clients.map(cl => String(cl.id) === String(c.id) ? archiver(cl) : cl));
-    if (afficherNotif) afficherNotif('Client archivé — visible via « Voir les archivés »');
-  };
-
-  if (!editing) return (
-    <tr key={c.id}>
-      <td style={DS.td}><strong>{c.nom}</strong></td>
-      <td style={DS.td}>{c.prenom || '—'}</td>
-      <td style={DS.td}>{c.entreprise || '—'}</td>
-      <td style={DS.td}>{c.telephone || '—'}</td>
-      <td style={DS.td}>{c.email || '—'}</td>
-      <td style={DS.td}>
-        <div style={{ display: 'flex', gap: 4 }}>
-          <button onClick={() => setEditing(true)} style={{ ...DS.btnGhost, padding: '4px 10px', fontSize: 12 }}><Pencil size={12} /> Modifier</button>
-          {estReference
-            ? <button onClick={archiverClient} style={{ ...DS.btnGhost, padding: '4px 8px', fontSize: 12 }} title="Archiver (historique conservé)"><Archive size={12} /> Archiver</button>
-            : <button onClick={supprimer} style={{ ...DS.btnDanger, padding: '4px 8px' }}>Suppr</button>}
-        </div>
-      </td>
-    </tr>
-  );
-  return (
-    <tr key={c.id} style={{ background: 'rgba(59,130,246,0.06)' }}>
-      <td style={DS.td}><input value={ed.nom || ''} onChange={ev => setEd({ ...ed, nom: ev.target.value })} style={{ ...DS.input, padding: '5px 8px' }} /></td>
-      <td style={DS.td}><input value={ed.prenom || ''} onChange={ev => setEd({ ...ed, prenom: ev.target.value })} style={{ ...DS.input, padding: '5px 8px' }} /></td>
-      <td style={DS.td}><input value={ed.entreprise || ''} onChange={ev => setEd({ ...ed, entreprise: ev.target.value })} style={{ ...DS.input, padding: '5px 8px' }} /></td>
-      <td style={DS.td}><input value={ed.telephone || ''} onChange={ev => setEd({ ...ed, telephone: ev.target.value })} style={{ ...DS.input, padding: '5px 8px' }} /></td>
-      <td style={DS.td}><input value={ed.email || ''} onChange={ev => setEd({ ...ed, email: ev.target.value })} style={{ ...DS.input, padding: '5px 8px' }} /></td>
-      <td style={DS.td}>
-        <div style={{ display: 'flex', gap: 4 }}>
-          <button onClick={() => { setClients(clients.map(cl => cl.id === c.id ? ed : cl)); setEditing(false); }} style={DS.btnSuccess}>OK</button>
-          <button onClick={() => setEditing(false)} style={DS.btnDanger}>×</button>
-        </div>
-      </td>
-    </tr>
-  );
-}
-
-// Carnet d'adresses clients (onglet Paramètres → Clients).
-// Liste active filtrée (archivés exclus) + toggle "Voir les archivés" + restauration.
-function CarnetClients({ clients, setClients, chantiers = [], devis = [], factures = [] }) {
-  const { afficherNotif } = useApp();
-  const [nouveauClient, setNouveauClient] = useState({ nom: '', prenom: '', entreprise: '', telephone: '', email: '' });
-  const [voirArchives, setVoirArchives] = useState(false);
-  const clientsActifs = filtrerActifs(clients);
-  const clientsArchives = filtrerArchives(clients);
-
-  const restaurerClient = (c) => {
-    setClients(clients.map(cl => String(cl.id) === String(c.id) ? restaurer(cl) : cl));
-    if (afficherNotif) afficherNotif('Client restauré dans la liste active');
-  };
-
-  return (
-    <div style={DS.card}>
-      <div className="ds-card-title" style={{ marginBottom: '20px' }}>Carnet d'adresses clients</div>
-      {clientsArchives.length > 0 && (
-        <div style={{ marginBottom: 16 }}>
-          <ArchiveToggle
-            voirArchives={voirArchives}
-            onToggle={() => setVoirArchives(v => !v)}
-            count={clientsArchives.length}
-            labelSingulier="client archivé"
-          />
-        </div>
-      )}
-      <table className="table-cards" style={{ width: '100%', marginBottom: '20px' }}>
-        <thead><tr>
-          {['Nom', 'Prénom', 'Entreprise', 'Téléphone', 'Email', 'Action'].map(h => <th key={h} style={DS.th}>{h}</th>)}
-        </tr></thead>
-        <tbody>
-          {clientsActifs.map(c => <EditClientRow key={c.id} c={c} clients={clients} setClients={setClients} chantiers={chantiers} devis={devis} factures={factures} />)}
-        </tbody>
-      </table>
-
-      {voirArchives && clientsArchives.length > 0 && (
-        <div style={{ border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden', marginBottom: 20 }}>
-          <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)', fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px', color: 'var(--text-muted)' }}>
-            Clients archivés ({clientsArchives.length})
-          </div>
-          {clientsArchives.map(c => (
-            <ArchivedRow
-              key={c.id}
-              label={`${c.prenom || ''} ${c.nom || ''}`.trim() || c.entreprise || '—'}
-              sublabel={[c.entreprise, c.email].filter(Boolean).join(' · ')}
-              dateArchivage={c.dateArchivage}
-              onRestaurer={() => restaurerClient(c)}
-            />
-          ))}
-        </div>
-      )}
-
-      <div style={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', color: 'var(--text-muted)', marginBottom: '12px', marginTop: '24px' }}>Ajouter un client</div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'var(--g-emp)', gap: '10px', alignItems: 'end' }}>
-        {[['Nom', 'nom', 'Dupont'], ['Prénom', 'prenom', 'Marc'], ['Entreprise', 'entreprise', 'Dupont SA'], ['Téléphone', 'telephone', '022...'], ['Email', 'email', 'email@...']].map(([label, key, ph]) => (
-          <div key={key}><label style={DS.label}>{label}</label>
-            <input type="text" placeholder={ph} value={nouveauClient[key]}
-              onChange={e => setNouveauClient({ ...nouveauClient, [key]: e.target.value })} style={DS.input} /></div>
-        ))}
-        <button onClick={() => {
-          if (nouveauClient.nom) {
-            setClients([...clients, { ...nouveauClient, id: Date.now() }]);
-            setNouveauClient({ nom: '', prenom: '', entreprise: '', telephone: '', email: '' });
-          }
-        }} style={DS.btnPrimary}>+ Ajouter</button>
-      </div>
-    </div>
-  );
-}
 
 // Sanitise une saisie de taux financier : jamais NaN, jamais négatif.
 // Champ vide ou non numérique → 0 ; valeur négative → clampée à 0.
@@ -185,7 +57,6 @@ const btnDanger  = DS.btnDanger;
 
 function Parametres({ parametres, setParametres, clients = [], setClients = () => {}, chantiers = [], setChantiers = () => {}, devis = [], setDevis = () => {}, factures = [], setFactures = () => {}, pointages = [], setPointages = () => {}, naviguer = () => {} }) {
   const [onglet, setOnglet] = useState('dashboard');
-  const [nouvelEmploye, setNouvelEmploye] = useState({ nom: '', poste: 'Ouvrier qualifié', tarifJour: '', telephone: '', email: '' });
   const [nouvelleLocalite, setNouvelleLocalite] = useState({ nom: '', tarifJour: '' });
   const [nouveauTravail, setNouveauTravail] = useState({ nom: '', unite: 'm²', tarifBase: '' });
   const [saved, setSaved] = useState(false);
@@ -287,11 +158,9 @@ function Parametres({ parametres, setParametres, clients = [], setClients = () =
   };
 
   const onglets = [
-    { id: 'dashboard', label: 'Dashboard', desc: 'Alertes et affichage' },
-    { id: 'chantiers', label: 'Chantiers', desc: 'Statuts et priorités' },
+    { id: 'dashboard', label: 'Réglages tableau de bord', desc: 'Alertes et affichage' },
+    { id: 'chantiers', label: 'Légende des statuts', desc: 'Statuts et priorités (lecture seule)' },
     { id: 'devis', label: 'Devis', desc: 'Marges et tarifs' },
-    { id: 'employes', label: 'Employés', desc: 'Tarifs journaliers' },
-    { id: 'clients_param', label: 'Clients', desc: 'Carnet d\'adresses' },
     { id: 'localites', label: 'Localités', desc: 'Frais déplacement' },
     { id: 'travaux', label: 'Travaux', desc: 'Types et tarifs' },
     { id: 'zones', label: 'Zones géo.', desc: 'Tarifs par région' },
@@ -468,38 +337,6 @@ function Parametres({ parametres, setParametres, clients = [], setClients = () =
                 style={inputStyle}
               />
             </div>
-          </div>
-        </div>
-      )}
-
-      {onglet === 'employes' && (
-        <div style={carteStyle}>
-          <div className="ds-card-title" style={{ marginBottom: '20px' }}>Tarifs employés</div>
-          <table className="table-cards" style={{ width: '100%', marginBottom: '20px' }}>
-            <thead><tr>
-              {['Nom', 'Rôle', 'CHF/jour', 'Téléphone', 'Email', 'Action'].map(h => <th key={h} style={thStyle}>{h}</th>)}
-            </tr></thead>
-            <tbody>
-              {(parametres.employes || []).map(e => <EditEmployeRow key={e.id} e={e} parametres={parametres} sauv={sauv} />)}
-            </tbody>
-          </table>
-          <div style={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', color: 'var(--text-muted)', marginBottom: '12px', marginTop: '24px' }}>Ajouter un employé</div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'var(--g-emp)', gap: '10px', alignItems: 'end' }}>
-            {[['Nom', 'nom', 'Jean Martin'], ['CHF/jour', 'tarifJour', '350'], ['Téléphone', 'telephone', '079...'], ['Email', 'email', 'email@cyna.ch']].map(([label, key, ph]) => (
-              <div key={key}><label style={labelStyle}>{label}</label>
-                <input type={key === 'tarifJour' ? 'number' : 'text'} placeholder={ph} value={nouvelEmploye[key]}
-                  onChange={e => setNouvelEmploye({ ...nouvelEmploye, [key]: e.target.value })} style={inputStyle} /></div>
-            ))}
-            <div><label style={labelStyle}>Rôle</label>
-              <select value={nouvelEmploye.poste} onChange={e => setNouvelEmploye({ ...nouvelEmploye, poste: e.target.value })} style={inputStyle}>
-                {["Chef de chantier", "Ouvrier qualifié", "Manœuvre", "Technicien", "Comptable", "Chef d'équipe", "Sous-traitant"].map(p => <option key={p}>{p}</option>)}
-              </select></div>
-            <button onClick={() => {
-              if (nouvelEmploye.nom && nouvelEmploye.tarifJour) {
-                sauv({ ...parametres, employes: [...(parametres.employes || []), { ...nouvelEmploye, id: Date.now(), tarifJour: parseFloat(nouvelEmploye.tarifJour) }] });
-                setNouvelEmploye({ nom: '', poste: 'Ouvrier qualifié', tarifJour: '', telephone: '', email: '' });
-              }
-            }} style={btnPrimaire}>+ Ajouter</button>
           </div>
         </div>
       )}
@@ -789,9 +626,6 @@ function Parametres({ parametres, setParametres, clients = [], setClients = () =
         </div>
       )}
 
-      {onglet === 'clients_param' && (
-        <CarnetClients clients={clients} setClients={setClients} chantiers={chantiers} devis={devis} factures={factures} />
-      )}
         </div>{/* end content panel */}
       </div>{/* end 260/1fr grid */}
     </div>

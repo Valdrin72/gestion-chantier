@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase';
 const TOUTES_PAGES = [
   'dashboard', 'chantiers', 'clients', 'employes', 'devis', 'heures',
   'finances', 'planning', 'rapport', 'agents', 'parametres',
-  'factures', 'statistiques', 'paiements', 'analyse', 'importpdf', 'metrage', 'photos',
+  'factures', 'statistiques', 'paiements', 'analyse', 'photos',
   'calculs', 'alertes', 'pointages',
 ];
 

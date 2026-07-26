@@ -6,7 +6,7 @@ import { DollarSign, FileText, Clock, AlertTriangle, CreditCard, TrendingUp, Cal
 import Factures from '../Factures';
 import Paiements from '../Paiements';
 import RelancesTab from '../RelancesTab';
-import { getIntervallesPeriode, getPeriodeLabel, facturesInPeriode, calculerCA, calculerCAForfait, calculerStatutFacture, calculerEtatChantier, tauxTVAParam } from '../donnees';
+import { getIntervallesPeriode, getPeriodeLabel, facturesInPeriode, calculerCA, calculerCAForfait, calculerStatutFacture, calculerEtatChantier, tauxTVAParam, margePortefeuille, couleurMarge, SEUILS } from '../donnees';
 import { useApp } from '../context/AppContext';
 import { prochainRappel } from '../relances';
 
@@ -163,6 +163,12 @@ function Tresorerie({ factures = [], chantiers = [], clients = [], devis = [], p
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [factures, chantiers, clients, devis, parametres, pointages]);
 
+  // Rentabilité du portefeuille — SOURCE UNIQUE partagée avec l'Accueil (même chiffre).
+  const marge = useMemo(
+    () => margePortefeuille(chantiers, parametres?.employes || [], parametres?.localites || [], parametres?.parametres, devis, pointages),
+    [chantiers, parametres, devis, pointages]
+  );
+
   const urgenceConfig = {
     retard:  { couleur: '#ef4444', bg: '#ef444410', label: 'En retard',    dot: 'red' },
     urgent:  { couleur: '#f59e0b', bg: '#f59e0b10', label: '≤ 7 jours',   dot: 'yellow' },
@@ -183,6 +189,37 @@ function Tresorerie({ factures = [], chantiers = [], clients = [], devis = [], p
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 20px', borderRadius: 14, marginBottom: 24, background: signal.bg, border: `1px solid ${signal.couleur}30`, borderLeft: `4px solid ${signal.couleur}` }}>
         <span style={{ fontSize: 20 }}>{signal.icone}</span>
         <span style={{ fontSize: 14, fontWeight: 700, color: signal.couleur }}>{signal.texte}</span>
+      </div>
+
+      {/* ── Rappel rentabilité (même chiffre que l'Accueil) — « est-ce que je gagne de l'argent ? » ── */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap', padding: '16px 20px', borderRadius: 14, marginBottom: 24, background: 'var(--ds-card-bg)', border: '1px solid var(--ds-card-border)', boxShadow: 'var(--ds-card-shadow)' }}>
+        <div>
+          <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px', color: 'var(--text-muted)', marginBottom: 4 }}>
+            Marge moyenne (à date) · pondérée par le CA
+          </div>
+          <div style={{ fontSize: 28, fontWeight: 900, letterSpacing: '-0.5px', lineHeight: 1, color: marge.pct === null ? 'var(--text-muted)' : couleurMarge(marge.pct) }}>
+            {marge.pct === null ? '—' : `${Math.round(marge.pct)}%`}
+          </div>
+          <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>
+            {marge.nbAnalyses > 0
+              ? `sur ${marge.nbAnalyses} chantier${marge.nbAnalyses > 1 ? 's' : ''} avec coûts saisis`
+              : 'Aucun chantier avec coûts saisis'}
+          </div>
+        </div>
+        {marge.nbAnalyses > 0 && (
+          <div style={{ display: 'flex', gap: 16, marginLeft: 'auto', flexWrap: 'wrap' }}>
+            {[
+              { n: marge.nbVert,   label: `sain (≥${SEUILS.margeRentable}%)`, couleur: '#10b981' },
+              { n: marge.nbLimite, label: `limite (${SEUILS.margeLimite}–${SEUILS.margeRentable}%)`, couleur: '#f59e0b' },
+              { n: marge.nbDanger, label: `danger (<${SEUILS.margeLimite}%)`, couleur: '#ef4444' },
+            ].map(b => (
+              <div key={b.label} style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: 20, fontWeight: 800, color: b.couleur }}>{b.n}</div>
+                <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>{b.label}</div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* ── KPIs ── */}

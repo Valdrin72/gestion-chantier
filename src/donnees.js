@@ -42,6 +42,27 @@ export const margeMoyennePonderee = (coutsList = []) => {
   return ca > 0 ? (marge / ca) * 100 : null;
 };
 
+/**
+ * Rentabilité du PORTEFEUILLE — SOURCE UNIQUE partagée (Accueil ET Finances).
+ * Ne recalcule RIEN de nouveau : réutilise calculerCoutsChantier (mêmes pointages,
+ * garde-fou 7c actif) + margeMoyennePonderee + les seuils SEUILS. Mêmes filtres que
+ * l'Accueil : archivés exclus, chantiers sans CA / sans coûts réels / incomplets exclus.
+ *
+ * @returns {{ pct: number|null, nbAnalyses: number, nbVert: number, nbLimite: number, nbDanger: number }}
+ */
+export const margePortefeuille = (chantiers = [], employes = [], localites = [], cfg = {}, devisList = [], pointages = []) => {
+  const couts = (chantiers || [])
+    .filter(c => c && c.archive !== true)
+    .map(c => calculerCoutsChantier(c, employes, localites, cfg, devisList, pointages))
+    .filter(r => r && r.montantTotal > 0 && r.totalCoutsReel > 0 && !r.donneesIncompletes);
+  const pct = margeMoyennePonderee(couts); // exactement le chiffre de l'Accueil
+  const marge = (r) => (parseFloat(r.margeActuellePct));
+  const nbVert   = couts.filter(r => marge(r) >= SEUILS.margeRentable).length;
+  const nbLimite = couts.filter(r => marge(r) >= SEUILS.margeLimite && marge(r) < SEUILS.margeRentable).length;
+  const nbDanger = couts.filter(r => marge(r) < SEUILS.margeLimite).length;
+  return { pct, nbAnalyses: couts.length, nbVert, nbLimite, nbDanger };
+};
+
 // ===== FORMATEUR DE NOMBRE — APOSTROPHE SUISSE =====
 // Usage : fmtN(12000) → "12'000"  |  fmtN(1500.5, 2) → "1'500.50"
 export const fmtN = (n, dec = 0) => {

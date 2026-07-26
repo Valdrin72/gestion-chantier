@@ -8,7 +8,7 @@ import {
   fmtN, calculerDateFinOuvrables, estRetardJustifie,
   calculerCoutsChantier, statutRentabilite, C, getIntervallesPeriode,
   facturesInPeriode, calculerRentabiliteReelle, calculerEtatChantier,
-  calculerCA, isChantierActif, isChantierComptable, SEUILS, margeMoyennePonderee,
+  calculerCA, isChantierActif, isChantierComptable, SEUILS, margePortefeuille,
 } from '../donnees';
 import { DS } from '../ds';
 import { STATUTS_CLOS } from '../constants/statuts';
@@ -75,15 +75,11 @@ function Dashboard() {
       .filter(f => ['envoyee', 'partielle', 'retard'].includes((f.statut || '').toLowerCase()))
       .reduce((t, f) => t + Math.max(0, (parseFloat(f.montantTTC) || 0) - (parseFloat(f.montantPaye) || 0)), 0);
 
-    // 3. RENTABILITÉ MOYENNE — même moteur que la fiche chantier (coefficient + FG inclus)
-    // Exclus : chantiers sans CA, sans coûts réels saisis, ou données incomplètes
-    const chantiersRenta = chantiers
-      .filter(c => c.archive !== true)
-      .map(c => coutsMap.get(c.id))
-      .filter(r => r && r.montantTotal > 0 && r.totalCoutsReel > 0 && !r.donneesIncompletes);
-    // Marge moyenne PONDÉRÉE par le CA (source unique — même chiffre bureau ET mobile).
-    const rentaMoyenne = margeMoyennePonderee(chantiersRenta);
-    const nbChantiersRenta = chantiersRenta.length;
+    // 3. RENTABILITÉ MOYENNE — SOURCE UNIQUE partagée avec Finances (helper margePortefeuille).
+    // Marge moyenne PONDÉRÉE par le CA (même chiffre bureau/mobile ET Finances).
+    const marge = margePortefeuille(chantiers, parametres.employes || [], parametres.localites || [], parametres.parametres, devis, pointages);
+    const rentaMoyenne = marge.pct;
+    const nbChantiersRenta = marge.nbAnalyses;
 
     // 4. HEURES ENGAGÉES — depuis journal, filtrées par periodeGlobale
     const { debut: hDebut, fin: hFin } = getIntervallesPeriode(periodeGlobale);

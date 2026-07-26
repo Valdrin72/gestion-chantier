@@ -116,9 +116,9 @@ describe('RapportsPage → Analyse — agrégats corrects', () => {
   it('chantier archivé toujours visible dans le détail "Prévu vs Réel" du rapport', () => {
     renderRapports({ chantiers: makeChantiers({ archiverPremier: true }) });
     fireEvent.click(screen.getByRole('button', { name: /^Analyse$/i }));
-    fireEvent.click(screen.getByRole('button', { name: /Prévu vs Réel/i }));
-
-    // L'onglet "Prévu vs Réel" d'Analyse liste les chantiers de la période — l'archivé y reste
+    // « Prévu vs Réel » est désormais une sous-section de la vue Rentabilité (par défaut) :
+    // le contenu est affiché sans clic supplémentaire.
+    expect(screen.getByText('Prévu vs Réel')).toBeInTheDocument(); // en-tête de section présent
     expect(screen.getAllByText(/Chantier Un/).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/Chantier Deux/).length).toBeGreaterThan(0);
   });
@@ -127,5 +127,20 @@ describe('RapportsPage → Analyse — agrégats corrects', () => {
     const { container } = renderRapports({ chantiers: [] });
     fireEvent.click(screen.getByRole('button', { name: /^Analyse$/i }));
     expect(container.textContent).not.toContain('NaN');
+  });
+
+  it('Analyse regroupée : les 4 vues sont présentes et une autre vue est atteignable', () => {
+    renderRapports({ chantiers: makeChantiers() });
+    fireEvent.click(screen.getByRole('button', { name: /^Analyse$/i }));
+    // Les 4 vues (au lieu de 12 onglets)
+    ['Rentabilité', 'Par type & surface', 'Tendances & objectifs', 'Clients'].forEach(l =>
+      expect(screen.getByRole('button', { name: l })).toBeInTheDocument()
+    );
+    // Vue Rentabilité (défaut) : sections empilées (Marges + Prévu vs Réel + Coût horaire)
+    expect(screen.getByText('Prévu vs Réel')).toBeInTheDocument();
+    // Naviguer vers « Tendances & objectifs » → ses contenus deviennent atteignables
+    fireEvent.click(screen.getByRole('button', { name: 'Tendances & objectifs' }));
+    expect(screen.getByText('Projections')).toBeInTheDocument();
+    expect(screen.getByText('Objectifs')).toBeInTheDocument();
   });
 });

@@ -9,9 +9,46 @@ import Marges from './Marges';
 
 const carteStyle = DS.card;
 
+// ── REGROUPEMENT : 12 anciens sous-onglets → 4 VUES (aplatissement de navigation) ──
+// Chaque ancien sous-onglet garde son CONTENU intact ; on ne change que le rangement.
+// Config exportée → testable (garde-fou : aucun contenu orphelin).
+export const VUES_ANALYSE = [
+  { id: 'v_rentabilite', label: 'Rentabilité', sous: [
+    { id: 'marges',      titre: 'Marges' },
+    { id: 'rentabilite', titre: 'Rentabilité nette' },
+    { id: 'chantiers',   titre: 'Prévu vs Réel' },
+    { id: 'employes',    titre: 'Coût horaire' },
+  ] },
+  { id: 'v_type', label: 'Par type & surface', sous: [
+    { id: 'corps',   titre: 'Corps de métier' },
+    { id: 'metres2', titre: 'Analyse m²' },
+  ] },
+  { id: 'v_tendances', label: 'Tendances & objectifs', sous: [
+    { id: 'projection',   titre: 'Projections' },
+    { id: 'objectifs',    titre: 'Objectifs' },
+    { id: 'statistiques', titre: 'Statistiques' },
+    { id: 'rapport',      titre: 'Rapport hebdo' },
+  ] },
+  { id: 'v_clients', label: 'Clients', sous: [
+    { id: 'clients', titre: 'Clients' },
+    { id: 'derive',  titre: 'Dérive devis' },
+  ] },
+];
+
+// En-tête de sous-section, affiché au-dessus de chaque ancien contenu dans une vue.
+function SectionAnalyse({ titre }) {
+  return (
+    <div style={{ margin: '10px 0 14px', paddingBottom: 8, borderBottom: '2px solid rgba(13,61,110,0.15)' }}>
+      <span style={{ fontSize: 15, fontWeight: 800, color: '#0d3d6e', letterSpacing: '-0.2px' }}>{titre}</span>
+    </div>
+  );
+}
+
 export default function Analyse({ chantiers, clients, devis = [], parametres, setParametres, paiementsData, periodeGlobale = 'annee' }) {
   const { pointages = [] } = useApp();
-  const [onglet, setOnglet] = useState('rentabilite');
+  const [vue, setVue] = useState('v_rentabilite');
+  const sousVue = (VUES_ANALYSE.find(v => v.id === vue) || VUES_ANALYSE[0]).sous;
+  const montre = (id) => sousVue.some(s => s.id === id);
   const [tauxChargesSociales, setTauxChargesSociales] = useState(parametres.parametres?.tauxChargesSociales || 25);
   const [tauxImpots, setTauxImpots] = useState(parametres.parametres?.tauxImpots || 15);
   const [tauxFraisGeneraux, setTauxFraisGeneraux] = useState(parametres.parametres?.tauxFraisGeneraux || 12);
@@ -215,42 +252,28 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
     return { nom: t.nom, count: lignes.length, lignes, ecartJoursMoyen, ecartCoutMoyen, margePrevuMoyenne, margeReelMoyenne, perteMarge, signal };
   }).filter(Boolean).sort((a, b) => (b.ecartCoutMoyen ?? 0) - (a.ecartCoutMoyen ?? 0)), [chantiersPeriode, devis, parametres, pointages]);
 
-  const onglets = [
-    { id: 'marges',       label: 'Marges' },
-    { id: 'rentabilite',  label: 'Rentabilité nette' },
-    { id: 'derive',       label: 'Dérive devis' },
-    { id: 'chantiers',    label: 'Prévu vs Réel' },
-    { id: 'clients',      label: 'Clients' },
-    { id: 'employes',     label: 'Coût horaire' },
-    { id: 'corps',        label: 'Corps de métier' },
-    { id: 'projection',   label: 'Projections' },
-    { id: 'objectifs',    label: 'Objectifs' },
-    { id: 'metres2',      label: 'Analyse m²' },
-    { id: 'statistiques', label: 'Statistiques' },
-    { id: 'rapport',      label: 'Rapport hebdo' },
-  ];
-
   return (
     <div>
       <div className="page-title-main" style={{ marginBottom: 24 }}>Analyse financière avancée</div>
 
-      {/* ONGLETS */}
+      {/* VUES (4) — regroupement des 12 anciens sous-onglets */}
       <div style={{ display: 'flex', gap: '0', marginBottom: '25px', flexWrap: 'wrap', borderBottom: '1px solid var(--border)' }}>
-        {onglets.map(o => (
-          <button key={o.id} onClick={() => setOnglet(o.id)} style={{
+        {VUES_ANALYSE.map(v => (
+          <button key={v.id} onClick={() => setVue(v.id)} style={{
             background: 'transparent',
-            color: onglet === o.id ? '#0d3d6e' : 'var(--text-secondary)',
+            color: vue === v.id ? '#0d3d6e' : 'var(--text-secondary)',
             border: 'none',
-            borderBottom: onglet === o.id ? '2px solid rgba(13,61,110,0.8)' : '2px solid transparent',
+            borderBottom: vue === v.id ? '2px solid rgba(13,61,110,0.8)' : '2px solid transparent',
             padding: '10px 18px',
             marginBottom: '-1px',
-            borderRadius: '0', cursor: 'pointer', fontSize: '14px', fontWeight: onglet === o.id ? '600' : 'normal'
-          }}>{o.label}</button>
+            borderRadius: '0', cursor: 'pointer', fontSize: '14px', fontWeight: vue === v.id ? '600' : 'normal'
+          }}>{v.label}</button>
         ))}
       </div>
 
       {/* ===== RENTABILITÉ NETTE ===== */}
-      {onglet === 'rentabilite' && (
+      {montre('rentabilite') && <SectionAnalyse titre="Rentabilité nette" />}
+      {montre('rentabilite') && (
         <div>
           {/* PARAMÈTRES */}
           <div style={carteStyle}>
@@ -331,7 +354,8 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
       )}
 
       {/* ===== DÉRIVE DEVIS → RÉALITÉ ===== */}
-      {onglet === 'derive' && (
+      {montre('derive') && <SectionAnalyse titre="Dérive devis" />}
+      {montre('derive') && (
         <div>
           {/* Intro */}
           <div style={{ background: 'rgba(59,130,246,0.07)', border: '1px solid rgba(59,130,246,0.2)', borderRadius: 12, padding: '14px 18px', marginBottom: 24, fontSize: 13, color: 'var(--text-secondary)' }}>
@@ -440,7 +464,8 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
       )}
 
       {/* ===== PRÉVU VS RÉEL ===== */}
-      {onglet === 'chantiers' && (
+      {montre('chantiers') && <SectionAnalyse titre="Prévu vs Réel" />}
+      {montre('chantiers') && (
         <div>
           {/* ALERTES DÉPASSEMENTS */}
           {donneesChantiers.filter(c => c.depassements.length > 0).length > 0 && (
@@ -534,7 +559,8 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
       )}
 
       {/* ===== COÛT HORAIRE EMPLOYÉS ===== */}
-      {onglet === 'employes' && (
+      {montre('employes') && <SectionAnalyse titre="Coût horaire" />}
+      {montre('employes') && (
         <div>
           <div style={carteStyle}>
             <div className="ds-card-title">Coût réel par employé</div>
@@ -602,7 +628,8 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
       )}
 
       {/* ===== PAR MÉTRÉ ===== */}
-      {onglet === 'corps' && (
+      {montre('corps') && <SectionAnalyse titre="Corps de métier" />}
+      {montre('corps') && (
         <div style={carteStyle}>
           <div className="ds-card-title">Rentabilité par type de travaux (CHF/m²)</div>
           {donneesMetres.length === 0 ? (
@@ -662,7 +689,8 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
       )}
 
       {/* ===== PROJECTIONS ===== */}
-      {onglet === 'projection' && (
+      {montre('projection') && <SectionAnalyse titre="Projections" />}
+      {montre('projection') && (
         <div>
           <div style={carteStyle}>
             <div className="ds-card-title">Projections CA annuel {new Date().getFullYear()}</div>
@@ -717,7 +745,8 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
       )}
 
       {/* ===== CLIENTS ===== */}
-      {onglet === 'clients' && (
+      {montre('clients') && <SectionAnalyse titre="Clients" />}
+      {montre('clients') && (
         <div>
           {donneesClients.length === 0 ? (
             <div className="empty-state">
@@ -798,7 +827,8 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
       )}
 
       {/* ===== OBJECTIFS ===== */}
-      {onglet === 'objectifs' && (
+      {montre('objectifs') && <SectionAnalyse titre="Objectifs" />}
+      {montre('objectifs') && (
         <div>
           {/* Saisie objectifs */}
           <div style={carteStyle}>
@@ -906,7 +936,8 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
       )}
 
       {/* ===== ANALYSE M² ===== */}
-      {onglet === 'metres2' && (() => {
+      {montre('metres2') && <SectionAnalyse titre="Analyse m²" />}
+      {montre('metres2') && (() => {
         // Chantiers avec surface > 0 ET CA disponible (devis lié)
         const chantiersM2 = chantiersPeriode.filter(c => {
           const surface = parseFloat(c.surface);
@@ -1122,15 +1153,18 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
         );
       })()}
 
-      {onglet === 'marges' && (
+      {montre('marges') && <SectionAnalyse titre="Marges" />}
+      {montre('marges') && (
         <Marges chantiers={chantiers} clients={clients} devis={devis} parametres={parametres} periodeGlobale={periodeGlobale} />
       )}
 
-      {onglet === 'statistiques' && (
+      {montre('statistiques') && <SectionAnalyse titre="Statistiques" />}
+      {montre('statistiques') && (
         <Statistiques chantiers={chantiers} clients={clients} devis={devis} parametres={parametres} periodeGlobale={periodeGlobale} />
       )}
 
-      {onglet === 'rapport' && (
+      {montre('rapport') && <SectionAnalyse titre="Rapport hebdo" />}
+      {montre('rapport') && (
         <Rapport chantiers={chantiers} clients={clients} devis={devis} parametres={parametres} paiementsData={paiementsData || {}} />
       )}
     </div>

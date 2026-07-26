@@ -21,3 +21,17 @@ if (process.env.CYNA_GARDE_LOG) {
     return origError.apply(console, args);
   };
 }
+
+// Shim jsdom : window.matchMedia (utilisé par useIsMobile) — absent en environnement de test.
+if (typeof window !== 'undefined' && !window.matchMedia) {
+  window.matchMedia = (query) => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    addListener: () => {},
+    removeListener: () => {},
+    dispatchEvent: () => false,
+  });
+}

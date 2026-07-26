@@ -5,7 +5,7 @@
 import React, { useState, useMemo, useCallback, useRef } from 'react';
 import { Calculator, Plus, Trash2, FileText, Upload, TrendingUp, Users, Clock, ChevronDown, ChevronUp, Calendar } from 'lucide-react';
 import { C } from './donnees';
-import { extraireDonneesPDF } from './ImportPDF';
+import { extraireDonneesPDF } from './utils/extrairePDF';
 import { DS } from './ds';
 
 // ── Styles partagés ──────────────────────────────────────────

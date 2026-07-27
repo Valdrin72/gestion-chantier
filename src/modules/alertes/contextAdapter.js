@@ -1,5 +1,5 @@
 import { calculerEtatChantier } from '../../donnees.js';
-import { calculerDSO } from '../../calculs/tresorerie.js';
+import { calculerDSO, sortiesMensuellesEstimees } from '../../calculs/tresorerie.js';
 import { CYNA_PARAMS } from '../../calculs/constants.js';
 
 const STATUT_CHANTIER_MAP = {
@@ -180,7 +180,9 @@ export function adapterContexteAlertes({ chantiers = [], devis = [], factures = 
   const encaissementsAttendus30j = facturesAdaptees
     .filter(f => (f.statut === 'emise' || f.statut === 'partiellement_payee') && f.date_echeance.getTime() <= horizon)
     .reduce((s, f) => s + Math.max(0, f.total_ttc - f.total_paye), 0);
-  const chargesConnues30j = 0; // non modélisé (salaires/charges/achats directs) — voir décision métier
+  // Sorties estimées à 30j : charge mensuelle saisie, sinon masse salariale estimée.
+  // Les décaissements FOURNISSEURS restent hors périmètre (aucune échéance dans l'app).
+  const { montant: chargesConnues30j, source: sourceSorties } = sortiesMensuellesEstimees(parametres);
 
   const soldeProjete30j = soldeConfigure
     ? soldeSaisi + encaissementsAttendus30j - chargesConnues30j
@@ -207,6 +209,8 @@ export function adapterContexteAlertes({ chantiers = [], devis = [], factures = 
       seuil_alerte: seuilTreso,
       encaissements_attendus_30j: encaissementsAttendus30j,
       charges_connues_30j: chargesConnues30j,
+      source_sorties_30j: sourceSorties,
+      fournisseurs_non_modelises: true, // avertissement : projection hors décaissements fournisseurs
       solde_projete_30j: soldeProjete30j,
       dso_actuel: dsoActuel,
     },

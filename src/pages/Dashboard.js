@@ -9,6 +9,7 @@ import {
   calculerCoutsChantier, statutRentabilite, C, getIntervallesPeriode,
   facturesInPeriode, calculerRentabiliteReelle, calculerEtatChantier,
   calculerCA, isChantierActif, isChantierComptable, SEUILS, margePortefeuille,
+  couleurScoreSante, libelleScoreSante,
 } from '../donnees';
 import { DS } from '../ds';
 import { STATUTS_CLOS } from '../constants/statuts';
@@ -479,7 +480,7 @@ function Dashboard() {
           const alertesCritiques = agentAlertes.filter(a => a.niveau === 'CRITIQUE').length;
           const alertesAttention = agentAlertes.filter(a => a.niveau === 'ATTENTION').length;
           if (scoreDirecteur === null && agentAlertes.length === 0) return null;
-          const scoreColor = scoreDirecteur >= 70 ? '#10b981' : scoreDirecteur >= 40 ? '#f59e0b' : '#ef4444';
+          const scoreColor = scoreDirecteur === null ? '#94a3b8' : couleurScoreSante(scoreDirecteur);
           return (
             <div onClick={() => naviguer('agents')} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', marginBottom: 12, borderRadius: 10, background: 'var(--bg-glass-2)', border: '1px solid var(--border)', cursor: 'pointer' }}>
               <Bot size={13} color="#8b5cf6" />
@@ -704,15 +705,10 @@ function Dashboard() {
         // Ne pas afficher si aucune donnée agent disponible
         if (scoreDirecteur === null && prioritesIA.length === 0 && alertesIA.length === 0) return null;
 
-        const scoreColor = scoreDirecteur === null ? '#94a3b8'
-          : scoreDirecteur >= 75 ? '#10b981'
-          : scoreDirecteur >= 50 ? '#f59e0b'
-          : '#ef4444';
+        const scoreColor = scoreDirecteur === null ? '#94a3b8' : couleurScoreSante(scoreDirecteur);
 
         const scoreBgColor = scoreDirecteur === null ? '#94a3b820'
-          : scoreDirecteur >= 75 ? '#10b98120'
-          : scoreDirecteur >= 50 ? '#f59e0b20'
-          : '#ef444420';
+          : couleurScoreSante(scoreDirecteur) + '20';
 
         // Top 3 actions : priorites en premier, sinon alertes critiques
         const top3 = prioritesIA.length > 0
@@ -769,7 +765,7 @@ function Dashboard() {
                 <div style={{ fontSize: 9, fontWeight: 800, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '0.8px', textAlign: 'center' }}>Sante Entreprise</div>
                 {scoreDirecteur !== null && (
                   <div style={{ fontSize: 10, color: scoreColor, fontWeight: 700, textAlign: 'center' }}>
-                    {scoreDirecteur >= 75 ? 'Excellent' : scoreDirecteur >= 50 ? 'A surveiller' : 'Critique'}
+                    {scoreDirecteur === null ? '—' : libelleScoreSante(scoreDirecteur)}
                   </div>
                 )}
               </div>
@@ -901,7 +897,7 @@ function Dashboard() {
         const alertesAttention = agentAlertes.filter(a => a.niveau === 'ATTENTION').length;
         const derives = agentState?.agentData?.DerivePredictor?.resultats?.filter(r => r.statut !== 'vert') || [];
         if (scoreDirecteur === null && agentAlertes.length === 0) return null;
-        const scoreColor = scoreDirecteur >= 70 ? '#10b981' : scoreDirecteur >= 40 ? '#f59e0b' : '#ef4444';
+        const scoreColor = scoreDirecteur === null ? '#94a3b8' : couleurScoreSante(scoreDirecteur);
         return (
           <div onClick={() => naviguer('agents')} style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '12px 18px', marginBottom: 20, borderRadius: 12, background: 'var(--bg-glass-2)', border: '1px solid var(--border)', cursor: 'pointer', flexWrap: 'wrap', transition: 'border-color 0.15s' }}
             onMouseEnter={e => e.currentTarget.style.borderColor = '#4F46E5'}

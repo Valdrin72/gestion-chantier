@@ -14,6 +14,7 @@
 
 import { calculerCA, calculerCoutsChantier, isChantierActif, fmtN, heuresEmploye, SEUILS } from './donnees';
 import { CYNA_PARAMS } from './calculs/constants';
+import { projeterTresorerie30j, penaliteScoreTresorerie, sortiesMensuellesEstimees } from './calculs/tresorerie';
 
 const uid = (prefix) => `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
 const isDev = process.env.NODE_ENV !== 'production';
@@ -157,7 +158,9 @@ export function runTresoreriePredictor({ chantiers, factures, devis, parametres 
     // I2 — défaut unifié sur la source unique CYNA_PARAMS.TRESORERIE_SEUIL_ALERTE (20 000),
     // qui était en conflit : 10000 ici vs 20000 dans Dashboard pour la MÊME alerte trésorerie.
     const SEUIL_ALERTE = parseFloat(parametres?.parametres?.seuilTresorerie) || CYNA_PARAMS.TRESORERIE_SEUIL_ALERTE;
-    const chargesMensuelles = parseFloat(parametres?.parametres?.chargesMensuelles) || 0;
+    // Sorties non-optimistes : charge mensuelle saisie, sinon masse salariale estimée
+    // (fini le 0 silencieux quand aucune charge n'est renseignée). Hors fournisseurs.
+    const chargesMensuelles = sortiesMensuellesEstimees(parametres).montant;
     const facturesOuvertes = (factures || []).filter(f => ['envoyee', 'partielle', 'retard'].includes(f.statut));
     const totalEncaissement = facturesOuvertes.reduce((s, f) =>
       s + Math.max(0, (parseFloat(f.montantTTC) || 0) - (parseFloat(f.montantPaye) || 0)), 0);
@@ -189,7 +192,7 @@ export function runTresoreriePredictor({ chantiers, factures, devis, parametres 
       alertes.push({ id: uid('tp-j30'), agent: 'TresoreriePredictor', type: 'tresorerie',
         niveau: solde30 < 0 ? 'DANGER' : 'ATTENTION',
         message: `Trésorerie J+30 estimée : CHF ${fmtN(Math.round(solde30))}`,
-        detail: `Encaissements CHF ${fmtN(Math.round(enc30))} · Charges CHF ${fmtN(Math.round(dec30))}`,
+        detail: `Encaissements CHF ${fmtN(Math.round(enc30))} · Sorties CHF ${fmtN(Math.round(dec30))} (hors fournisseurs, non modélisés)`,
         timestamp: Date.now(), lu: false, action: { page: 'finances', ctx: {} } });
     }
 
@@ -1953,14 +1956,36 @@ export function runCoachDirecteur({ chantiers, devis, factures, parametres, agen
       });
     }
 
-    // Résumé global
+    // ── TRÉSORERIE (survie) — projection HONNÊTE J+30 (encaissements − sorties estimées) ──
+    // Angle mort historique : le score ignorait le cash. En BTP, on meurt du manque de
+    // trésorerie avant le manque de marge. On ne juge que si le solde bancaire est frais.
+    const projTreso = projeterTresorerie30j({ factures, parametres });
+    const penaliteTreso = penaliteScoreTresorerie(projTreso);
+    if (projTreso.modelisable && projTreso.soldeProjete < projTreso.seuil) {
+      priorites.unshift({
+        rang: 0,
+        icone: 'tresorerie',
+        categorie: projTreso.soldeProjete < 0 ? 'SURVIE' : 'TRÉSORERIE',
+        action: projTreso.soldeProjete < 0
+          ? `Trésorerie projetée NÉGATIVE à 30 j : CHF ${fmtN(Math.round(projTreso.soldeProjete))}`
+          : `Trésorerie projetée basse à 30 j : CHF ${fmtN(Math.round(projTreso.soldeProjete))}`,
+        detail: `Encaissements CHF ${fmtN(Math.round(projTreso.encaissements30j))} − sorties estimées CHF ${fmtN(Math.round(projTreso.sorties30j))} (hors fournisseurs, non modélisés)`,
+        impact: 'Survie de l\'entreprise', page: 'finances',
+      });
+    }
+
+    // Résumé global — pénalités : chantiers en danger, impayés >90j, anomalies, ET trésorerie.
     const nbAlertesTotal = alertes.length;
-    const scoreGlobal = Math.max(0, 100 - critiqueRisque.length * 20 - (relances?.nb90 || 0) * 10 - (anomalies?.nbAnomalies || 0) * 5);
+    const scoreGlobal = Math.max(0, 100
+      - critiqueRisque.length * 20
+      - (relances?.nb90 || 0) * 10
+      - (anomalies?.nbAnomalies || 0) * 5
+      - penaliteTreso);
 
     const hist = memoire.coachHistorique || [];
     hist.unshift({ date: new Date().toISOString().split('T')[0], scoreGlobal, nbPriorites: priorites.length, timestamp: Date.now() });
 
-    const data = { priorites: priorites.slice(0, 5), scoreGlobal, nbAlertesTotal, synthese: `Score entreprise : ${scoreGlobal}/100` };
+    const data = { priorites: priorites.slice(0, 5), scoreGlobal, nbAlertesTotal, tresorerie30j: projTreso, penaliteTreso, synthese: `Score entreprise : ${scoreGlobal}/100` };
     return { alertes: [], data, memoire: { coachHistorique: hist.slice(0, 52) } };
   } catch (e) { return { alertes: [], data: { priorites: [], scoreGlobal: 0 }, memoire }; }
 }

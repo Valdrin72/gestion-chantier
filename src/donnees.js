@@ -17,6 +17,25 @@ export const SEUILS = {
   // <15% → Non rentable (rouge)
 };
 
+// ── SCORE SANTÉ /100 (directeur) — SEUILS DE COULEUR UNIFIÉS (source unique) ──
+// Avant : 3 barèmes divergents (75/50, 70/40, 80/60) → le même score changeait de
+// couleur selon l'écran. Désormais un seul : ≥75 sain · 50-74 à surveiller · <50 critique.
+export const SEUILS_SCORE_SANTE = { sain: 75, surveiller: 50 };
+/** Couleur hex du score santé entreprise. */
+export const couleurScoreSante = (score) => {
+  const v = parseFloat(score) || 0;
+  if (v >= SEUILS_SCORE_SANTE.sain)        return '#10b981';
+  if (v >= SEUILS_SCORE_SANTE.surveiller)  return '#f59e0b';
+  return '#ef4444';
+};
+/** Libellé court du score santé entreprise. */
+export const libelleScoreSante = (score) => {
+  const v = parseFloat(score) || 0;
+  if (v >= SEUILS_SCORE_SANTE.sain)        return 'Bonne santé';
+  if (v >= SEUILS_SCORE_SANTE.surveiller)  return 'À surveiller';
+  return 'Critique';
+};
+
 /** Retourne la couleur hex correspondant à un pourcentage de marge. */
 export const couleurMarge = (pct) => {
   const v = parseFloat(pct) || 0;

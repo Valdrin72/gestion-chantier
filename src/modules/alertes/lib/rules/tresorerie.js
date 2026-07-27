@@ -92,9 +92,9 @@ export const TRESORERIE_TENDUE = {
     return [{
       contextRef: { type: 'global', id: 'tresorerie' },
       title: 'Trésorerie tendue à 30 jours',
-      // Projection OPTIMISTE (aucune sortie soustraite) → on le dit explicitement pour ne pas
-      // rassurer à tort : le vrai solde sera plus bas une fois les charges payées.
-      message: `Trésorerie projetée à 30j : ${fmtCHF(t.solde_projete_30j)} — sous seuil ${fmtCHF(seuil)} (hors salaires, charges sociales et fournisseurs — sorties non modélisées).`,
+      // Projection avec sorties ESTIMÉES déduites (charge mensuelle saisie ou masse salariale) ;
+      // les décaissements FOURNISSEURS restent hors périmètre → on le dit pour ne pas rassurer à tort.
+      message: `Trésorerie projetée à 30j : ${fmtCHF(t.solde_projete_30j)} — sous seuil ${fmtCHF(seuil)} (sorties estimées déduites ; hors fournisseurs, non modélisés).`,
       data: { soldeProjete: t.solde_projete_30j, seuil },
       actions: [{ label: 'Voir finances', type: 'navigate', target: 'finances' }],
     }];

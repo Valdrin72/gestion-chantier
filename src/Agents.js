@@ -5,7 +5,7 @@ import {
   ChevronDown, ChevronRight, Activity, Zap, Users, Shield,
   BarChart2, Target, Layers, AlertCircle, Star, Eye,
 } from 'lucide-react';
-import { fmtN } from './donnees';
+import { fmtN, couleurScoreSante, libelleScoreSante } from './donnees';
 import { DS } from './ds';
 
 // Protège contre les valeurs non-string (action:{page,ctx}, detail:objet...)
@@ -299,7 +299,7 @@ export default function Agents({
       {/* ── KPI ── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24 }}>
         {[
-          { label: 'SCORE ENTREPRISE', val: scoreGlobal !== null ? `${scoreGlobal}/100` : '—', gradient: scoreGlobal >= 80 ? 'linear-gradient(135deg,#065F46,#10B981)' : scoreGlobal >= 60 ? 'linear-gradient(135deg,#92400E,#F59E0B)' : 'linear-gradient(135deg,#991B1B,#EF4444)', glow: 'rgba(16,185,129,0.32)', badge: scoreGlobal >= 80 ? 'Bonne santé' : scoreGlobal >= 60 ? 'À surveiller' : 'Attention requise' },
+          { label: 'SCORE ENTREPRISE', val: scoreGlobal !== null ? `${scoreGlobal}/100` : '—', gradient: scoreGlobal >= 75 ? 'linear-gradient(135deg,#065F46,#10B981)' : scoreGlobal >= 50 ? 'linear-gradient(135deg,#92400E,#F59E0B)' : 'linear-gradient(135deg,#991B1B,#EF4444)', glow: 'rgba(16,185,129,0.32)', badge: libelleScoreSante(scoreGlobal) },
           { label: 'AGENTS ACTIFS', val: `${nbActifs}/${AGENTS_META.length}`, gradient: 'linear-gradient(135deg,#1E40AF,#3B82F6)', glow: 'rgba(59,130,246,0.32)' },
           { label: 'ALERTES ACTIVES', val: alertesNonLues.length, gradient: alertesNonLues.length > 0 ? 'linear-gradient(135deg,#991B1B,#EF4444)' : 'linear-gradient(135deg,#065F46,#10B981)', glow: 'rgba(239,68,68,0.32)', badge: alertesNonLues.length > 0 ? `${alertesNonLues.length} non lues` : 'Tout lu' },
           { label: 'MÉMOIRE ACCUMULÉE', val: `${Object.keys(memoire).length} agents`, gradient: 'linear-gradient(135deg,#4C1D95,#8B5CF6)', glow: 'rgba(139,92,246,0.32)', badge: 'Données persistées' },
@@ -348,13 +348,13 @@ export default function Agents({
               {scoreGlobal !== null && (
                 <div style={{ ...DS.card, marginBottom: 20, padding: '20px 24px', display: 'flex', alignItems: 'center', gap: 20 }}>
                   <div style={{ textAlign: 'center', flexShrink: 0 }}>
-                    <div style={{ fontSize: 48, fontWeight: 900, color: scoreGlobal >= 80 ? '#10b981' : scoreGlobal >= 60 ? '#f59e0b' : '#ef4444', lineHeight: 1 }}>{scoreGlobal}</div>
+                    <div style={{ fontSize: 48, fontWeight: 900, color: couleurScoreSante(scoreGlobal), lineHeight: 1 }}>{scoreGlobal}</div>
                     <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', marginTop: 4 }}>Score /100</div>
                   </div>
                   <div style={{ width: 1, height: 60, background: 'var(--border)', flexShrink: 0 }} />
                   <div style={{ flex: 1 }}>
                     <div style={{ fontWeight: 700, fontSize: 16, color: 'var(--text-primary)', marginBottom: 6 }}>
-                      {scoreGlobal >= 80 ? 'Bonne santé d\'entreprise' : scoreGlobal >= 60 ? 'Situation à surveiller' : 'Intervention requise'}
+                      {libelleScoreSante(scoreGlobal)}
                     </div>
                     <div style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
                       Basé sur l'analyse de {AGENTS_META.length} agents · {alertes.filter(a => !a.lu).length} alertes non traitées · Synthèse en temps réel

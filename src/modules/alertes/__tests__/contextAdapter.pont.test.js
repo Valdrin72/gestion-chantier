@@ -135,12 +135,12 @@ describe('I2 — trésorerie : solde bancaire saisi + horodaté (jamais de calcu
     expect(new Set(alerts.map(a => a.ruleId)).has('treso.solde.absent')).toBe(false);
   });
 
-  it('HONNÊTETÉ : le message d\'alerte dit que la projection exclut les sorties (salaires/charges/fournisseurs)', () => {
+  it('HONNÊTETÉ : le message dit que les sorties sont déduites mais que les fournisseurs restent hors périmètre', () => {
     const alerts = alertes(dataTreso(paramsTreso(5000, iso(0))));
     const msg = alerts.find(a => a.ruleId === 'treso.solde.alerte').message;
-    // Verrou anti-refactor : la mention du périmètre optimiste ne doit jamais disparaître.
-    expect(msg).toMatch(/hors salaires, charges sociales et fournisseurs/i);
-    expect(msg).toMatch(/non modélisées/i);
+    // Verrou anti-refactor : les salaires/charges sont désormais déduits, les fournisseurs non.
+    expect(msg).toMatch(/sorties estimées déduites/i);
+    expect(msg).toMatch(/hors fournisseurs/i);
   });
 
   it('solde FRAIS 50 000 (aujourd\'hui) → projeté 53 000 ≥ seuil → AUCUNE alerte trésorerie (mordant seuil)', () => {
@@ -164,8 +164,9 @@ describe('I2 — trésorerie : solde bancaire saisi + horodaté (jamais de calcu
     expect(alerts.find(a => a.ruleId === 'treso.solde.absent').message).toMatch(/Renseigne ton solde bancaire/);
   });
 
-  it('seuil configurable : seuil 5 000 → solde frais 8 000 projeté ≥ 5 000 → pas d\'alerte', () => {
-    expect(ids(paramsTreso(5000, iso(0), 5000)).has('treso.solde.alerte')).toBe(false);
+  it('seuil configurable : solde 15 000 + 3 000 encaissés − 8 000 sorties = 10 000 ≥ seuil 5 000 → pas d\'alerte', () => {
+    // Sorties honnêtes désormais déduites (masse salariale EMP 400×20 = 8 000).
+    expect(ids(paramsTreso(15000, iso(0), 5000)).has('treso.solde.alerte')).toBe(false);
   });
 });
 

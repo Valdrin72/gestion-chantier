@@ -14,7 +14,20 @@ const STORAGE_KEY   = 'cyna_agents_state';
 const MEMOIRE_KEY   = 'cyna_agents_memoire';
 const INTERVAL_MS   = 60 * 60 * 1000; // toutes les heures
 // Incrémenter pour forcer un reset du cache localStorage si le schéma change
-const SCHEMA_VERSION = 5;
+const SCHEMA_VERSION = 6;
+
+// ── Briefing "Directeur du matin" — rythme une fois par jour ──────────────
+// Le briefing (simulerRapportLundi) est coûteux et n'a de sens qu'une fois par
+// jour : on le calcule au premier chargement de la journée, on le persiste avec
+// sa DATE, et les chargements suivants du même jour lisent le cache. Le lendemain,
+// la date stockée ≠ aujourd'hui → recalcul automatique.
+export function dateBriefing(now = new Date()) {
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+}
+export function doitRecalculerBriefing(briefingStocke, now = new Date()) {
+  if (!briefingStocke || !briefingStocke.date) return true;
+  return briefingStocke.date !== dateBriefing(now);
+}
 
 // Tous les agents actifs par défaut
 const AGENTS_PAR_DEFAUT = {
@@ -141,6 +154,7 @@ function saveState(state) {
       agentsLogs: state.agentsLogs,
       agentData: state.agentData,
       dernierRun: state.dernierRun,
+      briefingMatin: state.briefingMatin,
     }));
   } catch {}
 }
@@ -169,6 +183,8 @@ export default function useAgents({ chantiers, devis, factures, clients, paramet
   const [agentsLogs, setAgentsLogs] = useState(() => _getInitState()?.agentsLogs || {});
   const [agentData, setAgentData] = useState(() => _getInitState()?.agentData || {});
   const [dernierRun, setDernierRun] = useState(() => _getInitState()?.dernierRun || null);
+  // Briefing "Directeur du matin" : { date: 'YYYY-MM-DD', rapport: {...} | null }
+  const [briefingMatin, setBriefingMatin] = useState(() => _getInitState()?.briefingMatin || null);
   const [running, setRunning] = useState(false);
   const memoireRef = useRef(loadMemoire());
 
@@ -207,6 +223,24 @@ export default function useAgents({ chantiers, devis, factures, clients, paramet
       setAgentData(sanitiserAgentData(result.agentData || {}));
       setDernierRun(now);
 
+      // Briefing "Directeur du matin" — calculé UNE fois par jour, en fond, à partir
+      // des données déjà produites par les agents (result.agentData). 2ᵉ chargement du
+      // même jour → cache ; lendemain → date stockée ≠ aujourd'hui → recalcul.
+      setBriefingMatin(prev => {
+        if (!doitRecalculerBriefing(prev)) return prev;
+        const rapport = simulerRapportLundi({
+          chantiers: chantiers || [],
+          factures: factures || [],
+          devis: devis || [],
+          clients: clients || [],
+          parametres: parametres || {},
+          rapports,
+          agentData: result.agentData || {},
+          alertes: result.alertes || [],
+        });
+        return { date: dateBriefing(), rapport };
+      });
+
       // Logs par agent (10 dernières exécutions)
       setAgentsLogs(prev => {
         const next = { ...prev };
@@ -234,7 +268,7 @@ export default function useAgents({ chantiers, devis, factures, clients, paramet
     } finally {
       setRunning(false);
     }
-  }, [chantiers, devis, factures, clients, parametres, agentsActifs, dernierRapport, running, pointages]);
+  }, [chantiers, devis, factures, clients, parametres, agentsActifs, dernierRapport, rapports, running, pointages]);
 
   // Référence à executer toujours à jour (évite le stale-closure dans setInterval)
   const executerRef = useRef(executer);
@@ -298,10 +332,10 @@ export default function useAgents({ chantiers, devis, factures, clients, paramet
   useEffect(() => {
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     saveTimerRef.current = setTimeout(() => {
-      saveState({ agentsActifs: AGENTS_PAR_DEFAUT, alertes, predictions, patterns, rapports, agentsStatuts, agentsLogs, agentData, dernierRun });
+      saveState({ agentsActifs: AGENTS_PAR_DEFAUT, alertes, predictions, patterns, rapports, agentsStatuts, agentsLogs, agentData, dernierRun, briefingMatin });
     }, 800);
     return () => clearTimeout(saveTimerRef.current);
-  }, [alertes, predictions, patterns, rapports, agentsStatuts, agentsLogs, agentData, dernierRun]);
+  }, [alertes, predictions, patterns, rapports, agentsStatuts, agentsLogs, agentData, dernierRun, briefingMatin]);
 
   const marquerLu = useCallback((id) => setAlertes(prev => prev.map(a => a.id === id ? { ...a, lu: true } : a)), []);
   const marquerTousLus = useCallback(() => setAlertes(prev => prev.map(a => ({ ...a, lu: true }))), []);
@@ -329,6 +363,8 @@ export default function useAgents({ chantiers, devis, factures, clients, paramet
     agentsActifs, agentsStatuts, agentsLogs, agentData,
     dernierRun, running, nbNonLues, hasNouveauRapport,
     scoreGlobal, priorites, memoire: memoireRef.current,
+    briefingMatin: briefingMatin?.rapport || null,
+    briefingMatinDate: briefingMatin?.date || null,
     marquerLu, marquerTousLus, forcerExecution, simulerRapport,
   };
 }

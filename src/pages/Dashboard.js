@@ -19,6 +19,7 @@ import { joursReelsChantier } from '../calculs/pointagesHelper';
 import useIsMobile from '../hooks/useIsMobile';
 import { calculerAlertes } from '../alertes';
 import SaisieRapideDashboard from '../components/SaisieRapideDashboard';
+import DirecteurMatin from '../components/DirecteurMatin';
 
 // Protège le rendu contre les valeurs non-string (données localStorage corrompues)
 function safeStr(v) {
@@ -428,6 +429,9 @@ function Dashboard() {
   if (isMobile) {
     return (
       <div>
+        {/* DIRECTEUR DU MATIN — tout en haut, on ajoute sans rien casser */}
+        <DirecteurMatin briefing={agentState?.briefingMatin} scoreSante={agentState?.scoreGlobal ?? null} naviguer={naviguer} />
+
         {/* HEADER compact */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
           <div>
@@ -679,6 +683,9 @@ function Dashboard() {
 
   return (
     <div>
+
+      {/* DIRECTEUR DU MATIN — tout en haut, on ajoute sans rien casser */}
+      <DirecteurMatin briefing={agentState?.briefingMatin} scoreSante={agentState?.scoreGlobal ?? null} naviguer={naviguer} />
 
       {/* ── HEADER ──────────────────────────────────────────────── */}
       <div style={{ marginBottom: isMobile ? 14 : 28 }}>

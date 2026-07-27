@@ -4,6 +4,7 @@ import { fmtN, C } from '../donnees';
 import { DS } from '../ds';
 import { useApp } from '../context/AppContext';
 import { pointagesApresRestauration, totalHeuresPointages } from '../utils/importGuard';
+import SimulateurScenarios from '../demo/SimulateurScenarios';
 
 
 // Sanitise une saisie de taux financier : jamais NaN, jamais négatif.
@@ -246,6 +247,8 @@ function Parametres({ parametres, setParametres, clients = [], setClients = () =
         <div>
       {onglet === 'dashboard' && (
         <div style={carteStyle}>
+          {/* Simulateur de scénarios — visible uniquement en mode démo (self-gate) */}
+          <SimulateurScenarios />
           <div className="ds-card-title" style={{ marginBottom: '20px' }}>Paramètres du Dashboard</div>
           <div style={{ display: 'grid', gridTemplateColumns: 'var(--g-form3)', gap: '15px' }}>
             {[['Alerte jours restants', 'joursAlerte'], ['Nb chantiers affichés', 'nbChantiersAffiche'], ['Période stats (mois)', 'periodeStats']].map(([label, key]) => (

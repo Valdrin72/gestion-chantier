@@ -347,9 +347,10 @@ function AppInner({ profil, deconnecter, userId, isDemo = false }) {
     logAction, naviguer, contexte, periodeGlobale, setPeriodeGlobale,
     agentState, ouvrirSaisieHeures: ouvrirSaisieHeuresApp,
     deconnecter, afficherNotif, confirmer,
+    isDemo,
   }), [ // eslint-disable-line react-hooks/exhaustive-deps
     chantiers, clients, devis, factures, parametres, pointages,
-    paiementsData, actionsLog, profil, contexte, periodeGlobale, agentState,
+    paiementsData, actionsLog, profil, contexte, periodeGlobale, agentState, isDemo,
   ]);
 
   return (

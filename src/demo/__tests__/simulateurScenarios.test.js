@@ -81,7 +81,7 @@ describe('Scénario 🔴 Chantier qui dérape → chantier en perte pointé', ()
 });
 
 describe('Scénario 🟡 Retards d\'encaissement → relances prioritaires', () => {
-  const { result, briefing } = M['retards-encaissement'];
+  const { result, briefing, coach } = M['retards-encaissement'];
   it('au moins une facture en retard > 90 jours détectée', () => {
     expect(result.agentData.RelancePaiements.nb90).toBeGreaterThanOrEqual(1);
     expect(result.agentData.RelancePaiements.montant90).toBeGreaterThan(5000);
@@ -89,6 +89,14 @@ describe('Scénario 🟡 Retards d\'encaissement → relances prioritaires', () 
   it('le briefing propose au moins 2 relances URGENTES chiffrées', () => {
     const relances = briefing.actionsAvantLundi.filter(a => a.priorite === 'URGENT' && a.icone === '💰');
     expect(relances.length).toBeGreaterThanOrEqual(2);
+  });
+  it('🔴 FIX : le score BAISSE (sort de « bonne santé ») à cause des impayés anciens', () => {
+    expect(coach.penaliteCreances).toBeGreaterThan(0);
+    expect(coach.scoreGlobal).toBeLessThan(75); // n'est plus « bonne santé »
+  });
+  it('le signal trésorerie chiffre le cash bloqué chez les retardataires', () => {
+    const treso = briefing.anticipations.find(a => a.label === 'Trésorerie J+30');
+    expect(treso.detail).toMatch(/à risque \(retards de paiement\)/);
   });
 });
 

@@ -37,21 +37,68 @@ export function projeterTresorerie30j({ factures = [], parametres = {}, maintena
   const soldeFrais = soldeSaisi !== null && ageJours !== null && ageJours >= 0 && ageJours <= fraicheurMax;
 
   const horizon = maintenant + 30 * 86400000;
-  const encaissements30j = (factures || [])
+
+  // Décote des créances en retard : un impayé ancien ne « rentre » pas à coup sûr à J+30.
+  // Délais CYNA courts → dès 30j le client déborde, dès 75j la rentrée n'est plus certaine.
+  //   <30j → 100 %   |   30–74j → 50 %   |   ≥75j → 0 %
+  let encaissements30j = 0;       // après décote → utilisé pour le solde projeté
+  let encaissements30jBrut = 0;   // avant décote → dénominateur du ratio de concentration
+  let montantRetard30j = 0;       // créances en retard >30j (numérateur du ratio)
+  let creancesAnciennesARisque = 0; // part décotée (exclue) → à afficher dans le signal
+  (factures || [])
     .filter(f => ['envoyee', 'partielle', 'retard'].includes((f.statut || '').toLowerCase()))
     .filter(f => { const e = f.dateEcheance ? new Date(f.dateEcheance).getTime() : NaN; return !f.dateEcheance || (!isNaN(e) && e <= horizon); })
-    .reduce((s, f) => s + Math.max(0, (parseFloat(f.montantTTC) || 0) - (parseFloat(f.montantPaye) || 0)), 0);
+    .forEach(f => {
+      const restant = Math.max(0, (parseFloat(f.montantTTC) || 0) - (parseFloat(f.montantPaye) || 0));
+      if (restant <= 0) return;
+      const dateRef = f.dateEmission || f.creeLe;
+      const age = dateRef ? Math.floor((maintenant - new Date(dateRef).getTime()) / 86400000) : 0;
+      const facteur = age >= 75 ? 0 : age >= 30 ? 0.5 : 1;
+      encaissements30jBrut += restant;
+      encaissements30j += restant * facteur;
+      creancesAnciennesARisque += restant * (1 - facteur);
+      if (age >= 30) montantRetard30j += restant;
+    });
+
+  // « Tout dépend des autres » : la part du cash attendu bloquée chez des retardataires.
+  const ratioRetard = encaissements30jBrut > 0 ? montantRetard30j / encaissements30jBrut : 0;
+  const alerteRatioRetard = montantRetard30j > 0 && ratioRetard >= CYNA_PARAMS.TRESORERIE_RATIO_RETARD_ALERTE;
 
   const { montant: sorties30j, source: sourceSorties } = sortiesMensuellesEstimees(parametres);
   const soldeProjete = soldeFrais ? soldeSaisi + encaissements30j - sorties30j : null;
 
   return {
     seuil, soldeSaisi, soldeFrais, ageJours,
-    encaissements30j, sorties30j, sourceSorties,
+    encaissements30j, encaissements30jBrut, sorties30j, sourceSorties,
+    creancesAnciennesARisque, montantRetard30j, ratioRetard, alerteRatioRetard,
     soldeProjete,                    // null si pas de solde frais → non jugeable
     modelisable: soldeFrais,
     fournisseursNonModelises: true,  // toujours vrai → avertissement à afficher
   };
+}
+
+/**
+ * Pénalité SCORE des créances anciennes (impayés), pondérée MONTANT × ÂGE.
+ * Délais CYNA courts → paliers resserrés. Pour chaque facture ouverte :
+ *   30–44j → 3 pts / 10'000 CHF   (le client déborde — vigilance)
+ *   45–74j → 6 pts / 10'000 CHF   (délai clairement non respecté)
+ *   ≥75j   → 9 pts / 10'000 CHF   (risque réel de non-paiement)
+ * Le montant compte autant que l'âge. Plafond 40 (comme la trésorerie).
+ */
+export function penaliteScoreCreancesAnciennes({ factures = [], maintenant = Date.now() } = {}) {
+  let penalite = 0;
+  for (const f of factures || []) {
+    if (!['envoyee', 'partielle', 'retard'].includes((f.statut || '').toLowerCase())) continue;
+    const dateRef = f.dateEmission || f.creeLe;
+    if (!dateRef) continue;
+    const age = Math.floor((maintenant - new Date(dateRef).getTime()) / 86400000);
+    const restant = Math.max(0, (parseFloat(f.montantTTC) || 0) - (parseFloat(f.montantPaye) || 0));
+    if (restant <= 0) continue;
+    const ptsPar10k = age >= 75 ? 9 : age >= 45 ? 6 : age >= 30 ? 3 : 0;
+    if (ptsPar10k === 0) continue;
+    penalite += ptsPar10k * (restant / 10000);
+  }
+  return Math.min(40, Math.round(penalite));
 }
 
 /**

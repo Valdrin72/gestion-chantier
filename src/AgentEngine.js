@@ -14,7 +14,7 @@
 
 import { calculerCA, calculerCoutsChantier, isChantierActif, fmtN, heuresEmploye, SEUILS } from './donnees';
 import { CYNA_PARAMS } from './calculs/constants';
-import { projeterTresorerie30j, penaliteScoreTresorerie, sortiesMensuellesEstimees } from './calculs/tresorerie';
+import { projeterTresorerie30j, penaliteScoreTresorerie, penaliteScoreCreancesAnciennes, sortiesMensuellesEstimees } from './calculs/tresorerie';
 
 const uid = (prefix) => `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
 const isDev = process.env.NODE_ENV !== 'production';
@@ -422,8 +422,30 @@ export function simulerRapportLundi({ chantiers, factures, devis, parametres, cl
     // ── ANTICIPATIONS semaine suivante ────────────────────────
     const anticipations = [];
 
+    // Trésorerie J+30 — priorité à la projection HONNÊTE du Coach (vieux impayés décotés,
+    // part de cash bloquée signalée). Repli sur l'ancien prédicteur si non modélisable.
+    const projHonnete = agentData?.CoachDirecteur?.tresorerie30j;
     const soldeJ30 = agentData?.TresoreriePredictor?.solde30;
-    if (soldeJ30 != null) {
+    if (projHonnete?.modelisable) {
+      const sp = projHonnete.soldeProjete;
+      const sousSeuil = sp < projHonnete.seuil;
+      let detail = sousSeuil
+        ? `Sous le seuil de CHF ${fmtN(projHonnete.seuil)} — resserrer les encaissements`
+        : 'Trésorerie saine prévue (sorties estimées déduites)';
+      if (projHonnete.creancesAnciennesARisque > 0) {
+        detail += ` · dont CHF ${fmtN(Math.round(projHonnete.creancesAnciennesARisque))} à risque (retards de paiement)`;
+      }
+      if (projHonnete.alerteRatioRetard) {
+        detail += ` · ${Math.round(projHonnete.ratioRetard * 100)}% du cash attendu est bloqué chez des retardataires`;
+      }
+      anticipations.push({
+        icone: sousSeuil || projHonnete.alerteRatioRetard ? '⚠️' : '✅',
+        label: 'Trésorerie J+30',
+        valeur: `CHF ${fmtN(Math.round(sp))}`,
+        couleur: sousSeuil || projHonnete.alerteRatioRetard ? '#ef4444' : '#10b981',
+        detail,
+      });
+    } else if (soldeJ30 != null) {
       anticipations.push({
         icone: soldeJ30 >= 0 ? '✅' : '⚠️',
         label: 'Trésorerie J+30',
@@ -1961,6 +1983,8 @@ export function runCoachDirecteur({ chantiers, devis, factures, parametres, agen
     // trésorerie avant le manque de marge. On ne juge que si le solde bancaire est frais.
     const projTreso = projeterTresorerie30j({ factures, parametres });
     const penaliteTreso = penaliteScoreTresorerie(projTreso);
+    // Créances anciennes (impayés) : pèsent sur le score, pondérées montant × âge (délais CYNA courts).
+    const penaliteCreances = penaliteScoreCreancesAnciennes({ factures });
     if (projTreso.modelisable && projTreso.soldeProjete < projTreso.seuil) {
       priorites.unshift({
         rang: 0,
@@ -1978,14 +2002,14 @@ export function runCoachDirecteur({ chantiers, devis, factures, parametres, agen
     const nbAlertesTotal = alertes.length;
     const scoreGlobal = Math.max(0, 100
       - critiqueRisque.length * 20
-      - (relances?.nb90 || 0) * 10
+      - penaliteCreances                       // impayés pondérés montant × âge (remplace nb90×10)
       - (anomalies?.nbAnomalies || 0) * 5
       - penaliteTreso);
 
     const hist = memoire.coachHistorique || [];
     hist.unshift({ date: new Date().toISOString().split('T')[0], scoreGlobal, nbPriorites: priorites.length, timestamp: Date.now() });
 
-    const data = { priorites: priorites.slice(0, 5), scoreGlobal, nbAlertesTotal, tresorerie30j: projTreso, penaliteTreso, synthese: `Score entreprise : ${scoreGlobal}/100` };
+    const data = { priorites: priorites.slice(0, 5), scoreGlobal, nbAlertesTotal, tresorerie30j: projTreso, penaliteTreso, penaliteCreances, synthese: `Score entreprise : ${scoreGlobal}/100` };
     return { alertes: [], data, memoire: { coachHistorique: hist.slice(0, 52) } };
   } catch (e) { return { alertes: [], data: { priorites: [], scoreGlobal: 0 }, memoire }; }
 }

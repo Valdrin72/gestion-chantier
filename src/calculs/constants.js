@@ -9,6 +9,9 @@ export const CYNA_PARAMS = {
 
   TRESORERIE_SEUIL_ALERTE: 20_000,     // défaut du seuil d'alerte trésorerie (configurable dans Paramètres)
   TRESORERIE_FRAICHEUR_JOURS: 14,      // au-delà, le solde bancaire saisi est jugé périmé
+  // Part du cash attendu J+30 bloquée chez des retardataires (>30j) au-delà de laquelle
+  // le Directeur signale explicitement la concentration du risque (délais CYNA = courts).
+  TRESORERIE_RATIO_RETARD_ALERTE: 0.40,
 };
 
 // Tarifs journaliers déjà tout compris (charges sociales incluses) → pas de majoration.

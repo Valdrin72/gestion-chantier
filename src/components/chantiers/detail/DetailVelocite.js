@@ -6,11 +6,16 @@ function DetailVelocite({ c, etat }) {
   const v = calculerVitesseChantier(c, etat);
   if (!v) return null;
   const gravite = v.retardEstime >= 5 ? 'critique' : v.retardEstime >= 2 ? 'attention' : 'ok';
+  // Ce bloc affiche un retard PROJETÉ (à la cadence actuelle), à ne pas confondre avec le
+  // retard CONSTATÉ (jours pointés − jours vendus) affiché ailleurs. D'où le libellé explicite.
   const graviteConfig = {
-    critique:  { niveau: 'danger', couleur: C.danger,     titre: `+${v.retardEstime} jours de retard — action nécessaire` },
-    attention: { niveau: 'warning', couleur: C.warning,    titre: `+${v.retardEstime} jour${v.retardEstime > 1 ? 's' : ''} de retard — action recommandée` },
-    ok:        { niveau: 'ok', couleur: C.secondaire, titre: 'Dans les temps' },
+    critique:  { niveau: 'danger', couleur: C.danger,     titre: `Retard projeté à ce rythme : +${v.retardEstime} j — action nécessaire` },
+    attention: { niveau: 'warning', couleur: C.warning,    titre: `Retard projeté à ce rythme : +${v.retardEstime} j — action recommandée` },
+    ok:        { niveau: 'ok', couleur: C.secondaire, titre: 'Dans les temps (à la cadence actuelle)' },
   }[gravite];
+  const sousTitreProjection = gravite === 'ok'
+    ? 'Projection à la cadence actuelle — pas le retard déjà constaté.'
+    : `À la cadence actuelle, fin estimée avec ${v.retardEstime} j de retard — projection, pas le retard déjà constaté.`;
   let reco = null;
   let impact = null;
   if (gravite === 'critique' || gravite === 'attention') {
@@ -35,6 +40,9 @@ function DetailVelocite({ c, etat }) {
           ? <CheckCircle size={18} color={graviteConfig.couleur} strokeWidth={2} style={{ flexShrink: 0 }} />
           : <AlertTriangle size={18} color={graviteConfig.couleur} strokeWidth={2} style={{ flexShrink: 0 }} />}
         <span style={{ fontSize: 15, fontWeight: 800, color: graviteConfig.couleur, letterSpacing: '-0.2px' }}>{graviteConfig.titre}</span>
+      </div>
+      <div style={{ fontSize: 11, color: 'var(--text-muted)', fontStyle: 'italic', paddingLeft: 28, marginTop: -6, marginBottom: reco ? 10 : 0 }}>
+        {sousTitreProjection}
       </div>
       {reco && (
         <div style={{ paddingLeft: 28 }}>

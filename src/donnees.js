@@ -869,9 +869,10 @@ export const calculerRentabiliteEquipe = (chantier, parametres) => {
  * Compare les jours prévus (devis) aux jours réalisés (réel) et retourne l'écart.
  * ecartJours > 0 = dépassement (rouge), < 0 = en avance (vert), = 0 = parfait.
  */
-export const calculerEcartChantier = (chantier) => {
+export const calculerEcartChantier = (chantier, pointages = []) => {
   const joursPrevu    = parseInt(chantier.nombreJours) || 0;
-  const joursRealises = new Set((chantier.journal || []).map(e => e.date).filter(Boolean)).size;
+  // Source POINTAGES (phase 7) — identique à etat.deriveJours. Le journal n'est plus lu ici.
+  const joursRealises = joursReelsChantier(pointages, chantier.id);
   const ecartJours    = joursRealises - joursPrevu;
   const ecartPct      = joursPrevu > 0
     ? Math.round((ecartJours / joursPrevu) * 1000) / 10

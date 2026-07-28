@@ -5,7 +5,7 @@ import {
 } from '../../../donnees';
 import { DS } from '../../../ds';
 
-function DetailRentabilite({ c, etat, couts, naviguer, fmtN, fmtK }) {
+function DetailRentabilite({ c, etat, couts, pointages = [], naviguer, fmtN, fmtK }) {
   const carteStyle = DS.card;
   const joursPrevu = etat.totalJoursPrevus;
   const joursRealises = etat.totalJoursReels;
@@ -42,7 +42,7 @@ function DetailRentabilite({ c, etat, couts, naviguer, fmtN, fmtK }) {
 
   const couleurRenta = statutRentabilite(rj.rentabilitePct).couleur;
 
-  const ec = rj.aucuneSaisie ? null : calculerEcartChantier(c);
+  const ec = rj.aucuneSaisie ? null : calculerEcartChantier(c, pointages);
   const ecKpi = {
     label: 'Écart / devis',
     valeur: ec ? (ec.ecartJours === 0 ? '0j' : `${ec.ecartJours > 0 ? '+' : ''}${ec.ecartJours}j`) : '—',
@@ -62,13 +62,17 @@ function DetailRentabilite({ c, etat, couts, naviguer, fmtN, fmtK }) {
       : { texte: 'Analyse partielle — compléter les données', couleur: C.warning }
     : null;
 
-  const membresAffiches = nbTotal > 0 && etatEquipe !== 'vide'
+  // Coût des employés = BASE (heures × tarif), SANS les majorations CCT (samedi/dimanche/férié).
+  // Les % de répartition sont calculés sur cette base → ils somment bien à 100 % de la base.
+  const membresBase = nbTotal > 0 && etatEquipe !== 'vide'
     ? [...membres]
         .filter(m => etatEquipe === 'complet' || m.joursReels > 0)
         .sort((a, b) => b.cout - a.cout)
-        .map(m => ({ ...m, partPct: etat.coutMOReel > 0 ? Math.round((m.cout / etat.coutMOReel) * 100) : 0 }))
     : [];
-  const totalEquipe = membresAffiches.reduce((s, m) => s + m.cout, 0);
+  const totalEquipe = membresBase.reduce((s, m) => s + m.cout, 0);
+  const membresAffiches = membresBase.map(m => ({ ...m, partPct: totalEquipe > 0 ? Math.round((m.cout / totalEquipe) * 100) : 0 }));
+  // Réconciliation : base + majorations CCT = Coût main-d'œuvre du moteur (rj.coutMOReel).
+  const majorationsCCT = Math.round((rj.coutMOReel || 0) - totalEquipe);
 
   return (
     <div style={{ ...carteStyle, borderLeft: `4px solid ${couleurStatutJours}` }}>
@@ -216,7 +220,7 @@ function DetailRentabilite({ c, etat, couts, naviguer, fmtN, fmtK }) {
               <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                   <span style={{ fontSize: 12, fontWeight: 700, color: etatEquipe === 'complet' ? 'var(--text-secondary)' : C.warning }}>
-                    {etatEquipe === 'complet' ? 'Total équipe' : 'Total partiel'}
+                    {etatEquipe === 'complet' ? 'Total équipe (base)' : 'Total partiel (base)'}
                   </span>
                   {etatEquipe === 'complet' && <span style={{ fontSize: 10, color: C.secondaire }}>Basé sur 100% des employés</span>}
                   {etatEquipe === 'partiel' && (
@@ -230,6 +234,22 @@ function DetailRentabilite({ c, etat, couts, naviguer, fmtN, fmtK }) {
                   CHF {fmtN(totalEquipe)}
                 </span>
               </div>
+
+              {/* Réconciliation : base employés + majorations CCT = Coût main-d'œuvre moteur */}
+              {majorationsCCT !== 0 && (
+                <>
+                  <div style={{ marginTop: 6, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: 11, color: 'var(--text-muted)' }} title="Suppléments samedi/dimanche/férié (CCT) — ajoutés au coût de base">
+                      + majorations CCT (samedi/dimanche/férié)
+                    </span>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-secondary)' }}>CHF {fmtN(majorationsCCT)}</span>
+                  </div>
+                  <div style={{ marginTop: 6, paddingTop: 6, borderTop: '1px dashed var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)' }}>= Coût main-d'œuvre</span>
+                    <span style={{ fontSize: 15, fontWeight: 900, color: C.warning }}>CHF {fmtN(totalEquipe + majorationsCCT)}</span>
+                  </div>
+                </>
+              )}
             </>
           )}
         </div>

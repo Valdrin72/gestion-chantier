@@ -222,22 +222,12 @@ function ChantierDetail({ chantier, detailOnglet, setDetailOnglet, modeCompleter
     return { val: `+${retard}j de dépassement`, label: `${etat.avancementPct}% réalisé`, couleur: retard > 5 ? C.danger : C.warning };
   })();
 
-  const critAlert = alertesChantier.find(a => a.gravite === 'critique');
-  const actionTile = (() => {
-    if (modeChantier === 'FINAL') return { icone: 'info', val: 'Facturer', label: 'Chantier quasi terminé', couleur: C.secondaire };
-    if (critAlert)                return { icone: 'danger', val: 'Action urgente', label: critAlert.texte.length > 50 ? critAlert.texte.slice(0, 48) + '…' : critAlert.texte, couleur: C.danger };
-    if (perfReco === 'renforcer') return { icone: 'danger', val: 'Renforcer l\'équipe', label: 'Retard important — revoir planning', couleur: C.danger };
-    if (perfReco === 'ajouter')  return { icone: 'warning', val: '+1 ouvrier', label: 'Réduire le retard en cours', couleur: C.warning };
-    if (perfReco === 'surveiller') return { icone: '◎', val: 'Surveiller', label: 'Possible rattrapage sans action', couleur: C.warning };
-    if (modeChantier === 'INIT') return { icone: '▶', val: 'Saisir les heures', label: 'Aucune donnée terrain', couleur: '#78909c' };
-    return { icone: '', val: 'RAS', label: 'Aucune action requise', couleur: C.secondaire };
-  })();
-
+  // Tuile ACTION retirée (Lot 3) : elle répétait la recommandation du moment, déjà développée
+  // dans la liste de recommandations et les bandeaux ci-dessous. On garde 3 tuiles.
   const tiles = [
     { id: 'renta', icone: 'renta', titre: 'RENTABILITÉ', ...margeTile, desc: '(CA − coûts réels) / CA × 100' },
     { id: 'av',    icone: 'av', titre: 'AVANCEMENT',  ...avTile,    desc: 'Dates uniques du journal / jours prévus' },
     { id: 'plan',  icone: 'plan', titre: 'PLANNING',    ...planTile,  desc: 'Jours prévus − jours réalisés (journal)' },
-    { id: 'act',   icone: actionTile.icone, titre: 'ACTION', val: actionTile.val, label: actionTile.label, couleur: actionTile.couleur, desc: 'Recommandation basée sur retard et rentabilité' },
   ];
 
   return (<React.Fragment key="detail">
@@ -323,7 +313,7 @@ function ChantierDetail({ chantier, detailOnglet, setDetailOnglet, modeCompleter
         </div>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'var(--g4)', gap: 10, marginBottom: 20 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'var(--g3)', gap: 10, marginBottom: 20 }}>
         {tiles.map(t => (
           <div key={t.id} style={{
             background: `linear-gradient(145deg, ${t.couleur}12 0%, rgba(255,255,255,0.02) 100%)`,

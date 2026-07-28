@@ -49,11 +49,10 @@ describe('BUG 1 — titres doubles : les mots-codes ne s\'affichent plus', () =>
   it('les 4 tuiles montrent le vrai titre seul, jamais "RENTA RENTABILITÉ" etc.', () => {
     const { container } = renderWithApp(<ChantierDetail chantier={CHANTIER_OK} detailOnglet="vue" />, ctxFor(CHANTIER_OK));
     const txt = container.textContent;
-    // Vrais titres présents
+    // Vrais titres présents (tuile ACTION retirée au Lot 3 — 3 tuiles désormais)
     expect(txt).toContain('RENTABILITÉ');
     expect(txt).toContain('AVANCEMENT');
     expect(txt).toContain('PLANNING');
-    expect(txt).toContain('ACTION');
     // MORDANT : aucun mot-code recopié devant le titre
     expect(txt).not.toContain('RENTA RENTABILITÉ');
     expect(txt).not.toContain('AV AVANCEMENT');

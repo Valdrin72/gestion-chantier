@@ -5,7 +5,7 @@
  * Aucun chiffre testé — seulement présence/absence de blocs d'affichage.
  */
 import { describe, it, expect, beforeAll, vi } from 'vitest';
-import { screen } from '@testing-library/react';
+import { screen, fireEvent } from '@testing-library/react';
 import { renderWithApp } from '../test-utils/renderWithApp';
 import { migrerJournalVersPointages } from '../migration/migrerJournalVersPointages';
 import { calculerEtatChantier, calculerCoutsChantier, fmtN } from '../donnees';
@@ -103,13 +103,13 @@ describe('INFOS UNIQUES PRÉSERVÉES', () => {
     const { POINT } = build(CH_MAIN);
     const { container } = renderWithApp(<ChantierDetail chantier={CH_MAIN} detailOnglet="analyse" />, ctxFor(CH_MAIN, POINT));
     const txt = container.textContent;
-    // 3 tuiles
+    // 3 tuiles + verdict + marge PROJETÉE, visibles d'emblée
     ['RENTABILITÉ', 'AVANCEMENT', 'PLANNING'].forEach(w => expect(txt).toContain(w));
-    // verdict de projection (DetailProjection) — unique
-    expect(txt).toContain('Ce que le chantier coûtera au total');
-    // les DEUX marges, distinctes
-    expect(txt).toContain('Marge réelle');       // à ce jour (DetailRentabilite)
-    expect(txt).toContain('Rentabilité prévue');  // fin de chantier (DetailProjection)
+    expect(txt).toContain('Ce que le chantier coûtera au total'); // verdict projection
+    expect(txt).toContain('Rentabilité prévue');                  // marge PROJETÉE (fin de chantier)
+    // La marge À CE JOUR (« Marge réelle ») est dans le détail replié → on l'ouvre.
+    fireEvent.click(screen.getByRole('button', { name: /Voir le détail/i }));
+    expect(screen.getByText('Marge réelle (%)')).toBeInTheDocument();
   });
 
   it('le coût par employé (bloc unique) est toujours affiché', () => {

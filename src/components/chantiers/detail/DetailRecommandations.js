@@ -190,7 +190,7 @@ function DetailRecommandations({ etat, couts, chantier, factures = [], devis = [
     <div style={{ marginBottom: 4 }}>
       <div style={{ ...DS.sectionLabel, marginBottom: 12 }}>
         <AlertTriangle size={13} />
-        Recommandations ({recs.length})
+        Que faire ({recs.length})
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {recs.map((r, i) => <RecoCard key={i} rec={r} />)}

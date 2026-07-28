@@ -47,7 +47,7 @@ const CHANTIER_RETARD = { ...CHANTIER_OK, id: 'CH2', nombreJours: 2 };
 
 describe('BUG 1 — titres doubles : les mots-codes ne s\'affichent plus', () => {
   it('les 4 tuiles montrent le vrai titre seul, jamais "RENTA RENTABILITÉ" etc.', () => {
-    const { container } = renderWithApp(<ChantierDetail chantier={CHANTIER_OK} detailOnglet="vue" />, ctxFor(CHANTIER_OK));
+    const { container } = renderWithApp(<ChantierDetail chantier={CHANTIER_OK} detailOnglet="analyse" />, ctxFor(CHANTIER_OK));
     const txt = container.textContent;
     // Vrais titres présents (tuile ACTION retirée au Lot 3 — 3 tuiles désormais)
     expect(txt).toContain('RENTABILITÉ');
@@ -65,11 +65,11 @@ describe('BUG 1 — titres doubles : les mots-codes ne s\'affichent plus', () =>
 });
 
 describe('BUG 2 — icônes-fantômes : plus de mots "danger"/"warning" à la place des icônes', () => {
-  it('un chantier en dépassement affiche l\'alerte SANS le mot technique "danger"/"warning"', () => {
-    const { container } = renderWithApp(<ChantierDetail chantier={CHANTIER_RETARD} detailOnglet="vue" />, ctxFor(CHANTIER_RETARD));
+  it('un chantier en dépassement montre le dépassement (Analyse) SANS le mot technique "danger"/"warning"', () => {
+    const { container } = renderWithApp(<ChantierDetail chantier={CHANTIER_RETARD} detailOnglet="analyse" />, ctxFor(CHANTIER_RETARD));
     const txt = container.textContent;
-    // L'alerte de dépassement est bien là (le message métier)…
-    expect(txt).toMatch(/Dépassement de délai/i);
+    // Le dépassement est bien montré (bloc retard sur Analyse)…
+    expect(txt).toMatch(/dépassement/i);
     // …mais jamais les mots-codes techniques rendus comme du texte.
     expect(txt).not.toMatch(/\bdanger\b/);
     expect(txt).not.toMatch(/\bwarning\b/);

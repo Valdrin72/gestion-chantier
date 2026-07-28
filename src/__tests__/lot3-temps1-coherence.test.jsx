@@ -5,7 +5,7 @@
  * Aucune règle métier testée ici — seulement la cohérence source/affichage.
  */
 import { describe, it, expect, beforeAll, vi } from 'vitest';
-import { screen } from '@testing-library/react';
+import { screen, fireEvent } from '@testing-library/react';
 import { renderWithApp } from '../test-utils/renderWithApp';
 import { migrerJournalVersPointages } from '../migration/migrerJournalVersPointages';
 import { calculerEtatChantier, calculerCoutsChantier, calculerEcartChantier, fmtN } from '../donnees';
@@ -57,10 +57,14 @@ describe('Piège A — retard constaté unique + retard projeté distinctement l
     parametres: { employes: [EMP], localites: [], parametres: CFG }, pointages: POINT,
     profil: { id: 'cyna', pages: ['chantiers'] }, agentState: { alertes: [], patterns: {} } };
 
-  it('la fiche (onglet Analyse) affiche le retard constaté +2j via le KPI Écart/devis', () => {
+  it('la fiche affiche le retard constaté +2j (bandeau visible), et le KPI Écart/devis = +2j dans le détail replié', () => {
     renderWithApp(<ChantierDetail chantier={CH} detailOnglet="analyse" />, CTX);
+    // Retard constaté visible d'emblée dans le bloc retard groupé (+2j de dépassement).
+    expect(screen.getAllByText(/\+2j/).length).toBeGreaterThan(0);
+    // Le KPI Écart/devis (même valeur que deriveJours) est dans le détail replié → on l'ouvre.
+    fireEvent.click(screen.getByRole('button', { name: /Voir le détail/i }));
     expect(screen.getByText('Écart / devis')).toBeInTheDocument();
-    expect(screen.getAllByText('+2j').length).toBeGreaterThan(0); // même valeur que deriveJours
+    expect(screen.getAllByText('+2j').length).toBeGreaterThan(0);
   });
 
   it('DetailVélocité affiche « Retard projeté à ce rythme » (distinct du constaté), pas « jours de retard »', () => {

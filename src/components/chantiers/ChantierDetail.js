@@ -1,7 +1,7 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   HardHat, Pencil, Trash2, AlertTriangle, CheckCircle,
-  ChevronRight, DollarSign, Clock,
+  ChevronRight, ChevronDown, ChevronUp, DollarSign, Clock,
   TrendingUp, Activity, CalendarDays, Info, Eye, PlayCircle,
 } from 'lucide-react';
 import {
@@ -9,6 +9,7 @@ import {
   getChantierStatus, C,
   assertEtatValide, assertEtatCoherent,
   sommeAvenants, calculerCA, calculerCAForfait, isChantierActif, tauxTVAParam,
+  calculerVitesseChantier,
 } from '../../donnees';
 import { DS, couleurStatut as couleurStatutDS } from '../../ds';
 import { STATUTS_CLOS } from '../../constants/statuts';
@@ -16,7 +17,6 @@ import { Badge, CoutBadge, BarreAvancement, BadgeRentabilite } from '../SharedBa
 import { useApp } from '../../context/AppContext';
 import { joursReelsChantier } from '../../calculs/pointagesHelper';
 import { useChantierCalculs } from '../../hooks/useChantierCalculs';
-import DetailVelocite from './detail/DetailVelocite';
 import DetailProjection from './detail/DetailProjection';
 import DetailRecommandations from './detail/DetailRecommandations';
 import DetailEcarts from './detail/DetailEcarts';
@@ -44,6 +44,8 @@ function ChantierDetail({ chantier, detailOnglet, setDetailOnglet, modeCompleter
   const { factures = [], clients, devis = [], parametres, setChantiers, naviguer, ouvrirSaisieHeures, agentState, confirmer, afficherNotif, pointages = [] } = useApp();
   const { etat, couts } = useChantierCalculs(chantier);
   const couleurStatut = couleurStatutDS;
+  // Détail employé/sous-calculs replié par défaut (Lot 3) — état local, pas de localStorage.
+  const [detailOuvert, setDetailOuvert] = useState(false);
 
   const c = chantier;
   const patterns = agentState?.patterns || {};
@@ -113,6 +115,8 @@ function ChantierDetail({ chantier, detailOnglet, setDetailOnglet, modeCompleter
     return `${joursRestants}j restants`;
   })();
   const perfDetail = `${etat.totalJoursReels} j réalisés sur ${etat.totalJoursPrevus} j prévus`;
+  // Retard PROJETÉ à la cadence actuelle (fusionné dans le bloc retard — Lot 3, ex-DetailVélocité).
+  const vitesseChantier = (etat.projectionDisponible && isChantierActif(c)) ? calculerVitesseChantier(c, etat) : null;
 
   const scoreCriticite = (etat.deriveJours * 2)
     + (etat.projectionDisponible && etat.margeProjeteePct !== null && etat.margeProjeteePct < 0 ? 10 : 0)
@@ -408,47 +412,35 @@ function ChantierDetail({ chantier, detailOnglet, setDetailOnglet, modeCompleter
       </>}
 
       {detailOnglet === 'analyse' && <>
-      {etat.projectionDisponible && isChantierActif(c) && <DetailVelocite c={c} etat={etat} />}
 
-      {etat.totalJoursReels > 0 && perfConfig && (
-        <div style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          padding: '14px 20px', borderRadius: 12, marginBottom: 16,
-          background: perfConfig.couleur + '0d',
-          border: `1px solid ${perfConfig.couleur}30`,
-          borderLeft: `4px solid ${perfConfig.couleur}`,
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1 }}>
-            <IconeCode code={perfConfig.code} size={20} color={perfConfig.couleur} />
-            <div style={{ flex: 1 }}>
-              <div style={{ fontWeight: 700, fontSize: 14, color: perfConfig.couleur }}>{perfMessageCourt}</div>
-              <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 3, opacity: 0.8 }}>{perfDetail}</div>
-              {perfRecoLabel && (
-                <div style={{ marginTop: 8 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <span style={{ fontSize: 13 }}>·</span>
-                    <span style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 500 }}>
-                      Recommandation : {perfRecoLabel.toLowerCase()}
-                    </span>
-                  </div>
-                  {perfImpact && (
-                    <div style={{ marginTop: 4, marginLeft: 20 }}>
-                      <div style={{ fontSize: 11, color: C.secondaire, fontWeight: 600 }}>
-                        → {perfImpact.texte}
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4, fontSize: 12, fontWeight: 700, color: perfImpact.conclusion.couleur }}>
-                        <IconeCode code={perfImpact.conclusion.icone} size={14} color={perfImpact.conclusion.couleur} />
-                        {perfImpact.conclusion.texte}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
+      {/* ── 1. LE VERDICT — le chantier gagne ou perd, combien ─────────── */}
+      {etat.projectionDisponible && <DetailProjection etat={etat} couts={couts} chantier={c} factures={facturesLiees} devis={devis} fmtK={fmtK} />}
+
+      {etat.totalJoursReels > 0 && !etat.projectionDisponible && (
+        <div style={{ background: 'var(--bg-glass)', border: '1px solid var(--border)', borderRadius: 12, padding: '14px 18px', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-secondary)' }}>Projection indisponible — chantier trop tôt</div>
+            <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 3 }}>
+              {etat.totalJoursReels} j réalisés · projection disponible à partir de 20%
+              {etat.totalJoursPrevus > 0 && ` (encore ~${Math.max(0, Math.ceil(etat.totalJoursPrevus * 0.2) - etat.totalJoursReels)} j)`}
             </div>
           </div>
         </div>
       )}
 
+      {etat.totalJoursReels === 0 && etat.coutTotalReel === 0 && (
+        <div style={{ background: 'var(--bg-glass)', border: '1px solid var(--border-hover)', borderRadius: 14, padding: '20px 24px', marginBottom: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            <HardHat size={28} strokeWidth={1.5} style={{ color: "var(--text-muted)" }} />
+            <div>
+              <div style={{ fontWeight: 700, color: 'var(--text-secondary)', fontSize: 15, marginBottom: 4 }}>Chantier non démarré</div>
+              <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>Déclarez la première journée pour activer le suivi et la projection.</div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Contexte — carte d'identité du chantier ────────────────────── */}
       <div style={{ ...carteStyle, borderLeft: `4px solid ${couleurStatut(c.statut)}` }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <div>
@@ -510,34 +502,70 @@ function ChantierDetail({ chantier, detailOnglet, setDetailOnglet, modeCompleter
       </div>
 
 
-      {etat.totalJoursReels === 0 && etat.coutTotalReel === 0 && (
-        <div style={{ background: 'var(--bg-glass)', border: '1px solid var(--border-hover)', borderRadius: 14, padding: '20px 24px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-            <HardHat size={28} strokeWidth={1.5} style={{ color: "var(--text-muted)" }} />
-            <div>
-              <div style={{ fontWeight: 700, color: 'var(--text-secondary)', fontSize: 15, marginBottom: 4 }}>Chantier non démarré</div>
-              <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>Déclarez la première journée pour activer le suivi et la projection.</div>
+      {/* ── 2. POURQUOI — bloc RETARD groupé : constaté + projeté (une seule zone) ── */}
+      {etat.totalJoursReels > 0 && perfConfig && (
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '14px 20px', borderRadius: 12, marginBottom: 16,
+          background: perfConfig.couleur + '0d',
+          border: `1px solid ${perfConfig.couleur}30`,
+          borderLeft: `4px solid ${perfConfig.couleur}`,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1 }}>
+            <IconeCode code={perfConfig.code} size={20} color={perfConfig.couleur} />
+            <div style={{ flex: 1 }}>
+              <div style={{ fontWeight: 700, fontSize: 14, color: perfConfig.couleur }}>{perfMessageCourt}</div>
+              <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 3, opacity: 0.8 }}>{perfDetail}</div>
+              {/* Retard PROJETÉ à la cadence actuelle (fusionné — ex-DetailVélocité), étiqueté distinctement. */}
+              {vitesseChantier && vitesseChantier.retardEstime > 0 && (
+                <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 6, fontStyle: 'italic' }}>
+                  Retard projeté à ce rythme : <strong style={{ fontStyle: 'normal' }}>+{vitesseChantier.retardEstime} j</strong> — à la cadence actuelle (projection).
+                </div>
+              )}
+              {perfRecoLabel && (
+                <div style={{ marginTop: 8 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ fontSize: 13 }}>·</span>
+                    <span style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 500 }}>
+                      Recommandation : {perfRecoLabel.toLowerCase()}
+                    </span>
+                  </div>
+                  {perfImpact && (
+                    <div style={{ marginTop: 4, marginLeft: 20 }}>
+                      <div style={{ fontSize: 11, color: C.secondaire, fontWeight: 600 }}>
+                        → {perfImpact.texte}
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4, fontSize: 12, fontWeight: 700, color: perfImpact.conclusion.couleur }}>
+                        <IconeCode code={perfImpact.conclusion.icone} size={14} color={perfImpact.conclusion.couleur} />
+                        {perfImpact.conclusion.texte}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </div>
       )}
 
-      {etat.totalJoursReels > 0 && !etat.projectionDisponible && (
-        <div style={{ background: 'var(--bg-glass)', border: '1px solid var(--border)', borderRadius: 12, padding: '14px 18px', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 12 }}>
-
-          <div>
-            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-secondary)' }}>Projection indisponible — chantier trop tôt</div>
-            <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 3 }}>
-              {etat.totalJoursReels} j réalisés · projection disponible à partir de 20%
-              {etat.totalJoursPrevus > 0 && ` (encore ~${Math.max(0, Math.ceil(etat.totalJoursPrevus * 0.2) - etat.totalJoursReels)} j)`}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {etat.projectionDisponible && <DetailProjection etat={etat} couts={couts} chantier={c} factures={facturesLiees} devis={devis} fmtK={fmtK} />}
+      {/* ── 3. QUE FAIRE — zone actions unique (chiffrée) ──────────────── */}
       {etat.projectionDisponible && <DetailRecommandations etat={etat} couts={couts} chantier={c} factures={facturesLiees} devis={devis} fmtK={fmtK} />}
-      <DetailRentabilite c={c} etat={etat} couts={couts} pointages={pointages} naviguer={naviguer} fmtN={fmtN} fmtK={fmtK} />
+
+      {/* ── 4. Détail replié (fermé par défaut) — coût par employé, sous-calculs ── */}
+      <div style={{ marginTop: 4 }}>
+        <button
+          onClick={() => setDetailOuvert(o => !o)}
+          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, width: '100%', background: 'var(--bg-glass-2)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 14px', cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, fontWeight: 700, color: 'var(--text-secondary)' }}
+        >
+          {detailOuvert ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+          {detailOuvert ? 'Masquer le détail' : 'Voir le détail — coût par employé, sous-calculs'}
+        </button>
+        {detailOuvert && (
+          <div style={{ marginTop: 12 }}>
+            <DetailRentabilite c={c} etat={etat} couts={couts} pointages={pointages} naviguer={naviguer} fmtN={fmtN} fmtK={fmtK} />
+          </div>
+        )}
+      </div>
       </>}
 
       {detailOnglet === 'financier' && <>

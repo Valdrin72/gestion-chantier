@@ -197,30 +197,30 @@ describe('Item 2 — situation 1 clic (RTL — vrai composant FinancesPage)', ()
     renderFinances();
     // potentiel = 50 000 × 60% − 0 = 30 000 > 500 → chantier visible
     expect(screen.getByText('Réno Dupont')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Créer la situation/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Créer la facture d'avancement/i })).toBeInTheDocument();
   });
 
   it('clic "Créer la situation" → onglet Factures + formulaire pré-rempli type situation', async () => {
     renderFinances();
 
-    fireEvent.click(screen.getByRole('button', { name: /Créer la situation/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Créer la facture d'avancement/i }));
 
     // Le formulaire Factures s'ouvre (useEffect dans Factures réagit au preRemplir)
     // findBy* attend de manière asynchrone que le form soit rendu
-    const objetInput = await screen.findByDisplayValue('Situation n°1 — Réno Dupont');
+    const objetInput = await screen.findByDisplayValue('Facture d\'avancement n°1 — Réno Dupont');
     expect(objetInput).toBeInTheDocument();
 
-    // Type = situation
-    expect(screen.getByDisplayValue('Situation')).toBeInTheDocument();
+    // Type = situation (libellé affiché « Facture d'avancement », clé technique inchangée)
+    expect(screen.getByDisplayValue('Facture d\'avancement')).toBeInTheDocument();
 
     // Description de la ligne = avancement 60%
-    const descInput = await screen.findByDisplayValue(/Situation n°1 — avancement 60%/);
+    const descInput = await screen.findByDisplayValue(/Facture d'avancement n°1 — avancement 60%/);
     expect(descInput).toBeInTheDocument();
   });
 
   it('le potentiel pré-remplit le prix de la ligne (30 000 HT)', async () => {
     renderFinances();
-    fireEvent.click(screen.getByRole('button', { name: /Créer la situation/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Créer la facture d'avancement/i }));
 
     // Prix unitaire = potentiel = 30 000 → fmtN(30000) → "30'000"
     await screen.findByDisplayValue("30'000");
@@ -236,9 +236,9 @@ describe('Item 2 — situation 1 clic (RTL — vrai composant FinancesPage)', ()
     }];
 
     renderFinances(facturesExistantes);
-    fireEvent.click(screen.getByRole('button', { name: /Créer la situation/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Créer la facture d'avancement/i }));
 
-    const objetInput = await screen.findByDisplayValue('Situation n°2 — Réno Dupont');
+    const objetInput = await screen.findByDisplayValue('Facture d\'avancement n°2 — Réno Dupont');
     expect(objetInput).toBeInTheDocument();
   });
 
@@ -251,9 +251,9 @@ describe('Item 2 — situation 1 clic (RTL — vrai composant FinancesPage)', ()
     }];
 
     renderFinances(facturesAnnulees);
-    fireEvent.click(screen.getByRole('button', { name: /Créer la situation/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Créer la facture d'avancement/i }));
 
-    const objetInput = await screen.findByDisplayValue('Situation n°1 — Réno Dupont');
+    const objetInput = await screen.findByDisplayValue('Facture d\'avancement n°1 — Réno Dupont');
     expect(objetInput).toBeInTheDocument();
   });
 
@@ -276,6 +276,6 @@ describe('Item 2 — situation 1 clic (RTL — vrai composant FinancesPage)', ()
     );
 
     // calculerCA retourne null sans devisId → filtré par potentiel <= 0
-    expect(screen.queryByRole('button', { name: /Créer la situation/i })).toBeNull();
+    expect(screen.queryByRole('button', { name: /Créer la facture d'avancement/i })).toBeNull();
   });
 });

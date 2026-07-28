@@ -128,7 +128,7 @@ describe('FinancesPage — structure de base', () => {
   it('affiche les 4 labels KPI en-tête', () => {
     renderFinances();
     expect(screen.getAllByText(/Total facturé/i).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/Total encaissé/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Total payé/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/En attente/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/En retard/i).length).toBeGreaterThan(0);
   });
@@ -230,7 +230,7 @@ describe('FinancesPage — factures orphelines', () => {
       devis: [],
       clients: [],
     });
-    expect(screen.getByText(/1 facture orpheline/i)).toBeInTheDocument();
+    expect(screen.getByText(/1 facture sans chantier ni devis rattaché/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Supprimer/i })).toBeInTheDocument();
   });
 
@@ -240,7 +240,7 @@ describe('FinancesPage — factures orphelines', () => {
       factures: [FACTURE_ORPHELINE, orph2],
       chantiers: [],
     });
-    expect(screen.getByText(/2 factures orphelines/i)).toBeInTheDocument();
+    expect(screen.getByText(/2 factures sans chantier ni devis rattaché/i)).toBeInTheDocument();
   });
 
   it("pas d'avertissement orphelines quand toutes les factures sont valides", () => {
@@ -322,7 +322,7 @@ describe('FinancesPage — Trésorerie : à facturer', () => {
       clients: [CLIENT_1],
       devis: [DEVIS_1],
     });
-    expect(screen.getByRole('button', { name: /Créer la situation →/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Créer la facture d'avancement →/i })).toBeInTheDocument();
   });
 
   it('potentiel < 500 → pas de bouton "Créer la situation →"', () => {
@@ -336,7 +336,7 @@ describe('FinancesPage — Trésorerie : à facturer', () => {
       clients: [CLIENT_1],
       devis: [devisBas],
     });
-    expect(screen.queryByRole('button', { name: /Créer la situation →/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Créer la facture d'avancement →/i })).not.toBeInTheDocument();
   });
 
   it('cliquer "Créer la situation →" → bascule onglet Factures + type=situation', () => {
@@ -347,7 +347,7 @@ describe('FinancesPage — Trésorerie : à facturer', () => {
       devis: [DEVIS_1],
     });
 
-    fireEvent.click(screen.getByRole('button', { name: /Créer la situation →/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Créer la facture d'avancement →/i }));
 
     // preRemplir.type = 'situation' transmis à Factures
     expect(screen.getByTestId('pre-remplir-type')).toHaveTextContent('situation');
@@ -361,7 +361,7 @@ describe('FinancesPage — Trésorerie : à facturer', () => {
       devis: [DEVIS_1],
     });
 
-    fireEvent.click(screen.getByRole('button', { name: /Créer la situation →/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Créer la facture d'avancement →/i }));
 
     expect(screen.getByTestId('pre-remplir-chantierid')).toHaveTextContent('CH1');
   });
@@ -378,7 +378,7 @@ describe('FinancesPage — Trésorerie : à facturer', () => {
       devis: [DEVIS_1],
     });
     // Potentiel = 5000 ≥ 500 → bouton toujours présent
-    expect(screen.getByRole('button', { name: /Créer la situation →/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Créer la facture d'avancement →/i })).toBeInTheDocument();
   });
 });
 
@@ -612,7 +612,7 @@ describe('FinancesPage — Performance globale', () => {
     });
     expect(screen.getByText(/Performance globale/i)).toBeInTheDocument();
     expect(screen.getByText(/CA facturé total/i)).toBeInTheDocument();
-    expect(screen.getByText(/Encaissé total/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/Total payé/i).length).toBeGreaterThan(0);
   });
 
   it('section "Performance globale" absente quand aucune facture', () => {

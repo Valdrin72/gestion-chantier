@@ -33,10 +33,12 @@ const STATUT_LABELS = {
   annulee:    'Annulée',
 };
 
+// Libellés AFFICHÉS uniquement — les clés (acompte/situation/finale/standard) restent
+// les valeurs techniques de f.type, jamais modifiées.
 const TYPE_LABELS = {
   acompte:   'Acompte',
-  situation: 'Situation',
-  finale:    'Finale',
+  situation: 'Facture d\'avancement',
+  finale:    'Facture de clôture',
   standard:  'Standard',
 };
 
@@ -517,7 +519,7 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
       {/* KPIs */}
       <div style={{ display: 'flex', gap: 16, marginBottom: 24, flexWrap: 'wrap' }}>
         <KpiCard label="Total facturé"  value={`${fmt(kpis.totalFacture)} CHF`}  couleur="#0d3d6e" icon="doc" />
-        <KpiCard label="Encaissé"       value={`${fmt(kpis.totalEncaisse)} CHF`} couleur="#10b981" icon="" />
+        <KpiCard label="Payé"           value={`${fmt(kpis.totalEncaisse)} CHF`} couleur="#10b981" icon="" />
         <KpiCard label="En retard"      value={`${fmt(kpis.totalRetard)} CHF`}   couleur="#ef4444" icon="" />
         <KpiCard label="Brouillons"     value={kpis.nbBrouillon}                 couleur="#8b5cf6" icon="edit" />
       </div>
@@ -554,7 +556,7 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
           <table className="table-cards" style={{ width: '100%' }}>
             <thead>
               <tr>
-                {['Numéro', 'Client', 'Type', 'Émission', 'Échéance', 'Montant TTC', 'Payé / Progression', 'Statut', 'Actions'].map(h => (
+                {['Numéro', 'Client', 'Type', 'Émission', 'Échéance', 'Montant TTC', 'Payé', 'Statut', 'Actions'].map(h => (
                   <th key={h} style={S.th}>{h}</th>
                 ))}
               </tr>
@@ -875,7 +877,7 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
             {(f.montantTTC ?? 0) > 0 && (
               <div style={{ marginTop: 10 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--text-secondary)', marginBottom: 4 }}>
-                  <span>Recouvrement</span>
+                  <span>Payé</span>
                   <span>{f.montantTTC > 0 ? Math.round((f.montantPaye ?? 0) / f.montantTTC * 100) : 0}%</span>
                 </div>
                 <div style={{ height: 5, background: 'var(--border)', borderRadius: 3, overflow: 'hidden' }}>

@@ -159,7 +159,7 @@ function ChantierDetail({ chantier, detailOnglet, setDetailOnglet, modeCompleter
       if (etat.margeEstimee < 0) {
         list.push({ id: 'perte', texte: `Chantier en perte — déficit estimé CHF ${fmtN(Math.abs(etat.margeEstimee))} (${Math.round(etat.margeProjeteePct * 10) / 10}%)`, gravite: 'critique', icone: 'danger' });
       } else if (etat.margeProjeteePct < 15) {
-        list.push({ id: 'marge_faible', texte: `Rentabilité faible — marge estimée ${Math.round(etat.margeProjeteePct * 10) / 10}% · seuil cible 15%`, gravite: 'warning', icone: 'warning' });
+        list.push({ id: 'marge_faible', texte: `Rentabilité faible — rentabilité prévue ${Math.round(etat.margeProjeteePct * 10) / 10}% · objectif 15%`, gravite: 'warning', icone: 'warning' });
       }
     }
     if (etat.coutMOReel > 0 && etat.coutTotalReel > 0) {
@@ -190,11 +190,11 @@ function ChantierDetail({ chantier, detailOnglet, setDetailOnglet, modeCompleter
   const margeTile = (() => {
     if (etat.projectionDisponible && etat.margeProjeteePct !== null) {
       const v = etat.margeProjeteePct;
-      return { val: `${v >= 0 ? '+' : ''}${Math.round(v * 10) / 10}%`, label: 'Marge estimée finale', couleur: v >= 15 ? C.secondaire : v >= 5 ? C.warning : C.danger };
+      return { val: `${v >= 0 ? '+' : ''}${Math.round(v * 10) / 10}%`, label: 'Rentabilité prévue à la fin', couleur: v >= 15 ? C.secondaire : v >= 5 ? C.warning : C.danger };
     }
     if (couts.margeActuellePct !== null && etat.coutTotalReel > 0) {
       const v = couts.margeActuellePct;
-      return { val: `${v >= 0 ? '+' : ''}${Math.round(v * 10) / 10}%`, label: 'Marge actuelle', couleur: v >= 15 ? C.secondaire : v >= 5 ? C.warning : C.danger };
+      return { val: `${v >= 0 ? '+' : ''}${Math.round(v * 10) / 10}%`, label: 'Rentabilité à ce jour', couleur: v >= 15 ? C.secondaire : v >= 5 ? C.warning : C.danger };
     }
     return devisTotal !== null
       ? { val: '—', label: 'Saisir des heures', couleur: '#78909c' }
@@ -586,7 +586,7 @@ function ChantierDetail({ chantier, detailOnglet, setDetailOnglet, modeCompleter
               {[
                 { label: 'CA signé', val: `CHF ${fmtK(caForfait ?? devisTotal)}`, sub: (() => { const av = sommeAvenants(c); const rg = Array.isArray(devisSource?.heuresRegie) ? devisSource.heuresRegie.reduce((s,r) => s+(parseFloat(r.heures)||0)*(parseFloat(r.tarifHeure)||0),0) : 0; const extrasTotal = (c.extras || []).reduce((s, e) => s + (e.mode === 'forfait' ? (parseFloat(e.montantForfait)||0) : (parseFloat(e.heures)||0)*(parseFloat(e.tarifHeure)||0)), 0); if (extrasTotal > 0) return `forfait + extras CHF ${fmtK(extrasTotal)}`; if (av > 0 && rg > 0) return `avenants ${fmtK(av)} + régie ${fmtK(rg)}`; if (av > 0) return `dont avenants CHF ${fmtK(av)}`; if (rg > 0) return `dont régie CHF ${fmtK(rg)}`; return null; })(), couleur: C.primaire },
                 { label: 'Facturé', val: `CHF ${fmtK(montantFactureLie)}`, sub: `${pctFacture}% du devis`, couleur: pctFacture >= 100 ? C.secondaire : pctFacture > 0 ? C.info : '#78909c' },
-                { label: 'Encaissé', val: `CHF ${fmtK(montantPayeLie)}`, sub: `${pctEncaisse}% du devis`, couleur: pctEncaisse >= 100 ? C.secondaire : pctEncaisse > 0 ? C.warning : '#78909c' },
+                { label: 'Payé', val: `CHF ${fmtK(montantPayeLie)}`, sub: `${pctEncaisse}% du devis`, couleur: pctEncaisse >= 100 ? C.secondaire : pctEncaisse > 0 ? C.warning : '#78909c' },
               ].map(s => (
                 <div key={s.label} style={{ background: s.couleur + '12', border: `1px solid ${s.couleur}28`, borderRadius: 12, padding: '14px 16px' }}>
                   <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px', color: 'var(--text-muted)', marginBottom: 4 }}>{s.label}</div>
@@ -606,7 +606,7 @@ function ChantierDetail({ chantier, detailOnglet, setDetailOnglet, modeCompleter
             </div>
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#64748B', marginBottom: 4 }}>
-                <span>Encaissé</span>
+                <span>Payé</span>
                 <span style={{ color: '#F59E0B', fontWeight: 600 }}>{pctEncaisse}% · CHF {fmtN(Math.round(montantPayeLie))}</span>
               </div>
               <div style={{ height: 6, background: '#E2E8F0', borderRadius: 3 }}>
@@ -796,7 +796,7 @@ function ChantierDetail({ chantier, detailOnglet, setDetailOnglet, modeCompleter
             <div>
               <span style={{ fontWeight: 700, color: C.danger, fontSize: 13 }}>Rythme de dépense critique</span>
               <span style={{ fontSize: 12, color: 'var(--text-muted)', marginLeft: 8 }}>
-                Vous dépensez trop vite par rapport à l'avancement — ratio efficacité {couts.ratioEfficacite !== null ? Math.round(couts.ratioEfficacite * 100) : '—'}% (seuil : 70%)
+                Vous dépensez trop vite par rapport à l'avancement — vitesse de dépense vs avancement {couts.ratioEfficacite !== null ? Math.round(couts.ratioEfficacite * 100) : '—'}% (seuil : 70%)
               </span>
             </div>
           </div>
@@ -807,7 +807,7 @@ function ChantierDetail({ chantier, detailOnglet, setDetailOnglet, modeCompleter
             <div>
               <span style={{ fontWeight: 700, color: C.warning, fontSize: 13 }}>Rythme de dépense élevé</span>
               <span style={{ fontSize: 12, color: 'var(--text-muted)', marginLeft: 8 }}>
-                Les coûts progressent plus vite que l'avancement — ratio efficacité {couts.ratioEfficacite !== null ? Math.round(couts.ratioEfficacite * 100) : '—'}% (seuil : 85%)
+                Les coûts progressent plus vite que l'avancement — vitesse de dépense vs avancement {couts.ratioEfficacite !== null ? Math.round(couts.ratioEfficacite * 100) : '—'}% (seuil : 85%)
               </span>
             </div>
           </div>
@@ -832,8 +832,8 @@ function ChantierDetail({ chantier, detailOnglet, setDetailOnglet, modeCompleter
         {modeChantier === 'FINAL' && (
         <div style={{ display: 'grid', gridTemplateColumns: 'var(--g4)', gap: '12px', marginBottom: 16 }}>
           {[
-            { label: 'Marge directe (%)', valeur: couts.margeActuellePct !== null ? `${couts.margeActuellePct}%` : '—', couleur: (couts.margeActuellePct ?? 0) >= 15 ? C.secondaire : C.danger },
-            { label: 'Marge nette', valeur: couts.margeNettePct !== null ? `${couts.margeNettePct}%` : '—', couleur: (couts.margeNettePct ?? 0) >= 10 ? C.secondaire : (couts.margeNettePct ?? 0) >= 0 ? C.warning : C.danger, sub: `FG: CHF ${fmtK(couts.fraisGeneraux)}` },
+            { label: 'Ce qui reste après les coûts (%)', valeur: couts.margeActuellePct !== null ? `${couts.margeActuellePct}%` : '—', couleur: (couts.margeActuellePct ?? 0) >= 15 ? C.secondaire : C.danger },
+            { label: 'Ce qui reste vraiment (%)', valeur: couts.margeNettePct !== null ? `${couts.margeNettePct}%` : '—', couleur: (couts.margeNettePct ?? 0) >= 10 ? C.secondaire : (couts.margeNettePct ?? 0) >= 0 ? C.warning : C.danger, sub: `frais de structure déduits : CHF ${fmtK(couts.fraisGeneraux)}` },
             { label: 'Coût/m² réel', valeur: couts.coutParM2Reel !== null ? `CHF ${couts.coutParM2Reel}` : '—', couleur: couts.coutParM2Reel !== null ? C.violet : 'var(--text-muted)' },
             { label: 'Prix/m² devis', valeur: couts.prixParM2Devis !== null ? `CHF ${couts.prixParM2Devis}` : '—', couleur: couts.prixParM2Devis !== null ? C.info : 'var(--text-muted)' },
           ].map(s => (
@@ -861,8 +861,8 @@ function ChantierDetail({ chantier, detailOnglet, setDetailOnglet, modeCompleter
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--bg-glass-2)', border: '1px solid var(--border-hover)', borderRadius: 10, padding: '12px 14px' }}>
               <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px', color: 'var(--text-muted)' }}>RAD — Coût pour finir</div>
-                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 1 }}>À ce rythme, reste à dépenser</div>
+                <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px', color: 'var(--text-muted)' }}>Ce qu'il reste à dépenser</div>
+                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 1 }}>À ce rythme, pour finir le chantier</div>
               </div>
               {couts.rad !== null ? (
                 <div style={{ fontSize: 18, fontWeight: 800, color: couts.rad > couts.budgetRestant ? C.danger : C.secondaire }}>

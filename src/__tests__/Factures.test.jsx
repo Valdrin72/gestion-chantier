@@ -166,7 +166,7 @@ describe('Factures — liste : rendu de base', () => {
   it('affiche les 4 labels KPI', () => {
     renderFactures({ factures: [FACTURE_ENVOYEE] });
     expect(screen.getAllByText('Total facturé').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Encaissé').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Payé').length).toBeGreaterThan(0);
     expect(screen.getAllByText('En retard').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Brouillons').length).toBeGreaterThan(0);
   });

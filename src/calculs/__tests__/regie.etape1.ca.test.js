@@ -152,7 +152,7 @@ describe('FinancesPage — potentiel sur caForfait (RTL)', () => {
     renderFinances([chantier]);
     // potentiel = 50000 × 60% = 30000 → widget visible
     expect(screen.getByText('Réno Dupont')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Créer la situation/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Créer la facture d'avancement/i })).toBeInTheDocument();
   });
 
   it('avec extra forfait : potentiel basé sur caForfait (50 000), PAS sur caTotal (58 000)', () => {

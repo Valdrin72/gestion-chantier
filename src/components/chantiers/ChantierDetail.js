@@ -279,8 +279,8 @@ function ChantierDetail({ chantier, detailOnglet, setDetailOnglet, modeCompleter
         {c.devisId && !isChantierActif(c) && !STATUTS_CLOS.includes(c.statut) && (
           <button
             onClick={() => onPasserEnCours(c)}
-            style={{ ...btnSucces, background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.4)', color: '#f59e0b' }}
-          >▶ Passer en cours</button>
+            style={{ ...btnSucces, background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.4)', color: '#f59e0b', display: 'inline-flex', alignItems: 'center', gap: 6 }}
+          ><PlayCircle size={15} /> Passer en cours</button>
         )}
         {isChantierActif(c) && (
           <button

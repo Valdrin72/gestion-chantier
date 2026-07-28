@@ -87,15 +87,8 @@ function genererRecommandations(etat, couts, chantier, factures, devis) {
       impactCHF: coutRetardEst,
       urgence: joursRetard > 14 ? 'haute' : 'moyenne',
     });
-  } else if (deriveJours > 3 && deriveJours <= 7) {
-    recs.push({
-      type: 'planning',
-      titre: `Léger retard : ${deriveJours} jours`,
-      detail: `${etat.totalJoursReels} j réalisés vs ${etat.totalJoursPrevus} j prévus. Surveiller le rythme d'avancement sur les prochains jours.`,
-      impactCHF: null,
-      urgence: 'basse',
-    });
   }
+  // « Léger retard » (3–7 j) retiré (Lot 3) : doublon du bandeau retard / DetailVélocité, sans chiffre propre.
 
   if (couts.ratioEfficacite !== null && couts.ratioEfficacite < 0.7 && ca > 0) {
     const surCout = ca > 0
@@ -108,15 +101,8 @@ function genererRecommandations(etat, couts, chantier, factures, devis) {
       impactCHF: surCout,
       urgence: 'haute',
     });
-  } else if (couts.ratioEfficacite !== null && couts.ratioEfficacite < 0.85) {
-    recs.push({
-      type: 'couts',
-      titre: 'Efficacité dépense à surveiller',
-      detail: `Vitesse de dépense vs avancement ${Math.round(couts.ratioEfficacite * 100)}% — consommation budgétaire légèrement supérieure à l'avancement. Contrôler les commandes et la productivité.`,
-      impactCHF: null,
-      urgence: 'basse',
-    });
   }
+  // « Efficacité à surveiller » retirée (Lot 3) : doublon de l'alerte « Rythme de dépense », sans chiffre propre.
 
   if (couts.ecartMateriel > 0 && couts.coutMaterielPrevu > 0) {
     const ecartPct = Math.round(couts.ecartMaterielPct * 10) / 10;
@@ -196,24 +182,9 @@ function RecoCard({ rec }) {
 function DetailRecommandations({ etat, couts, chantier, factures = [], devis = [], fmtK }) {
   const recs = genererRecommandations(etat, couts, chantier, factures, devis);
 
-  if (recs.length === 0) {
-    return (
-      <div style={{
-        background: C.secondaire + '10',
-        border: `1px solid ${C.secondaire}35`,
-        borderLeft: `4px solid ${C.secondaire}`,
-        borderRadius: 12,
-        padding: '14px 18px',
-        display: 'flex', alignItems: 'center', gap: 14,
-        marginBottom: 4,
-      }}>
-        <CheckCircle size={20} color={C.secondaire} strokeWidth={2} />
-        <span style={{ fontSize: 13, fontWeight: 700, color: C.secondaire }}>
-          Ce chantier est sur les rails — aucune action corrective requise
-        </span>
-      </div>
-    );
-  }
+  // Bandeau « sur les rails » retiré (Lot 3) : décoratif, aucune action — doublait la décision
+  // « Chantier maîtrisé » de la projection. Sans recommandation, on n'affiche rien.
+  if (recs.length === 0) return null;
 
   return (
     <div style={{ marginBottom: 4 }}>

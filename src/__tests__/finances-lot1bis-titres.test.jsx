@@ -63,10 +63,10 @@ describe('Lot 1-bis — aucun mot-code / mot technique / caractère brut sur 3 o
 });
 
 describe('Lot 1-bis — les vrais titres restent présents (pas de sur-correction)', () => {
-  it('la fiche affiche bien RENTABILITÉ / AVANCEMENT / PLANNING / ACTION', () => {
+  it('la fiche affiche bien RENTABILITÉ / AVANCEMENT / PLANNING (tuile ACTION retirée au Lot 3)', () => {
     const ch = ETATS['en cours'];
     const { container } = renderWithApp(<ChantierDetail chantier={ch} detailOnglet="vue" />, mkCtx(ch));
     const txt = container.textContent;
-    ['RENTABILITÉ', 'AVANCEMENT', 'PLANNING', 'ACTION'].forEach(w => expect(txt).toContain(w));
+    ['RENTABILITÉ', 'AVANCEMENT', 'PLANNING'].forEach(w => expect(txt).toContain(w));
   });
 });

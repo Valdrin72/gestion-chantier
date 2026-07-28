@@ -83,34 +83,8 @@ function DetailRentabilite({ c, etat, couts, pointages = [], naviguer, fmtN, fmt
         </span>
       </div>
 
-      {!rj.aucuneSaisie && rj.joursPrevu > 0 && (
-        <div style={{ marginBottom: 18 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--text-muted)', marginBottom: 6 }}>
-            <span>0 jour</span>
-            <span>{rj.joursPrevu} jours prévus</span>
-          </div>
-          <div style={{ background: 'var(--bg-glass-2)', borderRadius: 8, height: 10, overflow: 'hidden', position: 'relative' }}>
-            <div style={{
-              height: '100%', borderRadius: 8, transition: 'width 0.4s ease',
-              background: rj.enDepassement
-                ? `linear-gradient(90deg, ${C.warning}, ${C.danger})`
-                : `linear-gradient(90deg, ${C.primaire}, ${C.secondaire})`,
-              width: `${Math.min((rj.joursRealises / rj.joursPrevu) * 100, 100)}%`,
-            }} />
-            {rj.enDepassement && (
-              <div style={{ position: 'absolute', right: 0, top: 0, height: '100%', width: `${Math.min(((rj.joursRealises - rj.joursPrevu) / rj.joursPrevu) * 100, 30)}%`, background: C.danger + '60', borderRadius: '0 8px 8px 0' }} />
-            )}
-          </div>
-          <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 5, textAlign: 'right' }}>
-            {rj.joursRealises} jour{rj.joursRealises > 1 ? 's' : ''} réalisé{rj.joursRealises > 1 ? 's' : ''}
-            {rj.enDepassement
-              ? ` (+${-rj.joursRestants}j de dépassement)`
-              : rj.enAvance
-                ? ` — ${rj.joursRestants}j restant${rj.joursRestants > 1 ? 's' : ''}`
-                : ''}
-          </div>
-        </div>
-      )}
+      {/* Barre de jours retirée (Lot 3) : doublon de la BarreAvancement de la carte identité
+          (même onglet). Le dépassement reste montré par la tuile PLANNING et le KPI Écart/devis. */}
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 10, marginBottom: rj.aucuneSaisie ? 0 : 16 }}>
         {[
@@ -138,7 +112,8 @@ function DetailRentabilite({ c, etat, couts, pointages = [], naviguer, fmtN, fmt
               { label: 'Total coûts réels', valeur: `CHF ${fmtN(rj.totalCoutsReel)}`, couleur: C.danger },
               { label: 'Rentabilité réelle',valeur: `CHF ${fmtN(rj.rentabilite)}`,    couleur: couleurRenta },
               { label: 'Marge réelle (%)',  valeur: rj.rentabilitePct !== null && rj.rentabilitePct !== undefined ? `${rj.rentabilitePct}%` : '—', couleur: couleurRenta },
-              ...(rj.rentabiliteProjetee !== null ? [{ label: 'Projection fin chantier', valeur: `CHF ${fmtN(rj.rentabiliteProjetee)}`, couleur: rj.rentabiliteProjetee_Pct >= 15 ? C.secondaire : C.warning }] : []),
+              // Tuile « Projection fin chantier » retirée (Lot 3) : doublon du gros chiffre de la
+              // projection à terminaison (DetailProjection), affiché plus haut sur le même onglet.
             ].map(s => (
               <div key={s.label} style={{ background: s.couleur + '10', border: `1px solid ${s.couleur}25`, borderRadius: 10, padding: '12px 14px', textAlign: 'center' }}>
                 <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-muted)', marginBottom: 5 }}>{s.label}</div>

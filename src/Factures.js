@@ -7,7 +7,7 @@
 // ============================================================
 
 import React, { useState, useMemo } from 'react';
-import { FileDown, Download } from 'lucide-react';
+import { FileDown, Download, HardHat } from 'lucide-react';
 import { DS } from './ds';
 import { useApp } from './context/AppContext';
 import { exportCSV } from './utils/exportCSV';
@@ -576,8 +576,8 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
                       <span style={{ fontWeight: 700, color: '#0d3d6e', letterSpacing: '-0.2px' }}>{f.numero}</span>
                     </td>
                     <td style={S.td}>
-                      {client?.nom
-                        ? <span style={{ fontWeight: 600 }}>{client.nom}</span>
+                      {(client?.entreprise || client?.nom)
+                        ? <span style={{ fontWeight: 600 }}>{client.entreprise || client.nom}</span>
                         : <span style={{ color: 'var(--text-muted)' }}>—</span>}
                     </td>
                     <td style={S.td}>
@@ -641,16 +641,16 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
                           return (
                             <>
                               <button
-                                style={{ ...DS.iconBtn, padding: '5px 8px', background: 'rgba(13,61,110,0.08)', color: '#0d3d6e' }}
-                                title="Télécharger facture PDF (QR-paiement)"
+                                style={{ ...DS.iconBtn, padding: '5px 8px', background: 'rgba(13,61,110,0.08)', color: '#0d3d6e', display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 600, width: 'auto' }}
+                                title="Télécharger la facture en PDF (avec QR-paiement)"
                                 onClick={() => exportFacture(f, clientF, chantierF, devisF, parametres)}
-                              ><FileDown size={13} /></button>
+                              ><FileDown size={13} /> Facture</button>
                               {chantierF && parametres && (
                                 <button
-                                  style={{ ...DS.iconBtn, padding: '5px 8px' }}
-                                  title="Exporter fiche chantier PDF"
+                                  style={{ ...DS.iconBtn, padding: '5px 8px', display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 600, width: 'auto' }}
+                                  title="Exporter la fiche chantier en PDF"
                                   onClick={() => exportFicheChantier(chantierF, clients, parametres, devis, pointages)}
-                                ><FileDown size={13} /></button>
+                                ><HardHat size={13} /> Chantier</button>
                               )}
                             </>
                           );
@@ -748,7 +748,7 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
                     style={{ ...S.btnGhost, display: 'flex', alignItems: 'center', gap: 5 }}
                     title="Exporter fiche chantier PDF"
                     onClick={() => exportFicheChantier(chantierDetail, clients, parametres, devis, pointages)}
-                  ><FileDown size={14} /> Fiche chantier</button>
+                  ><HardHat size={14} /> Fiche chantier</button>
                 )}
               </>
             );

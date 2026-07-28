@@ -1,4 +1,5 @@
 import React from 'react';
+import { AlertTriangle, CheckCircle } from 'lucide-react';
 import { calculerVitesseChantier, C } from '../../../donnees';
 
 function DetailVelocite({ c, etat }) {
@@ -30,7 +31,9 @@ function DetailVelocite({ c, etat }) {
         : `radial-gradient(ellipse at 6% 50%, ${graviteConfig.couleur}0f 0%, transparent 80%)`,
       border: `1px solid ${graviteConfig.couleur}30`, borderLeft: `4px solid ${graviteConfig.couleur}` }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: reco ? 12 : 0 }}>
-        <span style={{ fontSize: 18, lineHeight: 1, flexShrink: 0 }}>{graviteConfig.icone}</span>
+        {graviteConfig.niveau === 'ok'
+          ? <CheckCircle size={18} color={graviteConfig.couleur} strokeWidth={2} style={{ flexShrink: 0 }} />
+          : <AlertTriangle size={18} color={graviteConfig.couleur} strokeWidth={2} style={{ flexShrink: 0 }} />}
         <span style={{ fontSize: 15, fontWeight: 800, color: graviteConfig.couleur, letterSpacing: '-0.2px' }}>{graviteConfig.titre}</span>
       </div>
       {reco && (

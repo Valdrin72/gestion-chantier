@@ -124,7 +124,7 @@ export default function Statistiques({ chantiers, clients, devis = [], parametre
         return joursReels > 0 && parseInt(c.nombreJours) > 0;
       })
       .map(c => {
-        const ec = calculerEcartChantier(c);
+        const ec = calculerEcartChantier(c, pointages);
         return {
           nom: (c.nom || c.numero || '—').substring(0, 18),
           Prévus: ec.joursPrevu,

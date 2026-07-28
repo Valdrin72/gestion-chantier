@@ -7,6 +7,8 @@ function DetailEcarts({ couts, fmtN }) {
     { label: 'Matériel', prevu: couts.coutMaterielPrevu, reel: couts.coutMaterielReel, ecart: couts.ecartMateriel, ecartPct: couts.ecartMaterielPct },
     { label: 'Sous-traitance', prevu: couts.coutSousTraitancePrevu, reel: couts.coutSousTraitanceReel, ecart: couts.ecartSousTraitance, ecartPct: couts.ecartSousTraitancePct },
     { label: 'Autres', prevu: couts.autresCoutsPrevu, reel: couts.autresCoutsReel, ecart: couts.ecartAutres, ecartPct: couts.ecartAutresPct },
+    // Imprévus : inclus dans le Total moteur → ligne affichée pour que la somme des lignes = Total.
+    { label: 'Imprévus', prevu: 0, reel: couts.coutImprevus || 0, ecart: couts.coutImprevus || 0, ecartPct: null },
   ].filter(l => l.prevu > 0 || l.reel > 0);
   const totalEcart = couts.totalCoutsReel - couts.totalCoutsPrevu;
   return (

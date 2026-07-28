@@ -547,7 +547,7 @@ function ChantierDetail({ chantier, detailOnglet, setDetailOnglet, modeCompleter
 
       {etat.projectionDisponible && <DetailProjection etat={etat} couts={couts} chantier={c} factures={facturesLiees} devis={devis} fmtK={fmtK} />}
       {etat.projectionDisponible && <DetailRecommandations etat={etat} couts={couts} chantier={c} factures={facturesLiees} devis={devis} fmtK={fmtK} />}
-      <DetailRentabilite c={c} etat={etat} couts={couts} naviguer={naviguer} fmtN={fmtN} fmtK={fmtK} />
+      <DetailRentabilite c={c} etat={etat} couts={couts} pointages={pointages} naviguer={naviguer} fmtN={fmtN} fmtK={fmtK} />
       </>}
 
       {detailOnglet === 'financier' && <>

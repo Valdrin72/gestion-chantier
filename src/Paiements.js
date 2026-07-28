@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { CheckCircle, AlertTriangle, Clock } from 'lucide-react';
 import { fmtN, calculerCA } from './donnees';
 import { DS } from './ds';
 
@@ -218,8 +219,12 @@ export default function Paiements({ chantiers, clients, devis = [], paiementsDat
                   }}>
                     {/* Icône + type */}
                     <div style={{ flexShrink: 0 }}>
-                      <div style={{ width: 40, height: 40, borderRadius: '10px', background: couleur + '22', border: `1px solid ${couleur}44`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>
-                        {isPaye(p) ? '' : retard ? '' : ''}
+                      <div style={{ width: 40, height: 40, borderRadius: '10px', background: couleur + '22', border: `1px solid ${couleur}44`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        {isPaye(p)
+                          ? <CheckCircle size={20} color={couleur} strokeWidth={2} />
+                          : retard
+                            ? <AlertTriangle size={20} color={couleur} strokeWidth={2} />
+                            : <Clock size={20} color={couleur} strokeWidth={2} />}
                       </div>
                     </div>
                     {/* Type */}

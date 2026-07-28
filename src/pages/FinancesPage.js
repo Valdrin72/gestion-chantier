@@ -2,7 +2,7 @@
 // CYNA — MODULE FINANCES (Factures + Paiements unifiés)
 // ============================================================
 import React, { useState, useMemo, useCallback } from 'react';
-import { DollarSign, FileText, Clock, AlertTriangle, CreditCard, TrendingUp, Calendar, Zap } from 'lucide-react';
+import { DollarSign, FileText, Clock, AlertTriangle, CreditCard, TrendingUp, Calendar, Zap, CheckCircle } from 'lucide-react';
 import Factures from '../Factures';
 import Paiements from '../Paiements';
 import RelancesTab from '../RelancesTab';
@@ -170,16 +170,16 @@ function Tresorerie({ factures = [], chantiers = [], clients = [], devis = [], p
   );
 
   const urgenceConfig = {
-    retard:  { couleur: '#ef4444', bg: '#ef444410', label: 'En retard',    dot: 'red' },
-    urgent:  { couleur: '#f59e0b', bg: '#f59e0b10', label: '≤ 7 jours',   dot: 'yellow' },
-    proche:  { couleur: '#0d3d6e', bg: '#0d3d6e10', label: '≤ 30 jours',  dot: '●' },
-    normal:  { couleur: '#6b7280', bg: '#6b728010', label: '> 30 jours',  dot: '○' },
+    retard:  { couleur: '#ef4444', bg: '#ef444410', label: 'En retard'  },
+    urgent:  { couleur: '#f59e0b', bg: '#f59e0b10', label: '≤ 7 jours'  },
+    proche:  { couleur: '#0d3d6e', bg: '#0d3d6e10', label: '≤ 30 jours' },
+    normal:  { couleur: '#6b7280', bg: '#6b728010', label: '> 30 jours' },
   };
 
   const signalConfig = {
-    danger:  { couleur: '#ef4444', bg: '#ef444412', icone: 'danger', texte: 'Encaissements critiques en retard — relancer immédiatement' },
-    warning: { couleur: '#f59e0b', bg: '#f59e0b12', icone: 'warning', texte: 'Des paiements arrivent bientôt — anticiper les relances' },
-    ok:      { couleur: '#10b981', bg: '#10b98112', icone: '',  texte: 'Situation cash saine — aucune urgence détectée' },
+    danger:  { couleur: '#ef4444', bg: '#ef444412', Icone: AlertTriangle, texte: 'Encaissements critiques en retard — relancer immédiatement' },
+    warning: { couleur: '#f59e0b', bg: '#f59e0b12', Icone: AlertTriangle, texte: 'Des paiements arrivent bientôt — anticiper les relances' },
+    ok:      { couleur: '#10b981', bg: '#10b98112', Icone: CheckCircle,   texte: 'Situation cash saine — aucune urgence détectée' },
   };
   const signal = signalConfig[data.signalCash];
 
@@ -187,7 +187,7 @@ function Tresorerie({ factures = [], chantiers = [], clients = [], devis = [], p
     <div>
       {/* ── Signal global ── */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 20px', borderRadius: 14, marginBottom: 24, background: signal.bg, border: `1px solid ${signal.couleur}30`, borderLeft: `4px solid ${signal.couleur}` }}>
-        <span style={{ fontSize: 20 }}>{signal.icone}</span>
+        <signal.Icone size={20} color={signal.couleur} strokeWidth={2} style={{ flexShrink: 0 }} />
         <span style={{ fontSize: 14, fontWeight: 700, color: signal.couleur }}>{signal.texte}</span>
       </div>
 
@@ -288,7 +288,7 @@ function Tresorerie({ factures = [], chantiers = [], clients = [], devis = [], p
                 const cfg = urgenceConfig[f.urgence];
                 return (
                   <div key={f.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 10, background: cfg.bg, border: `1px solid ${cfg.couleur}25` }}>
-                    <span style={{ fontSize: 13 }}>{cfg.dot}</span>
+                    <span style={{ width: 9, height: 9, borderRadius: '50%', background: cfg.couleur, flexShrink: 0 }} />
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.clientNom}</div>
                       <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{f.chantierNom} · {f.numero || f.id}</div>

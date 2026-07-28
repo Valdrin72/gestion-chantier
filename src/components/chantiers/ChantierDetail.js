@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import {
   HardHat, Pencil, Trash2, AlertTriangle, CheckCircle,
   ChevronRight, DollarSign, Clock,
+  TrendingUp, Activity, CalendarDays, Info, Eye, PlayCircle,
 } from 'lucide-react';
 import {
   fmtN, calculerDateFinOuvrables,
@@ -20,6 +21,19 @@ import DetailProjection from './detail/DetailProjection';
 import DetailRecommandations from './detail/DetailRecommandations';
 import DetailEcarts from './detail/DetailEcarts';
 import DetailRentabilite from './detail/DetailRentabilite';
+
+// Correspondance code sémantique → vraie icône (lucide). Remplace les anciens mots-codes
+// ('renta', 'av', 'danger'…) qui s'affichaient en toutes lettres à côté des titres.
+const ICONE_PAR_CODE = {
+  renta: TrendingUp, av: Activity, plan: CalendarDays,
+  danger: AlertTriangle, warning: AlertTriangle, info: Info, ok: CheckCircle,
+  '▶': PlayCircle, '◎': Eye,
+};
+function IconeCode({ code, size = 14, color = 'currentColor', style }) {
+  const Cmp = ICONE_PAR_CODE[code];
+  if (!Cmp) return null; // code vide ou inconnu → aucune icône (jamais de caractère brut)
+  return <Cmp size={size} color={color} strokeWidth={2} style={{ flexShrink: 0, ...style }} />;
+}
 
 const carteStyle = DS.card;
 const btnPrimaire = DS.btnPrimary;
@@ -51,10 +65,10 @@ function ChantierDetail({ chantier, detailOnglet, setDetailOnglet, modeCompleter
     : null;
   const perfConfig = perfRatio === null ? null
     : perfRatio <= 0.9
-      ? { label: 'Dans les temps', couleur: C.secondaire,  }
+      ? { label: 'Dans les temps', couleur: C.secondaire, code: 'ok' }
       : perfRatio <= 1.1
-        ? { label: 'À surveiller', couleur: C.warning,  }
-        : { label: 'En retard', couleur: C.danger,  };
+        ? { label: 'À surveiller', couleur: C.warning, code: 'warning' }
+        : { label: 'En retard', couleur: C.danger, code: 'danger' };
   const perfReco = etat.deriveJours <= 0 ? null
     : etat.deriveJours <= 2 ? 'surveiller'
     : etat.deriveJours <= 5 ? 'ajouter'
@@ -212,8 +226,8 @@ function ChantierDetail({ chantier, detailOnglet, setDetailOnglet, modeCompleter
   const actionTile = (() => {
     if (modeChantier === 'FINAL') return { icone: 'info', val: 'Facturer', label: 'Chantier quasi terminé', couleur: C.secondaire };
     if (critAlert)                return { icone: 'danger', val: 'Action urgente', label: critAlert.texte.length > 50 ? critAlert.texte.slice(0, 48) + '…' : critAlert.texte, couleur: C.danger };
-    if (perfReco === 'renforcer') return { niveau: 'danger', val: 'Renforcer l\'équipe', label: 'Retard important — revoir planning', couleur: C.danger };
-    if (perfReco === 'ajouter')  return { niveau: 'warning', val: '+1 ouvrier', label: 'Réduire le retard en cours', couleur: C.warning };
+    if (perfReco === 'renforcer') return { icone: 'danger', val: 'Renforcer l\'équipe', label: 'Retard important — revoir planning', couleur: C.danger };
+    if (perfReco === 'ajouter')  return { icone: 'warning', val: '+1 ouvrier', label: 'Réduire le retard en cours', couleur: C.warning };
     if (perfReco === 'surveiller') return { icone: '◎', val: 'Surveiller', label: 'Possible rattrapage sans action', couleur: C.warning };
     if (modeChantier === 'INIT') return { icone: '▶', val: 'Saisir les heures', label: 'Aucune donnée terrain', couleur: '#78909c' };
     return { icone: '', val: 'RAS', label: 'Aucune action requise', couleur: C.secondaire };
@@ -318,8 +332,9 @@ function ChantierDetail({ chantier, detailOnglet, setDetailOnglet, modeCompleter
             borderRadius: 12, padding: '16px 18px',
             boxShadow: `0 2px 12px rgba(0,0,0,0.25), inset 0 1px 0 var(--border-glass)`,
           }}>
-            <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', color: 'var(--text-muted)', marginBottom: 8 }}>
-              {t.icone} {t.titre}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', color: 'var(--text-muted)', marginBottom: 8 }}>
+              <IconeCode code={t.icone} size={12} color={t.couleur} />
+              {t.titre}
             </div>
             <div style={{ fontSize: 22, fontWeight: 900, color: t.couleur, letterSpacing: '-0.5px', lineHeight: 1.1, marginBottom: 6 }}>
               {t.val}
@@ -346,7 +361,7 @@ function ChantierDetail({ chantier, detailOnglet, setDetailOnglet, modeCompleter
           borderLeft: `5px solid ${criticiteConfig.couleur}`,
           boxShadow: `0 2px 16px ${criticiteConfig.couleur}18`,
         }}>
-          <span style={{ fontSize: 24, lineHeight: 1, flexShrink: 0 }}>{criticiteConfig.icone}</span>
+          <IconeCode code={criticiteConfig.icone} size={22} color={criticiteConfig.couleur} />
           <span style={{ fontSize: 15, fontWeight: 800, color: criticiteConfig.couleur, letterSpacing: '-0.2px' }}>{criticiteConfig.label}</span>
         </div>
       )}
@@ -361,7 +376,7 @@ function ChantierDetail({ chantier, detailOnglet, setDetailOnglet, modeCompleter
           border: `1px solid ${tresorerieConfig.couleur}30`,
           borderLeft: `4px solid ${tresorerieConfig.couleur}`,
         }}>
-          <span style={{ fontSize: 20, lineHeight: 1, flexShrink: 0, marginTop: 1 }}>{tresorerieConfig.icone}</span>
+          <IconeCode code={tresorerieConfig.icone} size={20} color={tresorerieConfig.couleur} style={{ marginTop: 1 }} />
           <div>
             <div style={{ fontWeight: 700, fontSize: 13, color: tresorerieConfig.couleur }}>{tresorerieConfig.label}</div>
             <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 3 }}>
@@ -388,7 +403,7 @@ function ChantierDetail({ chantier, detailOnglet, setDetailOnglet, modeCompleter
                 boxShadow: `0 2px 12px ${col}14`,
                 backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)',
               }}>
-                <span style={{ fontSize: 20, flexShrink: 0 }}>{a.icone}</span>
+                <IconeCode code={a.icone} size={20} color={col} />
                 <span style={{ fontSize: 13, fontWeight: 700, color: col, flex: 1, lineHeight: 1.4 }}>{a.texte}</span>
                 <span style={{
                   fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px',
@@ -414,7 +429,7 @@ function ChantierDetail({ chantier, detailOnglet, setDetailOnglet, modeCompleter
           borderLeft: `4px solid ${perfConfig.couleur}`,
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1 }}>
-            <span style={{ fontSize: 20, lineHeight: 1, flexShrink: 0 }}>{perfConfig.dot}</span>
+            <IconeCode code={perfConfig.code} size={20} color={perfConfig.couleur} />
             <div style={{ flex: 1 }}>
               <div style={{ fontWeight: 700, fontSize: 14, color: perfConfig.couleur }}>{perfMessageCourt}</div>
               <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 3, opacity: 0.8 }}>{perfDetail}</div>
@@ -431,8 +446,9 @@ function ChantierDetail({ chantier, detailOnglet, setDetailOnglet, modeCompleter
                       <div style={{ fontSize: 11, color: C.secondaire, fontWeight: 600 }}>
                         → {perfImpact.texte}
                       </div>
-                      <div style={{ marginTop: 4, fontSize: 12, fontWeight: 700, color: perfImpact.conclusion.couleur }}>
-                        {perfImpact.conclusion.icone} {perfImpact.conclusion.texte}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4, fontSize: 12, fontWeight: 700, color: perfImpact.conclusion.couleur }}>
+                        <IconeCode code={perfImpact.conclusion.icone} size={14} color={perfImpact.conclusion.couleur} />
+                        {perfImpact.conclusion.texte}
                       </div>
                     </div>
                   )}
@@ -753,7 +769,7 @@ function ChantierDetail({ chantier, detailOnglet, setDetailOnglet, modeCompleter
 
         {couts.depassementBudget && (
           <div style={{ background: C.danger + '15', border: `1px solid ${C.danger}50`, borderRadius: 10, padding: '10px 16px', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 10 }}>
-            <AlertTriangle size={18} strokeWidth={2} style={{ color: "var(--text-muted)", flexShrink: 0 }} />
+            <AlertTriangle size={18} strokeWidth={2} style={{ color: C.danger, flexShrink: 0 }} />
             <div>
               <span style={{ fontWeight: 700, color: C.danger, fontSize: 13 }}>Dépassement budget</span>
               <span style={{ fontSize: 12, color: 'var(--text-muted)', marginLeft: 8 }}>
@@ -764,7 +780,7 @@ function ChantierDetail({ chantier, detailOnglet, setDetailOnglet, modeCompleter
         )}
         {couts.alerteOrange && (
           <div style={{ background: C.warning + '15', border: `1px solid ${C.warning}50`, borderRadius: 10, padding: '10px 16px', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 10 }}>
-            <AlertTriangle size={18} strokeWidth={2} style={{ color: "var(--text-muted)", flexShrink: 0 }} />
+            <AlertTriangle size={18} strokeWidth={2} style={{ color: C.warning, flexShrink: 0 }} />
             <div>
               <span style={{ fontWeight: 700, color: C.warning, fontSize: 13 }}>Attention budget</span>
               <span style={{ fontSize: 12, color: 'var(--text-muted)', marginLeft: 8 }}>
@@ -776,7 +792,7 @@ function ChantierDetail({ chantier, detailOnglet, setDetailOnglet, modeCompleter
 
         {couts.alerteRythmeRouge && (
           <div style={{ background: C.danger + '15', border: `1px solid ${C.danger}50`, borderRadius: 10, padding: '10px 16px', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 10 }}>
-            <AlertTriangle size={18} strokeWidth={2} style={{ color: "var(--text-muted)", flexShrink: 0 }} />
+            <AlertTriangle size={18} strokeWidth={2} style={{ color: C.danger, flexShrink: 0 }} />
             <div>
               <span style={{ fontWeight: 700, color: C.danger, fontSize: 13 }}>Rythme de dépense critique</span>
               <span style={{ fontSize: 12, color: 'var(--text-muted)', marginLeft: 8 }}>
@@ -787,7 +803,7 @@ function ChantierDetail({ chantier, detailOnglet, setDetailOnglet, modeCompleter
         )}
         {!couts.alerteRythmeRouge && couts.alerteRythmeOrange && (
           <div style={{ background: C.warning + '15', border: `1px solid ${C.warning}50`, borderRadius: 10, padding: '10px 16px', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 10 }}>
-            <AlertTriangle size={18} strokeWidth={2} style={{ color: "var(--text-muted)", flexShrink: 0 }} />
+            <AlertTriangle size={18} strokeWidth={2} style={{ color: C.warning, flexShrink: 0 }} />
             <div>
               <span style={{ fontWeight: 700, color: C.warning, fontSize: 13 }}>Rythme de dépense élevé</span>
               <span style={{ fontSize: 12, color: 'var(--text-muted)', marginLeft: 8 }}>
@@ -806,7 +822,7 @@ function ChantierDetail({ chantier, detailOnglet, setDetailOnglet, modeCompleter
 
         {couts.donneesIncompletes && (
           <div style={{ background: C.warning + '12', border: `1px solid ${C.warning}40`, borderRadius: 8, padding: '8px 14px', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-            <AlertTriangle size={15} strokeWidth={2} style={{ color: "var(--text-muted)", flexShrink: 0 }} />
+            <AlertTriangle size={15} strokeWidth={2} style={{ color: C.warning, flexShrink: 0 }} />
             <span style={{ fontSize: 12, color: C.warning, fontWeight: 700 }}>Données incomplètes</span>
             <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Coûts réels manquants : {couts.champsManquants.join(', ')}</span>
             <span style={{ fontSize: 11, color: 'var(--text-muted)', fontStyle: 'italic' }}>— La marge calculée est indicative.</span>

@@ -118,15 +118,7 @@ function ChantierDetail({ chantier, detailOnglet, setDetailOnglet, modeCompleter
   // Retard PROJETÉ à la cadence actuelle (fusionné dans le bloc retard — Lot 3, ex-DetailVélocité).
   const vitesseChantier = (etat.projectionDisponible && isChantierActif(c)) ? calculerVitesseChantier(c, etat) : null;
 
-  const scoreCriticite = (etat.deriveJours * 2)
-    + (etat.projectionDisponible && etat.margeProjeteePct !== null && etat.margeProjeteePct < 0 ? 10 : 0)
-    + (couts.ratioEfficacite !== null && couts.ratioEfficacite < 0.8 ? 5 : 0);
-  const criticiteConfig = scoreCriticite >= 15
-    ? { icone: 'danger', label: 'Chantier critique — action immédiate', couleur: C.danger, fond: 'radial-gradient(ellipse at 6% 50%, rgba(239,68,68,0.13) 0%, rgba(239,68,68,0.04) 100%)' }
-    : scoreCriticite >= 8
-      ? { icone: 'warning', label: 'Chantier à risque — à traiter aujourd\'hui', couleur: C.warning, fond: 'radial-gradient(ellipse at 6% 50%, rgba(245,158,11,0.13) 0%, rgba(245,158,11,0.04) 100%)' }
-      : null;
-
+  // Bandeaux « criticité » et « risque trésorerie » retirés avec l'onglet Vue (redondants avec Analyse).
   const client = clients.find(cl => String(cl.id) === String(c.clientId));
   const directeurTravaux = c.directeurTravauxId ? (parametres.employes || []).find(e => String(e.id) === String(c.directeurTravauxId)) : null;
   const fmtK = (n) => fmtN(n);
@@ -141,12 +133,6 @@ function ChantierDetail({ chantier, detailOnglet, setDetailOnglet, modeCompleter
   const devisTotal = calculerCA(c, devis) || 0;
   const _pctFactureRaw = devisTotal > 0 ? (montantFactureLie / devisTotal) * 100 : 0;
   const pctFacture = isNaN(_pctFactureRaw) ? 0 : Math.min(Math.round(_pctFactureRaw), 100);
-  const tresorerieEcart = devisTotal > 0 ? (etat.avancementPct || 0) - pctFacture : 0;
-  const tresorerieConfig = tresorerieEcart > 30
-    ? { icone: 'warning', label: 'Travail non facturé — risque de trésorerie', couleur: C.danger }
-    : tresorerieEcart > 15
-      ? { icone: 'warning', label: 'Facturation en retard', couleur: C.warning }
-      : null;
   const _pctEncaisseRaw = devisTotal > 0 ? (montantPayeLie / devisTotal) * 100 : 0;
   const pctEncaisse = isNaN(_pctEncaisseRaw) ? 0 : Math.min(Math.round(_pctEncaisseRaw), 100);
 
@@ -288,7 +274,6 @@ function ChantierDetail({ chantier, detailOnglet, setDetailOnglet, modeCompleter
 
       <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', marginBottom: 20 }}>
         {[
-          { id: 'vue',       label: 'Vue' },
           { id: 'analyse',   label: 'Analyse' },
           { id: 'financier', label: 'Financier' },
         ].map(o => (
@@ -345,71 +330,6 @@ function ChantierDetail({ chantier, detailOnglet, setDetailOnglet, modeCompleter
         ))}
       </div>
 
-      {detailOnglet === 'vue' && <>
-      {criticiteConfig && (
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: 14,
-          padding: '16px 22px', borderRadius: 14, marginBottom: 16,
-          background: criticiteConfig.fond,
-          border: `1px solid ${criticiteConfig.couleur}35`,
-          borderLeft: `5px solid ${criticiteConfig.couleur}`,
-          boxShadow: `0 2px 16px ${criticiteConfig.couleur}18`,
-        }}>
-          <IconeCode code={criticiteConfig.icone} size={22} color={criticiteConfig.couleur} />
-          <span style={{ fontSize: 15, fontWeight: 800, color: criticiteConfig.couleur, letterSpacing: '-0.2px' }}>{criticiteConfig.label}</span>
-        </div>
-      )}
-
-      {tresorerieConfig && (
-        <div style={{
-          display: 'flex', alignItems: 'flex-start', gap: 14,
-          padding: '14px 20px', borderRadius: 12, marginBottom: 16,
-          background: tresorerieConfig.couleur === C.danger
-            ? 'radial-gradient(ellipse at 6% 50%, rgba(239,68,68,0.1) 0%, rgba(239,68,68,0.03) 100%)'
-            : 'radial-gradient(ellipse at 6% 50%, rgba(245,158,11,0.1) 0%, rgba(245,158,11,0.03) 100%)',
-          border: `1px solid ${tresorerieConfig.couleur}30`,
-          borderLeft: `4px solid ${tresorerieConfig.couleur}`,
-        }}>
-          <IconeCode code={tresorerieConfig.icone} size={20} color={tresorerieConfig.couleur} style={{ marginTop: 1 }} />
-          <div>
-            <div style={{ fontWeight: 700, fontSize: 13, color: tresorerieConfig.couleur }}>{tresorerieConfig.label}</div>
-            <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 3 }}>
-              {etat.avancementPct}% réalisé · {pctFacture}% facturé
-            </div>
-          </div>
-        </div>
-      )}
-
-      {alertesChantier.length > 0 && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 20 }}>
-          {alertesChantier.map(a => {
-            const isCritique = a.gravite === 'critique';
-            const col = isCritique ? C.danger : C.warning;
-            return (
-              <div key={a.id} style={{
-                display: 'flex', alignItems: 'center', gap: 12,
-                padding: '13px 18px', borderRadius: 12,
-                background: isCritique
-                  ? 'radial-gradient(ellipse at 6% 50%, rgba(239,68,68,0.13) 0%, rgba(239,68,68,0.04) 100%)'
-                  : 'radial-gradient(ellipse at 6% 50%, rgba(245,158,11,0.13) 0%, rgba(245,158,11,0.04) 100%)',
-                border: `1px solid ${col}30`,
-                borderLeft: `4px solid ${col}`,
-                boxShadow: `0 2px 12px ${col}14`,
-                backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)',
-              }}>
-                <IconeCode code={a.icone} size={20} color={col} />
-                <span style={{ fontSize: 13, fontWeight: 700, color: col, flex: 1, lineHeight: 1.4 }}>{a.texte}</span>
-                <span style={{
-                  fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px',
-                  background: col + '16', color: col, border: `1px solid ${col}30`,
-                  borderRadius: 20, padding: '3px 11px', flexShrink: 0,
-                }}>{isCritique ? 'Critique' : 'Attention'}</span>
-              </div>
-            );
-          })}
-        </div>
-      )}
-      </>}
 
       {detailOnglet === 'analyse' && <>
 
@@ -547,6 +467,43 @@ function ChantierDetail({ chantier, detailOnglet, setDetailOnglet, modeCompleter
           </div>
         </div>
       )}
+
+      {/* ── Points de vigilance — 3 alertes uniques rapatriées de l'ex-onglet Vue ──
+          (MO élevée, samedi non inclus, démarrage avant devis). Mêmes conditions et messages. */}
+      {(() => {
+        const vigilance = alertesChantier.filter(a => ['mo_elevee', 'samedi_non_planifie', 'avt_devis'].includes(a.id));
+        if (vigilance.length === 0) return null;
+        return (
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.7px', color: 'var(--text-muted)', marginBottom: 8 }}>Points de vigilance</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {vigilance.map(a => {
+                const isCritique = a.gravite === 'critique';
+                const col = isCritique ? C.danger : C.warning;
+                return (
+                  <div key={a.id} style={{
+                    display: 'flex', alignItems: 'center', gap: 12,
+                    padding: '13px 18px', borderRadius: 12,
+                    background: isCritique
+                      ? 'radial-gradient(ellipse at 6% 50%, rgba(239,68,68,0.13) 0%, rgba(239,68,68,0.04) 100%)'
+                      : 'radial-gradient(ellipse at 6% 50%, rgba(245,158,11,0.13) 0%, rgba(245,158,11,0.04) 100%)',
+                    border: `1px solid ${col}30`,
+                    borderLeft: `4px solid ${col}`,
+                  }}>
+                    <IconeCode code={a.icone} size={20} color={col} />
+                    <span style={{ fontSize: 13, fontWeight: 700, color: col, flex: 1, lineHeight: 1.4 }}>{a.texte}</span>
+                    <span style={{
+                      fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px',
+                      background: col + '16', color: col, border: `1px solid ${col}30`,
+                      borderRadius: 20, padding: '3px 11px', flexShrink: 0,
+                    }}>{isCritique ? 'Critique' : 'Attention'}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ── 3. QUE FAIRE — zone actions unique (chiffrée) ──────────────── */}
       {etat.projectionDisponible && <DetailRecommandations etat={etat} couts={couts} chantier={c} factures={facturesLiees} devis={devis} fmtK={fmtK} />}

@@ -19,7 +19,7 @@ function Chantiers() {
 
   const [vue, setVue] = useState('liste');
   const [selected, setSelected] = useState(null);
-  const [detailOnglet, setDetailOnglet] = useState('vue');
+  const [detailOnglet, setDetailOnglet] = useState('analyse');
   const [ajout, setAjout] = useState(false);
   const [modeCompleter, setModeCompleter] = useState(false);
 
@@ -45,7 +45,7 @@ function Chantiers() {
   React.useEffect(() => {
     if (contexte?.chantierActif) {
       const c = chantiers.find(ch => ch.id === contexte.chantierActif);
-      if (c) { setSelected(c); setVue('detail'); setDetailOnglet('vue'); }
+      if (c) { setSelected(c); setVue('detail'); setDetailOnglet('analyse'); }
     }
     if (contexte?.modeCompleter) setModeCompleter(true);
     if (contexte?.filtreStatut) setFiltre(contexte.filtreStatut);
@@ -176,7 +176,7 @@ function Chantiers() {
       joursParChantier={joursParChantier}
       filtre={filtre}
       setFiltre={setFiltre}
-      onSelect={(c) => { setSelected(c); setVue('detail'); setDetailOnglet('vue'); }}
+      onSelect={(c) => { setSelected(c); setVue('detail'); setDetailOnglet('analyse'); }}
       onModifier={ouvrirModification}
       onSupprimer={supprimer}
       onArchiver={archiverChantier}

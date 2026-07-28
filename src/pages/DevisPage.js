@@ -65,7 +65,7 @@ function CalculateurMO({ surface, onApply }) {
         <button onClick={() => setOuvert(true)} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', background: 'linear-gradient(135deg, #fff7ed, #fef3c7)', border: '1px solid #fcd34d', borderRadius: 12, padding: '12px 16px', cursor: 'pointer', fontFamily: 'inherit' }}>
           <HardHat size={16} color="#d97706" />
           <div style={{ textAlign: 'left', flex: 1 }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: '#92400e' }}>Calculateur MO — Ratios BTP</div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#92400e' }}>Calculateur main-d'œuvre — Ratios BTP</div>
             <div style={{ fontSize: 11, color: '#b45309', marginTop: 1 }}>Estimer les heures et la durée selon le type de travaux ({surface} m² saisis)</div>
           </div>
           <span style={{ fontSize: 11, color: '#d97706' }}>▼</span>
@@ -79,7 +79,7 @@ function CalculateurMO({ surface, onApply }) {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <HardHat size={16} color="#d97706" />
-          <span style={{ fontWeight: 800, fontSize: 14, color: '#92400e' }}>Calculateur MO — Ratios BTP</span>
+          <span style={{ fontWeight: 800, fontSize: 14, color: '#92400e' }}>Calculateur main-d'œuvre — Ratios BTP</span>
           <span style={{ fontSize: 10, background: '#fef3c7', color: '#d97706', border: '1px solid #fcd34d', borderRadius: 20, padding: '2px 8px', fontWeight: 600 }}>productivite-cyna</span>
         </div>
         <button onClick={() => setOuvert(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#d97706', fontSize: 12, fontFamily: 'inherit' }}>▲ Réduire</button>

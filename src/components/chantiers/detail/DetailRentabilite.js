@@ -129,7 +129,7 @@ function DetailRentabilite({ c, etat, couts, naviguer, fmtN, fmtK }) {
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 10 }}>
             {[
-              { label: 'Coût MO réel',     valeur: rj.coutMOReel > 0 ? `CHF ${fmtN(rj.coutMOReel)}` : '—', couleur: rj.coutMOReel > 0 ? C.warning : '#78909c' },
+              { label: 'Coût main-d\'œuvre', valeur: rj.coutMOReel > 0 ? `CHF ${fmtN(rj.coutMOReel)}` : '—', couleur: rj.coutMOReel > 0 ? C.warning : '#78909c' },
               { label: 'Autres coûts',      valeur: `CHF ${fmtN(rj.autresCouts)}`,    couleur: '#78909c' },
               { label: 'Total coûts réels', valeur: `CHF ${fmtN(rj.totalCoutsReel)}`, couleur: C.danger },
               { label: 'Rentabilité réelle',valeur: `CHF ${fmtN(rj.rentabilite)}`,    couleur: couleurRenta },

@@ -33,8 +33,8 @@ function genererRecommandations(etat, couts, chantier, factures, devis) {
     const pctFacture = ca > 0 ? Math.round((montantFactureHT / ca) * 100) : 0;
     recs.push({
       type: 'facturation',
-      titre: 'Émettre une facture de situation',
-      detail: `Avancement ${avancement}% · déjà facturé CHF ${fmtN(montantFactureHT)} (${pctFacture}% du CA) → potentiel facturable maintenant : CHF ${fmtN(potentielFacturation)}`,
+      titre: 'Émettre une facture d\'avancement',
+      detail: `Avancement ${avancement}% · déjà facturé CHF ${fmtN(montantFactureHT)} (${pctFacture}% du CA) → facturable maintenant : CHF ${fmtN(potentielFacturation)}`,
       impactCHF: potentielFacturation,
       urgence: potentielFacturation > 5000 ? 'haute' : 'moyenne',
     });
@@ -46,7 +46,7 @@ function genererRecommandations(etat, couts, chantier, factures, devis) {
     recs.push({
       type: 'avenant',
       titre: 'Déposer un avenant — chantier en perte',
-      detail: `EAC CHF ${fmtN(etat.coutFinalEstime)} > CA CHF ${fmtN(ca)} → déficit estimé CHF ${fmtN(deficit)}. Avenant recommandé : CHF ${fmtN(avenantSuggere)} (déficit + 10% marge).`,
+      detail: `Coût total prévu CHF ${fmtN(etat.coutFinalEstime)} > CA CHF ${fmtN(ca)} → perte estimée CHF ${fmtN(deficit)}. Avenant recommandé : CHF ${fmtN(avenantSuggere)} (perte + 10% marge).`,
       impactCHF: avenantSuggere,
       urgence: 'haute',
     });
@@ -65,7 +65,7 @@ function genererRecommandations(etat, couts, chantier, factures, devis) {
       : '';
     recs.push({
       type: 'couts',
-      titre: 'Dépassement MO détecté',
+      titre: 'Dépassement de main-d\'œuvre détecté',
       detail: `+CHF ${fmtN(couts.ecartEquipe)} vs budget (${ecartPct > 0 ? '+' : ''}${ecartPct}%).${detailEco} Vérifier productivité ou dimensionnement équipe.`,
       impactCHF: economiePossible,
       urgence: ecartPct > 20 ? 'haute' : 'moyenne',
@@ -104,7 +104,7 @@ function genererRecommandations(etat, couts, chantier, factures, devis) {
     recs.push({
       type: 'couts',
       titre: 'Rythme de dépense trop élevé',
-      detail: `Ratio efficacité ${Math.round(couts.ratioEfficacite * 100)}% — on dépense bien plus vite qu'on n'avance${surCout ? ` (surcoût actuel ≈ CHF ${fmtN(surCout)})` : ''}. Revoir l'organisation chantier.`,
+      detail: `Vitesse de dépense vs avancement ${Math.round(couts.ratioEfficacite * 100)}% — on dépense bien plus vite qu'on n'avance${surCout ? ` (surcoût actuel ≈ CHF ${fmtN(surCout)})` : ''}. Revoir l'organisation chantier.`,
       impactCHF: surCout,
       urgence: 'haute',
     });
@@ -112,7 +112,7 @@ function genererRecommandations(etat, couts, chantier, factures, devis) {
     recs.push({
       type: 'couts',
       titre: 'Efficacité dépense à surveiller',
-      detail: `Ratio efficacité ${Math.round(couts.ratioEfficacite * 100)}% — consommation budgétaire légèrement supérieure à l'avancement. Contrôler les commandes et la productivité.`,
+      detail: `Vitesse de dépense vs avancement ${Math.round(couts.ratioEfficacite * 100)}% — consommation budgétaire légèrement supérieure à l'avancement. Contrôler les commandes et la productivité.`,
       impactCHF: null,
       urgence: 'basse',
     });

@@ -107,8 +107,8 @@ export default function Paiements({ chantiers, clients, devis = [], paiementsDat
           {/* BARRE PROGRESSION */}
           <div style={{ marginTop: '20px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
-              <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Encaissement</span>
-              <span style={{ fontWeight: 'bold', color: '#10b981' }}>{pctPaye}% encaissé</span>
+              <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Paiement</span>
+              <span style={{ fontWeight: 'bold', color: '#10b981' }}>{pctPaye}% payé</span>
             </div>
             <div style={{ background: 'rgba(255,255,255,0.08)', borderRadius: '10px', height: '12px' }}>
               <div style={{ background: 'linear-gradient(90deg, #10b981, #34d399)', width: `${pctPaye}%`, height: '12px', borderRadius: '10px', transition: 'width 0.3s', boxShadow: '0 0 10px rgba(16,185,129,0.45)' }} />
@@ -119,7 +119,7 @@ export default function Paiements({ chantiers, clients, devis = [], paiementsDat
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '15px', marginTop: '20px' }}>
             {[
               { label: 'Total devis', val: `CHF ${fmtN(montantTotal)}`, couleur: '#10b981', bg: 'rgba(16,185,129,0.12)' },
-              { label: 'Encaissé', val: `CHF ${fmtN(montantPaye)}`, couleur: '#10b981', bg: 'rgba(16,185,129,0.12)' },
+              { label: 'Payé', val: `CHF ${fmtN(montantPaye)}`, couleur: '#10b981', bg: 'rgba(16,185,129,0.12)' },
               { label: 'En attente', val: `CHF ${fmtN(getMontantEnAttente(c.id))}`, couleur: '#f59e0b', bg: 'rgba(245,158,11,0.12)' },
               { label: 'Restant', val: `CHF ${fmtN(montantRestant)}`, couleur: montantRestant > 0 ? '#ef4444' : '#10b981', bg: montantRestant > 0 ? 'rgba(239,68,68,0.12)' : 'rgba(16,185,129,0.12)' },
             ].map(s => (
@@ -309,7 +309,7 @@ export default function Paiements({ chantiers, clients, devis = [], paiementsDat
       <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap', marginBottom: '25px' }}>
         {[
           { label: 'CA Total', val: `CHF ${fmtN(totalCA)}`, couleur: '#10b981' },
-          { label: 'Encaissé', val: `CHF ${fmtN(totalPaye)}`, couleur: '#10b981' },
+          { label: 'Payé', val: `CHF ${fmtN(totalPaye)}`, couleur: '#10b981' },
           { label: 'En attente', val: `CHF ${fmtN(totalEnAttente)}`, couleur: '#f59e0b' },
           { label: 'En retard', val: `CHF ${fmtN(totalEnRetard)}`, couleur: '#ef4444' },
         ].map(s => (
@@ -361,7 +361,7 @@ export default function Paiements({ chantiers, clients, devis = [], paiementsDat
                   {/* BARRE PROGRESSION */}
                   <div style={{ marginTop: '10px', maxWidth: '400px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '3px' }}>
-                      <span style={{ color: 'var(--text-secondary)' }}>Encaissement</span>
+                      <span style={{ color: 'var(--text-secondary)' }}>Paiement</span>
                       <span style={{ color: '#10b981', fontWeight: 'bold' }}>{pctPaye}%</span>
                     </div>
                     <div style={{ background: 'rgba(255,255,255,0.08)', borderRadius: '10px', height: '8px' }}>

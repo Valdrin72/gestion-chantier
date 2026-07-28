@@ -211,7 +211,7 @@ export default function RelancesTab({ factures = [], clients = [], chantiers = [
           Icon={Clock}
         />
         <KpiCard
-          label="Montant en souffrance"
+          label="Montant impayé"
           val={`CHF ${fmt(totalSouffrance)}`}
           sub="Solde total impayé à relancer"
           gradient={DS.kpi.red.gradient}
@@ -229,7 +229,7 @@ export default function RelancesTab({ factures = [], clients = [], chantiers = [
         <KpiCard
           label="Mise en demeure"
           val={String(nbNiveau3)}
-          sub={`facture${nbNiveau3 !== 1 ? 's' : ''} — niveau critique`}
+          sub={`dernier rappel avant procédure · ${nbNiveau3} facture${nbNiveau3 !== 1 ? 's' : ''}`}
           gradient={DS.kpi.purple.gradient}
           glow={DS.kpi.purple.glow}
           Icon={AlertTriangle}

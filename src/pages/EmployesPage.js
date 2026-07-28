@@ -237,7 +237,7 @@ function Employes({ parametres, setParametres, chantiers, naviguer }) {
 
         const kpiPerf = [
           { label: 'HEURES ÉQUIPE', val: `${fmtN(Math.round(totalHeures))}h`, Icon: Clock, ...DS.kpi.blue },
-          ...(voirSalaires ? [{ label: 'COÛT MO RÉEL', val: `CHF ${fmtN(Math.round(totalCout))}`, Icon: DollarSign, ...DS.kpi.amber }] : []),
+          ...(voirSalaires ? [{ label: 'COÛT MAIN-D\'ŒUVRE', val: `CHF ${fmtN(Math.round(totalCout))}`, Icon: DollarSign, ...DS.kpi.amber }] : []),
           { label: 'PLUS ACTIF', val: plusActif ? plusActif.e.nom : '—', Icon: TrendingUp, ...DS.kpi.green },
         ];
 
@@ -283,7 +283,7 @@ function Employes({ parametres, setParametres, chantiers, naviguer }) {
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead>
                     <tr>
-                      {['Employé', 'Poste', 'Heures', 'Jours', ...(voirSalaires ? ['Coût MO réel'] : []), 'Chantiers', 'Moy. h/jour'].map(h => (
+                      {['Employé', 'Poste', 'Heures', 'Jours', ...(voirSalaires ? ['Coût main-d\'œuvre'] : []), 'Chantiers', 'Moy. h/jour'].map(h => (
                         <th key={h} style={DS.th}>{h}</th>
                       ))}
                     </tr>

@@ -81,7 +81,8 @@ describe('EmployesPage — champ tarifRegieHeure (RTL)', () => {
 
     // Remplir les champs obligatoires
     fireEvent.change(screen.getByPlaceholderText('Jean Martin'), { target: { value: 'Paul Müller' } });
-    fireEvent.change(screen.getByPlaceholderText('350'), { target: { value: '350' } });
+    // Lot 3 (E3) : le tarif COÛT se saisit à l'heure (placeholder 43.75 ≡ 350/j ÷ 8)
+    fireEvent.change(screen.getByPlaceholderText('43.75'), { target: { value: '43.75' } });
     fireEvent.change(screen.getByPlaceholderText('85'), { target: { value: '95' } });
     fireEvent.click(screen.getByRole('button', { name: /Sauvegarder/i }));
 
@@ -89,6 +90,9 @@ describe('EmployesPage — champ tarifRegieHeure (RTL)', () => {
     const appelé = setParametres.mock.calls[0][0];
     const empSauvé = appelé.employes[0];
     expect(empSauvé.tarifRegieHeure).toBe(95);
+    // Étalon règle 8 : tarifJour dérivé automatiquement (43.75 × 8 = 350)
+    expect(empSauvé.tarifHeure).toBe(43.75);
+    expect(empSauvé.tarifJour).toBe(350);
   });
 
   it('tarifRegieHeure absent si champ vide → undefined, pas 0', () => {
@@ -97,7 +101,7 @@ describe('EmployesPage — champ tarifRegieHeure (RTL)', () => {
     fireEvent.click(screen.getByRole('button', { name: /Nouvel employé/i }));
 
     fireEvent.change(screen.getByPlaceholderText('Jean Martin'), { target: { value: 'Marc Renaud' } });
-    fireEvent.change(screen.getByPlaceholderText('350'), { target: { value: '400' } });
+    fireEvent.change(screen.getByPlaceholderText('43.75'), { target: { value: '50' } });
     // On ne saisit PAS tarifRegieHeure
     fireEvent.click(screen.getByRole('button', { name: /Sauvegarder/i }));
 

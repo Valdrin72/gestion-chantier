@@ -1044,6 +1044,41 @@ export const calculerStatutFacture = (facture) => {
   return facture.statut || 'envoyee';
 };
 
+// ── Payé par chantier — SOURCE UNIQUE (factures) ────────────────────────────
+// Depuis l'unification des paiements sur les factures (suppression de "Paiements
+// chantiers"), le "payé/encaissé" d'un chantier se lit UNIQUEMENT depuis ses
+// factures. Une seule fonction pour que la fiche chantier, Finances et les
+// rapports donnent EXACTEMENT le même nombre. Logique identique à celle de la
+// fiche chantier : par facture, on prend l'historique s'il existe, sinon le
+// champ scalaire montantPaye (jamais les deux).
+export const montantPayeChantier = (factures = [], chantierId) =>
+  (factures || [])
+    .filter(f => String(f.chantierId) === String(chantierId))
+    .reduce((s, f) => {
+      const viaHistorique = (f.paiementsHistorique || []).reduce((acc, p) => acc + (parseFloat(p.montant) || 0), 0);
+      const viaScalaire   = parseFloat(f.montantPaye) || 0;
+      return s + (viaHistorique > 0 ? viaHistorique : viaScalaire);
+    }, 0);
+
+// ── Résumé encaissements portefeuille — SOURCE UNIQUE (factures) ─────────────
+// Reçus / En attente / En retard calculés depuis les factures, avec EXACTEMENT
+// les mêmes règles que les KPIs de Finances (onglet Trésorerie / en-tête) pour
+// qu'un seul et même nombre circule partout (Finances, rapport hebdo).
+export const resumePaiementsFactures = (factures = [], maintenant = new Date()) => {
+  const today = maintenant.toISOString().slice(0, 10);
+  const actives = (factures || [])
+    .filter(f => f.statut !== 'annulee' && f.statut !== 'brouillon')
+    .map(f => ({ ...f, statutCalc: calculerStatutFacture(f) }));
+  const recus = actives.reduce((s, f) => s + Math.min(parseFloat(f.montantPaye) || 0, parseFloat(f.montantTTC) || 0), 0);
+  const attente = actives
+    .filter(f => f.statutCalc !== 'payee' && !(f.dateEcheance && f.dateEcheance < today))
+    .reduce((s, f) => s + Math.max(0, (parseFloat(f.montantTTC) || 0) - (parseFloat(f.montantPaye) || 0)), 0);
+  const retard = actives
+    .filter(f => f.statutCalc !== 'payee' && f.dateEcheance && f.dateEcheance < today)
+    .reduce((s, f) => s + Math.max(0, (parseFloat(f.montantTTC) || 0) - (parseFloat(f.montantPaye) || 0)), 0);
+  return { recus, attente, retard };
+};
+
 export const creerFactureDepuisDevis = (devis, chantier, factures, tva = TVA_DEFAUT) => {
   // Base facturée : soit les lignes détaillées du devis, soit un poste unique au montantHT.
   let lignes;

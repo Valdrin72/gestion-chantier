@@ -119,7 +119,7 @@ function KpiCard({ label, value, couleur, icon, sous }) {
 }
 
 // ── COMPOSANT PRINCIPAL ──────────────────────────────────────
-export default function Factures({ profil, clients = [], chantiers = [], devis = [], factures = [], onSave, paiementsData = {}, setPaiementsData, naviguer, hideHeader = false, periodeGlobale = 'mois', parametres = null, preRemplir = null, onConsumePreRemplir = null }) {
+export default function Factures({ profil, clients = [], chantiers = [], devis = [], factures = [], onSave, naviguer, hideHeader = false, periodeGlobale = 'mois', parametres = null, preRemplir = null, onConsumePreRemplir = null }) {
   const { pointages = [] } = useApp();
   const [vue, setVue] = useState('liste');   // 'liste' | 'form' | 'detail'
   const [selected, setSelected] = useState(null);
@@ -179,25 +179,8 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
       return;
     }
 
-    // 1. Ajouter dans paiementsData (clé = chantierId ou 'misc')
-    if (setPaiementsData) {
-      const cle = f.chantierId || 'misc';
-      const existants = paiementsData[cle] || [];
-      const nouveau = {
-        id: `pay_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
-        montant,
-        date: paiementForm.date,
-        dateEcheance: paiementForm.date,
-        type: 'Virement',
-        statut: 'Payé',
-        notes: paiementForm.note || `Paiement facture ${f.numero}`,
-        factureId: f.id,
-        chantierId: f.chantierId || null,
-      };
-      setPaiementsData({ ...paiementsData, [cle]: [...existants, nouveau] });
-    }
-
-    // 2. Mettre à jour montantPaye + statut + historique de la facture
+    // Source unique : le paiement est enregistré SUR LA FACTURE (montantPaye +
+    // historique + statut). Plus de double écriture dans un store séparé.
     const entreeHistorique = { id: `pay_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`, montant, date: paiementForm.date, mode: 'Virement', note: paiementForm.note };
     const nouveauPaiements = [...(f.paiementsHistorique || []), entreeHistorique];
     const nouveauMontantPaye = nouveauPaiements.reduce((s, p) => s + (parseFloat(p.montant) || 0), 0);
@@ -380,16 +363,6 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
     const f = factures.find(x => x.id === id);
     const msg = `Supprimer la facture ${f?.numero || ''} ?\nCette action est irréversible.`;
     if (!window.confirm(msg)) return;
-    // Nettoyer paiements orphelins
-    if (setPaiementsData && paiementsData) {
-      const nouveau = { ...paiementsData };
-      for (const chantierId in nouveau) {
-        if (Array.isArray(nouveau[chantierId])) {
-          nouveau[chantierId] = nouveau[chantierId].filter(p => String(p.factureId) !== String(id));
-        }
-      }
-      setPaiementsData(nouveau);
-    }
     onSave(factures.filter(x => x.id !== id));
     if (returnToListe) { setVue('liste'); setSelected(null); }
   };

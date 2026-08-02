@@ -44,7 +44,7 @@ function SectionAnalyse({ titre }) {
   );
 }
 
-export default function Analyse({ chantiers, clients, devis = [], parametres, setParametres, paiementsData, periodeGlobale = 'annee' }) {
+export default function Analyse({ chantiers, clients, devis = [], parametres, setParametres, factures = [], periodeGlobale = 'annee' }) {
   const { pointages = [] } = useApp();
   const [vue, setVue] = useState('v_rentabilite');
   const sousVue = (VUES_ANALYSE.find(v => v.id === vue) || VUES_ANALYSE[0]).sous;
@@ -1165,7 +1165,7 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
 
       {montre('rapport') && <SectionAnalyse titre="Rapport hebdo" />}
       {montre('rapport') && (
-        <Rapport chantiers={chantiers} clients={clients} devis={devis} parametres={parametres} paiementsData={paiementsData || {}} />
+        <Rapport chantiers={chantiers} clients={clients} devis={devis} parametres={parametres} factures={factures} />
       )}
     </div>
   );

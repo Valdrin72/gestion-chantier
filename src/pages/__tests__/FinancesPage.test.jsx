@@ -21,10 +21,6 @@ vi.mock('../../Factures', () => ({
   ),
 }));
 
-vi.mock('../../Paiements', () => ({
-  default: () => <div data-testid="mock-paiements" />,
-}));
-
 vi.mock('../../RelancesTab', () => ({
   default: () => <div data-testid="mock-relances" />,
 }));
@@ -100,8 +96,6 @@ function renderFinances(propsOverrides = {}, ctxOverrides = {}) {
     clients: [],
     chantiers: [],
     devis: [],
-    paiementsData: {},
-    setPaiementsData: vi.fn(),
     naviguer: vi.fn(),
     contexte: {},
     profil: null,
@@ -116,13 +110,14 @@ function renderFinances(propsOverrides = {}, ctxOverrides = {}) {
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
 describe('FinancesPage — structure de base', () => {
-  it('affiche le titre et les 4 onglets', () => {
+  it('affiche le titre et les 3 onglets (Paiements chantiers supprimé — unifié sur les factures)', () => {
     renderFinances();
     expect(screen.getByText('Finances')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Trésorerie/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Factures/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Relances/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Paiements chantiers/i })).toBeInTheDocument();
+    // MORDANT : l'onglet « Paiements chantiers » n'existe plus.
+    expect(screen.queryByRole('button', { name: /Paiements chantiers/i })).toBeNull();
   });
 
   it('affiche les 4 labels KPI en-tête', () => {
@@ -152,11 +147,6 @@ describe('FinancesPage — navigation onglets', () => {
     expect(screen.getByTestId('mock-factures')).toBeInTheDocument();
   });
 
-  it('cliquer Paiements affiche le mock Paiements', () => {
-    renderFinances();
-    fireEvent.click(screen.getByRole('button', { name: /Paiements chantiers/i }));
-    expect(screen.getByTestId('mock-paiements')).toBeInTheDocument();
-  });
 
   it('cliquer Relances affiche le mock RelancesTab', () => {
     renderFinances();

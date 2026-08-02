@@ -794,19 +794,22 @@ describe('Factures — supprimerFacture (brouillon uniquement)', () => {
     expect(liste[0].id).toBe('F2b');
   });
 
-  it('supprimer nettoie paiementsData (factureId orphelins)', () => {
-    const setPaiementsData = vi.fn();
-    const paiementsData = {
-      CH1: [{ id: 'pay1', factureId: 'F2', montant: 500 }],
-    };
+  it('MORDANT unification : supprimer une facture ne touche AUCUN store de paiement séparé (paiements portés par la facture)', () => {
+    // Le paiement vit désormais DANS la facture (montantPaye + paiementsHistorique) :
+    // supprimer la facture emporte son historique, sans side-channel « paiementsData ».
+    const onSave = vi.fn();
     confirmSpy.mockReturnValue(true);
-    renderFactures({ factures: [FACTURE_BROUILLON], setPaiementsData, paiementsData });
+    const FACT_AVEC_PAIEMENT = {
+      ...FACTURE_BROUILLON, id: 'F2', montantPaye: 500,
+      paiementsHistorique: [{ id: 'h1', montant: 500, date: '2026-01-01' }],
+    };
+    renderFactures({ factures: [FACT_AVEC_PAIEMENT], onSave });
 
     fireEvent.click(screen.getByRole('button', { name: /^Suppr$/i }));
 
-    expect(setPaiementsData).toHaveBeenCalledOnce();
-    const nouveauPaiements = setPaiementsData.mock.calls[0][0];
-    expect(nouveauPaiements.CH1).toHaveLength(0);
+    // Seul onSave est appelé (la facture, historique embarqué compris, disparaît).
+    expect(onSave).toHaveBeenCalledOnce();
+    expect(onSave.mock.calls[0][0]).toHaveLength(0);
   });
 });
 

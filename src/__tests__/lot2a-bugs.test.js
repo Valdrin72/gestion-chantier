@@ -49,20 +49,20 @@ const PAGES_VALIDES = new Set([
   'dashboard', 'chantiers', 'devis', 'finances', 'clients', 'employes',
   'planning', 'rapport', 'agents', 'calculs', 'alertes', 'parametres', 'heures', 'pointages',
 ]);
-const ONGLETS_FINANCES = new Set(['tresorerie', 'factures', 'relances', 'paiements']);
+// Onglets réels de Finances APRÈS unification des paiements (l'onglet
+// « Paiements chantiers » a été supprimé — tout le suivi passe par les factures).
+const ONGLETS_FINANCES = new Set(['tresorerie', 'factures', 'relances']);
 
 describe('BUG 2 — alertes de paiement/facture : cible réelle, plus de 404', () => {
   const vieux = new Date(Date.now() - 90 * 86400000).toISOString().slice(0, 10); // > 30 j
   const data = {
     chantiers: [],
     devis: [],
-    factures: [{ id: 'f1', statut: 'brouillon' }],
-    paiements: {
-      ch1: [
-        { statut: 'En attente', dateEcheance: vieux, montant: 1000, type: 'acompte', chantierId: 'ch1' },
-        { statut: 'En attente', date: vieux, montant: 500 /* pas de factureId */ },
-      ],
-    },
+    // Une facture en retard (impayée, échéance dépassée) + une brouillon.
+    factures: [
+      { id: 'f1', statut: 'brouillon' },
+      { id: 'f2', numero: 'FAC-2', statut: 'envoyee', chantierId: 'ch1', montantTTC: 1000, montantPaye: 0, dateEcheance: vieux },
+    ],
   };
   const alertes = calculerAlertes(data, 'cyna');
 
@@ -74,6 +74,13 @@ describe('BUG 2 — alertes de paiement/facture : cible réelle, plus de 404', (
     expect(alertes.some(a => a.page === 'paiements' || a.page === 'factures')).toBe(false);
   });
 
+  it('MORDANT unification : plus aucune alerte ne vise l\'onglet mort « paiements »', () => {
+    // L\'onglet « Paiements chantiers » n\'existe plus → aucune alerte ne doit y pointer.
+    expect(alertes.some(a => a.onglet === 'paiements')).toBe(false);
+    // Et les anciens types d\'alerte du store supprimé ne sont plus émis.
+    expect(alertes.some(a => a.type === 'paiement_en_attente' || a.type === 'paiements_sans_facture')).toBe(false);
+  });
+
   it('l\'alerte "facture brouillon" ouvre Finances → onglet Factures', () => {
     const a = alertes.find(x => x.type === 'factures_brouillon');
     expect(a).toBeDefined();
@@ -82,14 +89,12 @@ describe('BUG 2 — alertes de paiement/facture : cible réelle, plus de 404', (
     expect(a.onglet).toBe('factures');
   });
 
-  it('les alertes de paiement ouvrent Finances → onglet Paiements', () => {
-    const enAttente = alertes.find(x => x.type === 'paiement_en_attente');
-    const sansFacture = alertes.find(x => x.type === 'paiements_sans_facture');
-    for (const a of [enAttente, sansFacture]) {
-      expect(a).toBeDefined();
-      expect(a.page).toBe('finances');
-      expect(a.onglet).toBe('paiements');
-    }
+  it('MORDANT source unique : le retard d\'encaissement vient des FACTURES, cible réelle', () => {
+    // Depuis l\'unification, le risque « impayé en retard » est porté par la facture
+    // (règle facture_retard / rappel_a_envoyer), pas par un store séparé.
+    const retard = alertes.find(x => x.type === 'facture_retard' || x.type === 'rappel_a_envoyer');
+    expect(retard).toBeDefined();
+    expect(retard.page).toBe('finances');
   });
 
   it('les alertes déjà valides restent inchangées (chantiers, devis, finances)', () => {

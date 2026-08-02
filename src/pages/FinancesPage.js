@@ -4,7 +4,6 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { DollarSign, FileText, Clock, AlertTriangle, CreditCard, TrendingUp, Calendar, Zap, CheckCircle } from 'lucide-react';
 import Factures from '../Factures';
-import Paiements from '../Paiements';
 import RelancesTab from '../RelancesTab';
 import { getIntervallesPeriode, getPeriodeLabel, facturesInPeriode, calculerCA, calculerCAForfait, calculerStatutFacture, calculerEtatChantier, tauxTVAParam, margePortefeuille, couleurMarge, SEUILS } from '../donnees';
 import { useApp } from '../context/AppContext';
@@ -506,7 +505,6 @@ function Tresorerie({ factures = [], chantiers = [], clients = [], devis = [], p
 export default function Finances({
   factures = [], onSave,
   clients = [], chantiers = [], devis = [],
-  paiementsData = {}, setPaiementsData,
   naviguer, contexte = {}, profil,
   periodeGlobale = 'mois',
   parametres = null,
@@ -520,7 +518,7 @@ export default function Finances({
   // (ex. clic sur une alerte de paiement). Ids valides = les 4 onglets de Finances.
   React.useEffect(() => {
     const cible = contexte?.onglet;
-    if (cible && ['tresorerie', 'factures', 'relances', 'paiements'].includes(cible)) setOnglet(cible);
+    if (cible && ['tresorerie', 'factures', 'relances'].includes(cible)) setOnglet(cible);
   }, [contexte?.onglet]);
 
   // Déclenchement depuis ChantierDetail via naviguer('finances', { preRemplirExtra: {...} })
@@ -625,7 +623,6 @@ export default function Finances({
     { id: 'tresorerie', label: 'Trésorerie',          count: null,    badgeRouge: false },
     { id: 'factures',   label: 'Factures',            count: facturesPeriode.filter(f => f.statut !== 'annulee').length, badgeRouge: false },
     { id: 'relances',   label: 'Relances',            count: nbRelances > 0 ? nbRelances : null, badgeRouge: nbRelances > 0 },
-    { id: 'paiements',  label: 'Paiements chantiers', count: null,    badgeRouge: false },
   ];
 
   // setFactures pour RelancesTab : met à jour dans le tableau COMPLET (orphelines incluses)
@@ -741,8 +738,6 @@ export default function Finances({
           clients={clients}
           chantiers={chantiers}
           devis={devis}
-          paiementsData={paiementsData}
-          setPaiementsData={setPaiementsData}
           naviguer={naviguer}
           profil={profil}
           periodeGlobale={periodeGlobale}
@@ -761,16 +756,6 @@ export default function Finances({
           afficherNotif={afficherNotif}
         />
       )}
-      <div style={{ display: onglet === 'paiements' ? 'block' : 'none' }}>
-        <Paiements
-          chantiers={chantiers}
-          clients={clients}
-          devis={devis}
-          paiementsData={paiementsData}
-          setPaiementsData={setPaiementsData}
-          hideHeader
-        />
-      </div>
     </div>
   );
 }

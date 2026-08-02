@@ -54,7 +54,7 @@ function RapportIA({ agentData }) {
   );
 }
 
-function RapportsPage({ chantiers, clients, devis, parametres, setParametres, paiementsData, periodeGlobale, naviguer, factures }) {
+function RapportsPage({ chantiers, clients, devis, parametres, setParametres, periodeGlobale, naviguer, factures }) {
   const { agentState, contexte } = useApp();
   const [onglet, setOnglet] = useState(contexte?.onglet || 'rapport-ia');
   useEffect(() => { if (contexte?.onglet) setOnglet(contexte.onglet); }, [contexte?.onglet]);
@@ -78,7 +78,7 @@ function RapportsPage({ chantiers, clients, devis, parametres, setParametres, pa
         ))}
       </div>
       {onglet === 'rapport-ia'  && <RapportIA agentData={agentState?.agentData} />}
-      {onglet === 'analyse'     && <Analyse chantiers={chantiers} clients={clients} devis={devis} parametres={parametres} setParametres={setParametres} paiementsData={paiementsData} periodeGlobale={periodeGlobale} />}
+      {onglet === 'analyse'     && <Analyse chantiers={chantiers} clients={clients} devis={devis} parametres={parametres} setParametres={setParametres} factures={factures} periodeGlobale={periodeGlobale} />}
       {onglet === 'simulateur'  && <SimulateurCroissance chantiers={chantiers} devis={devis} factures={factures || []} parametres={parametres} />}
       {onglet === 'benchmark'   && <BenchmarkMarche chantiers={chantiers} devis={devis} parametres={parametres} />}
     </div>

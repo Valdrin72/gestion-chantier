@@ -148,7 +148,7 @@ function IconeNiveau({ niveau }) {
 
 // ── Centre de notifications ──────────────────────────────────────────────────
 function NotificationBell({ naviguer }) {
-  const { chantiers, devis, factures, paiementsData, clients, profil } = useApp();
+  const { chantiers, devis, factures, clients, profil } = useApp();
   const [ouvert, setOuvert] = useState(false);
   const [lues, setLues] = useState(() => {
     try { return JSON.parse(localStorage.getItem('cyna_notifs_lues') || '[]'); } catch { return []; }
@@ -156,10 +156,10 @@ function NotificationBell({ naviguer }) {
 
   const alertes = useMemo(() =>
     calculerAlertes(
-      { chantiers: chantiers || [], devis: devis || [], factures: factures || [], paiements: paiementsData || {}, clients: clients || [] },
+      { chantiers: chantiers || [], devis: devis || [], factures: factures || [], clients: clients || [] },
       profil?.id
     ),
-    [chantiers, devis, factures, paiementsData, clients, profil]
+    [chantiers, devis, factures, clients, profil]
   );
 
   // Trier : critiques d'abord, puis warnings, puis info

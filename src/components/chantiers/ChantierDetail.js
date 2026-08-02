@@ -9,7 +9,7 @@ import {
   getChantierStatus, C,
   assertEtatValide, assertEtatCoherent,
   sommeAvenants, calculerCA, calculerCAForfait, isChantierActif, tauxTVAParam,
-  calculerVitesseChantier,
+  calculerVitesseChantier, montantPayeChantier,
 } from '../../donnees';
 import { DS, couleurStatut as couleurStatutDS } from '../../ds';
 import { STATUTS_CLOS } from '../../constants/statuts';
@@ -124,11 +124,9 @@ function ChantierDetail({ chantier, detailOnglet, setDetailOnglet, modeCompleter
   const fmtK = (n) => fmtN(n);
   const facturesLiees = factures.filter(f => String(f.chantierId) === String(c.id));
   const montantFactureLie = facturesLiees.reduce((s, f) => s + (parseFloat(f.montantTTC) || 0), 0);
-  const montantPayeLie    = facturesLiees.reduce((s, f) => {
-    const viaHistorique = (f.paiementsHistorique || []).reduce((acc, p) => acc + (parseFloat(p.montant) || 0), 0);
-    const viaScalaire   = parseFloat(f.montantPaye) || 0;
-    return s + (viaHistorique > 0 ? viaHistorique : viaScalaire);
-  }, 0);
+  // Source unique : le "payé" du chantier = Σ payé de ses factures (helper partagé
+  // avec Finances et les rapports → un seul et même nombre partout).
+  const montantPayeLie    = montantPayeChantier(factures, c.id);
   const caForfait  = calculerCAForfait(c, devis);
   const devisTotal = calculerCA(c, devis) || 0;
   const _pctFactureRaw = devisTotal > 0 ? (montantFactureLie / devisTotal) * 100 : 0;

@@ -154,17 +154,9 @@ function AppInner({ profil, deconnecter, userId, isDemo = false }) {
     try { localStorage.setItem('cyna_periode', v); } catch {}
     setPeriodeGlobaleState(v);
   }, []);
-  const [paiementsData, setPaiementsDataState] = useState(() => {
-    try { const r = localStorage.getItem('cyna_paiements'); return r ? JSON.parse(r) : {}; } catch { return {}; }
-  });
   const [actionsLog, setActionsLogState] = useState(() => {
     try { const r = localStorage.getItem('cyna_actions'); return r ? JSON.parse(r) : []; } catch { return []; }
   });
-
-  const setPaiementsData = (data) => {
-    setPaiementsDataState(data);
-    try { localStorage.setItem('cyna_paiements', JSON.stringify(data)); } catch {}
-  };
 
   const [notif, setNotif] = useState(null);
   const afficherNotif = useCallback((message, type = 'success') => {
@@ -343,14 +335,14 @@ function AppInner({ profil, deconnecter, userId, isDemo = false }) {
     chantiers, setChantiers, clients, setClients, devis, setDevis,
     factures, setFactures, parametres, setParametres,
     pointages, setPointages,
-    paiementsData, setPaiementsData, actionsLog, profil,
+    actionsLog, profil,
     logAction, naviguer, contexte, periodeGlobale, setPeriodeGlobale,
     agentState, ouvrirSaisieHeures: ouvrirSaisieHeuresApp,
     deconnecter, afficherNotif, confirmer,
     isDemo,
   }), [ // eslint-disable-line react-hooks/exhaustive-deps
     chantiers, clients, devis, factures, parametres, pointages,
-    paiementsData, actionsLog, profil, contexte, periodeGlobale, agentState, isDemo,
+    actionsLog, profil, contexte, periodeGlobale, agentState, isDemo,
   ]);
 
   return (
@@ -393,11 +385,11 @@ function AppInner({ profil, deconnecter, userId, isDemo = false }) {
           {page === 'dashboard'    && <Dashboard />}
           {page === 'chantiers'    && pagesAutorisees.includes('chantiers')  && <Chantiers />}
           {page === 'devis'        && pagesAutorisees.includes('devis')      && <Devis />}
-          {page === 'finances'     && pagesAutorisees.includes('finances')   && <Finances factures={factures} onSave={setFactures} clients={clients} chantiers={chantiers} devis={devis} paiementsData={paiementsData} setPaiementsData={setPaiementsData} naviguer={naviguer} contexte={contexte} profil={profil} periodeGlobale={periodeGlobale} parametres={parametres} pointages={pointages} />}
+          {page === 'finances'     && pagesAutorisees.includes('finances')   && <Finances factures={factures} onSave={setFactures} clients={clients} chantiers={chantiers} devis={devis} naviguer={naviguer} contexte={contexte} profil={profil} periodeGlobale={periodeGlobale} parametres={parametres} pointages={pointages} />}
           {page === 'clients'      && pagesAutorisees.includes('clients')    && <Clients clients={clients} setClients={setClients} chantiers={chantiers} devis={devis} factures={factures} naviguer={naviguer} />}
           {page === 'employes'     && pagesAutorisees.includes('employes')   && <Employes parametres={parametres} setParametres={setParametres} chantiers={chantiers} naviguer={naviguer} />}
           {page === 'planning'     && pagesAutorisees.includes('planning')   && <PlanningPage chantiers={chantiers} setChantiers={setChantiers} clients={clients} devis={devis} factures={factures} parametres={parametres} naviguer={naviguer} />}
-          {page === 'rapport'      && pagesAutorisees.includes('rapport')    && <RapportsPage chantiers={chantiers} clients={clients} devis={devis} factures={factures} parametres={parametres} setParametres={setParametres} paiementsData={paiementsData} periodeGlobale={periodeGlobale} naviguer={naviguer} />}
+          {page === 'rapport'      && pagesAutorisees.includes('rapport')    && <RapportsPage chantiers={chantiers} clients={clients} devis={devis} factures={factures} parametres={parametres} setParametres={setParametres} periodeGlobale={periodeGlobale} naviguer={naviguer} />}
           {page === 'agents'       && pagesAutorisees.includes('agents')     && <CentreIA />}
           {page === 'calculs'      && pagesAutorisees.includes('calculs')    && <CalculsPage />}
           {page === 'alertes'      && <AlertsPage naviguer={naviguer} />}

@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { fmtN, calculerCoutsChantier, calculerCA, getAlerte, calculerDateFinOuvrables, isChantierActif } from './donnees';
+import { fmtN, calculerCoutsChantier, calculerCA, getAlerte, calculerDateFinOuvrables, isChantierActif, calculerStatutFacture, resumePaiementsFactures } from './donnees';
 import { DS } from './ds';
 import { joursReelsChantier } from './calculs/pointagesHelper';
 import { useApp } from './context/AppContext';
@@ -33,7 +33,7 @@ const getSemaineSuivante = () => {
   };
 };
 
-export default function Rapport({ chantiers, clients, devis = [], parametres, paiementsData }) {
+export default function Rapport({ chantiers, clients, devis = [], parametres, factures = [] }) {
   const { pointages = [] } = useApp();
   const [semaine] = useState(getSemaine());
   const isMobile = useIsMobile();
@@ -56,25 +56,12 @@ export default function Rapport({ chantiers, clients, devis = [], parametres, pa
     }, 0);
   }, [chantiers, devis]);
 
-  const getPaiements = (chantierId) => paiementsData[chantierId] || [];
-  const isPaye = (p) => ['payé', 'payee', 'payée'].includes(p.statut?.trim().toLowerCase());
-  const isAttente = (p) => ['en attente', 'envoyee', 'envoyée', 'partielle', 'retard'].includes(p.statut?.trim().toLowerCase());
+  // Encaissements lus depuis les FACTURES (source unique) — mêmes règles que les
+  // KPIs de Finances, donc un seul et même nombre partout.
   const { totalPaiementsRecus, totalPaiementsAttente, totalPaiementsRetard } = useMemo(() => {
-    const today = new Date();
-    let recus = 0, attente = 0, retard = 0;
-    chantiers.forEach(c => {
-      getPaiements(c.id).forEach(p => {
-        const m = parseFloat(p.montant) || 0;
-        if (isPaye(p)) recus += m;
-        else if (isAttente(p)) {
-          attente += m;
-          if (new Date(p.dateEcheance) < today) retard += m;
-        }
-      });
-    });
+    const { recus, attente, retard } = resumePaiementsFactures(factures);
     return { totalPaiementsRecus: recus, totalPaiementsAttente: attente, totalPaiementsRetard: retard };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [chantiers, paiementsData]);
+  }, [factures]);
 
 
   const chantiersSemaineProchaine = chantiers.filter(c => {
@@ -202,23 +189,29 @@ export default function Rapport({ chantiers, clients, devis = [], parametres, pa
           ))}
         </div>
 
-        {/* LISTE PAIEMENTS EN RETARD */}
+        {/* LISTE FACTURES EN RETARD (source unique : factures) */}
         {totalPaiementsRetard > 0 && (
           <div>
             <div style={{ fontSize: '12px', fontWeight: 700, color: '#ef4444', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: 8 }}>Paiements en retard à relancer</div>
             {chantiers.map(c => {
-              const today = new Date();
-              const retards = getPaiements(c.id).filter(p => isAttente(p) && new Date(p.dateEcheance) < today);
+              const today = new Date().toISOString().slice(0, 10);
+              const retards = factures
+                .filter(f => String(f.chantierId) === String(c.id))
+                .map(f => ({ ...f, statutCalc: calculerStatutFacture(f) }))
+                .filter(f => f.statutCalc !== 'annulee' && f.statutCalc !== 'brouillon' && f.statutCalc !== 'payee' && f.dateEcheance && f.dateEcheance < today);
               if (retards.length === 0) return null;
               const client = clients.find(cl => String(cl.id) === String(c.clientId));
               return (
                 <div key={c.id} style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid #ef4444', borderRadius: '8px', padding: '12px', marginBottom: '8px' }}>
                   <div style={{ fontWeight: 700, color: '#ef4444' }}>{c.nom} — {client?.entreprise}</div>
-                  {retards.map(p => (
-                    <div key={p.id} style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '4px' }}>
-                      {p.type} — <strong>CHF {fmtN(parseFloat(p.montant))}</strong> — Échéance : {p.dateEcheance}
-                    </div>
-                  ))}
+                  {retards.map(f => {
+                    const restant = Math.max(0, (parseFloat(f.montantTTC) || 0) - (parseFloat(f.montantPaye) || 0));
+                    return (
+                      <div key={f.id} style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                        Facture {f.numero} — <strong>CHF {fmtN(restant)}</strong> — Échéance : {f.dateEcheance}
+                      </div>
+                    );
+                  })}
                 </div>
               );
             })}

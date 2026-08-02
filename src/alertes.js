@@ -20,12 +20,11 @@ function calculerTotalFacture(f) {
  * @param {Array}  data.chantiers
  * @param {Array}  data.devis
  * @param {Array}  data.factures
- * @param {object} data.paiements  { [chantierId]: [{...}] }
  * @param {Array}  data.clients
  * @param {string} profilId - profil connecté (pour filtrer les alertes pertinentes)
  * @returns {Array<{ id, type, niveau, message, page, entityId, date }>}
  */
-export function calculerAlertes({ chantiers = [], devis = [], factures = [], paiements = {}, clients = [], chantiersStats = [] }, profilId = 'cyna') {
+export function calculerAlertes({ chantiers = [], devis = [], factures = [], clients = [], chantiersStats = [] }, profilId = 'cyna') {
   const alertes = [];
   const now = new Date();
 
@@ -173,51 +172,9 @@ export function calculerAlertes({ chantiers = [], devis = [], factures = [], pai
     });
   }
 
-  // ── 7bis. Paiements en attente depuis >30 jours ─────────────
-  if (['cyna', 'cynatech'].includes(profilId)) {
-    Object.values(paiements).forEach(liste => {
-      if (!Array.isArray(liste)) return;
-      liste.forEach(p => {
-        if (['En attente','en attente','envoyee','partielle','retard'].includes(p.statut)) {
-          const dateSrc = p.dateEcheance || p.date;
-          if (!dateSrc) return;
-          const dateRef = new Date(dateSrc);
-          if (isNaN(dateRef.getTime())) return;
-          const joursAttente = Math.floor((now - dateRef) / 86400000);
-          if (joursAttente > 30) {
-            push({
-              type: 'paiement_en_attente',
-              niveau: joursAttente > 60 ? 'critique' : 'warning',
-              message: `Paiement ${p.type || ''} de ${(p.montant || 0).toLocaleString('fr-CH')} CHF en attente depuis ${joursAttente} jours`,
-              page: 'finances',        // écran réel (l'onglet Paiements vit dans Finances)
-              onglet: 'paiements',
-              entityId: p.chantierId || null,
-            });
-          }
-        }
-      });
-    });
-  }
-
-  // ── 7. Paiements sans facture associée ───────────────────────
-  if (['cyna', 'cynatech'].includes(profilId)) {
-    let countSansFacture = 0;
-    Object.values(paiements).forEach(liste => {
-      if (Array.isArray(liste)) {
-        liste.forEach(p => { if (!p.factureId) countSansFacture++; });
-      }
-    });
-    if (countSansFacture > 0) {
-      push({
-        type: 'paiements_sans_facture',
-        niveau: 'info',
-        message: `${countSansFacture} paiement${countSansFacture > 1 ? 's' : ''} non rattaché${countSansFacture > 1 ? 's' : ''} à une facture`,
-        page: 'finances',        // écran réel (l'onglet Paiements vit dans Finances)
-        onglet: 'paiements',
-        entityId: null,
-      });
-    }
-  }
+  // (Rappel : les paiements sont désormais unifiés sur les factures. Le suivi des
+  // encaissements en retard est couvert par la règle 3 "Factures en retard de
+  // paiement" ci-dessus — plus de store "Paiements chantiers" à surveiller.)
 
   // ── 8. Chantiers à perte ou dépassement budgétaire ──────────
   if (['cyna', 'cynatech'].includes(profilId) && chantiersStats.length > 0) {
@@ -270,8 +227,6 @@ export const ALERTE_LABELS = {
   factures_brouillon:    'Brouillons non émis',
   chantier_sans_devis:   'Chantiers sans devis',
   chantier_sans_facture: 'Chantiers sans facture',
-  paiement_en_attente:   'Paiement en attente',
-  paiements_sans_facture:'Paiements non liés',
   chantier_a_perte:      'Chantier à perte',
   depassement_budget:    'Dépassement budgétaire',
   marge_faible:          'Marge insuffisante',

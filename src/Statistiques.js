@@ -160,7 +160,7 @@ export default function Statistiques({ chantiers, clients, devis = [], parametre
       {/* KPIs GLOBAUX — gradients saturés */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24 }}>
         {[
-          { label: 'CA ANNÉE',          val: `CHF ${fmtN(caTotal)}`,     gradient: 'linear-gradient(135deg, #1E40AF 0%, #3B82F6 100%)', glow: 'rgba(59,130,246,0.32)',  Icon: TrendingUp },
+          { label: 'CA SIGNÉ ANNÉE',          val: `CHF ${fmtN(caTotal)}`,     gradient: 'linear-gradient(135deg, #1E40AF 0%, #3B82F6 100%)', glow: 'rgba(59,130,246,0.32)',  Icon: TrendingUp },
           { label: 'MARGE NETTE',       val: `${margeNettePct}%`,          gradient: margeNettePct >= 0 ? 'linear-gradient(135deg, #065F46 0%, #10B981 100%)' : 'linear-gradient(135deg, #991B1B 0%, #EF4444 100%)', glow: margeNettePct >= 0 ? 'rgba(16,185,129,0.32)' : 'rgba(239,68,68,0.32)', Icon: DollarSign, badge: `CHF ${fmtN(rentabilite)}` },
           { label: 'CHANTIERS',         val: chantiersFiltres.length,     gradient: 'linear-gradient(135deg, #92400E 0%, #F59E0B 100%)', glow: 'rgba(245,158,11,0.32)', Icon: HardHat, badge: nbSansDevis > 0 ? `${nbSansDevis} sans devis` : `${filtresAvecDevis.length} avec devis` },
           { label: 'PRÉVISION 3 MOIS',  val: `CHF ${fmtN(Math.round(prevision3Mois))}`, gradient: 'linear-gradient(135deg, #4C1D95 0%, #8B5CF6 100%)', glow: 'rgba(139,92,246,0.32)', Icon: Calendar },
@@ -183,7 +183,7 @@ export default function Statistiques({ chantiers, clients, devis = [], parametre
 
       {/* GRAPHIQUE CA MENSUEL */}
       <div style={carteStyle}>
-        <div className="ds-card-title">Chiffre d'affaires mensuel {periode}</div>
+        <div className="ds-card-title">CA signé mensuel {periode}</div>
         <ResponsiveContainer width="100%" height={300}>
           <BarChart data={donneesMensuelles} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="var(--border-glass)" />
@@ -191,7 +191,7 @@ export default function Statistiques({ chantiers, clients, devis = [], parametre
             <YAxis tickFormatter={v => `${(v/1000).toFixed(0)}k`} tick={{ fill: 'var(--text-muted)' }} />
             <Tooltip content={() => null} />
             <Legend wrapperStyle={{ color: 'var(--text-primary)' }} />
-            <Bar dataKey="CA"     fill={COL_CA}    name="CA"     radius={[4, 4, 0, 0]} />
+            <Bar dataKey="CA"     fill={COL_CA}    name="CA signé"     radius={[4, 4, 0, 0]} />
             <Bar dataKey="Coûts" fill={COL_COUT}  name="Coûts"  radius={[4, 4, 0, 0]} />
             <Bar dataKey="Marge" fill={COL_MARGE} name="Marge"  radius={[4, 4, 0, 0]} />
           </BarChart>
@@ -286,7 +286,7 @@ export default function Statistiques({ chantiers, clients, devis = [], parametre
         <div className="ds-card-title" style={{ marginBottom: 16 }}>Prévisions</div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '15px', marginBottom: '20px' }}>
           {[
-            { label: 'CA réalisé',        valeur: `CHF ${fmtN(Math.round(caRealise))}`,      couleur: COL_CA },
+            { label: 'CA signé réalisé',        valeur: `CHF ${fmtN(Math.round(caRealise))}`,      couleur: COL_CA },
             { label: 'Moyenne mensuelle', valeur: `CHF ${fmtN(Math.round(moyenneMensuelle))}`, couleur: COL_CA },
             { label: 'Prévision 3 mois',  valeur: `CHF ${fmtN(Math.round(prevision3Mois))}`,  couleur: COL_CA },
             { label: 'Prévision annuelle', valeur: `CHF ${fmtN(Math.round(previsionAnnuelle))}`, couleur: COL_CA },
@@ -309,7 +309,7 @@ export default function Statistiques({ chantiers, clients, devis = [], parametre
             <YAxis tickFormatter={v => `${(v / 1000).toFixed(0)}k`} tick={{ fill: 'var(--text-muted)' }} />
             <Tooltip content={() => null} />
             <Legend wrapperStyle={{ color: 'var(--text-primary)' }} />
-            <Bar dataKey="CA" name="CA Réalisé / Prévu" radius={[4, 4, 0, 0]} fill={COL_CA} label={false} />
+            <Bar dataKey="CA" name="CA signé réalisé / prévu" radius={[4, 4, 0, 0]} fill={COL_CA} label={false} />
           </BarChart>
         </ResponsiveContainer>
       </div>
@@ -320,7 +320,7 @@ export default function Statistiques({ chantiers, clients, devis = [], parametre
         {donneesTravaux.length === 0 ? <p style={{ color: 'var(--text-secondary)' }}>Aucune donnée</p> : (
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead><tr>
-              {['Type', 'Chantiers', 'm²', 'CA', 'Coûts', 'Marge %', 'Gain CHF', 'Statut'].map(h => (
+              {['Type', 'Chantiers', 'm²', 'CA signé', 'Coûts', 'Marge %', 'Gain CHF', 'Statut'].map(h => (
                 <th key={h} style={DS.th}>{h}</th>
               ))}
             </tr></thead>
@@ -455,7 +455,7 @@ export default function Statistiques({ chantiers, clients, devis = [], parametre
         <div className="ds-card-title" style={{ marginBottom: 16 }}>Classement clients</div>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead><tr>
-            {['Rang', 'Client', 'Chantiers', 'CA Total', 'Marge %', 'Gain CHF'].map(h => (
+            {['Rang', 'Client', 'Chantiers', 'CA signé total', 'Marge %', 'Gain CHF'].map(h => (
               <th key={h} style={DS.th}>{h}</th>
             ))}
           </tr></thead>

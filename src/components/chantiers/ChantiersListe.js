@@ -73,7 +73,7 @@ function ChantiersListe({
     const periodeLabel = periodeGlobale === 'semaine' ? 'sem.' : periodeGlobale === 'mois' ? 'mois' : 'an';
     return [
       { label: 'EN COURS',       val: nbEnCours,  Icon: HardHat,    ...DS.kpi.blue,   badge: nbEnRetard > 0 ? `${nbEnRetard} en retard` : null },
-      { label: 'CA CHANTIERS',   val: `CHF ${fmtN(caTotal)}`, sous: `${nbAvecDevis} avec devis · ${chantiersPeriode.length} ce ${periodeLabel}`, Icon: DollarSign, ...DS.kpi.green },
+      { label: 'CA SIGNÉ CHANTIERS',   val: `CHF ${fmtN(caTotal)}`, sous: `${nbAvecDevis} avec devis · ${chantiersPeriode.length} ce ${periodeLabel}`, Icon: DollarSign, ...DS.kpi.green },
       { label: 'MARGE MOYENNE',  val: margeMoyenne !== null ? `${margeMoyenne}%` : '—', Icon: TrendingUp, ...DS.kpi.amber },
       { label: 'JOURS PLANIFIÉS',val: `${fmtN(joursPlanifies)}j`, Icon: Clock, ...DS.kpi.purple },
     ];
@@ -144,7 +144,7 @@ function ChantiersListe({
   const scoredPage = scored.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
 
   const exporterCSV = () => {
-    const entetes = ['Nom', 'Client', 'Statut', 'Début', 'Fin prévue', 'Jours planifiés', 'CA HT (CHF)', 'Avancement (%)', 'Marge réelle (%)'];
+    const entetes = ['Nom', 'Client', 'Statut', 'Début', 'Fin prévue', 'Jours planifiés', 'CA signé HT (CHF)', 'Avancement (%)', 'Marge réelle (%)'];
     const lignes = chantiersFiltres.map(c => {
       const clientNom = (clients.find(cl => String(cl.id) === String(c.clientId))?.nom || '') + ' ' + (clients.find(cl => String(cl.id) === String(c.clientId))?.prenom || '');
       const ca = calculerCA(c, devis);

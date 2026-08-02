@@ -338,8 +338,8 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
             <div className="ds-card-title">Seuil de rentabilité</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '15px' }}>
               {[
-                { label: 'Seuil de rentabilité', val: `CHF ${fmtN(Math.round(seuilRentabilite))}`, couleur: '#f59e0b', bg: 'rgba(245,158,11,0.12)', desc: 'CA minimum à réaliser' },
-                { label: 'CA actuel', val: `CHF ${fmtN(Math.round(caTotal))}`, couleur: caTotal >= seuilRentabilite ? '#10b981' : '#ef4444', bg: caTotal >= seuilRentabilite ? 'rgba(16,185,129,0.10)' : 'rgba(239,68,68,0.09)', desc: caTotal >= seuilRentabilite ? 'Au-dessus du seuil' : 'En dessous du seuil' },
+                { label: 'Seuil de rentabilité', val: `CHF ${fmtN(Math.round(seuilRentabilite))}`, couleur: '#f59e0b', bg: 'rgba(245,158,11,0.12)', desc: 'CA signé minimum à réaliser' },
+                { label: 'CA signé actuel', val: `CHF ${fmtN(Math.round(caTotal))}`, couleur: caTotal >= seuilRentabilite ? '#10b981' : '#ef4444', bg: caTotal >= seuilRentabilite ? 'rgba(16,185,129,0.10)' : 'rgba(239,68,68,0.09)', desc: caTotal >= seuilRentabilite ? 'Au-dessus du seuil' : 'En dessous du seuil' },
                 { label: 'Écart au seuil', val: `CHF ${fmtN(Math.abs(Math.round(caTotal - seuilRentabilite)))}`, couleur: caTotal >= seuilRentabilite ? '#10b981' : '#ef4444', bg: 'var(--bg-hover)', desc: caTotal >= seuilRentabilite ? 'Marge de sécurité' : 'Manque à combler' },
               ].map(s => (
                 <div key={s.label} style={{ background: s.bg, border: `2px solid ${s.couleur}`, borderRadius: '12px', padding: '20px', textAlign: 'center' }}>
@@ -615,7 +615,7 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
                 { label: 'Salaires bruts', val: `CHF ${fmtN(donneesEmployes.reduce((t, e) => t + e.coutTotal, 0))}`, couleur: '#10b981', bg: 'rgba(16,185,129,0.12)' },
                 { label: 'Charges sociales', val: `CHF ${fmtN(Math.round(donneesEmployes.reduce((t, e) => t + e.chargesSoc, 0)))}`, couleur: '#f59e0b', bg: 'rgba(245,158,11,0.12)' },
                 { label: 'Coût total RH', val: `CHF ${fmtN(Math.round(donneesEmployes.reduce((t, e) => t + e.coutReel, 0)))}`, couleur: '#ef4444', bg: 'rgba(239,68,68,0.12)' },
-                { label: '% du CA', val: `${caTotal > 0 ? Math.round((donneesEmployes.reduce((t, e) => t + e.coutReel, 0) / caTotal) * 1000) / 10 : 0}%`, couleur: '#8b5cf6', bg: 'rgba(139,92,246,0.12)' },
+                { label: '% du CA signé', val: `${caTotal > 0 ? Math.round((donneesEmployes.reduce((t, e) => t + e.coutReel, 0) / caTotal) * 1000) / 10 : 0}%`, couleur: '#8b5cf6', bg: 'rgba(139,92,246,0.12)' },
               ].map(s => (
                 <div key={s.label} style={{ background: s.bg, border: `2px solid ${s.couleur}`, borderRadius: '12px', padding: '18px', textAlign: 'center' }}>
                   <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>{s.label}</div>
@@ -639,7 +639,7 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
               <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '25px' }}>
                 <thead>
                   <tr>
-                    {['Type travaux', 'Chantiers', 'Surface', 'CA/m²', 'Coût/m²', 'Marge/m²', 'Marge %', 'Statut'].map(h => (
+                    {['Type travaux', 'Chantiers', 'Surface', 'CA signé/m²', 'Coût/m²', 'Marge/m²', 'Marge %', 'Statut'].map(h => (
                       <th key={h} style={DS.th}>{h}</th>
                     ))}
                   </tr>
@@ -693,13 +693,13 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
       {montre('projection') && (
         <div>
           <div style={carteStyle}>
-            <div className="ds-card-title">Projections CA annuel {new Date().getFullYear()}</div>
+            <div className="ds-card-title">Projections CA signé annuel {new Date().getFullYear()}</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '15px', marginBottom: '25px' }}>
               {[
-                { label: 'CA réalisé', val: `CHF ${fmtN(Math.round(caRealise))}`, couleur: '#10b981', desc: `${moisActuel + 1} mois` }, // eslint-disable-line no-undef
+                { label: 'CA signé réalisé', val: `CHF ${fmtN(Math.round(caRealise))}`, couleur: '#10b981', desc: `${moisActuel + 1} mois` }, // eslint-disable-line no-undef
                 { label: 'Moyenne/mois', val: `CHF ${fmtN(Math.round(moyenneMensuelle))}`, couleur: '#10b981', desc: 'Tendance actuelle' },
                 { label: 'Projection annuelle', val: `CHF ${fmtN(Math.round(projectionAnnuelle))}`, couleur: '#8b5cf6', desc: 'Sur 12 mois' },
-                { label: 'CA prévisionnel', val: `CHF ${fmtN(Math.round(caPrevisionnel))}`, couleur: '#f59e0b', desc: `Réalisé + ${moisRestants} mois prévus` },
+                { label: 'CA signé prévisionnel', val: `CHF ${fmtN(Math.round(caPrevisionnel))}`, couleur: '#f59e0b', desc: `Réalisé + ${moisRestants} mois prévus` },
               ].map(s => (
                 <div key={s.label} style={{ background: s.couleur + '10', border: `1px solid ${s.couleur}28`, borderRadius: '12px', padding: '18px', textAlign: 'center' }}>
                   <div style={{ fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px', color: 'var(--text-muted)', marginBottom: '6px' }}>{s.label}</div>
@@ -729,7 +729,7 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
                 return (
                   <div key={s.scenario} style={{ background: bgs[i], border: `2px solid ${couleurs[i]}`, borderRadius: '12px', padding: '20px', textAlign: 'center' }}>
                     <div style={{ fontWeight: 'bold', color: couleurs[i], marginBottom: '10px' }}>{s.scenario}</div>
-                    <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>CA projeté</div>
+                    <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>CA signé projeté</div>
                     <div style={{ fontSize: '18px', fontWeight: 'bold', color: couleurs[i] }}>CHF {fmtN(Math.round(s.ca))}</div>
                     <div style={{ margin: '10px 0', borderTop: '1px solid var(--border-glass-strong)', paddingTop: '10px' }}>
                       <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Marge nette</div>
@@ -760,7 +760,7 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px,1fr))', gap: 14, marginBottom: 24 }}>
                 {[
                   { label: 'Clients actifs', val: donneesClients.length, couleur: '#0d3d6e' },
-                  { label: 'Meilleur CA', val: `CHF ${fmtN(Math.round(donneesClients[0]?.ca || 0))}`, couleur: '#10b981' },
+                  { label: 'Meilleur CA signé', val: `CHF ${fmtN(Math.round(donneesClients[0]?.ca || 0))}`, couleur: '#10b981' },
                   { label: 'Marge moy.', val: `${Math.round((donneesClients.reduce((t,c)=>t+parseFloat(c.margePct||0),0)/donneesClients.length) * 10) / 10}%`, couleur: '#8b5cf6' },
                   { label: 'Chantiers total', val: donneesClients.reduce((t,c)=>t+c.nbChantiers,0), couleur: '#f59e0b' },
                 ].map(s => (
@@ -773,7 +773,7 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
 
               {/* Podium top 3 */}
               <div style={carteStyle}>
-                <div className="ds-card-title">Top clients par CA</div>
+                <div className="ds-card-title">Top clients par CA signé</div>
                 <div style={{ display: 'flex', gap: 14, marginBottom: 20, flexWrap: 'wrap' }}>
                   {donneesClients.slice(0, 3).map((cl, i) => {
                     const couleurs = ['#f59e0b', '#94a3b8', '#cd7c2f'];
@@ -796,7 +796,7 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
                 {/* Tableau tous clients */}
                 <table className="table-cards" style={{ width: '100%' }}>
                   <thead><tr>
-                    {['Rang', 'Client', 'Chantiers', 'CA Total', 'Coûts', 'Marge %', 'Gain CHF', 'Statut'].map(h => (
+                    {['Rang', 'Client', 'Chantiers', 'CA signé total', 'Coûts', 'Marge %', 'Gain CHF', 'Statut'].map(h => (
                       <th key={h} style={DS.th}>{h}</th>
                     ))}
                   </tr></thead>
@@ -835,7 +835,7 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
             <div className="ds-card-title">Définir les objectifs annuels</div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px,1fr))', gap: 20 }}>
               {[
-                { label: 'CA annuel cible (CHF)', key: 'caAnnuel', type: 'number' },
+                { label: 'CA signé annuel cible (CHF)', key: 'caAnnuel', type: 'number' },
                 { label: 'Marge nette cible (%)', key: 'margeCible', type: 'number' },
                 { label: 'Nb chantiers cible', key: 'nbChantiers', type: 'number' },
               ].map(f => (
@@ -862,7 +862,7 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
               const pctNb = objectifs.nbChantiers > 0 ? Math.min((nbChantiersReel / objectifs.nbChantiers) * 100, 100) : 0;
 
               return [
-                { label: 'CA annuel', cible: `CHF ${fmtN(Math.round(objectifs.caAnnuel))}`, reel: `CHF ${fmtN(Math.round(caReel))}`, pct: pctCA, couleur: pctCA >= 80 ? '#10b981' : pctCA >= 50 ? '#f59e0b' : '#ef4444' },
+                { label: 'CA signé annuel', cible: `CHF ${fmtN(Math.round(objectifs.caAnnuel))}`, reel: `CHF ${fmtN(Math.round(caReel))}`, pct: pctCA, couleur: pctCA >= 80 ? '#10b981' : pctCA >= 50 ? '#f59e0b' : '#ef4444' },
                 { label: 'Marge nette', cible: `${objectifs.margeCible}%`, reel: `${margeReelle}%`, pct: pctMarge, couleur: pctMarge >= 80 ? '#10b981' : pctMarge >= 50 ? '#f59e0b' : '#ef4444' },
                 { label: 'Chantiers', cible: `${objectifs.nbChantiers}`, reel: `${nbChantiersReel}`, pct: pctNb, couleur: pctNb >= 80 ? '#10b981' : pctNb >= 50 ? '#f59e0b' : '#ef4444' },
               ].map(item => (
@@ -1019,7 +1019,7 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px,1fr))', gap: 14, marginBottom: 24 }}>
               {[
                 { label: 'Surface analysée', val: `${fmtN(Math.round(surfaceTotale))} m²`, sub: `${lignesM2.length} chantier${lignesM2.length > 1 ? 's' : ''}`, couleur: '#0d3d6e' },
-                { label: 'CA moyen / m²', val: caM2Moyen !== null ? `CHF ${fmtN(caM2Moyen)}/m²` : '—', sub: `CA total CHF ${fmtN(Math.round(caTotalM2))}`, couleur: '#10b981' },
+                { label: 'CA signé moyen / m²', val: caM2Moyen !== null ? `CHF ${fmtN(caM2Moyen)}/m²` : '—', sub: `CA signé total CHF ${fmtN(Math.round(caTotalM2))}`, couleur: '#10b981' },
                 { label: 'Coût moyen / m²', val: coutM2Moyen !== null ? `CHF ${fmtN(coutM2Moyen)}/m²` : '—', sub: `Coût total CHF ${fmtN(Math.round(coutTotalM2))}`, couleur: '#f59e0b' },
                 { label: 'Marge moyenne / m²', val: margeM2Moyenne !== null ? `CHF ${fmtN(margeM2Moyenne)}/m²` : '—', sub: margePctMoyenne !== null ? `${margePctMoyenne}% de marge` : '—', couleur: margePctMoyenne !== null && margePctMoyenne >= 15 ? '#10b981' : '#ef4444' },
               ].map(k => (
@@ -1041,7 +1041,7 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
                 </div>
                 {caM2Moyen !== null && (
                   <div style={{ marginLeft: 'auto', textAlign: 'right' }}>
-                    <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>CA moyen actuel</div>
+                    <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>CA signé moyen actuel</div>
                     <div style={{ fontSize: 16, fontWeight: 800, color: caM2Moyen >= seuilM2Global ? '#10b981' : '#ef4444' }}>CHF {fmtN(caM2Moyen)}/m² {caM2Moyen >= seuilM2Global ? '✓' : '✗'}</div>
                   </div>
                 )}
@@ -1056,7 +1056,7 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
                   <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <thead>
                       <tr>
-                        {['Type', 'Chantiers', 'Surface', 'Coût/m²', 'CA/m²', 'Marge/m²', 'Seuil rent. 15%', 'Statut'].map(h => (
+                        {['Type', 'Chantiers', 'Surface', 'Coût/m²', 'CA signé/m²', 'Marge/m²', 'Seuil rent. 15%', 'Statut'].map(h => (
                           <th key={h} style={DS.th}>{h}</th>
                         ))}
                       </tr>
@@ -1098,7 +1098,7 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead>
                     <tr>
-                      {['Chantier', 'Surface', 'CA/m²', 'Coût/m²', 'Marge/m²', 'Marge %', 'vs Moyenne'].map(h => (
+                      {['Chantier', 'Surface', 'CA signé/m²', 'Coût/m²', 'Marge/m²', 'Marge %', 'vs Moyenne'].map(h => (
                         <th key={h} style={DS.th}>{h}</th>
                       ))}
                     </tr>

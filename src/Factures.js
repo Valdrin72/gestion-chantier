@@ -1225,7 +1225,7 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
                 onChange={e => setPctAcompte(e.target.value)}
               />
               <span style={{ fontSize: 12, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
-                % du CA ({fmtN(caRef, 0)} CHF HT)
+                % du CA signé ({fmtN(caRef, 0)} CHF HT)
                 {montantPreview !== null && <strong style={{ color: '#0d3d6e', marginLeft: 6 }}>→ {fmtN(montantPreview, 2)} CHF HT</strong>}
               </span>
               <button

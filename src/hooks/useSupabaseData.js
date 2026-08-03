@@ -18,7 +18,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabase';
-import { donneesInitiales, migrerJournal, migrerStatutsC8 } from '../donnees';
+import { donneesInitiales, migrerJournal, migrerStatutsC8, normaliserTarifsEmployes } from '../donnees';
 
 const STORAGE_MARKER = '__cyna_storage__';
 const STORAGE_TABLE  = 'devis';
@@ -125,6 +125,10 @@ export function resolveDataFromBlob(rawBlob, isDemo) {
   // Migration C8 : un chantier marqué clos avec des factures pas toutes payées
   // est requalifié « Attente paiement » (fini = encaissé). Idempotente.
   chantiers = migrerStatutsC8(chantiers, factures);
+
+  // Migration douce E3 : tarif employé horaire (tarifHeure) dérivé du journalier
+  // legacy si absent — idempotent, tarifJour existant conservé → zéro coût modifié.
+  parametres = { ...parametres, employes: normaliserTarifsEmployes(parametres.employes) };
 
   // needsSync uniquement pour la démo périmée/vide (plus aucun « nettoyage » runtime de factures)
   const needsSync = isDemo && (outdated || c.length === 0 || dv.length === 0 || !storedParams.employes?.length);

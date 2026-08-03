@@ -3,7 +3,7 @@ import {
   Users, HardHat, TrendingUp, Plus, Pencil, Power,
   DollarSign, Clock, BarChart2,
 } from 'lucide-react';
-import { fmtN, C, getIntervallesPeriode, getPeriodeLabel } from '../donnees';
+import { fmtN, C, getIntervallesPeriode, getPeriodeLabel, tarifHoraireEmploye } from '../donnees';
 import { DS } from '../ds';
 import { Badge } from '../components/SharedBadges';
 import { useApp } from '../context/AppContext';
@@ -21,18 +21,20 @@ function Employes({ parametres, setParametres, chantiers, naviguer }) {
   const voirSalaires = ['cyna', 'cynatech'].includes(profil?.id);
   const [onglet, setOnglet] = useState('equipe');
   const [ajout, setAjout] = useState(false);
-  const [form, setForm] = useState({ nom: '', poste: 'Ouvrier qualifié', tarifJour: '', tarifRegieHeure: '', telephone: '', email: '', actif: true });
+  const [form, setForm] = useState({ nom: '', poste: 'Ouvrier qualifié', tarifHeure: '', tarifRegieHeure: '', telephone: '', email: '', actif: true });
   const sauvegarder = () => {
-    if (!form.nom || !form.tarifJour) {
-      if (afficherNotif) afficherNotif('Le nom et le tarif journalier sont obligatoires', 'error');
+    if (!form.nom || !form.tarifHeure) {
+      if (afficherNotif) afficherNotif('Le nom et le tarif horaire sont obligatoires', 'error');
       return;
     }
     const isEdit = !!form.id;
-    const empData = { ...form, tarifJour: parseFloat(form.tarifJour), tarifRegieHeure: form.tarifRegieHeure ? parseFloat(form.tarifRegieHeure) : undefined };
+    // E3 : le tarif est saisi à l'HEURE ; tarifJour dérivé (× 8, règle 8) pour les moteurs.
+    const tarifHeure = parseFloat(form.tarifHeure);
+    const empData = { ...form, tarifHeure, tarifJour: tarifHeure * 8, tarifRegieHeure: form.tarifRegieHeure ? parseFloat(form.tarifRegieHeure) : undefined };
     if (isEdit) setParametres({ ...parametres, employes: (parametres.employes || []).map(e => String(e.id) === String(form.id) ? empData : e) });
     else setParametres({ ...parametres, employes: [...(parametres.employes || []), { ...empData, id: Date.now() }] });
     setAjout(false);
-    setForm({ nom: '', poste: 'Ouvrier qualifié', tarifJour: '', tarifRegieHeure: '', telephone: '', email: '', actif: true });
+    setForm({ nom: '', poste: 'Ouvrier qualifié', tarifHeure: '', tarifRegieHeure: '', telephone: '', email: '', actif: true });
     if (afficherNotif) afficherNotif(isEdit ? 'Employé mis à jour' : 'Employé ajouté à l\'équipe');
   };
   return (
@@ -79,13 +81,14 @@ function Employes({ parametres, setParametres, chantiers, naviguer }) {
         const nbActifs = employes.filter(e => e.actif !== false).length;
         const heuresTotal = chantiers.reduce((s, c) => s + (c.journal || []).reduce((js, j) => js + (j.employes || []).reduce((es, e) => es + (parseFloat(e.heuresTravaillees) || 0), 0), 0), 0);
         const coutMensuel = employes.filter(e => e.actif !== false).reduce((s, e) => s + (parseFloat(e.tarifJour) || 0) * 20, 0);
-        const tarifMoyen = nbActifs > 0 ? Math.round(employes.filter(e => e.actif !== false).reduce((s, e) => s + (parseFloat(e.tarifJour) || 0), 0) / nbActifs) : 0;
+        // E3 : tarif moyen affiché à l'HEURE (source de saisie) — 2 décimales (ex. 43.75/h).
+        const tarifMoyen = nbActifs > 0 ? Math.round(employes.filter(e => e.actif !== false).reduce((s, e) => s + tarifHoraireEmploye(e), 0) / nbActifs * 100) / 100 : 0;
         const kpiItems = [
           { label: 'EFFECTIF',      val: employes.length, Icon: Users,      ...DS.kpi.blue,   badge: `${nbActifs} actifs` },
           { label: 'HEURES TOTALES',val: `${fmtN(Math.round(heuresTotal))}h`, Icon: Clock, ...DS.kpi.green },
           ...(voirSalaires ? [
             { label: 'COÛT MENSUEL',  val: `CHF ${fmtN(coutMensuel)}`, Icon: DollarSign, ...DS.kpi.amber },
-            { label: 'TARIF MOYEN',   val: `CHF ${fmtN(tarifMoyen)}/j`, Icon: TrendingUp, ...DS.kpi.purple },
+            { label: 'TARIF MOYEN',   val: `CHF ${fmtN(tarifMoyen, tarifMoyen % 1 !== 0 ? 2 : 0)}/h`, Icon: TrendingUp, ...DS.kpi.purple },
           ] : []),
         ];
         return (
@@ -115,7 +118,7 @@ function Employes({ parametres, setParametres, chantiers, naviguer }) {
               <select value={form.poste} onChange={e => setForm({ ...form, poste: e.target.value })} style={inputStyle}>
                 {["Chef de chantier", "Ouvrier qualifié", "Manœuvre", "Technicien", "Comptable", "Chef d'équipe", "Sous-traitant"].map(p => <option key={p}>{p}</option>)}
               </select></div>
-            {voirSalaires && <div><label style={labelStyle}>Tarif/jour (CHF) *</label><input type="text" inputMode="numeric" placeholder="350" value={form.tarifJour ? fmtN(form.tarifJour) : ''} onChange={e => { const raw = e.target.value.replace(/'/g, '').replace(/[^0-9.]/g, ''); setForm({ ...form, tarifJour: raw }); }} style={inputStyle} /></div>}
+            {voirSalaires && <div><label style={labelStyle}>Tarif horaire (CHF/h) * <span style={{ fontWeight: 400, textTransform: 'none', color: 'var(--text-muted)' }}>— coût, 1 j = 8 h</span></label><input type="text" inputMode="numeric" placeholder="43.75" value={form.tarifHeure || ''} onChange={e => { const raw = e.target.value.replace(/'/g, '').replace(/[^0-9.]/g, ''); setForm({ ...form, tarifHeure: raw }); }} style={inputStyle} /></div>}
             {voirSalaires && <div><label style={labelStyle}>Tarif régie /h (CHF HT — prix facturé)</label><input type="text" inputMode="numeric" placeholder="85" value={form.tarifRegieHeure ? fmtN(form.tarifRegieHeure) : ''} onChange={e => { const raw = e.target.value.replace(/'/g, '').replace(/[^0-9.]/g, ''); setForm({ ...form, tarifRegieHeure: raw }); }} style={inputStyle} /></div>}
             <div><label style={labelStyle}>Téléphone</label><input placeholder="079 000 00 00" value={form.telephone} onChange={e => setForm({ ...form, telephone: e.target.value })} style={inputStyle} /></div>
             <div><label style={labelStyle}>Email</label><input placeholder="email@cyna.ch" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} style={inputStyle} /></div>
@@ -166,7 +169,7 @@ function Employes({ parametres, setParametres, chantiers, naviguer }) {
               </div>
               <div style={{ marginTop: '14px', display: 'grid', gridTemplateColumns: voirSalaires ? 'var(--g3)' : 'var(--g2)', gap: '8px' }}>
                 {[
-                  ...(voirSalaires ? [{ label: 'CHF/jour', val: `${e.tarifJour}`, couleur: C.primaire }] : []),
+                  ...(voirSalaires ? [{ label: 'CHF/h', val: `${(() => { const h = tarifHoraireEmploye(e); return h % 1 !== 0 ? h.toFixed(2) : h; })()}`, couleur: C.primaire }] : []),
                   { label: 'Chantiers', val: chantiersEmp.length, couleur: C.secondaire },
                   { label: 'Jours', val: joursTotal, couleur: C.violet },
                 ].map(s => (
@@ -180,7 +183,7 @@ function Employes({ parametres, setParametres, chantiers, naviguer }) {
                 <button onClick={() => naviguer('chantiers', { employeActif: e.id })} style={{ ...DS.btnGhost, fontSize: '12px', padding: '6px 11px' }}>
                   <HardHat size={13} /> Chantiers ({chantiersEmp.length})
                 </button>
-                <button onClick={() => { setForm(e); setAjout(true); }} style={{ ...DS.btnGhost, padding: '6px 10px' }}><Pencil size={13} /></button>
+                <button onClick={() => { setForm({ ...e, tarifHeure: tarifHoraireEmploye(e) || '' }); setAjout(true); }} style={{ ...DS.btnGhost, padding: '6px 10px' }}><Pencil size={13} /></button>
                 <button
                   onClick={() => setParametres({ ...parametres, employes: (parametres.employes || []).map(emp => String(emp.id) === String(e.id) ? { ...emp, actif: e.actif === false } : emp) })}
                   style={{ ...(e.actif === false ? btnSucces : DS.btnGhost), padding: '6px 10px', fontSize: '12px' }}
@@ -331,13 +334,14 @@ function Employes({ parametres, setParametres, chantiers, naviguer }) {
 
 // Composant défini à niveau module pour stabilité React (ne pas définir à l'intérieur d'un autre composant)
 export function EditEmployeRow({ e, parametres, sauv }) {
-  const [ed, setEd] = useState({ ...e });
+  // E3 : l'édition porte sur le tarif HORAIRE (dérivé du journalier legacy si absent).
+  const [ed, setEd] = useState({ ...e, tarifHeure: tarifHoraireEmploye(e) || '' });
   const [editing, setEditing] = useState(false);
   if (!editing) return (
     <tr key={e.id}>
       <td style={tdStyle}><strong>{e.nom}</strong></td>
       <td style={tdStyle}>{e.poste || '—'}</td>
-      <td style={tdStyle}><strong style={{ color: C.primaire }}>CHF {e.tarifJour}.-/j</strong></td>
+      <td style={tdStyle}><strong style={{ color: C.primaire }}>CHF {(() => { const h = tarifHoraireEmploye(e); return h % 1 !== 0 ? h.toFixed(2) : h; })()}/h</strong></td>
       <td style={tdStyle}>{e.telephone || '—'}</td>
       <td style={tdStyle}>{e.email || '—'}</td>
       <td style={tdStyle}>
@@ -362,16 +366,17 @@ export function EditEmployeRow({ e, parametres, sauv }) {
           {["Chef de chantier", "Ouvrier qualifié", "Manœuvre", "Technicien", "Comptable", "Chef d'équipe", "Sous-traitant"].map(p => <option key={p}>{p}</option>)}
         </select>
       </td>
-      <td style={tdStyle}><input type="text" inputMode="numeric" value={ed.tarifJour ? fmtN(ed.tarifJour) : ''} onChange={ev => { const raw = ev.target.value.replace(/'/g, '').replace(/[^0-9.]/g, ''); setEd({ ...ed, tarifJour: raw }); }} style={{ ...inputStyle, padding: '5px 8px', width: 80 }} /></td>
+      <td style={tdStyle}><input type="text" inputMode="numeric" value={ed.tarifHeure || ''} onChange={ev => { const raw = ev.target.value.replace(/'/g, '').replace(/[^0-9.]/g, ''); setEd({ ...ed, tarifHeure: raw }); }} style={{ ...inputStyle, padding: '5px 8px', width: 80 }} /></td>
       <td style={tdStyle}><input value={ed.telephone || ''} onChange={ev => setEd({ ...ed, telephone: ev.target.value })} style={{ ...inputStyle, padding: '5px 8px' }} /></td>
       <td style={tdStyle}><input value={ed.email || ''} onChange={ev => setEd({ ...ed, email: ev.target.value })} style={{ ...inputStyle, padding: '5px 8px' }} /></td>
       <td style={tdStyle}>
         <div style={{ display: 'flex', gap: 4 }}>
           <button onClick={() => {
-            const tarif = parseFloat(ed.tarifJour);
+            const tarifH = parseFloat(ed.tarifHeure);
             if (!ed.nom?.trim()) return alert('Le nom est obligatoire.');
-            if (!tarif || tarif <= 0) return alert('Le tarif journalier doit être supérieur à 0.');
-            sauv({ ...parametres, employes: (parametres.employes || []).map(emp => String(emp.id) === String(e.id) ? { ...ed, tarifJour: tarif } : emp) });
+            if (!tarifH || tarifH <= 0) return alert('Le tarif horaire doit être supérieur à 0.');
+            // E3 : horaire saisi ; tarifJour dérivé (× 8) pour les moteurs — coût inchangé.
+            sauv({ ...parametres, employes: (parametres.employes || []).map(emp => String(emp.id) === String(e.id) ? { ...ed, tarifHeure: tarifH, tarifJour: tarifH * 8 } : emp) });
             setEditing(false);
           }} style={btnSucces}>OK</button>
           <button onClick={() => setEditing(false)} style={btnDanger}>×</button>

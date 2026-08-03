@@ -1194,6 +1194,34 @@ export const donneesInitiales = donneesDemo;
  *   - Ancienne présence : { date, employesPresents: [id, ...] }
  * Appeler une seule fois au chargement des données.
  */
+// ── Tarif employé HORAIRE (Plan directeur, règle E3) ────────────────────────
+// Source de saisie = le tarif HORAIRE (emp.tarifHeure). L'étalon règle 8
+// (1 jour = 8 heures) relie les deux unités : tarifJour = tarifHeure × 8.
+// Les moteurs continuent de lire emp.tarifJour (dérivé) → coûts STRICTEMENT
+// identiques avant/après migration (650/j ≡ 81.25/h × 8h).
+
+/** Tarif horaire d'un employé — source unique d'affichage/saisie.
+ *  Horaire stocké s'il existe, sinon dérivé du journalier legacy (÷ 8, règle 8). */
+export const tarifHoraireEmploye = (emp) => {
+  const h = parseFloat(emp?.tarifHeure);
+  if (!Number.isNaN(h) && h > 0) return h;
+  const j = parseFloat(emp?.tarifJour);
+  return !Number.isNaN(j) && j > 0 ? j / 8 : 0;
+};
+
+/** Migration douce des employés vers le tarif horaire (idempotente, pure).
+ *  - tarifHeure présent → tarifJour re-dérivé (= × 8) : l'horaire fait foi.
+ *  - tarifHeure absent + tarifJour legacy → tarifHeure = tarifJour ÷ 8 ;
+ *    tarifJour CONSERVÉ tel quel → aucun coût historique ne bouge. */
+export const normaliserTarifsEmployes = (employes = []) =>
+  (employes || []).map(emp => {
+    const h = parseFloat(emp?.tarifHeure);
+    if (!Number.isNaN(h) && h > 0) return { ...emp, tarifJour: h * 8 };
+    const j = parseFloat(emp?.tarifJour);
+    if (!Number.isNaN(j) && j > 0) return { ...emp, tarifHeure: j / 8 };
+    return emp;
+  });
+
 export const migrerJournal = (journal) => {
   if (!Array.isArray(journal)) return [];
   const parDate = {};

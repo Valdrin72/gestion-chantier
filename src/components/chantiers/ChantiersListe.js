@@ -16,7 +16,7 @@ import ArchiveToggle from '../shared/ArchiveToggle';
 import ArchivedRow from '../shared/ArchivedRow';
 
 const PAGE_SIZE = 50;
-const STATUTS = ['Tous', 'Planifié', 'En cours', 'Suspendu', 'Terminé', 'Facturé', 'Clôturé'];
+const STATUTS = ['Tous', 'Planifié', 'En cours', 'Suspendu', 'Attente paiement', 'Terminé', 'Facturé', 'Clôturé'];
 
 function ChantiersListe({
   chantiersFiltres,

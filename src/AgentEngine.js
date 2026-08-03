@@ -12,7 +12,7 @@
  *   - memoire  : données à persister pour les prochains runs
  */
 
-import { calculerCA, calculerCoutsChantier, isChantierActif, fmtN, heuresEmploye, SEUILS } from './donnees';
+import { calculerCA, calculerCoutsChantier, isChantierActif, fmtN, heuresEmploye, SEUILS, resteDuChantier } from './donnees';
 import { CYNA_PARAMS } from './calculs/constants';
 import { projeterTresorerie30j, penaliteScoreTresorerie, penaliteScoreCreancesAnciennes, sortiesMensuellesEstimees } from './calculs/tresorerie';
 
@@ -246,7 +246,7 @@ export function runRapportAuto({ chantiers, factures, devis, parametres, dernier
       id: uid('rapport'), timestamp: Date.now(),
       semaine: `Semaine du ${debutSemaine.toLocaleDateString('fr-CH', { day: '2-digit', month: '2-digit' })}`,
       heuresSaisies: Math.round(heuresSemaine), caFacture: Math.round(caFactureSemaine),
-      nbActifs: actifs.length, nbTermines: chantiers.filter(c => ['terminé', 'facturé', 'clôturé'].includes((c.statut || '').toLowerCase()) && c.dateFin && new Date(c.dateFin) >= debutSemaine).length,
+      nbActifs: actifs.length, nbTermines: chantiers.filter(c => ['terminé', 'facturé', 'clôturé', 'attente paiement'].includes((c.statut || '').toLowerCase()) && c.dateFin && new Date(c.dateFin) >= debutSemaine).length,
       nbEnRetard: enRetard.length, chantierRetard: enRetard.map(c => c.nom || c.numero), nouveau: true,
     };
     return { alertes: [], data: rapport };
@@ -369,6 +369,25 @@ export function simulerRapportLundi({ chantiers, factures, devis, parametres, cl
         icone: '💰',
         action: `Relancer ${f.client} — ${f.nom}`,
         detail: `Impayée depuis ${f.age} jours · CHF ${fmtN(f.montant)}`,
+      }));
+
+    // C8/IA1c — chantiers « travaux terminés, en attente de paiement » : le travail
+    // est fait, l'argent n'est pas rentré → aller le chercher.
+    (chantiers || [])
+      .filter(c => (c.statut || '').trim().toLowerCase() === 'attente paiement')
+      .map(c => {
+        const resteDu = resteDuChantier(factures, c.id);
+        const joursAttente = c.dateFinTravaux ? Math.round((now_ts - new Date(c.dateFinTravaux).getTime()) / 86400000) : null;
+        return { c, resteDu, joursAttente };
+      })
+      .filter(x => x.resteDu > 0.01)
+      .sort((a, b) => b.resteDu - a.resteDu)
+      .slice(0, 3)
+      .forEach(({ c, resteDu, joursAttente }) => actionsAvantLundi.push({
+        priorite: (joursAttente !== null && joursAttente > 30) ? 'URGENT' : 'IMPORTANT',
+        icone: '💰',
+        action: `Chantier « ${c.nom || c.numero} » fini — CHF ${fmtN(Math.round(resteDu))} pas encore encaissés`,
+        detail: `Travaux terminés${joursAttente !== null ? ` depuis ${joursAttente} j` : ''} · relancer le client pour encaisser`,
       }));
 
     // Employés sans saisie d'heures cette semaine
@@ -530,7 +549,7 @@ export function simulerRapportLundi({ chantiers, factures, devis, parametres, cl
 // ─── T1-A5 : MémoireChantier ─────────────────────────────────
 export function runMemoireChantier({ chantiers, devis, parametres, getCouts }) {
   try {
-    const STATUTS_TERMINES = ['terminé', 'termine', 'terminée', 'terminee', 'facturé', 'facture', 'clôturé', 'cloture'];
+    const STATUTS_TERMINES = ['terminé', 'termine', 'terminée', 'terminee', 'facturé', 'facture', 'clôturé', 'cloture', 'attente paiement'];
     const termines = chantiers.filter(c => STATUTS_TERMINES.includes((c.statut || '').toLowerCase()));
     const patterns = {};
 
@@ -1667,7 +1686,7 @@ export function runScoreOffre({ devis, chantiers, parametres, agentContext }) {
 // ─── T3-A26 : AnalyseCycles ───────────────────────────────────
 export function runAnalyseCycles({ chantiers, devis, agentContext, memoire = {} }) {
   try {
-    const STATUTS_TERMINES_CYCLES = ['terminé', 'termine', 'terminée', 'terminee', 'facturé', 'facture', 'clôturé', 'cloture'];
+    const STATUTS_TERMINES_CYCLES = ['terminé', 'termine', 'terminée', 'terminee', 'facturé', 'facture', 'clôturé', 'cloture', 'attente paiement'];
     const termines = chantiers.filter(c => STATUTS_TERMINES_CYCLES.includes((c.statut || '').toLowerCase()));
     const cyclesParType = {};
 

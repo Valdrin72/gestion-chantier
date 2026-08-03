@@ -284,7 +284,7 @@ export default function Planning({ chantiers, setChantiers, clients, parametres,
   }), [chantiers, anneeActuelle, moisActuel]);
 
   const chantiersNonPlanifies = useMemo(
-    () => chantiers.filter(c => { const s = (c.statut || '').trim().toLowerCase(); return !c.dateDebut && s !== 'terminé' && s !== 'clôturé' && s !== 'facturé'; }),
+    () => chantiers.filter(c => { const s = (c.statut || '').trim().toLowerCase(); return !c.dateDebut && s !== 'terminé' && s !== 'clôturé' && s !== 'facturé' && s !== 'attente paiement'; }),
     [chantiers]
   );
 

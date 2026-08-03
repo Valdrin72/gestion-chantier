@@ -1060,6 +1060,33 @@ export const montantPayeChantier = (factures = [], chantierId) =>
       return s + (viaHistorique > 0 ? viaHistorique : viaScalaire);
     }, 0);
 
+// ── Reste dû par chantier — SOURCE UNIQUE (factures) ────────────────────────
+// Règle C8/F4 : reste dû = Σ (facturé − payé) sur les factures réelles du
+// chantier (hors annulées/brouillons). C'est LA condition de passage
+// « Attente paiement » → « Terminé » : reste dû = 0.
+export const resteDuChantier = (factures = [], chantierId) =>
+  (factures || [])
+    .filter(f => String(f.chantierId) === String(chantierId))
+    .filter(f => !['annulee', 'brouillon'].includes((f.statut || '').trim().toLowerCase()))
+    .reduce((s, f) => s + Math.max(0, (parseFloat(f.montantTTC) || 0) - (parseFloat(f.montantPaye) || 0)), 0);
+
+// ── Migration C8 : trois états du chantier ──────────────────────────────────
+// Un chantier marqué clos (terminé/facturé/clôturé) alors que ses factures ne
+// sont PAS toutes payées n'est pas vraiment fini (règle C8 : fini = encaissé).
+// → requalifié « Attente paiement ». Pure, idempotente, appliquée au chargement.
+// Ne touche ni les statuts actifs, ni les chantiers clos entièrement payés,
+// ni les chantiers clos SANS facture (rien à encaisser → on ne les réveille pas).
+export const migrerStatutsC8 = (chantiers = [], factures = []) =>
+  (chantiers || []).map(c => {
+    const st = (c.statut || '').trim().toLowerCase();
+    if (!['terminé', 'termine', 'terminée', 'terminee', 'facturé', 'facture', 'clôturé', 'cloture'].includes(st)) return c;
+    const aDesFactures = (factures || []).some(f =>
+      String(f.chantierId) === String(c.id) &&
+      !['annulee', 'brouillon'].includes((f.statut || '').trim().toLowerCase()));
+    if (!aDesFactures) return c;
+    return resteDuChantier(factures, c.id) > 0.01 ? { ...c, statut: 'Attente paiement' } : c;
+  });
+
 // ── Résumé encaissements portefeuille — SOURCE UNIQUE (factures) ─────────────
 // Reçus / En attente / En retard calculés depuis les factures, avec EXACTEMENT
 // les mêmes règles que les KPIs de Finances (onglet Trésorerie / en-tête) pour

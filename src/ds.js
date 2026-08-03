@@ -243,6 +243,9 @@ export const DS = {
   // ── Statuts badges ───────────────────────────────────────────
   statuts: {
     'En cours':   { bg: '#dbeafe', color: '#1e40af' },
+    // C8 état 2 — travaux finis, argent pas encore rentré : ambre bien distinct.
+    'Attente paiement': { bg: '#fef3c7', color: '#b45309' },
+    'attente paiement': { bg: '#fef3c7', color: '#b45309' },
     'Terminé':    { bg: '#d1fae5', color: '#047857' },
     'Planifié':   { bg: '#e8f0f9', color: '#0d3d6e' },
     'Suspendu':   { bg: '#fee2e2', color: '#b91c1c' },

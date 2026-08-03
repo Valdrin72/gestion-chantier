@@ -85,7 +85,7 @@ function ChantierForm({ form, setForm, erreurs, setErreurs, modeCompleter, onSau
         </div>
         <div><label style={labelStyle}>Statut</label>
           <select value={form.statut} onChange={e => setForm({ ...form, statut: e.target.value })} style={inputStyle}>
-            {['À chiffrer', 'Devis envoyé', 'Validé', 'En préparation', 'Planifié', 'En cours', 'Suspendu', 'Terminé', 'Facturé', 'Clôturé'].map(s => <option key={s}>{s}</option>)}
+            {['À chiffrer', 'Devis envoyé', 'Validé', 'En préparation', 'Planifié', 'En cours', 'Suspendu', 'Attente paiement', 'Terminé', 'Facturé', 'Clôturé'].map(s => <option key={s}>{s}</option>)}
           </select></div>
         <div><label style={labelStyle}>Priorité</label>
           <select value={form.priorite} onChange={e => setForm({ ...form, priorite: e.target.value })} style={inputStyle}>

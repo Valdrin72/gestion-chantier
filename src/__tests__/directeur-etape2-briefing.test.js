@@ -114,7 +114,10 @@ describe('ÉTAPE 2 — ACCUEIL INTACT : le bloc s\'ajoute sans rien casser', () 
     };
     renderWithApp(<Dashboard />, { agentState, chantiers: [], factures: [], devis: [], clients: [], parametres: { employes: [], localites: [], parametres: {} } });
 
-    // Nouveau bloc présent, tout en haut
+    // IA2 : le bloc Directeur affiche le RENDEZ-VOUS DU MOMENT (matin avant 14h,
+    // débrief ensuite). Le briefing du matin reste à un clic via l'onglet « Matin ».
+    expect(screen.getByTestId('directeur-bloc')).toBeInTheDocument();
+    fireEvent.click(screen.getAllByRole('button', { name: /^Matin$/i })[0]);
     expect(screen.getByTestId('directeur-matin')).toBeInTheDocument();
     expect(screen.getByText('Directeur du matin')).toBeInTheDocument();
 

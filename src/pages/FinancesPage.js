@@ -117,7 +117,7 @@ function Tresorerie({ factures = [], chantiers = [], clients = [], devis = [], p
       .filter(d => d !== null);
     const delaiMoyen = delais.length > 0 ? Math.round(delais.reduce((s, d) => s + d, 0) / delais.length) : null;
 
-    // Top clients par CA
+    // Top clients par CA facturé
     const caParClient = {};
     factActives.forEach(f => {
       const cl = clients.find(c => String(c.id) === String(f.clientId));
@@ -344,7 +344,7 @@ function Tresorerie({ factures = [], chantiers = [], clients = [], devis = [], p
                   <div style={{ marginTop: 8 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'var(--text-muted)', marginBottom: 4 }}>
                       <span>Avancement {c.avancement}%</span>
-                      <span>CA {fmt(c.ca)}</span>
+                      <span>CA signé {fmt(c.ca)}</span>
                     </div>
                     <div style={{ height: 4, background: 'var(--border-glass)', borderRadius: 4 }}>
                       <div style={{ height: '100%', width: `${c.avancement}%`, background: 'linear-gradient(90deg, #10b981, #059669)', borderRadius: 4 }} />
@@ -430,7 +430,7 @@ function Tresorerie({ factures = [], chantiers = [], clients = [], devis = [], p
             <div style={{ background: 'var(--surface-glass)', border: '1px solid var(--border-glass)', borderRadius: 16, padding: '20px 22px' }}>
               <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
                 <DollarSign size={14} style={{ color: '#0d3d6e' }} />
-                Top clients par CA
+                Top clients par CA facturé
               </div>
               {data.topClients.length === 0 ? (
                 <div style={{ color: 'var(--text-muted)', fontSize: 13, textAlign: 'center', padding: '20px 0' }}>Aucun client facturé</div>
@@ -449,7 +449,7 @@ function Tresorerie({ factures = [], chantiers = [], clients = [], devis = [], p
                           </div>
                           <div style={{ textAlign: 'right', flexShrink: 0 }}>
                             <div style={{ fontSize: 13, fontWeight: 800, color: '#0d3d6e' }}>CHF {fmt(cl.ca)}</div>
-                            <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>{Math.round(pct)}% du CA</div>
+                            <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>{Math.round(pct)}% du CA facturé</div>
                           </div>
                         </div>
                         <div style={{ height: 4, background: 'var(--border-glass)', borderRadius: 4 }}>
@@ -483,7 +483,7 @@ function Tresorerie({ factures = [], chantiers = [], clients = [], devis = [], p
                           </div>
                           <div style={{ textAlign: 'right', flexShrink: 0 }}>
                             <div style={{ fontSize: 13, fontWeight: 800, color: '#10b981' }}>CHF {fmt(ch.ca)}</div>
-                            <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>{Math.round(pct)}% du CA</div>
+                            <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>{Math.round(pct)}% du CA facturé</div>
                           </div>
                         </div>
                         <div style={{ height: 4, background: 'var(--border-glass)', borderRadius: 4 }}>

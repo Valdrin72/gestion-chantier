@@ -90,7 +90,7 @@ export default function Marges({ chantiers = [], clients = [], devis = [], param
 
       {/* KPI */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24 }}>
-        <KpiCard label="CA TOTAL" value={fmt(kpi.caTotal)} {...DS.kpi.blue} />
+        <KpiCard label="CA SIGNÉ TOTAL" value={fmt(kpi.caTotal)} {...DS.kpi.blue} />
         <KpiCard label="COÛTS RÉELS" value={fmt(kpi.coutsTotal)} {...DS.kpi.amber} />
         <KpiCard label="MARGE TOTALE" value={fmt(kpi.margeTotal)}
           {...(kpi.margeTotal >= 0 ? DS.kpi.green : DS.kpi.red)} />

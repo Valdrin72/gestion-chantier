@@ -477,7 +477,7 @@ export function simulerRapportLundi({ chantiers, factures, devis, parametres, cl
     if (projectionCA > 0) {
       anticipations.push({
         icone: tendanceCA === null ? '📊' : tendanceCA >= 0 ? '📈' : '📉',
-        label: 'CA projeté lundi',
+        label: 'CA facturé projeté lundi',
         valeur: `CHF ${fmtN(projectionCA)}`,
         couleur: tendanceCA === null ? '#8b5cf6' : tendanceCA >= 0 ? '#10b981' : '#f59e0b',
         detail: tendanceCA !== null ? `${tendanceCA >= 0 ? '+' : ''}${tendanceCA}% vs moyenne historique` : 'Première référence — pas encore de baseline',

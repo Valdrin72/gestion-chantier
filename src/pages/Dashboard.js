@@ -279,7 +279,7 @@ function Dashboard() {
     chantiers.filter(c => c.devisId && !isChantierActif(c) && !STATUTS_CLOS.map(s => s.toLowerCase()).includes((c.statut || '').toLowerCase())).forEach(c => {
       list.push({
         id: `devis-inactif-${c.id}`,
-        message: `${c.nom || c.numero} — devis lié mais statut "${c.statut}" · CA non comptabilisé`,
+        message: `${c.nom || c.numero} — devis lié mais statut "${c.statut}" · CA signé non comptabilisé`,
         page: 'chantiers', ctx: { chantierActif: c.id },
         critique: false,
       });
@@ -455,7 +455,7 @@ function Dashboard() {
         {/* KPI STRIP */}
         <div className="kpi-grid" style={{ display: 'flex', overflowX: 'auto', gap: 10, marginBottom: 14, paddingBottom: 4 }}>
           {[
-            { label: "CA actif", Icon: DollarSign, valeur: `CHF ${fmtN(kpi.caEnCours)}`, sous: `En cours + Planifié · ${kpi.nbChantiersActifs} chantier${kpi.nbChantiersActifs !== 1 ? 's' : ''}`, ...DS.kpi.blue, page: 'devis' },
+            { label: "CA signé actif", Icon: DollarSign, valeur: `CHF ${fmtN(kpi.caEnCours)}`, sous: `En cours + Planifié · ${kpi.nbChantiersActifs} chantier${kpi.nbChantiersActifs !== 1 ? 's' : ''}`, ...DS.kpi.blue, page: 'devis' },
             { label: 'Marge moy.', Icon: TrendingUp, valeur: kpi.rentaMoyenne !== null ? `${Math.round(kpi.rentaMoyenne)}%` : '—', sous: `${kpi.nbChantiersRenta} analysé${kpi.nbChantiersRenta !== 1 ? 's' : ''}`, ...(kpi.rentaMoyenne === null || kpi.rentaMoyenne >= 15 ? DS.kpi.green : kpi.rentaMoyenne >= 0 ? DS.kpi.amber : DS.kpi.red), page: 'rapport', ctx: { onglet: 'analyse' } },
             { label: 'Chantiers', Icon: HardHat, valeur: `${kpi.nbChantiersActifs}`, sous: kpiReel.nbDepassement > 0 ? `${kpiReel.nbDepassement} en retard` : 'Tous OK', ...DS.kpi.green, page: 'chantiers' },
             { label: 'Heures', Icon: Clock, valeur: kpi.heuresEngagees > 0 ? `${fmtN(kpi.heuresEngagees)}h` : '—', sous: `${kpi.nbEmployes} employé${kpi.nbEmployes !== 1 ? 's' : ''}`, ...DS.kpi.purple, page: 'heures' },
@@ -526,7 +526,7 @@ function Dashboard() {
                       </div>
                       <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
                         <div>
-                          <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>CA</div>
+                          <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>CA signé</div>
                           <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)' }}>{montantCA ? `CHF ${fmtN(montantCA)}` : '—'}</div>
                         </div>
                         {mPct !== null && (
@@ -850,7 +850,7 @@ function Dashboard() {
       {/* ── KPI CARDS ────────────────────────────────────────── */}
       <div className="kpi-grid" style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'var(--g4)', gap: isMobile ? 10 : 16, marginBottom: 24 }}>
         {[
-          { label: "CA actif", Icon: DollarSign, page: 'devis',
+          { label: "CA signé actif", Icon: DollarSign, page: 'devis',
             valeur: `CHF ${fmtN(kpi.caEnCours)} HT`,
             sous: kpi.nbChantiersActifs > 0 ? `${kpi.nbChantiersActifs} chantier${kpi.nbChantiersActifs !== 1 ? 's' : ''} · En cours + Planifiés` : 'Aucun chantier en cours',
             desc: 'Σ montantHT des devis liés aux chantiers actifs',
@@ -858,7 +858,7 @@ function Dashboard() {
           { label: 'Marge moyenne', Icon: TrendingUp, page: 'rapport', ctx: { onglet: 'analyse' },
             valeur: kpi.rentaMoyenne !== null ? `${Math.round(kpi.rentaMoyenne)}%` : '—',
             sous: kpi.nbChantiersRenta > 0 ? `${kpi.nbChantiersRenta} chantier${kpi.nbChantiersRenta > 1 ? 's' : ''} analysé${kpi.nbChantiersRenta > 1 ? 's' : ''}` : 'Aucun coût saisi',
-            desc: 'Σ marge réelle / Σ CA (pondérée, hors chantiers sans saisie)',
+            desc: 'Σ marge réelle / Σ CA signé (pondérée, hors chantiers sans saisie)',
             ...(kpi.rentaMoyenne === null || kpi.rentaMoyenne >= 15 ? DS.kpi.green : kpi.rentaMoyenne >= 0 ? DS.kpi.amber : DS.kpi.red) },
           { label: 'Chantiers actifs', Icon: HardHat, page: 'chantiers',
             valeur: `${kpi.nbChantiersActifs}`,
@@ -1001,7 +1001,7 @@ function Dashboard() {
                           <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-primary)', marginBottom: 6, lineHeight: 1.3 }}>{c.nom || c.numero}</div>
                           <div style={{ display: 'flex', gap: 16 }}>
                             <div>
-                              <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>CA</div>
+                              <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>CA signé</div>
                               <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)' }}>{montantCA ? `CHF ${fmtN(montantCA)}` : '—'}</div>
                             </div>
                             <div>
@@ -1070,7 +1070,7 @@ function Dashboard() {
                 <XAxis dataKey="semaine" tick={{ fill: 'var(--text-muted)', fontSize: 12 }} />
                 <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 12 }} tickFormatter={v => v >= 1000 ? `${(v/1000).toFixed(0)}k` : v} />
                 <Tooltip contentStyle={{ background: 'var(--dash-card)', border: '1px solid var(--dash-border)', borderRadius: 10, fontSize: 12 }} labelStyle={{ color: 'var(--text-primary)', fontWeight: 700 }} formatter={(val, name) => [`CHF ${fmtN(val)}`, name]} />
-                <Line type="monotone" dataKey="CA" stroke="#0d3d6e" strokeWidth={2.5} dot={{ r: 3, fill: '#0d3d6e' }} name="Chiffre d'affaires" />
+                <Line type="monotone" dataKey="CA" stroke="#0d3d6e" strokeWidth={2.5} dot={{ r: 3, fill: '#0d3d6e' }} name="CA signé" />
                 <Line type="monotone" dataKey="Couts" stroke="#94a3b8" strokeWidth={2} dot={{ r: 3, fill: '#94a3b8' }} strokeDasharray="5 3" name="Coûts estimés" />
                 <Line type="monotone" dataKey="Encaissements" stroke="#10b981" strokeWidth={2} dot={{ r: 3, fill: '#10b981' }} name="Encaissements" />
               </LineChart>
@@ -1079,7 +1079,7 @@ function Dashboard() {
             <div style={{ height: isMobile ? 140 : 210, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: 13 }}>Aucune donnée disponible</div>
           )}
           <div style={{ display: 'flex', gap: 20, marginTop: 12, justifyContent: 'center' }}>
-            {[['#0d3d6e', "Chiffre d'affaires"], ['#94a3b8', 'Coûts estimés'], ['#10b981', 'Encaissements']].map(([col, lbl]) => (
+            {[['#0d3d6e', "CA signé"], ['#94a3b8', 'Coûts estimés'], ['#10b981', 'Encaissements']].map(([col, lbl]) => (
               <div key={lbl} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--text-secondary)' }}>
                 <span style={{ width: 20, height: 2.5, background: col, borderRadius: 2, display: 'inline-block' }} />{lbl}
               </div>

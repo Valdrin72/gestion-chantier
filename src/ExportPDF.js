@@ -565,7 +565,7 @@ export const exportRapportMensuel = async (chantiers, clients, parametres, mois,
   // KPIs VISUELS
   const kpis = [
     { label: 'Chantiers du mois', val: chantiersMois.length, couleur: BLEU, bg: [227, 242, 253] },
-    { label: "Chiffre d'affaires", val: `CHF ${caTotal.toLocaleString()}`, couleur: VERT, bg: [232, 245, 233] },
+    { label: "CA signé", val: `CHF ${caTotal.toLocaleString()}`, couleur: VERT, bg: [232, 245, 233] },
     { label: 'Total coûts', val: `CHF ${coutsTotal.toLocaleString()}`, couleur: ORANGE, bg: [255, 243, 224] },
     { label: 'Marge nette', val: `CHF ${margeTotal.toLocaleString()} (${margePct}%)`, couleur: margeTotal >= 0 ? VERT : ROUGE, bg: margeTotal >= 0 ? [232, 245, 233] : [255, 235, 238] },
   ];
@@ -592,7 +592,7 @@ export const exportRapportMensuel = async (chantiers, clients, parametres, mois,
     head: [['Indicateur', 'Valeur', 'Statut']],
     body: [
       ['Nombre de chantiers', chantiersMois.length, chantiersMois.length > 0 ? 'Actif' : '—'],
-      ["Chiffre d'affaires", `CHF ${caTotal.toLocaleString()}`, '💰'],
+      ["CA signé", `CHF ${caTotal.toLocaleString()}`, '💰'],
       ['Total coûts', `CHF ${coutsTotal.toLocaleString()}`, '💸'],
       ['Marge brute', `CHF ${margeTotal.toLocaleString()}`, margeTotal >= 0 ? 'Positif' : 'Négatif'],
       ['Taux de marge', `${margePct}%`, parseFloat(margePct) >= 20 ? 'Excellent' : parseFloat(margePct) >= 15 ? 'Correct' : 'Faible'],
@@ -649,7 +649,7 @@ export const exportRapportMensuel = async (chantiers, clients, parametres, mois,
     y = sectionTitre(doc, y, 'ANALYSE PAR TYPE DE TRAVAUX');
     autoTable(doc, {
       startY: y,
-      head: [['Type de travaux', 'Chantiers', 'CA', 'Coûts', 'Marge', 'Taux']],
+      head: [['Type de travaux', 'Chantiers', 'CA signé', 'Coûts', 'Marge', 'Taux']],
       body: parType,
       headStyles: { fillColor: BLEU, fontSize: 8 },
       bodyStyles: { fontSize: 8 },

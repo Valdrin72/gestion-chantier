@@ -12,6 +12,7 @@ const STATUT_CHANTIER_MAP = {
   'cloture':     'cloture',
   'facturé':     'cloture',
   'facture':     'cloture',
+  'attente paiement': 'cloture',
   'suspendu':    'en_pause',
   'réception':   'reception',
   'reception':   'reception',

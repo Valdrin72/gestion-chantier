@@ -9,10 +9,10 @@ import {
   getChantierStatus, C,
   assertEtatValide, assertEtatCoherent,
   sommeAvenants, calculerCA, calculerCAForfait, isChantierActif, tauxTVAParam,
-  calculerVitesseChantier, montantPayeChantier,
+  calculerVitesseChantier, montantPayeChantier, resteDuChantier,
 } from '../../donnees';
 import { DS, couleurStatut as couleurStatutDS } from '../../ds';
-import { STATUTS_CLOS } from '../../constants/statuts';
+import { STATUTS_CLOS, STATUT_ATTENTE_PAIEMENT, estEnAttentePaiement } from '../../constants/statuts';
 import { Badge, CoutBadge, BarreAvancement, BadgeRentabilite } from '../SharedBadges';
 import { useApp } from '../../context/AppContext';
 import { joursReelsChantier } from '../../calculs/pointagesHelper';
@@ -127,6 +127,10 @@ function ChantierDetail({ chantier, detailOnglet, setDetailOnglet, modeCompleter
   // Source unique : le "payé" du chantier = Σ payé de ses factures (helper partagé
   // avec Finances et les rapports → un seul et même nombre partout).
   const montantPayeLie    = montantPayeChantier(factures, c.id);
+  // C8 : reste dû du chantier (source unique factures) — condition du passage à Terminé.
+  const resteDu = resteDuChantier(factures, c.id);
+  const enAttentePaiement = estEnAttentePaiement(c);
+  const estTermine = (c.statut || '').trim().toLowerCase() === 'terminé';
   const caForfait  = calculerCAForfait(c, devis);
   const devisTotal = calculerCA(c, devis) || 0;
   const _pctFactureRaw = devisTotal > 0 ? (montantFactureLie / devisTotal) * 100 : 0;
@@ -266,6 +270,17 @@ function ChantierDetail({ chantier, detailOnglet, setDetailOnglet, modeCompleter
             style={{ ...btnPrimaire, background: 'linear-gradient(135deg, #7c3aed, #6d28d9)', border: '1px solid #7c3aed55' }}
           ><Clock size={15} /> Saisir heures</button>
         )}
+        {/* C8 état 1 → 2 : le patron marque les travaux finis (le chantier attend son argent) */}
+        {isChantierActif(c) && (
+          <button
+            onClick={async () => {
+              if (confirmer && !await confirmer(`Marquer les travaux de « ${c.nom || c.numero} » comme terminés ?\n\nLe chantier passera en « Attente paiement » jusqu'à l'encaissement complet des factures.`, { labelOui: 'Travaux terminés' })) return;
+              if (setChantiers) setChantiers(prev => prev.map(ch => String(ch.id) === String(c.id) ? { ...ch, statut: STATUT_ATTENTE_PAIEMENT, dateFinTravaux: new Date().toISOString().slice(0, 10) } : ch));
+              if (afficherNotif) afficherNotif('Travaux terminés — chantier en attente de paiement');
+            }}
+            style={{ ...btnSucces, background: 'rgba(180,83,9,0.15)', border: '1px solid rgba(180,83,9,0.4)', color: '#b45309', display: 'inline-flex', alignItems: 'center', gap: 6 }}
+          ><CheckCircle size={15} /> Travaux terminés</button>
+        )}
         <button onClick={() => naviguer('finances', { chantierActif: c.id })} style={{ ...DS.btnGhost }}><DollarSign size={15} /> Finances</button>
         <button onClick={() => onSupprimer(c.id)} style={btnDanger}><Trash2 size={14} /> Supprimer</button>
       </div>
@@ -284,6 +299,45 @@ function ChantierDetail({ chantier, detailOnglet, setDetailOnglet, modeCompleter
           }}>{o.label}</button>
         ))}
       </div>
+
+      {/* ── C8 état 2 : travaux terminés — l'argent n'est pas (tout) rentré ── */}
+      {enAttentePaiement && resteDu > 0.01 && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 12, padding: '14px 18px', borderRadius: 12, marginBottom: 16,
+          background: 'rgba(180,83,9,0.08)', border: '1px solid rgba(180,83,9,0.3)', borderLeft: '4px solid #b45309',
+        }}>
+          <DollarSign size={18} style={{ color: '#b45309', flexShrink: 0 }} />
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 13, fontWeight: 800, color: '#b45309' }}>Travaux terminés — en attente de paiement</div>
+            <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 3 }}>
+              CHF {fmtN(Math.round(resteDu))} pas encore encaissés. Le chantier ne sera vraiment terminé que quand tout est payé.
+            </div>
+          </div>
+          <button onClick={() => naviguer('finances', { onglet: 'relances' })} style={{ ...DS.btnGhost, color: '#b45309', borderColor: 'rgba(180,83,9,0.4)', whiteSpace: 'nowrap' }}>Relancer</button>
+        </div>
+      )}
+
+      {/* ── C8 état 2 → 3 : tout est payé → passage à Terminé PROPOSÉ au patron ── */}
+      {enAttentePaiement && resteDu <= 0.01 && facturesLiees.length > 0 && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 12, padding: '14px 18px', borderRadius: 12, marginBottom: 16,
+          background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.3)', borderLeft: '4px solid #10b981',
+        }}>
+          <CheckCircle size={18} style={{ color: '#059669', flexShrink: 0 }} />
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 13, fontWeight: 800, color: '#059669' }}>Tout est payé — le chantier peut être clôturé</div>
+            <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 3 }}>Reste dû : CHF 0 sur {facturesLiees.length} facture{facturesLiees.length > 1 ? 's' : ''}. L'argent est rentré.</div>
+          </div>
+          <button
+            onClick={async () => {
+              if (confirmer && !await confirmer(`Passer « ${c.nom || c.numero} » en Terminé ?\n\nToutes les factures sont encaissées — le chantier sera bouclé (conservé dans l'historique).`, { labelOui: 'Terminer' })) return;
+              if (setChantiers) setChantiers(prev => prev.map(ch => String(ch.id) === String(c.id) ? { ...ch, statut: 'Terminé', dateFin: ch.dateFin || new Date().toISOString().slice(0, 10) } : ch));
+              if (afficherNotif) afficherNotif('Chantier terminé — tout est encaissé ✓');
+            }}
+            style={{ background: 'linear-gradient(135deg, #10b981, #059669)', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 16px', fontWeight: 700, fontSize: 13, cursor: 'pointer', whiteSpace: 'nowrap' }}
+          >Passer en Terminé</button>
+        </div>
+      )}
 
       {!coherenceDetail.ok && (
         <div style={{
@@ -330,6 +384,33 @@ function ChantierDetail({ chantier, detailOnglet, setDetailOnglet, modeCompleter
 
 
       {detailOnglet === 'analyse' && <>
+
+      {/* ── C10 : BILAN DE CLÔTURE — marge prévue au devis vs marge réelle ── */}
+      {estTermine && couts.margeReel !== null && couts.margePrevu !== null && (() => {
+        const ecart = couts.margeReel - couts.margePrevu;
+        const enseignement = ecart >= 0
+          ? `Chantier bouclé au-dessus du devis (+CHF ${fmtN(Math.round(ecart))}) — ce chiffrage est une bonne référence pour les prochains devis du même type.`
+          : `Chantier bouclé sous le devis (−CHF ${fmtN(Math.round(Math.abs(ecart)))}) — comparer les postes réels au chiffrage pour ajuster les prochains devis.`;
+        return (
+          <div style={{ background: 'var(--bg-glass)', border: '1px solid var(--border)', borderLeft: `4px solid ${ecart >= 0 ? '#10b981' : '#f59e0b'}`, borderRadius: 12, padding: '16px 20px', marginBottom: 16 }}>
+            <div style={{ ...DS.sectionLabel, marginBottom: 10 }}><CheckCircle size={13} /> Bilan de clôture</div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'var(--g3)', gap: 10, marginBottom: 10 }}>
+              {[
+                { label: 'Marge prévue au devis', val: `CHF ${fmtN(Math.round(couts.margePrevu))}`, sub: couts.margePrevuPct !== null ? `${couts.margePrevuPct}%` : null, couleur: 'var(--text-secondary)' },
+                { label: 'Marge réelle', val: `CHF ${fmtN(Math.round(couts.margeReel))}`, sub: couts.margeActuellePct !== null ? `${couts.margeActuellePct}%` : null, couleur: ecart >= 0 ? '#059669' : '#b45309' },
+                { label: 'Écart', val: `${ecart >= 0 ? '+' : '−'}CHF ${fmtN(Math.round(Math.abs(ecart)))}`, sub: null, couleur: ecart >= 0 ? '#059669' : '#b45309' },
+              ].map(s => (
+                <div key={s.label} style={{ textAlign: 'center', padding: '10px 8px', background: 'var(--surface-glass)', borderRadius: 10, border: '1px solid var(--border-glass)' }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-muted)', marginBottom: 4 }}>{s.label}</div>
+                  <div style={{ fontSize: 16, fontWeight: 800, color: s.couleur }}>{s.val}</div>
+                  {s.sub && <div style={{ fontSize: 11, color: s.couleur, opacity: 0.8, marginTop: 2 }}>{s.sub}</div>}
+                </div>
+              ))}
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.5 }}>{enseignement}</div>
+          </div>
+        );
+      })()}
 
       {/* ── 1. LE VERDICT — le chantier gagne ou perd, combien ─────────── */}
       {etat.projectionDisponible && <DetailProjection etat={etat} couts={couts} chantier={c} factures={facturesLiees} devis={devis} fmtK={fmtK} />}

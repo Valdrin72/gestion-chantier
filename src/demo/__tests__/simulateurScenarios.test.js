@@ -20,7 +20,11 @@ import SimulateurScenarios from '../SimulateurScenarios';
 
 afterEach(() => cleanup());
 
-const NOW = new Date(2026, 6, 22, 9, 0, 0); // mercredi 22 juillet 2026 (déterministe)
+// NOW ancré au JOUR D'EXÉCUTION (9h) : les scénarios sont construits en dates
+// RELATIVES (ilYaJours/dansJours), mais le moteur (projeterTresorerie30j, coach)
+// évalue avec la vraie date — une date figée fait expirer la fraîcheur du solde
+// bancaire avec le temps (bombe à retardement : vert jusqu'au 03.08.2026, rouge après).
+const NOW = new Date(); NOW.setHours(9, 0, 0, 0);
 
 // Exécute la VRAIE chaîne moteur sur un scénario.
 function moteur(id) {

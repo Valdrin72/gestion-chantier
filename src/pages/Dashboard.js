@@ -32,7 +32,7 @@ function safeStr(v) {
 
 function Dashboard() {
   const isMobile = useIsMobile();
-  const { chantiers, setChantiers, clients, factures, devis = [], parametres, naviguer, periodeGlobale = 'mois', setPeriodeGlobale = () => {}, agentState, profil, afficherNotif, pointages = [] } = useApp();
+  const { chantiers, setChantiers, clients, factures, devis = [], parametres, naviguer, periodeGlobale = 'mois', setPeriodeGlobale = () => {}, agentState, profil, afficherNotif, pointages = [], ouvrirMenu } = useApp();
   const agentAlertes = agentState?.alertes || [];
   const facturesSafe = useMemo(() => factures || [], [factures]);
   const [insightsFerme, setInsightsFerme] = useState(false);
@@ -457,9 +457,10 @@ function Dashboard() {
     return (
       <div>
         {/* ── HERO compact (design v1) : score en haut à droite du Bonjour ── */}
-        <div style={{ borderRadius: 14, overflow: 'hidden', marginBottom: 0 }}>
+        <div>
           <HeroDirection
             compact
+            onMenu={ouvrirMenu}
             dateLabel={new Date().toLocaleDateString('fr-CH', { day: '2-digit', month: '2-digit', year: 'numeric' })}
             periodeGlobale={periodeGlobale}
             setPeriodeGlobale={setPeriodeGlobale}
@@ -490,6 +491,9 @@ function Dashboard() {
             sousLigne: `${kpi.nbFacturesRetard} IMPAYÉ${kpi.nbFacturesRetard !== 1 ? 'S' : ''}`,
             action: kpi.nbFacturesRetard > 0 ? { label: 'Relancer', onClick: () => naviguer('finances', { onglet: 'relances' }) } : null },
         ]} />
+
+        {/* ── CONTENU MOBILE : padding latéral (bottom-nav en bas inchangée) ── */}
+        <div style={{ padding: '0 12px 80px' }}>
 
         {/* ── LES 3 RENDEZ-VOUS DU DIRECTEUR ── */}
         <DirecteurBloc naviguer={naviguer} />
@@ -693,6 +697,7 @@ function Dashboard() {
             <button onClick={() => setInsightsFerme(true)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: 18, lineHeight: 1, padding: '0 2px', flexShrink: 0 }}>×</button>
           </div>
         )}
+        </div>{/* /contenu mobile paddé */}
       </div>
     );
   }
@@ -709,8 +714,9 @@ function Dashboard() {
         const nbCollaborateurs = (parametres.employes || []).filter(e => e.actif !== false).length;
         const dateLabel = new Date().toLocaleDateString('fr-CH', { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' }).toUpperCase();
         return (
-          <div style={{ borderRadius: 16, overflow: 'hidden', marginBottom: 0 }}>
+          <div>
             <HeroDirection
+              onMenu={ouvrirMenu}
               dateLabel={dateLabel}
               periodeGlobale={periodeGlobale}
               setPeriodeGlobale={setPeriodeGlobale}
@@ -756,6 +762,9 @@ function Dashboard() {
           ]} />
         );
       })()}
+
+      {/* ── CONTENU CLAIR : centré, marges généreuses (design v1) ── */}
+      <div style={{ maxWidth: 1560, margin: '0 auto', padding: '0 48px 40px', boxSizing: 'border-box' }}>
 
       {/* ── LES 3 RENDEZ-VOUS DU DIRECTEUR (Matin / Soir / Hebdo) ── */}
       <DirecteurBloc naviguer={naviguer} />
@@ -1103,6 +1112,8 @@ function Dashboard() {
           </button>
         </div>
       )}
+
+      </div>{/* /contenu clair centré */}
 
     </div>
   );

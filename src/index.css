@@ -341,7 +341,8 @@ body {
 
 .app-content,
 .main-area {
-  margin-left: var(--sidebar-width);
+  /* Design v1 : plus de sidebar fixe — le drawer s'ouvre au clic (☰) */
+  margin-left: 0;
   flex: 1;
   min-height: 100vh;
   display: flex;
@@ -363,24 +364,51 @@ body {
 
 .app-main {
   flex: 1;
-  padding: 28px 28px;
+  padding: 0; /* design v1 : le padding vit dans .page-pad (le Dashboard est bord à bord) */
   overflow-y: auto;
+}
+
+/* Pages classiques : marges généreuses, contenu centré, jamais étriqué */
+.page-pad {
+  padding: 28px 40px 40px;
+  max-width: 1560px;
+  margin: 0 auto;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 /* ============================================================
    SIDEBAR
    ============================================================ */
 .sidebar {
-  width: var(--sidebar-width);
+  width: 264px;
   min-height: 100vh;
-  background: var(--bg-sidebar);
-  border-right: 1px solid var(--border);
+  /* Design v1 : drawer bleu nuit assorti au hero */
+  background: linear-gradient(170deg, #0E2A4F 0%, #12386B 100%);
+  border-right: none;
   display: flex;
   flex-direction: column;
   position: fixed;
   top: 0; left: 0;
-  z-index: 100;
+  z-index: 210;
+  transform: translateX(-105%);
+  transition: transform 0.22s ease;
+  box-shadow: 8px 0 40px rgba(14,42,79,0.35);
 }
+.sidebar.sidebar-open { transform: translateX(0); }
+.sidebar-overlay {
+  position: fixed; inset: 0;
+  background: rgba(14,42,79,0.45);
+  z-index: 200;
+}
+/* Entrées du drawer lisibles sur bleu nuit */
+.sidebar .sidebar-item { color: #CFE0F2; }
+.sidebar .sidebar-item:hover { background: rgba(255,255,255,0.08); color: #fff; }
+.sidebar .sidebar-item.active { background: rgba(255,255,255,0.14); color: #fff; }
+.sidebar .sidebar-logo { border-bottom: 1px solid rgba(255,255,255,0.10); }
+.sidebar .sidebar-profile { border-top: 1px solid rgba(255,255,255,0.10); }
+.sidebar .sidebar-profile-name { color: #fff; }
+.sidebar .sidebar-profile-role { color: #8FBCE6; }
 
 [data-theme="dark"] .sidebar {
   background: #0b0f18;
@@ -934,7 +962,8 @@ tr:last-child td { border-bottom: none; }
   .app-sidebar { display: none; }
   .app-content, .main-area { margin-left: 0; }
   .topbar { max-width: 100vw; }
-  .app-main    { padding: 12px 12px 80px; }
+  .app-main    { padding: 0; }
+  .page-pad    { padding: 12px 12px 80px; max-width: none; }
 
   .bottom-nav { display: flex; }
 

@@ -4,7 +4,7 @@
  * par le Dashboard (mêmes memos, mêmes moteurs) — zéro logique métier ici.
  */
 import React from 'react';
-import { Bell } from 'lucide-react';
+import { Bell, Menu } from 'lucide-react';
 import { AreaChart, Area, ResponsiveContainer, XAxis, Tooltip } from 'recharts';
 import {
   V1, FONT_UI, carteV1, fmtCH, mono, badgeV1, pastille, barreProgression,
@@ -38,7 +38,7 @@ export function Sparkline({ points = [], couleur = V1.bleu, largeur = 72, hauteu
 /** Anneau de score santé (hero). */
 export function AnneauScore({ score, taille = 132 }) {
   const c = scoreCouleur(score);
-  const r = (taille - 14) / 2, circ = 2 * Math.PI * r;
+  const r = (taille - 16) / 2, circ = 2 * Math.PI * r;
   const pct = score === null ? 0 : Math.max(0, Math.min(100, score));
   return (
     <div style={{ position: 'relative', width: taille, height: taille, flexShrink: 0 }}>
@@ -48,7 +48,7 @@ export function AnneauScore({ score, taille = 132 }) {
           strokeDasharray={`${(pct / 100) * circ} ${circ}`} style={{ filter: `drop-shadow(0 0 8px ${c})` }} />
       </svg>
       <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-        <span style={{ ...mono(30, '#fff'), fontWeight: 500 }}>{score ?? '—'}</span>
+        <span style={{ ...mono(Math.round(taille * 0.24), '#fff'), fontWeight: 500 }}>{score ?? '—'}</span>
         <span style={heroMono(9, 0.6)}>/100</span>
       </div>
     </div>
@@ -62,13 +62,18 @@ export function AnneauScore({ score, taille = 132 }) {
  * (élément React — les onglets Matin/Soir/Hebdo du DirecteurBloc), onCloche.
  */
 export function HeroDirection({ prenom = 'Valdrin', dateLabel, periodeGlobale, setPeriodeGlobale = () => {},
-  nbActifs = 0, nbCollaborateurs = 0, score = null, actions = [], ongletsRdv = null, onCloche = () => {}, compact = false }) {
+  nbActifs = 0, nbCollaborateurs = 0, score = null, actions = [], ongletsRdv = null, onCloche = () => {}, onMenu = null, compact = false }) {
   const PERIODES = [{ id: 'semaine', label: 'Cette semaine' }, { id: 'mois', label: 'Ce mois' }, { id: 'annee', label: 'Cette année' }];
   return (
-    <div style={{ ...heroFond, borderRadius: 0, padding: compact ? '18px 18px 96px' : '22px 32px 104px', position: 'relative' }} data-testid="hero-direction">
+    <div style={{ ...heroFond, borderRadius: 0, padding: compact ? '18px 18px 96px' : '30px 48px 128px', position: 'relative' }} data-testid="hero-direction">
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: compact ? 18 : 26, flexWrap: 'wrap' }}>
-        <span style={{ fontFamily: FONT_UI, fontWeight: 800, fontSize: 14, letterSpacing: '0.06em' }}>CYNA</span>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: compact ? 18 : 34, flexWrap: 'wrap' }}>
+        {onMenu && (
+          <button onClick={onMenu} aria-label="Menu" style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.18)', borderRadius: 8, padding: 7, cursor: 'pointer', color: '#fff', display: 'inline-flex' }}>
+            <Menu size={16} />
+          </button>
+        )}
+        <span style={{ fontFamily: FONT_UI, fontWeight: 800, fontSize: 15, letterSpacing: '0.06em' }}>CYNA</span>
         <span style={heroMono(10, 0.55)}>· TABLEAU DE BORD · DIRECTION</span>
         <span style={{ marginLeft: 'auto', ...heroMono(10, 0.75) }}>{dateLabel}</span>
         <button onClick={onCloche} aria-label="Notifications" style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.18)', borderRadius: 8, padding: 6, cursor: 'pointer', color: '#fff', display: 'inline-flex' }}>
@@ -85,7 +90,7 @@ export function HeroDirection({ prenom = 'Valdrin', dateLabel, periodeGlobale, s
         {/* Gauche : salutation */}
         <div style={{ flex: '1 1 320px', minWidth: 240 }}>
           <div style={heroMono(11, 0.6)}>ACCUEIL / 00</div>
-          <h1 style={{ fontFamily: FONT_UI, fontWeight: 700, fontSize: compact ? 30 : 42, margin: '10px 0 8px', letterSpacing: '-0.02em', color: '#fff' }}>
+          <h1 style={{ fontFamily: FONT_UI, fontWeight: 700, fontSize: compact ? 30 : 47, margin: '12px 0 10px', letterSpacing: '-0.02em', color: '#fff' }}>
             Bonjour {prenom}
           </h1>
           <div style={{ fontFamily: FONT_UI, fontSize: 14, color: 'rgba(255,255,255,0.78)' }}>
@@ -98,7 +103,7 @@ export function HeroDirection({ prenom = 'Valdrin', dateLabel, periodeGlobale, s
 
         {/* Centre-droit : anneau score */}
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-          <AnneauScore score={score} taille={compact ? 104 : 132} />
+          <AnneauScore score={score} taille={compact ? 104 : 168} />
           <div style={heroMono(9, 0.65)}>SANTÉ ENTREPRISE · {scoreLibelle(score)}</div>
         </div>
 
@@ -131,13 +136,14 @@ export function KpiStripV1({ items = [], compact = false }) {
   return (
     <div style={{
       display: 'grid', gridTemplateColumns: compact ? '1fr 1fr' : `repeat(${items.length}, 1fr)`,
-      gap: RYTHME.entreCartes, padding: compact ? '0 18px' : '0 32px',
-      marginTop: -72, position: 'relative', zIndex: 2, marginBottom: RYTHME.entreSections,
+      gap: RYTHME.entreCartes, padding: compact ? '0 18px' : '0 48px',
+      maxWidth: compact ? undefined : 1560, margin: compact ? '-72px 0 24px' : '-84px auto 24px',
+      position: 'relative', zIndex: 2, boxSizing: 'border-box',
     }} data-testid="kpi-strip">
       {items.map(k => (
-        <div key={k.label} style={{ ...carteV1, display: 'flex', flexDirection: 'column', minHeight: 118 }}>
+        <div key={k.label} style={{ ...carteV1, display: 'flex', flexDirection: 'column', minHeight: 126 }}>
           <div style={{ ...mono(10, V1.texteMuted), textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 8 }}>{k.label}</div>
-          <div style={{ ...mono(compact ? 20 : 24, k.couleurValeur || V1.texte, 500), lineHeight: 1 }}>{k.valeur}</div>
+          <div style={{ ...mono(compact ? 20 : 28, k.couleurValeur || V1.texte, 500), lineHeight: 1 }}>{k.valeur}</div>
           <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, marginTop: 'auto', paddingTop: 10 }}>
             {k.sparkline && <Sparkline points={k.sparkline} couleur={k.couleurValeur || V1.bleu} />}
             {k.badge && <span style={badgeV1(k.etat || 'marque')}>{k.badge}</span>}

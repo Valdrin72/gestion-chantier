@@ -764,7 +764,7 @@ function Dashboard() {
       })()}
 
       {/* ── CONTENU CLAIR : centré, marges généreuses (design v1) ── */}
-      <div style={{ maxWidth: 1560, margin: '0 auto', padding: '0 48px 40px', boxSizing: 'border-box' }}>
+      <div style={{ padding: '0 32px 40px', boxSizing: 'border-box' }}>
 
       {/* ── LES 3 RENDEZ-VOUS DU DIRECTEUR (Matin / Soir / Hebdo) ── */}
       <DirecteurBloc naviguer={naviguer} />

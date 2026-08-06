@@ -370,11 +370,13 @@ body {
 
 /* Pages classiques : marges généreuses, contenu centré, jamais étriqué */
 .page-pad {
-  padding: 28px 40px 40px;
-  max-width: 1560px;
-  margin: 0 auto;
+  /* Largeur FLUIDE : marge latérale fixe et fine, jamais de couloir central */
+  padding: 28px 32px 40px;
   width: 100%;
   box-sizing: border-box;
+}
+@media (max-width: 1100px) {
+  .page-pad { padding: 24px 24px 36px; }
 }
 
 /* ============================================================

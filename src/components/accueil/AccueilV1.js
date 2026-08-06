@@ -16,9 +16,9 @@ import {
 export function TitreSectionV1({ index, label, droite = null }) {
   return (
     <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: RYTHME.entreCartes }}>
-      <span style={mono(11, V1.bleuMoyen)}>{index}</span>
-      <span style={{ fontFamily: FONT_UI, fontSize: 12, fontWeight: 700, color: V1.bleu, textTransform: 'uppercase', letterSpacing: '0.14em' }}>{label}</span>
-      {droite && <span style={{ marginLeft: 'auto', ...mono(10, V1.texteMuted) }}>{droite}</span>}
+      <span style={mono(12, V1.bleuMoyen)}>{index}</span>
+      <span style={{ fontFamily: FONT_UI, fontSize: 13.5, fontWeight: 700, color: V1.bleu, textTransform: 'uppercase', letterSpacing: '0.14em' }}>{label}</span>
+      {droite && <span style={{ marginLeft: 'auto', ...mono(11, V1.texteMuted) }}>{droite}</span>}
     </div>
   );
 }
@@ -65,7 +65,7 @@ export function HeroDirection({ prenom = 'Valdrin', dateLabel, periodeGlobale, s
   nbActifs = 0, nbCollaborateurs = 0, score = null, actions = [], ongletsRdv = null, onCloche = () => {}, onMenu = null, compact = false }) {
   const PERIODES = [{ id: 'semaine', label: 'Cette semaine' }, { id: 'mois', label: 'Ce mois' }, { id: 'annee', label: 'Cette année' }];
   return (
-    <div style={{ ...heroFond, borderRadius: 0, padding: compact ? '18px 18px 96px' : '30px 48px 128px', position: 'relative' }} data-testid="hero-direction">
+    <div style={{ ...heroFond, borderRadius: 0, padding: compact ? '18px 18px 96px' : '30px 32px 128px', position: 'relative' }} data-testid="hero-direction">
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: compact ? 18 : 34, flexWrap: 'wrap' }}>
         {onMenu && (
@@ -136,14 +136,14 @@ export function KpiStripV1({ items = [], compact = false }) {
   return (
     <div style={{
       display: 'grid', gridTemplateColumns: compact ? '1fr 1fr' : `repeat(${items.length}, 1fr)`,
-      gap: RYTHME.entreCartes, padding: compact ? '0 18px' : '0 48px',
-      maxWidth: compact ? undefined : 1560, margin: compact ? '-72px 0 24px' : '-84px auto 24px',
+      gap: RYTHME.entreCartes, padding: compact ? '0 18px' : '0 32px',
+      margin: compact ? '-72px 0 24px' : '-84px 0 24px',
       position: 'relative', zIndex: 2, boxSizing: 'border-box',
     }} data-testid="kpi-strip">
       {items.map(k => (
-        <div key={k.label} style={{ ...carteV1, display: 'flex', flexDirection: 'column', minHeight: 126 }}>
+        <div key={k.label} style={{ ...carteV1, display: 'flex', flexDirection: 'column', minHeight: 134 }}>
           <div style={{ ...mono(10, V1.texteMuted), textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 8 }}>{k.label}</div>
-          <div style={{ ...mono(compact ? 20 : 28, k.couleurValeur || V1.texte, 500), lineHeight: 1 }}>{k.valeur}</div>
+          <div style={{ ...mono(compact ? 20 : 30, k.couleurValeur || V1.texte, 500), lineHeight: 1 }}>{k.valeur}</div>
           <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, marginTop: 'auto', paddingTop: 10 }}>
             {k.sparkline && <Sparkline points={k.sparkline} couleur={k.couleurValeur || V1.bleu} />}
             {k.badge && <span style={badgeV1(k.etat || 'marque')}>{k.badge}</span>}
@@ -171,16 +171,16 @@ export function CarteChantierV1({ ch, onClick = () => {} }) {
   const barre = barreProgression(ch.avancement, ch.couleur);
   return (
     <div onClick={onClick} role="button" tabIndex={0} onKeyDown={e => e.key === 'Enter' && onClick()}
-      style={{ ...carteV1, cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: 10, minHeight: 118 }}>
+      style={{ ...carteV1, cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: 12, minHeight: 136, padding: 18 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
         <div style={{ width: 36, height: 36, borderRadius: 9, background: V1.bleuFond, display: 'flex', alignItems: 'center', justifyContent: 'center', color: V1.bleu, flexShrink: 0 }}>
           {ch.icone}
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontFamily: FONT_UI, fontSize: 14, fontWeight: 700, color: V1.texte, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{ch.nom}</div>
+          <div style={{ fontFamily: FONT_UI, fontSize: 15, fontWeight: 700, color: V1.texte, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{ch.nom}</div>
           <div style={{ ...mono(10, V1.texteMuted), marginTop: 2, textTransform: 'uppercase' }}>{ch.sousLigne}</div>
         </div>
-        <div style={{ ...mono(22, ch.couleur, 500), width: 74, textAlign: 'right', flexShrink: 0 }}>{ch.avancement}%</div>
+        <div style={{ ...mono(24, ch.couleur, 500), width: 80, textAlign: 'right', flexShrink: 0 }}>{ch.avancement}%</div>
       </div>
       <div style={barre.piste}><div style={barre.remplissage} /></div>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 'auto' }}>

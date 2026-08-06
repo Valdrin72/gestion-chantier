@@ -362,7 +362,8 @@ describe('ChantiersPage — archivage', () => {
     // 2 "En cours" dont 1 archivé → le compteur EN COURS doit valoir 1
     const archivé = { ...clone(CHANTIER_EN_COURS), id: 3, numero: 'CH-2026-003', nom: 'Archivé EC', archive: true };
     renderChantiers({ chantiers: [clone(CHANTIER_EN_COURS), archivé] });
-    const kpiEnCours = screen.getByText('EN COURS').closest('.kpi-card');
+    // Design v1 : la tuile « EN COURS » du hero (data-testid stable, indépendant du badge de statut)
+    const kpiEnCours = screen.getByTestId('kpi-en-cours');
     // 1 seul actif en cours
     expect(within(kpiEnCours).getByText('1')).toBeInTheDocument();
   });

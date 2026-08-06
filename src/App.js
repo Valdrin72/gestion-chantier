@@ -338,6 +338,7 @@ function AppInner({ profil, deconnecter, userId, isDemo = false }) {
     actionsLog, profil,
     logAction, naviguer, contexte, periodeGlobale, setPeriodeGlobale,
     agentState, ouvrirSaisieHeures: ouvrirSaisieHeuresApp,
+    ouvrirMenu: () => setSidebarOuvert(true),
     deconnecter, afficherNotif, confirmer,
     isDemo,
   }), [ // eslint-disable-line react-hooks/exhaustive-deps
@@ -355,12 +356,12 @@ function AppInner({ profil, deconnecter, userId, isDemo = false }) {
         profil={profil} deconnecter={deconnecter}
       />
       <div className="main-area">
-        <Topbar
+        {page !== 'dashboard' && <Topbar
           setSidebarOuvert={setSidebarOuvert} canGoBack={canGoBack} page={page}
           revenirArriere={revenirArriere}
           darkMode={darkMode} toggleDarkMode={toggleDarkMode} profil={profil}
           deconnecter={deconnecter} naviguer={naviguer}
-        />
+        />}
         {(dataLoading || syncing) && (
           <div style={{
             position: 'fixed', top: 0, left: 0, right: 0, zIndex: 9999,
@@ -382,6 +383,7 @@ function AppInner({ profil, deconnecter, userId, isDemo = false }) {
         )}
         <main className="app-main">
           <ErrorBoundary key={page}>
+          <div className={page === 'dashboard' ? undefined : 'page-pad'}>
           {page === 'dashboard'    && <Dashboard />}
           {page === 'chantiers'    && pagesAutorisees.includes('chantiers')  && <Chantiers />}
           {page === 'devis'        && pagesAutorisees.includes('devis')      && <Devis />}
@@ -406,6 +408,7 @@ function AppInner({ profil, deconnecter, userId, isDemo = false }) {
               </button>
             </div>
           )}
+          </div>
           </ErrorBoundary>
         </main>
         {saisieHeuresCtx && (() => {

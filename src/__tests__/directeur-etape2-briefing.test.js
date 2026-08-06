@@ -121,10 +121,12 @@ describe('ÉTAPE 2 — ACCUEIL INTACT : le bloc s\'ajoute sans rien casser', () 
     expect(screen.getByTestId('directeur-matin')).toBeInTheDocument();
     expect(screen.getByText('Directeur du matin')).toBeInTheDocument();
 
-    // Blocs existants de l'accueil TOUJOURS là (preuve qu'on n'a rien supprimé)
-    expect(screen.getByText('Bonjour,')).toBeInTheDocument();
+    // Design v1 : le hero absorbe le header + le briefing IA (score dans l'anneau,
+    // actions du jour). Les blocs fonctionnels de l'accueil restent présents.
+    expect(screen.getByTestId('hero-direction')).toBeInTheDocument();
+    expect(screen.getByText(/Bonjour Valdrin/)).toBeInTheDocument();
     expect(screen.getByText('Mes chantiers')).toBeInTheDocument();
-    expect(screen.getByText('Briefing IA du Directeur')).toBeInTheDocument();
+    expect(screen.getByTestId('timeline-activite')).toBeInTheDocument();
   });
 });
 

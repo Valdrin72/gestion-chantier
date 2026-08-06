@@ -41,9 +41,13 @@ export function Sidebar({ sidebarOuvert, setSidebarOuvert, maisons = [], page, n
               width: 'auto',
               maxWidth: '100%',
               objectFit: 'contain',
-              filter: darkMode ? 'brightness(0) invert(1)' : 'brightness(0)',
+              filter: 'brightness(0) invert(1)', /* drawer bleu nuit : logo blanc */
             }}
           />
+          <button onClick={() => setSidebarOuvert(false)} aria-label="Fermer le menu"
+            style={{ marginLeft: 'auto', background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.18)', borderRadius: 8, padding: 5, cursor: 'pointer', color: '#fff', display: 'inline-flex' }}>
+            <X size={14} />
+          </button>
         </div>
         <nav className="sidebar-nav">
           {maisons.map(m => {
@@ -379,7 +383,11 @@ export function Topbar({ setSidebarOuvert, canGoBack, page, revenirArriere, dark
 
   return (
     <header className="topbar">
-      <div className="topbar-left" style={{ flex: 1 }}>
+      <div className="topbar-left" style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 10 }}>
+        <button onClick={() => setSidebarOuvert(true)} aria-label="Menu"
+          style={{ background: 'var(--bg-glass-2)', border: '1px solid var(--border)', borderRadius: 8, padding: 6, cursor: 'pointer', color: 'var(--text-secondary)', display: 'inline-flex' }}>
+          <Menu size={16} />
+        </button>
         {canGoBack && page !== 'dashboard' && (
           <button
             onClick={revenirArriere}

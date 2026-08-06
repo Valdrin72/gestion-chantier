@@ -1,17 +1,16 @@
 import React, { useState, useMemo } from 'react';
 import {
-  HardHat, Users, TrendingUp, AlertTriangle, XCircle,
-  ChevronRight, CheckCircle, ShieldCheck, DollarSign, Bell, Clock, Bot,
+  HardHat, TrendingUp, AlertTriangle, XCircle,
+  ChevronRight, ShieldCheck, Bot,
 } from 'lucide-react';
-import { LineChart, Line, PieChart, Pie, Cell, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
+import { PieChart, Pie, Cell, Tooltip } from 'recharts';
 import {
   fmtN, calculerDateFinOuvrables, estRetardJustifie,
   calculerCoutsChantier, statutRentabilite, C, getIntervallesPeriode,
   facturesInPeriode, calculerRentabiliteReelle, calculerEtatChantier,
   calculerCA, isChantierActif, isChantierComptable, SEUILS, margePortefeuille,
-  couleurScoreSante, libelleScoreSante,
+  couleurScoreSante,
 } from '../donnees';
-import { DS } from '../ds';
 import { STATUTS_CLOS } from '../constants/statuts';
 import { CYNA_PARAMS } from '../calculs/constants';
 import { useApp } from '../context/AppContext';
@@ -20,6 +19,8 @@ import useIsMobile from '../hooks/useIsMobile';
 import { calculerAlertes } from '../alertes';
 import SaisieRapideDashboard from '../components/SaisieRapideDashboard';
 import DirecteurBloc from '../components/DirecteurBloc';
+import { HeroDirection, KpiStripV1, CarteChantierV1, ApercuFinancierV1, TimelineActiviteV1, TitreSectionV1 } from '../components/accueil/AccueilV1';
+import { V1, fmtCH, mono, carteV1, RYTHME } from '../design/v1';
 
 // Protège le rendu contre les valeurs non-string (données localStorage corrompues)
 function safeStr(v) {
@@ -31,7 +32,7 @@ function safeStr(v) {
 
 function Dashboard() {
   const isMobile = useIsMobile();
-  const { chantiers, setChantiers, clients, factures, devis = [], parametres, naviguer, actionsLog = [], periodeGlobale = 'mois', setPeriodeGlobale = () => {}, agentState, profil, afficherNotif, pointages = [] } = useApp();
+  const { chantiers, setChantiers, clients, factures, devis = [], parametres, naviguer, periodeGlobale = 'mois', setPeriodeGlobale = () => {}, agentState, profil, afficherNotif, pointages = [], ouvrirMenu } = useApp();
   const agentAlertes = agentState?.alertes || [];
   const facturesSafe = useMemo(() => factures || [], [factures]);
   const [insightsFerme, setInsightsFerme] = useState(false);
@@ -382,6 +383,32 @@ function Dashboard() {
     });
   }, [factures, actifs, parametres.employes, parametres.parametres]);
 
+  // ── Timeline « Activité récente » v1 — dérivée des VRAIES sources (lecture pure) ──
+  const evenementsRecents = useMemo(() => {
+    const evts = [];
+    const nomCh = (id) => { const c = chantiers.find(x => String(x.id) === String(id)); return c ? (c.nom || c.numero) : null; };
+    (facturesSafe || []).filter(f => !['annulee', 'brouillon'].includes((f.statut || '').toLowerCase())).forEach(f => {
+      (f.paiementsHistorique || []).forEach(pmt => {
+        if (!pmt.date) return;
+        evts.push({ date: pmt.date, couleur: '#1E8A4C', texte: `Encaissement — ${f.numero || 'facture'}${nomCh(f.chantierId) ? ` · ${nomCh(f.chantierId)}` : ''}`, montant: `+ CHF ${fmtCH(pmt.montant)}` });
+      });
+      if (f.dateEmission) evts.push({ date: f.dateEmission, couleur: '#1E5FAF', texte: `Facture émise — ${f.numero || '—'}${nomCh(f.chantierId) ? ` · ${nomCh(f.chantierId)}` : ''}`, montant: `CHF ${fmtCH(f.montantTTC)}` });
+    });
+    (devis || []).forEach(d => { if (d.dateAcceptation) evts.push({ date: d.dateAcceptation, couleur: '#1E5FAF', texte: `Devis ${d.numero || ''} accepté`, montant: `CHF ${fmtCH(d.montantHT)}` }); });
+    // Pointages : un événement par jour (Σ heures du jour)
+    const heuresParJour = {};
+    (pointages || []).forEach(pt => { if (!pt.date) return;
+      const h = (pt.repartitions || []).filter(r => ['production', 'atelier'].includes(r.categorie)).reduce((t, r) => t + (parseFloat(r.heures) || 0), 0);
+      if (h > 0) heuresParJour[pt.date] = (heuresParJour[pt.date] || 0) + h; });
+    Object.entries(heuresParJour).forEach(([date, h]) => evts.push({ date, couleur: '#E8912B', texte: `Pointage — ${Math.round(h)}h saisies sur les chantiers`, montant: null }));
+    const aujourdHui = new Date().toISOString().slice(0, 10);
+    const hier = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+    return evts.sort((a, b) => (b.date || '').localeCompare(a.date || '')).slice(0, 8).map(e => ({
+      ...e,
+      horodatage: e.date === aujourdHui ? "AUJOURD'HUI" : e.date === hier ? 'HIER' : e.date.slice(8, 10) + '.' + e.date.slice(5, 7),
+    }));
+  }, [facturesSafe, devis, pointages, chantiers]);
+
   // ── Répartition des coûts (donut) ──────────────────────────
   const repartitionCouts = useMemo(() => {
     let mo = 0, mat = 0, st = 0, dep = 0, autres = 0;
@@ -429,54 +456,47 @@ function Dashboard() {
   if (isMobile) {
     return (
       <div>
-        {/* DIRECTEUR DU MATIN — tout en haut, on ajoute sans rien casser */}
+        {/* ── HERO compact (design v1) : score en haut à droite du Bonjour ── */}
+        <div>
+          <HeroDirection
+            compact
+            onMenu={ouvrirMenu}
+            dateLabel={new Date().toLocaleDateString('fr-CH', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+            periodeGlobale={periodeGlobale}
+            setPeriodeGlobale={setPeriodeGlobale}
+            nbActifs={kpi.nbChantiersActifs}
+            nbCollaborateurs={(parametres.employes || []).filter(e => e.actif !== false).length}
+            score={agentState?.scoreGlobal ?? null}
+            onCloche={() => naviguer('agents')}
+          />
+        </div>
+
+        {/* ── KPI 2×2 (design v1) — chevauchent le hero ── */}
+        <KpiStripV1 compact items={[
+          { label: 'CA SIGNÉ', valeur: fmtCH(kpi.caEnCours), etat: 'ok',
+            sousLigne: `${kpi.nbChantiersActifs} CHANTIER${kpi.nbChantiersActifs !== 1 ? 'S' : ''}`,
+            action: { label: 'Voir →', onClick: () => naviguer('devis') } },
+          { label: 'MARGE MOY.', valeur: kpi.rentaMoyenne !== null ? `${Math.round(kpi.rentaMoyenne)}%` : '—',
+            couleurValeur: kpi.rentaMoyenne === null ? undefined : kpi.rentaMoyenne >= 15 ? V1.ok : kpi.rentaMoyenne >= 0 ? V1.warn : V1.danger,
+            etat: kpi.rentaMoyenne === null ? null : kpi.rentaMoyenne >= 15 ? 'ok' : kpi.rentaMoyenne >= 0 ? 'warn' : 'danger',
+            sousLigne: `${kpi.nbChantiersRenta} ANALYSÉS`,
+            action: { label: 'Voir →', onClick: () => naviguer('rapport', { onglet: 'analyse' }) } },
+          { label: 'TRÉSORERIE', valeur: fmtCH(previsionTreso30j.total),
+            etat: previsionTreso30j.interpretation && previsionTreso30j.interpretation.label !== 'Trésorerie sécurisée' ? 'warn' : 'ok',
+            sousLigne: 'PRÉVISION 30 J',
+            action: { label: 'Voir →', onClick: () => naviguer('finances') } },
+          { label: 'ON ME DOIT', valeur: fmtCH(kpi.cashEnAttente),
+            couleurValeur: kpi.cashEnAttente > 0 ? V1.danger : V1.texte,
+            etat: kpi.nbFacturesRetard > 0 ? 'danger' : 'ok',
+            sousLigne: `${kpi.nbFacturesRetard} IMPAYÉ${kpi.nbFacturesRetard !== 1 ? 'S' : ''}`,
+            action: kpi.nbFacturesRetard > 0 ? { label: 'Relancer', onClick: () => naviguer('finances', { onglet: 'relances' }) } : null },
+        ]} />
+
+        {/* ── CONTENU MOBILE : padding latéral (bottom-nav en bas inchangée) ── */}
+        <div style={{ padding: '0 12px 80px' }}>
+
+        {/* ── LES 3 RENDEZ-VOUS DU DIRECTEUR ── */}
         <DirecteurBloc naviguer={naviguer} />
-
-        {/* HEADER compact */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-          <div>
-            <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 8 }}>
-              Bonjour,
-              <img src={`${process.env.PUBLIC_URL}/logo-cyna-tech.png`} alt="CYNA Tech" className="logo-cyna-tech-inline" style={{ height: 18, width: 'auto', objectFit: 'contain', verticalAlign: 'middle' }} />
-            </div>
-            <p style={{ color: 'var(--text-muted)', fontSize: 12, margin: '2px 0 0' }}>
-              {new Date().toLocaleDateString('fr-CH', { weekday: 'long', day: 'numeric', month: 'long' })} · {actifs.length} chantier{actifs.length !== 1 ? 's' : ''} actif{actifs.length !== 1 ? 's' : ''}
-            </p>
-          </div>
-          <div style={{ display: 'flex', gap: 1, background: 'var(--bg-glass-2)', border: '1px solid var(--border)', borderRadius: 8, padding: '2px' }}>
-            {[{ id: 'semaine', label: 'S' }, { id: 'mois', label: 'M' }, { id: 'annee', label: 'A' }].map(p => (
-              <button key={p.id} onClick={() => setPeriodeGlobale(p.id)}
-                style={{ background: periodeGlobale === p.id ? '#0d3d6e' : 'transparent', border: 'none', color: periodeGlobale === p.id ? '#fff' : 'var(--text-muted)', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', fontSize: 11, fontWeight: 600, fontFamily: 'inherit' }}
-              >{p.label}</button>
-            ))}
-          </div>
-        </div>
-
-        {/* KPI STRIP */}
-        <div className="kpi-grid" style={{ display: 'flex', overflowX: 'auto', gap: 10, marginBottom: 14, paddingBottom: 4 }}>
-          {[
-            { label: "CA signé actif", Icon: DollarSign, valeur: `CHF ${fmtN(kpi.caEnCours)}`, sous: `En cours + Planifié · ${kpi.nbChantiersActifs} chantier${kpi.nbChantiersActifs !== 1 ? 's' : ''}`, ...DS.kpi.blue, page: 'devis' },
-            { label: 'Marge moy.', Icon: TrendingUp, valeur: kpi.rentaMoyenne !== null ? `${Math.round(kpi.rentaMoyenne)}%` : '—', sous: `${kpi.nbChantiersRenta} analysé${kpi.nbChantiersRenta !== 1 ? 's' : ''}`, ...(kpi.rentaMoyenne === null || kpi.rentaMoyenne >= 15 ? DS.kpi.green : kpi.rentaMoyenne >= 0 ? DS.kpi.amber : DS.kpi.red), page: 'rapport', ctx: { onglet: 'analyse' } },
-            { label: 'Chantiers', Icon: HardHat, valeur: `${kpi.nbChantiersActifs}`, sous: kpiReel.nbDepassement > 0 ? `${kpiReel.nbDepassement} en retard` : 'Tous OK', ...DS.kpi.green, page: 'chantiers' },
-            { label: 'Heures', Icon: Clock, valeur: kpi.heuresEngagees > 0 ? `${fmtN(kpi.heuresEngagees)}h` : '—', sous: `${kpi.nbEmployes} employé${kpi.nbEmployes !== 1 ? 's' : ''}`, ...DS.kpi.purple, page: 'heures' },
-          ].map(({ label, Icon, valeur, sous, gradient, glow, page: dest, ctx }) => (
-            <div key={label} onClick={() => naviguer(dest, ctx || {})} className="kpi-card"
-              style={{ background: gradient, borderRadius: 14, padding: '14px 12px', cursor: 'pointer', boxShadow: `0 4px 16px ${glow}`, border: '1px solid rgba(255,255,255,0.15)', flex: '0 0 130px', position: 'relative', overflow: 'hidden' }}
-            >
-              <div style={{ position: 'absolute', right: -10, top: -10, width: 60, height: 60, borderRadius: '50%', background: 'rgba(255,255,255,0.08)' }} />
-              <div style={{ position: 'absolute', top: 7, right: 7, background: 'rgba(255,255,255,0.15)', borderRadius: 4, padding: '1px 4px', display: 'flex', alignItems: 'center', gap: 1 }}>
-                <span style={{ fontSize: 8, color: 'rgba(255,255,255,0.7)', fontWeight: 600 }}>VOIR</span>
-                <ChevronRight size={8} color="rgba(255,255,255,0.7)" strokeWidth={3} />
-              </div>
-              <div style={{ background: 'rgba(255,255,255,0.18)', borderRadius: 8, width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 10 }}>
-                <Icon size={14} strokeWidth={2} style={{ color: '#fff' }} />
-              </div>
-              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.72)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: 4 }}>{label}</div>
-              <div className="kpi-val" style={{ fontSize: 20, fontWeight: 900, color: '#fff', letterSpacing: '-0.5px', lineHeight: 1, marginBottom: 4 }}>{valeur}</div>
-              <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.62)' }}>{sous}</div>
-            </div>
-          ))}
-        </div>
 
         {/* IA BANDEAU compact */}
         {(() => {
@@ -677,6 +697,7 @@ function Dashboard() {
             <button onClick={() => setInsightsFerme(true)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: 18, lineHeight: 1, padding: '0 2px', flexShrink: 0 }}>×</button>
           </div>
         )}
+        </div>{/* /contenu mobile paddé */}
       </div>
     );
   }
@@ -684,218 +705,69 @@ function Dashboard() {
   return (
     <div>
 
-      {/* DIRECTEUR DU MATIN — tout en haut, on ajoute sans rien casser */}
-      <DirecteurBloc naviguer={naviguer} />
-
-      {/* ── HEADER ──────────────────────────────────────────────── */}
-      <div style={{ marginBottom: isMobile ? 14 : 28 }}>
-        <div style={{ fontSize: isMobile ? 20 : 26, fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.5px', lineHeight: 1.2, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-          Bonjour,
-          <img
-            src={`${process.env.PUBLIC_URL}/logo-cyna-tech.png`}
-            alt="CYNA Tech"
-            className="logo-cyna-tech-inline"
-            style={{ height: 20, width: 'auto', objectFit: 'contain', verticalAlign: 'middle' }}
-          />
-        </div>
-        <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: '4px 0 0' }}>
-          {new Date().toLocaleDateString('fr-CH', { weekday: 'long', day: 'numeric', month: 'long' })} · {actifs.length} chantier{actifs.length !== 1 ? 's' : ''} actif{actifs.length !== 1 ? 's' : ''}
-        </p>
-      </div>
-
-      {/* ── BRIEFING IA DU DIRECTEUR ─────────────────────────── */}
+      {/* ── HERO DIRECTION (design v1) — absorbe header + briefing + score ── */}
       {(() => {
-        const scoreDirecteur = agentState?.scoreGlobal ?? null;
-        const prioritesIA = agentState?.priorites || [];
-        const alertesIA = agentState?.alertes || [];
-
-        // Ne pas afficher si aucune donnée agent disponible
-        if (scoreDirecteur === null && prioritesIA.length === 0 && alertesIA.length === 0) return null;
-
-        const scoreColor = scoreDirecteur === null ? '#94a3b8' : couleurScoreSante(scoreDirecteur);
-
-        const scoreBgColor = scoreDirecteur === null ? '#94a3b820'
-          : couleurScoreSante(scoreDirecteur) + '20';
-
-        // Top 3 actions : priorites en premier, sinon alertes critiques
-        const top3 = prioritesIA.length > 0
-          ? prioritesIA.slice(0, 3)
-          : alertesIA.filter(a => ['critique', 'danger'].includes((a.niveau || '').toLowerCase())).slice(0, 3);
-
-        // Première alerte critique ou danger
-        const alerteCritique = alertesIA.find(a => ['critique', 'danger'].includes((a.niveau || '').toLowerCase())) || null;
-
+        const briefing = agentState?.briefingMatin;
+        const actionsJour = Array.isArray(briefing?.actionsAvantLundi)
+          ? briefing.actionsAvantLundi.filter(a => a && (a.priorite === 'URGENT' || a.priorite === 'IMPORTANT'))
+          : [];
+        const nbCollaborateurs = (parametres.employes || []).filter(e => e.actif !== false).length;
+        const dateLabel = new Date().toLocaleDateString('fr-CH', { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' }).toUpperCase();
         return (
-          <div style={{
-            background: 'linear-gradient(135deg, #0d3d6e, #1a5c8a)',
-            borderRadius: 16,
-            padding: '18px 22px',
-            marginBottom: 20,
-            boxShadow: '0 8px 32px rgba(13,61,110,0.35), 0 2px 8px rgba(0,0,0,0.15)',
-            border: '1px solid rgba(255,255,255,0.12)',
-            backdropFilter: 'blur(12px)',
-            position: 'relative',
-            overflow: 'hidden',
-          }}>
-            {/* Décor arrière-plan */}
-            <div style={{ position: 'absolute', right: -40, top: -40, width: 180, height: 180, borderRadius: '50%', background: 'rgba(255,255,255,0.04)', pointerEvents: 'none' }} />
-            <div style={{ position: 'absolute', left: -20, bottom: -30, width: 120, height: 120, borderRadius: '50%', background: 'rgba(255,255,255,0.03)', pointerEvents: 'none' }} />
-
-            {/* En-tête */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
-              <Bot size={14} color="rgba(255,255,255,0.7)" />
-              <span style={{ fontSize: 10, fontWeight: 800, color: 'rgba(255,255,255,0.55)', textTransform: 'uppercase', letterSpacing: '1.2px' }}>Briefing IA du Directeur</span>
-              <span style={{ marginLeft: 'auto', fontSize: 10, color: 'rgba(255,255,255,0.4)', cursor: 'pointer', fontWeight: 600 }} onClick={() => naviguer('agents')}>Voir Centre IA →</span>
-            </div>
-
-            {/* 3 colonnes */}
-            <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'stretch' }}>
-
-              {/* COL 1 — Score santé (30%) */}
-              <div style={{ flex: '0 0 auto', minWidth: 120, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-                <div style={{
-                  width: 80, height: 80, borderRadius: '50%',
-                  background: scoreBgColor,
-                  border: `3px solid ${scoreColor}`,
-                  display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                  boxShadow: `0 0 20px ${scoreColor}40`,
-                }}>
-                  {scoreDirecteur !== null ? (
-                    <>
-                      <span style={{ fontSize: 24, fontWeight: 900, color: scoreColor, lineHeight: 1, letterSpacing: '-1px' }}>{scoreDirecteur}</span>
-                      <span style={{ fontSize: 9, fontWeight: 700, color: scoreColor, opacity: 0.8 }}>/100</span>
-                    </>
-                  ) : (
-                    <span style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.4)' }}>—</span>
-                  )}
-                </div>
-                <div style={{ fontSize: 9, fontWeight: 800, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '0.8px', textAlign: 'center' }}>Sante Entreprise</div>
-                {scoreDirecteur !== null && (
-                  <div style={{ fontSize: 10, color: scoreColor, fontWeight: 700, textAlign: 'center' }}>
-                    {scoreDirecteur === null ? '—' : libelleScoreSante(scoreDirecteur)}
-                  </div>
-                )}
-              </div>
-
-              {/* Separateur vertical */}
-              <div style={{ width: 1, background: 'rgba(255,255,255,0.1)', flexShrink: 0, alignSelf: 'stretch', minHeight: 60 }} />
-
-              {/* COL 2 — 3 actions (45%) */}
-              <div style={{ flex: '1 1 180px', minWidth: 160 }}>
-                <div style={{ fontSize: 9, fontWeight: 800, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 8 }}>3 Actions Aujourd'hui</div>
-                {top3.length === 0 ? (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <CheckCircle size={12} color="#10b981" />
-                    <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)', fontStyle: 'italic' }}>Aucune action urgente — entreprise sur les rails</span>
-                  </div>
-                ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    {top3.map((item, idx) => {
-                      const titre = safeStr(item.titre || item.action || item.message || item.description || '—');
-                      const impact = typeof item.impact === 'string' || typeof item.impact === 'number' ? item.impact : null;
-                      return (
-                        <div key={idx} style={{ display: 'flex', alignItems: 'flex-start', gap: 7 }}>
-                          <span style={{ fontSize: 9, fontWeight: 900, color: 'rgba(255,255,255,0.4)', background: 'rgba(255,255,255,0.08)', borderRadius: '50%', width: 16, height: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1 }}>{idx + 1}</span>
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.85)', lineHeight: 1.3, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{titre}</span>
-                            {impact && <span style={{ fontSize: 10, color: '#f59e0b', fontWeight: 700 }}>CHF {impact}</span>}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-
-              {/* Separateur vertical */}
-              <div style={{ width: 1, background: 'rgba(255,255,255,0.1)', flexShrink: 0, alignSelf: 'stretch', minHeight: 60 }} />
-
-              {/* COL 3 — Alerte critique (25%) */}
-              <div style={{ flex: '0 1 160px', minWidth: 130, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                <div style={{ fontSize: 9, fontWeight: 800, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 8 }}>Alerte Critique</div>
-                {alerteCritique ? (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <span style={{
-                        display: 'inline-block', width: 8, height: 8, borderRadius: '50%',
-                        background: '#ef4444',
-                        boxShadow: '0 0 8px #ef4444',
-                        animation: 'pulse 1.5s ease-in-out infinite',
-                        flexShrink: 0,
-                      }} />
-                      <span style={{ fontSize: 10, fontWeight: 800, color: '#ef4444', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                        {(alerteCritique.niveau || 'CRITIQUE').toUpperCase()}
-                      </span>
-                    </div>
-                    <p style={{ margin: 0, fontSize: 12, color: 'rgba(255,255,255,0.75)', lineHeight: 1.4, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                      {safeStr(alerteCritique.titre || alerteCritique.message || '—')}
-                    </p>
-                    {alerteCritique.agent && (
-                      <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', fontStyle: 'italic' }}>via {alerteCritique.agent}</span>
-                    )}
-                  </div>
-                ) : (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-                    <ShieldCheck size={16} color="#10b981" strokeWidth={2} />
-                    <span style={{ fontSize: 12, color: '#10b981', fontWeight: 700 }}>Aucun risque critique</span>
-                  </div>
-                )}
-              </div>
-
-            </div>
+          <div>
+            <HeroDirection
+              onMenu={ouvrirMenu}
+              dateLabel={dateLabel}
+              periodeGlobale={periodeGlobale}
+              setPeriodeGlobale={setPeriodeGlobale}
+              nbActifs={kpi.nbChantiersActifs}
+              nbCollaborateurs={nbCollaborateurs}
+              score={agentState?.scoreGlobal ?? null}
+              actions={actionsJour}
+              onCloche={() => naviguer('agents')}
+            />
           </div>
         );
       })()}
 
-      {/* ── KPI CARDS ────────────────────────────────────────── */}
-      <div className="kpi-grid" style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'var(--g4)', gap: isMobile ? 10 : 16, marginBottom: 24 }}>
-        {[
-          { label: "CA signé actif", Icon: DollarSign, page: 'devis',
-            valeur: `CHF ${fmtN(kpi.caEnCours)} HT`,
-            sous: kpi.nbChantiersActifs > 0 ? `${kpi.nbChantiersActifs} chantier${kpi.nbChantiersActifs !== 1 ? 's' : ''} · En cours + Planifiés` : 'Aucun chantier en cours',
-            desc: 'Σ montantHT des devis liés aux chantiers actifs',
-            ...DS.kpi.blue },
-          { label: 'Marge moyenne', Icon: TrendingUp, page: 'rapport', ctx: { onglet: 'analyse' },
-            valeur: kpi.rentaMoyenne !== null ? `${Math.round(kpi.rentaMoyenne)}%` : '—',
-            sous: kpi.nbChantiersRenta > 0 ? `${kpi.nbChantiersRenta} chantier${kpi.nbChantiersRenta > 1 ? 's' : ''} analysé${kpi.nbChantiersRenta > 1 ? 's' : ''}` : 'Aucun coût saisi',
-            desc: 'Σ marge réelle / Σ CA signé (pondérée, hors chantiers sans saisie)',
-            ...(kpi.rentaMoyenne === null || kpi.rentaMoyenne >= 15 ? DS.kpi.green : kpi.rentaMoyenne >= 0 ? DS.kpi.amber : DS.kpi.red) },
-          { label: 'Chantiers actifs', Icon: HardHat, page: 'chantiers',
-            valeur: `${kpi.nbChantiersActifs}`,
-            sous: kpiReel.nbDepassement > 0 ? `${kpiReel.nbDepassement} en retard` : 'Tous dans les temps',
-            desc: 'Statut "En cours" — chantiers avec heures en cours',
-            ...DS.kpi.green,
-            badge: kpiReel.nbDepassement > 0 ? `${kpiReel.nbDepassement} en retard` : null },
-          { label: periodeGlobale === 'semaine' ? 'Heures semaine' : periodeGlobale === 'annee' ? 'Heures année' : 'Heures ce mois', Icon: Clock, page: 'heures',
-            valeur: kpi.heuresEngagees > 0 ? `${fmtN(kpi.heuresEngagees)}h` : '—',
-            sous: kpi.nbEmployes > 0 ? `${kpi.nbEmployes} employé${kpi.nbEmployes > 1 ? 's' : ''} mobilisé${kpi.nbEmployes > 1 ? 's' : ''}` : 'Équipes non renseignées',
-            desc: 'Σ heures saisies dans le journal (mois courant)',
-            ...DS.kpi.purple },
-        ].map(({ label, Icon, page: dest, ctx, valeur, sous, desc, gradient, glow, badge }) => (
-          <div key={label} onClick={() => naviguer(dest, ctx || {})} className="kpi-card"
-            style={{ background: gradient, borderRadius: 16, padding: '22px 20px', minHeight: 130, cursor: 'pointer', boxShadow: `0 4px 20px ${glow}, 0 1px 4px rgba(0,0,0,0.12)`, border: '1px solid rgba(255,255,255,0.15)', transition: 'transform 0.18s, box-shadow 0.18s', position: 'relative', overflow: 'hidden' }}
-            onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = `0 10px 30px ${glow}, 0 2px 8px rgba(0,0,0,0.18)`; }}
-            onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = `0 4px 20px ${glow}, 0 1px 4px rgba(0,0,0,0.12)`; }}
-          >
-            <div style={{ position: 'absolute', right: -18, top: -18, width: 80, height: 80, borderRadius: '50%', background: 'rgba(255,255,255,0.1)' }} />
-            <div style={{ position: 'absolute', right: -32, bottom: -32, width: 100, height: 100, borderRadius: '50%', background: 'rgba(255,255,255,0.06)' }} />
-            <div style={{ position: 'absolute', top: 10, right: 10, background: 'rgba(255,255,255,0.15)', borderRadius: 6, padding: '2px 5px', display: 'flex', alignItems: 'center', gap: 2 }}>
-              <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.7)', fontWeight: 600, letterSpacing: '0.3px' }}>VOIR</span>
-              <ChevronRight size={9} color="rgba(255,255,255,0.7)" strokeWidth={3} />
-            </div>
-            <div style={{ background: 'rgba(255,255,255,0.18)', borderRadius: 12, width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 18, position: 'relative' }}>
-              <Icon size={22} strokeWidth={2} style={{ color: '#ffffff' }} />
-            </div>
-            <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.65)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: 8 }}>{label}</div>
-            <div className="kpi-val" style={{ fontSize: 34, fontWeight: 900, color: '#ffffff', letterSpacing: '-1.5px', lineHeight: 1, marginBottom: 10 }}>{valeur}</div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-              <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.62)', fontWeight: 500 }}>{sous}</span>
-              {badge && <span style={{ background: 'rgba(239,68,68,0.85)', color: 'white', borderRadius: 20, padding: '1px 7px', fontSize: 12, fontWeight: 700 }}>{badge}</span>}
-            </div>
-            {desc && <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.4)', marginTop: 5, fontStyle: 'italic' }}>{desc}</div>}
-          </div>
-        ))}
-      </div>
+      {/* ── 4 KPI CARDS v1 — chevauchent le bas du hero ── */}
+      {(() => {
+        const serieCA = donneesMensuelles.map(d => d.CA);
+        const deltaPct = (arr) => {
+          const a = arr[arr.length - 2], b = arr[arr.length - 1];
+          return a > 0 ? Math.round(((b - a) / a) * 1000) / 10 : null;
+        };
+        const dCA = deltaPct(serieCA);
+        const treso = previsionTreso30j;
+        const tresoWarn = treso.interpretation && treso.interpretation.label !== 'Trésorerie sécurisée';
+        return (
+          <KpiStripV1 items={[
+            { label: 'CA SIGNÉ', valeur: fmtCH(kpi.caEnCours), sparkline: serieCA,
+              badge: dCA !== null ? `${dCA >= 0 ? '+' : ''}${dCA}%` : null, etat: dCA !== null && dCA < 0 ? 'danger' : 'ok',
+              action: { label: 'Voir →', onClick: () => naviguer('devis') } },
+            { label: 'MARGE MOYENNE', valeur: kpi.rentaMoyenne !== null ? `${Math.round(kpi.rentaMoyenne)}%` : '—',
+              couleurValeur: kpi.rentaMoyenne === null ? undefined : kpi.rentaMoyenne >= 15 ? V1.ok : kpi.rentaMoyenne >= 0 ? V1.warn : V1.danger,
+              etat: kpi.rentaMoyenne === null ? null : kpi.rentaMoyenne >= 15 ? 'ok' : kpi.rentaMoyenne >= 0 ? 'warn' : 'danger',
+              sousLigne: `${kpi.nbChantiersRenta} ANALYSÉS`,
+              action: { label: 'Voir →', onClick: () => naviguer('rapport', { onglet: 'analyse' }) } },
+            { label: 'TRÉSORERIE', valeur: fmtCH(treso.total),
+              etat: tresoWarn ? 'warn' : 'ok',
+              sousLigne: treso.dateLimite ? `COUVERT AU ${treso.dateLimite.toUpperCase()}` : 'PRÉVISION 30 J',
+              action: { label: 'Voir →', onClick: () => naviguer('finances') } },
+            { label: 'ON ME DOIT', valeur: fmtCH(kpi.cashEnAttente),
+              couleurValeur: kpi.cashEnAttente > 0 ? V1.danger : V1.texte,
+              etat: kpi.nbFacturesRetard > 0 ? 'danger' : 'ok',
+              sousLigne: `${kpi.nbFacturesRetard} IMPAYÉ${kpi.nbFacturesRetard !== 1 ? 'S' : ''}`,
+              action: kpi.nbFacturesRetard > 0 ? { label: 'Relancer', onClick: () => naviguer('finances', { onglet: 'relances' }) } : { label: 'Voir →', onClick: () => naviguer('finances') } },
+          ]} />
+        );
+      })()}
+
+      {/* ── CONTENU CLAIR : centré, marges généreuses (design v1) ── */}
+      <div style={{ padding: '0 32px 40px', boxSizing: 'border-box' }}>
+
+      {/* ── LES 3 RENDEZ-VOUS DU DIRECTEUR (Matin / Soir / Hebdo) ── */}
+      <DirecteurBloc naviguer={naviguer} />
 
       {/* ── BANDEAU INTELLIGENCE IA ──────────────────────────────── */}
       {(() => {
@@ -937,199 +809,114 @@ function Dashboard() {
         );
       })()}
 
-      {/* ── LIGNE 2 : CHANTIERS · FINANCIER · ALERTES ────────────── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'var(--g-dash)', gap: isMobile ? 10 : 16, marginBottom: isMobile ? 10 : 20 }}>
+      {/* ── LIGNE 2 : CHANTIERS · APERÇU FINANCIER (design v1) ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: '3fr 2fr', gap: RYTHME.entreCartes, marginBottom: RYTHME.entreSections, alignItems: 'stretch' }}>
 
-        {/* ── COLONNE GAUCHE : Mes chantiers ── */}
-        <div style={CARD}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-            <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--text-primary)' }}>Mes chantiers</div>
-            <button onClick={() => naviguer('chantiers')} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: '#0d3d6e', fontWeight: 600, fontFamily: 'inherit', padding: 0 }}>Voir tous →</button>
-          </div>
+        {/* ── COLONNE GAUCHE : Mes chantiers (design v1) ── */}
+        <div>
+          <TitreSectionV1 index="01" label="Mes chantiers" droite={<button onClick={() => naviguer('chantiers')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: V1.bleu, fontWeight: 700, fontSize: 11, fontFamily: 'inherit', padding: 0 }}>VOIR TOUS →</button>} />
           {actifs.length === 0
-            ? <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: 0, textAlign: 'center', padding: '24px 0' }}>Aucun chantier actif</p>
+            ? <div style={{ ...carteV1, color: V1.texteMuted, fontSize: 13, textAlign: 'center', padding: '28px 16px' }}>Aucun chantier actif</div>
             : (() => {
                 const sorted = [...actifs].sort((a, b) => (prioriteMap.get(b.id) || { score: 0 }).score - (prioriteMap.get(a.id) || { score: 0 }).score);
-                const max = isMobile ? 2 : 3;
+                const max = 3;
                 const enDifficulte = sorted.filter(c => (prioriteMap.get(c.id) || { niveau: 'ok' }).niveau !== 'ok');
                 const autresCount = Math.max(0, enDifficulte.length - max);
                 return (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                {sorted.slice(0, max).map(c => {
-                  const priorite = prioriteMap.get(c.id) || { niveau: 'ok', score: 0 };
-                  const montantCA = calculerCA(c, devis);
-                  const couts = coutsMap.get(c.id) || {};
-                  const progress = Math.max(0, Math.min(100, Number(c.avancement ?? 0)));
-                  const mPct = couts.montantTotal > 0 && couts.totalCoutsReel > 0 && couts.margeActuellePct !== null ? Math.round(couts.margeActuellePct) : null;
-                  const joursTotal = c.nombreJours || 0;
-                  // Jours réellement travaillés = dates distinctes dans le journal des heures
-                  const joursRealises = joursReelsChantier(pointages, c.id);
-                  const statBadge = joursRealises === 0
-                    ? BADGE_STATUT_DASH.neutre
-                    : BADGE_STATUT_DASH[priorite.niveau];
-                  const joursRestants = joursTotal > 0 ? Math.max(0, joursTotal - joursRealises) : null;
-                  const margeVal = parseFloat(couts?.margeActuellePct) || 0;
-                  const sansCouts = couts?.margeActuellePct == null;
-                  const avancementVal = joursTotal === 0 ? 0 : Math.min(Math.round((joursRealises / joursTotal) * 100), 100);
-                  const couleurBarre = joursRealises === 0 ? '#CBD5E1'
-                    : sansCouts ? '#CBD5E1'
-                    : margeVal >= SEUILS.margeRentable ? '#10B981'
-                    : margeVal >= SEUILS.margeLimite ? '#F59E0B'
-                    : '#EF4444';
-                  const depasse = joursTotal > 0 && joursRealises > joursTotal;
-                  const statutJours = depasse
-                    ? { label: `+${joursRealises - joursTotal}j dépassement`, couleur: '#ef4444' }
-                    : joursRestants === 0
-                      ? { label: 'Terminé', couleur: '#10b981' }
-                      : joursRestants !== null && joursRestants <= 3
-                        ? { label: `${joursRestants}j restants`, couleur: '#f59e0b' }
-                        : joursRestants !== null
-                          ? { label: `${joursRestants}j restants`, couleur: 'var(--text-muted)' }
-                          : { label: '—', couleur: 'var(--text-muted)' };
-                  return (
-                    <div key={c.id} onClick={() => naviguer('chantiers', { chantierActif: c.id })}
-                      style={{ display: 'flex', alignItems: 'center', gap: 0, borderRadius: 14, border: '1px solid var(--dash-border)', cursor: 'pointer', background: 'var(--ds-card-bg)', overflow: 'hidden', transition: 'all 0.15s', position: 'relative' }}
-                      onMouseEnter={e => { e.currentTarget.style.borderColor = '#0d3d6e'; e.currentTarget.style.boxShadow = '0 2px 12px rgba(13,61,110,0.1)'; }}
-                      onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--dash-border)'; e.currentTarget.style.boxShadow = 'none'; }}
-                    >
-                      {/* Badge statut — intégré dans le layout, plus d'absolute pour éviter le chevauchement */}
-
-                      {/* Contenu */}
-                      <div className="dash-chantier-row" style={{ flex: 1, padding: '14px 16px', minWidth: 0, display: 'flex', alignItems: 'center', gap: 16 }}>
-                        {/* Nom + CA + Coût */}
-                        <div style={{ flex: '1 1 220px', minWidth: 0, paddingRight: 70 }}>
-                          <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-primary)', marginBottom: 6, lineHeight: 1.3 }}>{c.nom || c.numero}</div>
-                          <div style={{ display: 'flex', gap: 16 }}>
-                            <div>
-                              <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>CA signé</div>
-                              <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)' }}>{montantCA ? `CHF ${fmtN(montantCA)}` : '—'}</div>
-                            </div>
-                            <div>
-                              <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Coût</div>
-                              <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)' }}>{couts.totalCoutsReel > 0 ? `CHF ${fmtN(Math.round(couts.totalCoutsReel))}` : '—'}</div>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Séparateur */}
-                        <div className="dash-sep" style={{ width: 1, alignSelf: 'stretch', background: 'var(--dash-border)', flexShrink: 0 }} />
-
-                        {/* Marge */}
-                        <div style={{ flex: '0 0 90px', textAlign: 'left' }}>
-                          <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>Marge</div>
-                          {mPct !== null && couts.margeReel !== undefined
-                            ? <>
-                                <div style={{ fontSize: 13, fontWeight: 800, color: mPct >= 15 ? '#10b981' : mPct >= 0 ? '#f59e0b' : '#ef4444' }}>CHF {fmtN(Math.round(couts.margeReel ?? 0))}</div>
-                                <div style={{ fontSize: 11, fontWeight: 600, color: mPct >= 15 ? '#10b981' : mPct >= 0 ? '#f59e0b' : '#ef4444' }}>{mPct}%</div>
-                              </>
-                            : <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>—</div>
-                          }
-                        </div>
-
-                        {/* Séparateur */}
-                        <div className="dash-sep" style={{ width: 1, alignSelf: 'stretch', background: 'var(--dash-border)', flexShrink: 0 }} />
-
-                        {/* Jours + barre + badge statut (badge aligné à droite de la carte) */}
-                        <div style={{ flex: '0 0 120px' }}>
-                          <div style={{ textAlign: 'right', marginBottom: 4 }}>
-                            <span style={{ display: 'inline-block', background: statBadge.bg, color: statBadge.color, borderRadius: 20, padding: '1px 8px', fontSize: 10, fontWeight: 700, whiteSpace: 'nowrap' }}>{statBadge.label}</span>
-                          </div>
-                          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 6 }}>
-                            {joursTotal > 0 ? `${joursRealises} / ${joursTotal} jours` : `${progress}%`}
-                          </div>
-                          <div style={{ height: 5, background: 'var(--dash-border)', borderRadius: 3, marginBottom: 5 }}>
-                            <div style={{ height: '100%', width: `${avancementVal}%`, background: couleurBarre, borderRadius: 3, transition: 'width 0.3s ease' }} />
-                          </div>
-                          <div style={{ fontSize: 11, fontWeight: 600, color: statutJours.couleur }}>{statutJours.label}</div>
-                        </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: RYTHME.entreCartes }}>
+                    {sorted.slice(0, max).map(c => {
+                      const couts = coutsMap.get(c.id) || {};
+                      const mPct = couts.montantTotal > 0 && couts.totalCoutsReel > 0 && couts.margeActuellePct !== null ? Math.round(couts.margeActuellePct) : null;
+                      const joursTotal = c.nombreJours || 0;
+                      const joursRealises = joursReelsChantier(pointages, c.id);
+                      const margeVal = parseFloat(couts?.margeActuellePct) || 0;
+                      const sansCouts = couts?.margeActuellePct == null;
+                      const avancementVal = joursTotal === 0 ? 0 : Math.min(Math.round((joursRealises / joursTotal) * 100), 100);
+                      const couleur = joursRealises === 0 || sansCouts ? V1.bleuMoyen
+                        : margeVal >= SEUILS.margeRentable ? V1.ok
+                        : margeVal >= SEUILS.margeLimite ? V1.warn : V1.danger;
+                      const depasse = joursTotal > 0 && joursRealises > joursTotal;
+                      const dateFin = calculerDateFinOuvrables(c.dateDebut, c.nombreJours, c.inclusSamedi, c.canton ?? 'GE');
+                      const finLabel = dateFin && dateFin !== '-' ? new Date(dateFin).toLocaleDateString('fr-CH') : '—';
+                      const cartouche = depasse
+                        ? { texte: `RETARD ${joursRealises - joursTotal} J`, etat: 'danger' }
+                        : { texte: `FIN ${finLabel}`, etat: 'marque' };
+                      const lieu = (c.adresse || '').split(',').pop()?.trim() || (c.canton === 'VD' ? 'VAUD' : 'GENÈVE');
+                      return (
+                        <CarteChantierV1
+                          key={c.id}
+                          onClick={() => naviguer('chantiers', { chantierActif: c.id })}
+                          ch={{
+                            nom: c.nom || c.numero,
+                            icone: <HardHat size={17} />,
+                            sousLigne: `${lieu} — MARGE ${mPct !== null ? mPct + '%' : '—'}`,
+                            avancement: avancementVal,
+                            couleur,
+                            cartouche,
+                            echeance: joursTotal > 0 ? `${joursRealises} / ${joursTotal} J` : '—',
+                          }}
+                        />
+                      );
+                    })}
+                    {autresCount > 0 && (
+                      <div onClick={() => naviguer('chantiers')} style={{ textAlign: 'center', fontSize: 12, color: V1.danger, fontWeight: 700, cursor: 'pointer' }}>
+                        +{autresCount} autre{autresCount > 1 ? 's' : ''} chantier{autresCount > 1 ? 's' : ''} en difficulté →
                       </div>
-                    </div>
-                  );
-                })}
-                {autresCount > 0 && (
-                  <div onClick={() => naviguer('chantiers')} style={{ textAlign: 'center', fontSize: 12, color: '#ef4444', fontWeight: 600, cursor: 'pointer', padding: '4px 0' }}>
-                    +{autresCount} autre{autresCount > 1 ? 's' : ''} chantier{autresCount > 1 ? 's' : ''} en difficulté →
+                    )}
                   </div>
-                )}
-              </div>
-              );
-            })()
+                );
+              })()
           }
         </div>
 
-        {/* ── COLONNE CENTRE : Aperçu financier ── */}
-        <div style={CARD}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
-            <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--text-primary)' }}>Aperçu financier</div>
-            <span style={{ fontSize: 11, color: 'var(--text-muted)', background: 'var(--bg-glass-2)', border: '1px solid var(--border)', borderRadius: 6, padding: '3px 10px' }}>4 dernières semaines</span>
-          </div>
-          {donneesMensuelles.some(d => d.CA > 0 || d.Couts > 0) ? (
-            <ResponsiveContainer width="100%" height={isMobile ? 140 : 210}>
-              <LineChart data={donneesMensuelles} margin={{ top: 5, right: 5, left: -22, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                <XAxis dataKey="semaine" tick={{ fill: 'var(--text-muted)', fontSize: 12 }} />
-                <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 12 }} tickFormatter={v => v >= 1000 ? `${(v/1000).toFixed(0)}k` : v} />
-                <Tooltip contentStyle={{ background: 'var(--dash-card)', border: '1px solid var(--dash-border)', borderRadius: 10, fontSize: 12 }} labelStyle={{ color: 'var(--text-primary)', fontWeight: 700 }} formatter={(val, name) => [`CHF ${fmtN(val)}`, name]} />
-                <Line type="monotone" dataKey="CA" stroke="#0d3d6e" strokeWidth={2.5} dot={{ r: 3, fill: '#0d3d6e' }} name="CA signé" />
-                <Line type="monotone" dataKey="Couts" stroke="#94a3b8" strokeWidth={2} dot={{ r: 3, fill: '#94a3b8' }} strokeDasharray="5 3" name="Coûts estimés" />
-                <Line type="monotone" dataKey="Encaissements" stroke="#10b981" strokeWidth={2} dot={{ r: 3, fill: '#10b981' }} name="Encaissements" />
-              </LineChart>
-            </ResponsiveContainer>
-          ) : (
-            <div style={{ height: isMobile ? 140 : 210, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: 13 }}>Aucune donnée disponible</div>
-          )}
-          <div style={{ display: 'flex', gap: 20, marginTop: 12, justifyContent: 'center' }}>
-            {[['#0d3d6e', "CA signé"], ['#94a3b8', 'Coûts estimés'], ['#10b981', 'Encaissements']].map(([col, lbl]) => (
-              <div key={lbl} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--text-secondary)' }}>
-                <span style={{ width: 20, height: 2.5, background: col, borderRadius: 2, display: 'inline-block' }} />{lbl}
-              </div>
-            ))}
-          </div>
+        {/* ── COLONNE DROITE : Aperçu financier (design v1) ── */}
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
+          <TitreSectionV1 index="02" label="Aperçu financier" droite="4 DERNIÈRES SEMAINES" />
           {(() => {
-            const { total, top3, interpretation, dateLimite, couverture } = previsionTreso30j; // alerteFaible unused
-            const couleurTotal = interpretation?.couleur || '#0d3d6e';
+            const caEnc = donneesMensuelles.reduce((t, d) => t + (d.Encaissements || 0), 0);
+            const dep = donneesMensuelles.reduce((t, d) => t + (d.Couts || 0), 0);
+            const resultat = caEnc - dep;
+            const deltaPct = (key) => {
+              const a = donneesMensuelles[donneesMensuelles.length - 2]?.[key], b = donneesMensuelles[donneesMensuelles.length - 1]?.[key];
+              return a > 0 ? Math.round(((b - a) / a) * 1000) / 10 : null;
+            };
             return (
-              <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px solid var(--border)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-                  <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-muted)' }}>Prévision encaissements 30 j</span>
-                  {interpretation && (
-                    <span style={{ fontSize: 12, fontWeight: 700, color: interpretation.couleur, background: interpretation.couleur + '15', border: `1px solid ${interpretation.couleur}30`, borderRadius: 20, padding: '2px 8px' }}>
-                      {interpretation.label}
-                    </span>
-                  )}
+              <ApercuFinancierV1
+                resultatNet={resultat}
+                lignes={[
+                  { label: 'CA ENCAISSÉ', valeur: caEnc, delta: deltaPct('Encaissements'), couleur: V1.bleu },
+                  { label: 'DÉPENSES', valeur: dep, delta: deltaPct('Couts'), couleur: V1.texte },
+                  { label: 'RÉSULTAT', valeur: resultat, delta: null, couleur: resultat >= 0 ? V1.ok : V1.danger },
+                ]}
+                serie={donneesMensuelles.map(d => ({ label: d.semaine, CA: d.CA, Couts: d.Couts }))}
+              />
+            );
+          })()}
+          {/* Prévision encaissements 30 j — mêmes données, habillage v1 */}
+          {(() => {
+            const { total, top3, interpretation, dateLimite } = previsionTreso30j;
+            return (
+              <div style={{ ...carteV1, marginTop: RYTHME.entreCartes }}>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 8 }}>
+                  <span style={{ ...mono(10, V1.texteMuted), textTransform: 'uppercase', letterSpacing: '0.1em' }}>PRÉVISION ENCAISSEMENTS 30 J</span>
+                  <span style={{ marginLeft: 'auto', ...mono(16, interpretation?.couleur || V1.bleu, 500) }}>CHF {fmtCH(total)}</span>
                 </div>
-                <div style={{ fontSize: 22, fontWeight: 800, color: couleurTotal, letterSpacing: '-0.5px', marginBottom: 4 }}>
-                  CHF {fmtN(total)}
-                </div>
-                {dateLimite && couverture !== null && (
-                  <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 10 }}>
-                    Charges couvertes jusqu'au <strong style={{ color: 'var(--text-secondary)' }}>{dateLimite}</strong>
+                {interpretation && <div style={{ fontSize: 12, color: interpretation.couleur, fontWeight: 600, marginBottom: 6 }}>{interpretation.label}{dateLimite ? ` · couverture jusqu'au ${dateLimite}` : ''}</div>}
+                {top3.map(x => (
+                  <div key={x.id} style={{ display: 'flex', justifyContent: 'space-between', gap: 8, padding: '5px 0', borderTop: `1px solid ${V1.separation}` }}>
+                    <span style={{ fontSize: 12, color: V1.texteMuted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{x.nom}</span>
+                    <span style={mono(12, V1.bleu, 500)}>CHF {fmtCH(x.encaissementPrevu)}</span>
                   </div>
-                )}
-                {interpretation?.action && (
-                  <div style={{ fontSize: 11, color: interpretation.couleur, background: interpretation.couleur + '10', border: `1px solid ${interpretation.couleur}25`, borderRadius: 8, padding: '6px 10px', marginBottom: 10 }}>
-                    {safeStr(interpretation.action)}
-                  </div>
-                )}
-                {top3.length > 0 && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    {top3.map(x => (
-                      <div key={x.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-glass-2)', border: '1px solid var(--border)', borderRadius: 8, padding: '6px 10px' }}>
-                        <span style={{ fontSize: 12, color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, marginRight: 8 }}>{x.nom}</span>
-                        <span style={{ fontSize: 12, fontWeight: 700, color: '#0d3d6e', whiteSpace: 'nowrap' }}>CHF {fmtN(x.encaissementPrevu)}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                {top3.length === 0 && (
-                  <div style={{ fontSize: 12, color: 'var(--text-muted)', textAlign: 'center', padding: '8px 0' }}>Aucun encaissement prévu — complétez les devis et l'avancement</div>
-                )}
+                ))}
               </div>
             );
           })()}
         </div>
 
-        {/* ── COLONNE DROITE : Alertes agents IA ── */}
+      </div>
+
+      {/* ── ALERTES INTELLIGENTES (pleine largeur, conservées telles quelles) ── */}
+      <div style={{ marginBottom: RYTHME.entreSections }}>
         <div style={CARD}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
             <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 7 }}>
@@ -1286,33 +1073,10 @@ function Dashboard() {
           )}
         </div>
 
-        {/* Activité récente */}
-        <div style={CARD}>
-          <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--text-primary)', marginBottom: 16 }}>Activité récente</div>
-          {actionsLog.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '28px 0', color: 'var(--text-muted)', fontSize: 13 }}>Aucune action enregistrée</div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              {actionsLog.slice(0, 5).map((a) => {
-                const typeConf = { urgence: { I: AlertTriangle, c: '#ef4444' }, ressource: { I: Users, c: '#f59e0b' }, relance: { I: Bell, c: '#8b5cf6' }, analyse: { I: TrendingUp, c: '#0d3d6e' } };
-                const tc = typeConf[a.type] || { I: CheckCircle, c: '#10b981' };
-                const AIcon = tc.I;
-                const joursDiff = Math.floor((Date.now() - a.date) / 86400000);
-                const timeLabel = joursDiff === 0 ? "Aujourd'hui" : joursDiff === 1 ? 'Hier' : `il y a ${joursDiff}j`;
-                return (
-                  <div key={a.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
-                    <div style={{ width: 32, height: 32, borderRadius: '50%', background: tc.c + '18', border: `1px solid ${tc.c}30`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                      <AIcon size={14} strokeWidth={2} style={{ color: tc.c }} />
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.label || a.type}</div>
-                      <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 1 }}>{timeLabel}</div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
+        {/* Activité récente v1 — timeline technique depuis les vraies sources */}
+        <div>
+          <TitreSectionV1 index="03" label="Activité récente" droite="JOURNAL DE BORD" />
+          <TimelineActiviteV1 evenements={evenementsRecents} />
         </div>
       </div>
 
@@ -1348,6 +1112,8 @@ function Dashboard() {
           </button>
         </div>
       )}
+
+      </div>{/* /contenu clair centré */}
 
     </div>
   );

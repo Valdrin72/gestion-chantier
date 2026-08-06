@@ -105,7 +105,7 @@ describe('APERÇU FINANCIER + TIMELINE — vraies sources', () => {
   it('l\'aperçu financier affiche RÉSULTAT NET et les 3 lignes de chiffres', () => {
     renderWithApp(<Dashboard />, CTX);
     expect(screen.getByTestId('apercu-financier')).toBeInTheDocument();
-    expect(screen.getByText('RÉSULTAT NET')).toBeInTheDocument();
+    expect(screen.getByText('RÉSULTAT DE TRÉSORERIE')).toBeInTheDocument();
     expect(screen.getByText('CA ENCAISSÉ')).toBeInTheDocument();
     expect(screen.getByText('DÉPENSES')).toBeInTheDocument();
   });

@@ -6,7 +6,7 @@ import {
 import { PieChart, Pie, Cell, Tooltip } from 'recharts';
 import {
   fmtN, calculerDateFinOuvrables, estRetardJustifie,
-  calculerCoutsChantier, statutRentabilite, C, getIntervallesPeriode,
+  calculerCoutsChantier, statutRentabilite, C, getIntervallesPeriode, getPeriodeLabel,
   facturesInPeriode, calculerRentabiliteReelle, calculerEtatChantier,
   calculerCA, isChantierActif, isChantierComptable, SEUILS, margePortefeuille,
   couleurScoreSante,
@@ -382,6 +382,54 @@ function Dashboard() {
       return { semaine: deb.toLocaleDateString('fr-CH', { day: '2-digit', month: '2-digit' }), CA: Math.round(ca), Couts: Math.round(couts), Encaissements: Math.round(enc) };
     });
   }, [factures, actifs, parametres.employes, parametres.parametres]);
+
+  // ── Aperçu financier — SUIT LE SÉLECTEUR DE PÉRIODE (fix). ─────────────────
+  // « Résultat de trésorerie » de la période = encaissé (paiements reçus, datable)
+  // − dépenses réelles engagées via l'ENGINE (calculerCoutsChantier.totalCoutsReel :
+  // MO + matériel + sous-traitance + imprévus ; déplacement EXCLU — règle F2, imputé
+  // aux frais généraux). Aucune formule parallèle : le coût MO reste celui de l'engine.
+  const apercuFinancier = useMemo(() => {
+    const { debut, fin } = getIntervallesPeriode(periodeGlobale);
+    const ymd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const debutStr = ymd(debut), finStr = ymd(fin);
+    const dans = (dateStr) => dateStr && dateStr >= debutStr && dateStr <= finStr;
+    const facturesReelles = (facturesSafe || []).filter(f => !['annulee', 'brouillon'].includes((f.statut || '').toLowerCase()));
+
+    // CA encaissé = paiements REÇUS dans la période (source unique factures)
+    const caEncaisse = facturesReelles
+      .flatMap(f => f.paiementsHistorique || [])
+      .filter(p => dans((p.date || '').slice(0, 10)))
+      .reduce((s, p) => s + (parseFloat(p.montant) || 0), 0);
+
+    // Chantiers ayant une activité RÉELLE dans la période (pointage OU facture émise)
+    const aPointage = (id) => (pointages || []).some(pt => dans(pt.date) && (pt.repartitions || []).some(r => String(r.chantierId) === String(id)));
+    const aFacture = (id) => facturesReelles.some(f => String(f.chantierId) === String(id) && dans((f.dateEmission || '').slice(0, 10)));
+    const chantiersPeriode = (chantiers || []).filter(c => aPointage(c.id) || aFacture(c.id));
+
+    // Dépenses réelles engagées (engine — MO identique partout, hors déplacement F2)
+    const depenses = chantiersPeriode.reduce((s, c) => s + ((coutsMap.get(c.id) || {}).totalCoutsReel || 0), 0);
+    const activite = caEncaisse > 0 || chantiersPeriode.length > 0;
+
+    // Série encaissé pour le graphique (trend sur la période, découpée en tranches)
+    const nB = periodeGlobale === 'annee' ? 12 : periodeGlobale === 'mois' ? 5 : 6;
+    const spanMs = Math.max(1, fin.getTime() - debut.getTime());
+    const serie = Array.from({ length: nB }, (_, i) => {
+      const bDeb = new Date(debut.getTime() + (spanMs * i) / nB);
+      const bFin = new Date(debut.getTime() + (spanMs * (i + 1)) / nB);
+      const a = ymd(bDeb), b = ymd(bFin);
+      const enc = facturesReelles.flatMap(f => f.paiementsHistorique || [])
+        .filter(p => { const d = (p.date || '').slice(0, 10); return d && d >= a && d < b; })
+        .reduce((s, p) => s + (parseFloat(p.montant) || 0), 0);
+      return { label: bDeb.toLocaleDateString('fr-CH', { day: '2-digit', month: '2-digit' }), CA: Math.round(enc) };
+    });
+
+    return {
+      caEncaisse: Math.round(caEncaisse),
+      depenses: Math.round(depenses),
+      resultat: Math.round(caEncaisse - depenses),
+      activite, serie, periodeLabel: getPeriodeLabel(periodeGlobale),
+    };
+  }, [facturesSafe, pointages, chantiers, coutsMap, periodeGlobale]);
 
   // ── Timeline « Activité récente » v1 — dérivée des VRAIES sources (lecture pure) ──
   const evenementsRecents = useMemo(() => {
@@ -871,27 +919,17 @@ function Dashboard() {
 
         {/* ── COLONNE DROITE : Aperçu financier (design v1) ── */}
         <div style={{ display: 'flex', flexDirection: 'column' }}>
-          <TitreSectionV1 index="02" label="Aperçu financier" droite="4 DERNIÈRES SEMAINES" />
-          {(() => {
-            const caEnc = donneesMensuelles.reduce((t, d) => t + (d.Encaissements || 0), 0);
-            const dep = donneesMensuelles.reduce((t, d) => t + (d.Couts || 0), 0);
-            const resultat = caEnc - dep;
-            const deltaPct = (key) => {
-              const a = donneesMensuelles[donneesMensuelles.length - 2]?.[key], b = donneesMensuelles[donneesMensuelles.length - 1]?.[key];
-              return a > 0 ? Math.round(((b - a) / a) * 1000) / 10 : null;
-            };
-            return (
-              <ApercuFinancierV1
-                resultatNet={resultat}
-                lignes={[
-                  { label: 'CA ENCAISSÉ', valeur: caEnc, delta: deltaPct('Encaissements'), couleur: V1.bleu },
-                  { label: 'DÉPENSES', valeur: dep, delta: deltaPct('Couts'), couleur: V1.texte },
-                  { label: 'RÉSULTAT', valeur: resultat, delta: null, couleur: resultat >= 0 ? V1.ok : V1.danger },
-                ]}
-                serie={donneesMensuelles.map(d => ({ label: d.semaine, CA: d.CA, Couts: d.Couts }))}
-              />
-            );
-          })()}
+          <TitreSectionV1 index="02" label="Aperçu financier" droite={apercuFinancier.periodeLabel.toUpperCase()} />
+          <ApercuFinancierV1
+            vide={!apercuFinancier.activite}
+            resultatNet={apercuFinancier.resultat}
+            lignes={[
+              { label: 'CA ENCAISSÉ', valeur: apercuFinancier.caEncaisse, delta: null, couleur: V1.bleu },
+              { label: 'DÉPENSES', valeur: apercuFinancier.depenses, delta: null, couleur: V1.texte },
+              { label: 'RÉSULTAT', valeur: apercuFinancier.resultat, delta: null, couleur: apercuFinancier.resultat >= 0 ? V1.ok : V1.danger },
+            ]}
+            serie={apercuFinancier.serie}
+          />
           {/* Prévision encaissements 30 j — mêmes données, habillage v1 */}
           {(() => {
             const { total, top3, interpretation, dateLimite } = previsionTreso30j;

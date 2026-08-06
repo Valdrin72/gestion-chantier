@@ -192,11 +192,25 @@ export function CarteChantierV1({ ch, onClick = () => {} }) {
 }
 
 // ── APERÇU FINANCIER ────────────────────────────────────────────────────────
-export function ApercuFinancierV1({ resultatNet, lignes = [], serie = [], compact = false }) {
+// « Résultat de trésorerie » sur la PÉRIODE (encaissé − dépenses réelles).
+// Étiqueté distinctement de la marge (règle 17) : c'est un solde de trésorerie
+// période, PAS la marge nette d'un chantier. Garde-fou `vide` quand la période
+// n'a aucune activité (au lieu d'un « CHF 0 » trompeur).
+export function ApercuFinancierV1({ resultatNet, lignes = [], serie = [], vide = false, compact = false }) {
+  if (vide) {
+    return (
+      <div style={{ ...carteV1, display: 'flex', flexDirection: 'column', height: '100%', minHeight: 180 }} data-testid="apercu-financier">
+        <div style={{ ...mono(10, V1.texteMuted), textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 14 }}>RÉSULTAT DE TRÉSORERIE</div>
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', fontFamily: FONT_UI, fontSize: 13, color: V1.texteMuted }}>
+          Aucune activité sur cette période.
+        </div>
+      </div>
+    );
+  }
   return (
     <div style={{ ...carteV1, display: 'flex', flexDirection: 'column', height: '100%' }} data-testid="apercu-financier">
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 14 }}>
-        <span style={{ ...mono(10, V1.texteMuted), textTransform: 'uppercase', letterSpacing: '0.1em' }}>RÉSULTAT NET</span>
+        <span style={{ ...mono(10, V1.texteMuted), textTransform: 'uppercase', letterSpacing: '0.1em' }}>RÉSULTAT DE TRÉSORERIE</span>
         <span style={mono(20, resultatNet >= 0 ? V1.ok : V1.danger, 500)}>{fmtCH(resultatNet)}</span>
         <span style={badgeV1(resultatNet >= 0 ? 'ok' : 'danger')}>{resultatNet >= 0 ? 'POSITIF' : 'NÉGATIF'}</span>
       </div>
@@ -217,8 +231,7 @@ export function ApercuFinancierV1({ resultatNet, lignes = [], serie = [], compac
             <AreaChart data={serie} margin={{ top: 4, right: 4, bottom: 0, left: 4 }}>
               <XAxis dataKey="label" tick={{ fontFamily: 'IBM Plex Mono', fontSize: 9, fill: V1.texteMuted }} axisLine={false} tickLine={false} />
               <Tooltip formatter={(v) => `CHF ${fmtCH(v)}`} contentStyle={{ fontFamily: FONT_UI, fontSize: 12, borderRadius: 8 }} />
-              <Area type="monotone" dataKey="CA" stroke={V1.bleu} fill={V1.bleuFond} strokeWidth={2} name="CA signé" />
-              <Area type="monotone" dataKey="Couts" stroke="#B9C3D0" fill="#EEF1F5" strokeWidth={1.5} name="Dépenses" />
+              <Area type="monotone" dataKey="CA" stroke={V1.bleu} fill={V1.bleuFond} strokeWidth={2} name="Encaissé" />
             </AreaChart>
           </ResponsiveContainer>
         </div>

@@ -107,17 +107,35 @@ export function Sidebar({ sidebarOuvert, setSidebarOuvert, maisons = [], page, n
             <div className="sidebar-profile-name">{profil?.nom || 'Utilisateur'}</div>
             <div className="sidebar-profile-role">{profil?.id || ''}</div>
           </div>
+          {/* Mode sombre — dans le drawer : accessible sur les pages à hero bleu
+              (Accueil, Chantiers…) où le Topbar blanc est masqué. */}
+          {toggleDarkMode && (
+            <button
+              onClick={toggleDarkMode}
+              aria-label="Basculer le thème"
+              title={darkMode ? 'Mode clair' : 'Mode sombre'}
+              style={{
+                background: 'none', border: 'none', cursor: 'pointer',
+                color: '#CFE0F2', fontSize: 18, padding: '4px',
+                marginLeft: 'auto', opacity: 0.75, transition: 'opacity 0.2s', display: 'inline-flex',
+              }}
+              onMouseEnter={e => e.currentTarget.style.opacity = '1'}
+              onMouseLeave={e => e.currentTarget.style.opacity = '0.75'}
+            >
+              {darkMode ? <Sun size={16} strokeWidth={2} /> : <Moon size={16} strokeWidth={2} />}
+            </button>
+          )}
           {deconnecter && (
             <button
               onClick={deconnecter}
               title="Se déconnecter"
               style={{
                 background: 'none', border: 'none', cursor: 'pointer',
-                color: 'var(--text-secondary)', fontSize: 18, padding: '4px',
-                marginLeft: 'auto', opacity: 0.6, transition: 'opacity 0.2s',
+                color: '#CFE0F2', fontSize: 18, padding: '4px',
+                opacity: 0.75, transition: 'opacity 0.2s',
               }}
               onMouseEnter={e => e.currentTarget.style.opacity = '1'}
-              onMouseLeave={e => e.currentTarget.style.opacity = '0.6'}
+              onMouseLeave={e => e.currentTarget.style.opacity = '0.75'}
             >
               <LogOut size={16} />
             </button>

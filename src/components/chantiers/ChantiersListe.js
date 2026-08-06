@@ -1,6 +1,6 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect, useLayoutEffect } from 'react';
 import {
-  X, Pencil, Trash2, Archive, AlertTriangle, ChevronRight, Eye, Download, LayoutList, LayoutGrid, Menu,
+  X, Pencil, Trash2, Archive, AlertTriangle, ChevronRight, Eye, Download, LayoutList, LayoutGrid, Menu, Bell,
 } from 'lucide-react';
 import { exportCSV } from '../../utils/exportCSV';
 import KanbanChantiers from './KanbanChantiers';
@@ -35,11 +35,18 @@ function ChantiersListe({
   onRestaurer,
   formSlot,
 }) {
-  const { chantiers, clients, devis = [], factures = [], pointages = [], parametres, naviguer, contexte, agentState, confirmer, periodeGlobale = 'mois', ouvrirMenu } = useApp();
+  const { chantiers, clients, devis = [], factures = [], pointages = [], parametres, naviguer, contexte, agentState, confirmer, periodeGlobale = 'mois', setPeriodeGlobale = () => {}, ouvrirMenu } = useApp();
   const isMobile = useIsMobile();
   const [page, setPage] = useState(0);
   const [vueMode, setVueMode] = useState('liste');
   const [voirArchives, setVoirArchives] = useState(false);
+
+  // Hero bleu plein écran : masque la barre blanche (Topbar) tant que la LISTE est
+  // montée. La fiche détail démonte la liste → le Topbar (☰/retour) réapparaît.
+  useLayoutEffect(() => {
+    document.body.classList.add('hero-fullscreen');
+    return () => document.body.classList.remove('hero-fullscreen');
+  }, []);
 
   // Un chantier référencé (heures/factures) ne se supprime pas → on l'archive.
   // Vierge → suppression dure. Décide quel bouton afficher par ligne.
@@ -172,11 +179,19 @@ function ChantiersListe({
     { label: 'JOURS PLANIFIÉS', val: `${fmtN(kpi.joursPlanifies)} j`, sub: null, couleur: '#fff' },
   ];
 
+  const PERIODES = [{ id: 'semaine', label: 'Cette semaine' }, { id: 'mois', label: 'Ce mois' }, { id: 'annee', label: 'Cette année' }];
   const actionsHero = (
     <>
       {contexte?.clientActif && <button onClick={() => naviguer('clients')} style={heroBtn}><ChevronRight size={13} style={{ transform: 'rotate(180deg)' }} /> Clients</button>}
       {contexte?.employeActif && <button onClick={() => naviguer('employes')} style={heroBtn}><ChevronRight size={13} style={{ transform: 'rotate(180deg)' }} /> Employés</button>}
       {(contexte?.clientActif || contexte?.employeActif) && <button onClick={() => naviguer('chantiers')} style={heroBtn}><X size={13} /> Filtre</button>}
+      {/* Sélecteur de période (intégré au hero, translucide) */}
+      <select value={periodeGlobale} onChange={e => setPeriodeGlobale(e.target.value)} aria-label="Période"
+        style={{ ...heroBtn, padding: '6px 8px' }}>
+        {PERIODES.map(p => <option key={p.id} value={p.id} style={{ color: '#16233A' }}>{p.label}</option>)}
+      </select>
+      {/* Notifications */}
+      <button onClick={() => naviguer('alertes')} aria-label="Notifications" style={{ ...heroBtn, padding: 7 }}><Bell size={15} /></button>
       {chantiersFiltres.length > 0 && <button onClick={exporterCSV} style={heroBtn}><Download size={13} /> CSV</button>}
       <div style={{ display: 'flex', background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.18)', borderRadius: 8, overflow: 'hidden' }}>
         <button onClick={() => setVueMode('liste')} title="Vue liste"

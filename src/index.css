@@ -385,6 +385,11 @@ body {
 @media (max-width: 1100px) { .page-hero-bleed { margin: -24px -24px 20px; } }
 @media (max-width: 767px)  { .page-hero-bleed { margin: -12px -12px 16px; } }
 
+/* Pages avec hero bleu plein écran (liste Chantiers, …) : la barre blanche du
+   Topbar est masquée pour que le bleu monte jusqu'en haut. La vue détail
+   (ChantierDetail) démonte la liste → la classe part → le Topbar réapparaît. */
+body.hero-fullscreen .topbar { display: none !important; }
+
 /* ============================================================
    SIDEBAR
    ============================================================ */

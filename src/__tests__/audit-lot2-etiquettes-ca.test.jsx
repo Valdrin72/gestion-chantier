@@ -6,7 +6,7 @@
  * Tests RÉELS : vrais composants rendus via renderWithApp (aucun logic-mirror).
  */
 import { describe, it, expect, beforeAll, vi } from 'vitest';
-import { screen } from '@testing-library/react';
+import { screen, within } from '@testing-library/react';
 import { renderWithApp } from '../test-utils/renderWithApp';
 import { migrerJournalVersPointages } from '../migration/migrerJournalVersPointages';
 import Rapport from '../Rapport';
@@ -78,7 +78,9 @@ describe('Écrans du SIGNÉ : le label dit « CA signé », plus jamais « CA »
         contexte: {},
       },
     );
-    expect(screen.getByText('CA SIGNÉ CHANTIERS')).toBeInTheDocument();
+    // Design v1 : la tuile CA du hero Chantiers porte le label explicite « CA SIGNÉ »
+    // (règle 18 respectée — jamais « CA » nu).
+    expect(within(screen.getByTestId('kpi-ca-signé')).getByText('CA SIGNÉ')).toBeInTheDocument();
     expect(screen.queryByText('CA CHANTIERS')).toBeNull();
   });
 });

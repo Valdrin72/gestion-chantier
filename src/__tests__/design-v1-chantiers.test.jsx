@@ -45,6 +45,7 @@ function renderListe(over = {}) {
     parametres: { employes: [EMP], localites: [], parametres: { coefficientMainOeuvre: 1, tauxFraisGeneraux: 12 } },
     naviguer: vi.fn(), afficherNotif: vi.fn(), confirmer: vi.fn().mockResolvedValue(true),
     agentState: {}, periodeGlobale: 'annee', contexte: {}, ouvrirMenu: over.ouvrirMenu || vi.fn(),
+    setPeriodeGlobale: over.setPeriodeGlobale || vi.fn(),
   };
   return renderWithApp(
     <ChantiersListe chantiersFiltres={chantiers} chantiersArchives={[]} joursParChantier={{ CH1: 5, CH2: 2 }}
@@ -71,6 +72,27 @@ describe('HERO Chantiers — 4 chiffres réels + ☰', () => {
     renderListe({ ouvrirMenu });
     fireEvent.click(screen.getByRole('button', { name: /^Menu$/i }));
     expect(ouvrirMenu).toHaveBeenCalledOnce();
+  });
+
+  it('le hero intègre le sélecteur de période (plus de barre blanche au-dessus)', () => {
+    const { unmount } = renderListe();
+    // La liste active le mode « hero plein écran » → le Topbar blanc est masqué (CSS).
+    expect(document.body.classList.contains('hero-fullscreen')).toBe(true);
+    // Le sélecteur de période vit DANS le hero.
+    const hero = screen.getByTestId('hero-chantiers');
+    expect(within(hero).getByLabelText('Période')).toBeInTheDocument();
+    // La cloche notifications aussi.
+    expect(within(hero).getByRole('button', { name: /Notifications/i })).toBeInTheDocument();
+    unmount();
+    // Démontage (ex. passage à la fiche détail) → le Topbar peut réapparaître.
+    expect(document.body.classList.contains('hero-fullscreen')).toBe(false);
+  });
+
+  it('changer la période dans le hero appelle setPeriodeGlobale (logique inchangée)', () => {
+    const setPeriodeGlobale = vi.fn();
+    renderListe({ setPeriodeGlobale });
+    fireEvent.change(within(screen.getByTestId('hero-chantiers')).getByLabelText('Période'), { target: { value: 'semaine' } });
+    expect(setPeriodeGlobale).toHaveBeenCalledWith('semaine');
   });
 });
 

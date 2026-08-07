@@ -9,6 +9,7 @@
 import React, { useState, useMemo } from 'react';
 import { FileDown, Download, HardHat } from 'lucide-react';
 import { DS } from './ds';
+import { mono, RYTHME } from './design/v1';
 import { useApp } from './context/AppContext';
 import { exportCSV } from './utils/exportCSV';
 import { fmtN, getIntervallesPeriode, facturesInPeriode, genererNumeroFacture, calculerStatutFacture, calculerCAForfait, tauxTVAParam, tauxDocumentFige } from './donnees';
@@ -119,7 +120,7 @@ function KpiCard({ label, value, couleur, icon, sous }) {
 }
 
 // ── COMPOSANT PRINCIPAL ──────────────────────────────────────
-export default function Factures({ profil, clients = [], chantiers = [], devis = [], factures = [], onSave, naviguer, hideHeader = false, periodeGlobale = 'mois', parametres = null, preRemplir = null, onConsumePreRemplir = null }) {
+export default function Factures({ profil, clients = [], chantiers = [], devis = [], factures = [], onSave, naviguer, hideHeader = false, periodeGlobale = 'mois', parametres = null, preRemplir = null, onConsumePreRemplir = null, nouvelleFactureSignal = 0 }) {
   const { pointages = [] } = useApp();
   const [vue, setVue] = useState('liste');   // 'liste' | 'form' | 'detail'
   const [selected, setSelected] = useState(null);
@@ -164,6 +165,12 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
     onConsumePreRemplir?.();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [preRemplir]);
+
+  // Ouverture du formulaire vierge « Nouvelle facture » demandée depuis le hero (FinancesPage).
+  React.useEffect(() => {
+    if (nouvelleFactureSignal > 0) ouvrirForm();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nouvelleFactureSignal]);
 
   const canEdit = ['cyna', 'cynatech'].includes(profil?.id);
 
@@ -483,22 +490,18 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
           </div>
         </div>
       )}
-      {hideHeader && canEdit && (
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 20 }}>
-          <button style={S.btnPrimary} onClick={() => ouvrirForm()}>+ Nouvelle facture</button>
+      {/* KPIs internes — masqués dans Finances (hideHeader) : le hero porte déjà les 4 chiffres. */}
+      {!hideHeader && (
+        <div style={{ display: 'flex', gap: 16, marginBottom: 24, flexWrap: 'wrap' }}>
+          <KpiCard label="Total facturé"  value={`${fmt(kpis.totalFacture)} CHF`}  couleur="#0d3d6e" icon="doc" />
+          <KpiCard label="Payé"           value={`${fmt(kpis.totalEncaisse)} CHF`} couleur="#10b981" icon="" />
+          <KpiCard label="En retard"      value={`${fmt(kpis.totalRetard)} CHF`}   couleur="#ef4444" icon="" />
+          <KpiCard label="Brouillons"     value={kpis.nbBrouillon}                 couleur="#8b5cf6" icon="edit" />
         </div>
       )}
 
-      {/* KPIs */}
-      <div style={{ display: 'flex', gap: 16, marginBottom: 24, flexWrap: 'wrap' }}>
-        <KpiCard label="Total facturé"  value={`${fmt(kpis.totalFacture)} CHF`}  couleur="#0d3d6e" icon="doc" />
-        <KpiCard label="Payé"           value={`${fmt(kpis.totalEncaisse)} CHF`} couleur="#10b981" icon="" />
-        <KpiCard label="En retard"      value={`${fmt(kpis.totalRetard)} CHF`}   couleur="#ef4444" icon="" />
-        <KpiCard label="Brouillons"     value={kpis.nbBrouillon}                 couleur="#8b5cf6" icon="edit" />
-      </div>
-
-      {/* Filtres */}
-      <div style={{ display: 'flex', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
+      {/* Filtres — barre v1 (recherche + statut + type) */}
+      <div style={{ display: 'flex', gap: 12, marginBottom: RYTHME.entreCartes, flexWrap: 'wrap', alignItems: 'center' }}>
         <input
           placeholder="Rechercher (numéro, client, objet)…"
           value={recherche}
@@ -548,7 +551,7 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
                     style={{ cursor: 'pointer', animationDelay: `${idx * 35}ms` }}
                     onClick={() => voirDetail(f)}>
                     <td style={S.td}>
-                      <span style={{ fontWeight: 700, color: '#0d3d6e', letterSpacing: '-0.2px' }}>{f.numero}</span>
+                      <span style={{ ...mono(13, '#1E5FAF', 600) }}>{f.numero}</span>
                     </td>
                     <td style={S.td}>
                       {(client?.entreprise || client?.nom)
@@ -565,14 +568,14 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
                       {f.dateEcheance || '—'}
                       {f.statut === 'retard' && <div style={{ fontSize: 10, color: '#ef4444', fontWeight: 700, marginTop: 1 }}>EN RETARD</div>}
                     </td>
-                    <td style={{ ...S.td, fontWeight: 700, fontSize: 15 }}>{fmt(f.montantTTC)} <span style={{ fontSize: 11, fontWeight: 500, color: 'var(--text-muted)' }}>CHF</span></td>
-                    <td style={S.td}>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: restant > 0.01 ? '#f59e0b' : '#10b981', marginBottom: 4 }}>
+                    <td style={{ ...S.td, textAlign: 'right' }}><span style={{ ...mono(14, 'var(--text-primary)', 600) }}>{fmt(f.montantTTC)}</span> <span style={{ fontSize: 11, fontWeight: 500, color: 'var(--text-muted)' }}>CHF</span></td>
+                    <td style={{ ...S.td, textAlign: 'right' }}>
+                      <div style={{ ...mono(13, restant > 0.01 ? '#f59e0b' : '#10b981', 600), marginBottom: 4 }}>
                         {fmt(f.montantPaye)} CHF
                       </div>
                       {(f.montantTTC ?? 0) > 0 && (
-                        <div style={{ height: 5, background: 'rgba(255,255,255,0.07)', borderRadius: 4, overflow: 'hidden', width: 90 }}>
-                          <div style={{ height: '100%', width: `${pctPaye}%`, background: `linear-gradient(90deg, ${couleurBar}, ${couleurBar}cc)`, borderRadius: 4, boxShadow: `0 0 6px ${couleurBar}55`, transition: 'width 0.4s ease' }} />
+                        <div style={{ height: 5, background: 'var(--separation, #EEF1F5)', borderRadius: 4, overflow: 'hidden', width: 90, marginLeft: 'auto' }}>
+                          <div style={{ height: '100%', width: `${pctPaye}%`, background: couleurBar, borderRadius: 4, transition: 'width 0.4s ease' }} />
                         </div>
                       )}
                     </td>

@@ -1,152 +1,123 @@
 import React, { useMemo } from 'react';
-import { AlertTriangle, TrendingUp, ChevronRight } from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
 import { fmtN, calculerCA } from '../../donnees';
 import { useApp } from '../../context/AppContext';
+import { V1, mono, carteV1, barreProgression, pastille } from '../../design/v1';
 
-const COLONNES = [
-  { statut: 'Planifié',  couleur: '#3b82f6', bg: 'rgba(59,130,246,0.08)' },
-  { statut: 'En cours',  couleur: '#10b981', bg: 'rgba(16,185,129,0.08)' },
-  { statut: 'Suspendu',  couleur: '#f59e0b', bg: 'rgba(245,158,11,0.08)' },
-  { statut: 'Attente paiement', couleur: '#b45309', bg: 'rgba(180,83,9,0.08)' },
-  { statut: 'Terminé',   couleur: '#6b7280', bg: 'rgba(107,114,128,0.08)' },
-  { statut: 'Facturé',   couleur: '#8b5cf6', bg: 'rgba(139,92,246,0.08)' },
-  { statut: 'Clôturé',   couleur: '#475569', bg: 'rgba(71,85,105,0.08)' },
-];
+// Couleurs d'état C8 — cohérentes avec le socle v1 et la vue Liste.
+// (Planifié gris · En cours bleu · Suspendu ambre · Attente paiement ambre foncé ·
+//  Terminé vert · Facturé bleu clair · Clôturé gris foncé.)
+const STATUT_COULEUR = {
+  'Planifié':          V1.texteMuted,
+  'En cours':          V1.bleu,
+  'Suspendu':          V1.warn,
+  'Attente paiement':  '#B45309',
+  'Terminé':           V1.ok,
+  'Facturé':           V1.bleuMoyen,
+  'Clôturé':           '#475569',
+};
+// Ordre des colonnes (identique à l'ancien — répartition inchangée).
+const COLONNES = ['Planifié', 'En cours', 'Suspendu', 'Attente paiement', 'Terminé', 'Facturé', 'Clôturé'];
+
+function couleurEtat(statut) {
+  return STATUT_COULEUR[(statut || '').trim()] || V1.texteMuted;
+}
 
 function KanbanCard({ c, etatC, decision, onSelect }) {
   const { clients, devis } = useApp();
   const client = clients.find(cl => String(cl.id) === String(c.clientId));
   const ca = calculerCA(c, devis);
   const avancePct = Math.min(100, Math.max(0, etatC.avancementPct || 0));
-  const initiales = (c.nom || '').split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase();
+  const accent = couleurEtat(c.statut);
+  const barre = barreProgression(avancePct, decision.couleur);
+  const clientNom = client?.entreprise || client?.nom || '—';
+  const lieu = c.ville || c.localite || '';
+
+  // Verdict perte / bénéfice — même source que la vue Liste (marge projetée).
+  const pct = etatC.margeProjeteePct;
+  const verdict = pct == null ? null
+    : pct < 0    ? { txt: 'PERTE',    couleur: V1.danger }
+    : pct >= 15  ? { txt: 'BÉNÉFICE', couleur: V1.ok }
+    :              { txt: `${pct}%`,  couleur: V1.warn };
 
   return (
     <div
       onClick={() => onSelect(c)}
+      role="button" tabIndex={0}
       style={{
-        background: 'var(--ds-card-bg)',
-        border: `1px solid var(--ds-card-border)`,
-        borderLeft: `3px solid ${decision.couleur}`,
-        borderRadius: 10,
-        padding: '12px 14px',
-        cursor: 'pointer',
+        ...carteV1, padding: '11px 13px', borderRadius: 10,
+        borderTop: `2px solid ${accent}`,
+        cursor: 'pointer', userSelect: 'none',
         transition: 'box-shadow 0.15s, transform 0.1s',
-        boxShadow: '0 1px 4px rgba(0,0,0,0.07)',
-        userSelect: 'none',
       }}
       onMouseEnter={e => {
-        e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.12)';
+        e.currentTarget.style.boxShadow = '0 4px 16px rgba(16,38,73,0.12)';
         e.currentTarget.style.transform = 'translateY(-1px)';
       }}
       onMouseLeave={e => {
-        e.currentTarget.style.boxShadow = '0 1px 4px rgba(0,0,0,0.07)';
+        e.currentTarget.style.boxShadow = carteV1.boxShadow;
         e.currentTarget.style.transform = 'translateY(0)';
       }}
     >
-      {/* Header: initiales + nom */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 9, marginBottom: 9 }}>
-        <div style={{
-          width: 30, height: 30, borderRadius: 7, flexShrink: 0,
-          background: decision.couleur + '22', border: `1px solid ${decision.couleur}40`,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 11, fontWeight: 800, color: decision.couleur,
-        }}>{initiales}</div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', lineHeight: 1.3 }}>
-            {c.nom}
-          </div>
-          <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {client?.entreprise || client?.nom || '—'}
-          </div>
-        </div>
+      {/* Nom (Inter, 1 ligne tronquée) */}
+      <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 13, fontWeight: 700, color: V1.texte, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', lineHeight: 1.3 }}>
+        {c.nom}
+      </div>
+      {/* Ligne mono : CLIENT · LIEU */}
+      <div style={{ ...mono(10, V1.texteMuted), marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        {clientNom.toUpperCase()}{lieu ? ` · ${String(lieu).toUpperCase()}` : ''}
       </div>
 
-      {/* Barre avancement */}
-      <div style={{ marginBottom: 8 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
-          <span style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 600 }}>Avancement</span>
-          <span style={{ fontSize: 10, fontWeight: 700, color: decision.couleur }}>{avancePct}%</span>
+      {/* Avancement + barre 4px colorée par l'état (santé) */}
+      <div style={{ marginTop: 9 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+          <span style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: V1.texteMuted }}>Avancement</span>
+          <span style={mono(11, decision.couleur, 600)}>{avancePct}%</span>
         </div>
-        <div style={{ height: 4, borderRadius: 2, background: 'var(--border)', overflow: 'hidden' }}>
-          <div style={{ height: '100%', width: `${avancePct}%`, background: decision.couleur, borderRadius: 2, transition: 'width 0.3s' }} />
-        </div>
+        <div style={{ ...barre.piste, height: 4 }}><div style={barre.remplissage} /></div>
       </div>
 
-      {/* Infos bas: CA + badge décision */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, flexWrap: 'wrap' }}>
-        {ca !== null ? (
-          <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 3 }}>
-            <TrendingUp size={9} />
-            CHF {fmtN(Math.round(ca))}
-          </span>
-        ) : (
-          <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>—</span>
-        )}
-        {decision.niveau !== 'ok' && (
+      {/* Pied : filet fin + montant mono + badge verdict */}
+      <div style={{ marginTop: 10, paddingTop: 9, borderTop: `1px solid ${V1.separation}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
+        <span style={mono(11, ca !== null ? V1.texte : V1.texteMuted, 500)}>
+          {ca !== null ? `CHF ${fmtN(Math.round(ca))}` : '—'}
+        </span>
+        {verdict && (
           <span style={{
-            fontSize: 9, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 3,
-            background: decision.couleur + '18', color: decision.couleur,
-            border: `1px solid ${decision.couleur}35`, borderRadius: 20, padding: '2px 7px', whiteSpace: 'nowrap',
-          }}>
-            {decision.niveau === 'critique' && <AlertTriangle size={8} />}
-            {decision.label}
-          </span>
+            ...mono(9, verdict.couleur, 700),
+            background: verdict.couleur + '18', border: `1px solid ${verdict.couleur}30`,
+            borderRadius: 6, padding: '2px 7px', whiteSpace: 'nowrap', letterSpacing: '0.04em',
+          }}>{verdict.txt}</span>
         )}
       </div>
-
-      {/* Référence */}
-      {c.numero && (
-        <div style={{ marginTop: 7, paddingTop: 7, borderTop: '1px solid var(--ds-card-border)', fontSize: 9, color: 'var(--text-muted)', fontWeight: 600, letterSpacing: '0.4px' }}>
-          {c.numero}
-        </div>
-      )}
     </div>
   );
 }
 
-function ColonneKanban({ cfg, items, onSelect }) {
+function ColonneKanban({ statut, items, onSelect }) {
+  const couleur = couleurEtat(statut);
   const nb = items.length;
   return (
-    <div style={{
-      flexShrink: 0,
-      width: 220,
-      display: 'flex',
-      flexDirection: 'column',
-      gap: 0,
-    }}>
-      {/* En-tête colonne */}
+    <div style={{ flexShrink: 0, width: 224, display: 'flex', flexDirection: 'column' }}>
+      {/* En-tête colonne : pastille d'état + nom + compteur mono */}
       <div style={{
-        background: cfg.bg,
-        border: `1px solid ${cfg.couleur}30`,
+        display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px',
+        background: V1.carte, border: `1px solid ${V1.separation}`, borderTop: `2px solid ${couleur}`,
         borderRadius: '10px 10px 0 0',
-        padding: '10px 14px',
-        display: 'flex', alignItems: 'center', gap: 8,
-        borderBottom: `2px solid ${cfg.couleur}`,
       }}>
-        <div style={{ width: 10, height: 10, borderRadius: '50%', background: cfg.couleur, flexShrink: 0 }} />
-        <span style={{ fontSize: 12, fontWeight: 700, color: cfg.couleur, flex: 1 }}>{cfg.statut}</span>
-        <span style={{
-          fontSize: 11, fontWeight: 800, color: '#fff',
-          background: nb > 0 ? cfg.couleur : 'var(--text-muted)',
-          borderRadius: 20, padding: '1px 7px', minWidth: 20, textAlign: 'center',
-        }}>{nb}</span>
+        <span style={pastille(couleur)} />
+        <span style={{ fontFamily: "'Inter', sans-serif", fontSize: 12, fontWeight: 700, color: V1.texte, flex: 1 }}>{statut}</span>
+        <span style={{ ...mono(11, V1.texteMuted, 600), background: V1.bleuFond, borderRadius: 20, padding: '1px 8px', minWidth: 20, textAlign: 'center' }}>{nb}</span>
       </div>
 
       {/* Corps colonne */}
       <div style={{
-        background: cfg.bg,
-        border: `1px solid ${cfg.couleur}20`,
-        borderTop: 'none',
-        borderRadius: '0 0 10px 10px',
-        padding: '8px',
-        display: 'flex', flexDirection: 'column', gap: 8,
-        minHeight: 120,
-        flex: 1,
+        background: V1.page, border: `1px solid ${V1.separation}`, borderTop: 'none',
+        borderRadius: '0 0 10px 10px', padding: 8,
+        display: 'flex', flexDirection: 'column', gap: 8, minHeight: 120, flex: 1,
       }}>
         {nb === 0 ? (
-          <div style={{ fontSize: 11, color: 'var(--text-muted)', textAlign: 'center', padding: '20px 8px', fontStyle: 'italic' }}>
-            Aucun chantier
-          </div>
+          <div style={{ fontSize: 18, color: V1.texteMuted, textAlign: 'center', padding: '18px 8px', opacity: 0.5 }}>—</div>
         ) : (
           items.map(({ c, etatC, decision }) => (
             <KanbanCard key={c.id} c={c} etatC={etatC} decision={decision} onSelect={onSelect} />
@@ -165,9 +136,9 @@ export default function KanbanChantiers({ scored, onSelect }) {
       if (!statutsMap[s]) statutsMap[s] = [];
       statutsMap[s].push(item);
     }
-    return COLONNES.map(cfg => ({
-      cfg,
-      items: statutsMap[cfg.statut] || [],
+    return COLONNES.map(statut => ({
+      statut,
+      items: statutsMap[statut] || [],
     }));
   }, [scored]);
 
@@ -178,14 +149,14 @@ export default function KanbanChantiers({ scored, onSelect }) {
   return (
     <div>
       {nbAutres > 0 && (
-        <div style={{ marginBottom: 12, fontSize: 12, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 5 }}>
+        <div style={{ marginBottom: 12, ...mono(11, V1.texteMuted), display: 'flex', alignItems: 'center', gap: 5 }}>
           <ChevronRight size={12} />
           {nbAutres} chantier{nbAutres > 1 ? 's' : ''} avec statut non standard non affichés en Kanban.
         </div>
       )}
       <div style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 12, alignItems: 'flex-start' }}>
-        {colonnesData.map(({ cfg, items }) => (
-          <ColonneKanban key={cfg.statut} cfg={cfg} items={items} onSelect={onSelect} />
+        {colonnesData.map(({ statut, items }) => (
+          <ColonneKanban key={statut} statut={statut} items={items} onSelect={onSelect} />
         ))}
       </div>
     </div>

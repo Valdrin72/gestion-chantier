@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { DS } from '../../ds';
+import { V1 } from '../../design/v1';
 import { useApp } from '../../context/AppContext';
 import { usePointages } from '../../hooks/usePointages';
 import LigneRepartition from './LigneRepartition';
@@ -261,7 +262,7 @@ export default function PointageFormulaire({ onSaved, initialDate, initialEmploy
           <button
             type="button"
             onClick={ajouterLigne}
-            style={{ ...DS.btnGhost, marginTop: '4px', fontSize: '12px', padding: '6px 12px' }}
+            style={{ ...DS.btnGhost, marginTop: '4px', fontSize: '12px', padding: '6px 12px', color: V1.bleu, border: `1px solid ${V1.bleu}40`, background: V1.bleu + '0d' }}
           >
             + Ajouter un chantier
           </button>

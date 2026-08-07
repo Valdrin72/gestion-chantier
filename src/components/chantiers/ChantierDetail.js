@@ -1,19 +1,20 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useLayoutEffect } from 'react';
 import {
   HardHat, Pencil, Trash2, AlertTriangle, CheckCircle,
   ChevronRight, ChevronDown, ChevronUp, DollarSign, Clock,
-  TrendingUp, Activity, CalendarDays, Info, Eye, PlayCircle,
+  TrendingUp, Activity, CalendarDays, Info, Eye, PlayCircle, Menu,
 } from 'lucide-react';
 import {
-  fmtN, calculerDateFinOuvrables,
-  getChantierStatus, C,
+  fmtN, calculerDateFinOuvrables, C,
   assertEtatValide, assertEtatCoherent,
   sommeAvenants, calculerCA, calculerCAForfait, isChantierActif, tauxTVAParam,
   calculerVitesseChantier, montantPayeChantier, resteDuChantier,
 } from '../../donnees';
-import { DS, couleurStatut as couleurStatutDS } from '../../ds';
+import { DS, badgeStatut } from '../../ds';
+import { CoutBadge } from '../SharedBadges';
+import { mono, heroFond, heroMono } from '../../design/v1';
+import useIsMobile from '../../hooks/useIsMobile';
 import { STATUTS_CLOS, STATUT_ATTENTE_PAIEMENT, estEnAttentePaiement } from '../../constants/statuts';
-import { Badge, CoutBadge, BarreAvancement, BadgeRentabilite } from '../SharedBadges';
 import { useApp } from '../../context/AppContext';
 import { joursReelsChantier } from '../../calculs/pointagesHelper';
 import { useChantierCalculs } from '../../hooks/useChantierCalculs';
@@ -36,14 +37,19 @@ function IconeCode({ code, size = 14, color = 'currentColor', style }) {
 }
 
 const carteStyle = DS.card;
-const btnPrimaire = DS.btnPrimary;
-const btnSucces = DS.btnSuccess;
-const btnDanger = DS.btnDanger;
+
+// Bouton translucide du hero bleu nuit (mêmes tokens que la liste Chantiers).
+const heroBtn = { background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.18)', borderRadius: 8, padding: '6px 11px', cursor: 'pointer', color: '#fff', display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: 'inherit', fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap' };
 
 function ChantierDetail({ chantier, detailOnglet, setDetailOnglet, modeCompleter, onRetour, onModifier, onSupprimer, onPasserEnCours }) {
-  const { factures = [], clients, devis = [], parametres, setChantiers, naviguer, ouvrirSaisieHeures, agentState, confirmer, afficherNotif, pointages = [] } = useApp();
+  const { factures = [], clients, devis = [], parametres, setChantiers, naviguer, ouvrirSaisieHeures, agentState, confirmer, afficherNotif, pointages = [], ouvrirMenu } = useApp();
   const { etat, couts } = useChantierCalculs(chantier);
-  const couleurStatut = couleurStatutDS;
+  const isMobile = useIsMobile();
+  // La fiche passe en « hero plein écran » → le Topbar blanc est masqué (CSS), comme la liste.
+  useLayoutEffect(() => {
+    document.body.classList.add('hero-fullscreen');
+    return () => document.body.classList.remove('hero-fullscreen');
+  }, []);
   // Détail employé/sous-calculs replié par défaut (Lot 3) — état local, pas de localStorage.
   const [detailOuvert, setDetailOuvert] = useState(false);
 
@@ -174,7 +180,6 @@ function ChantierDetail({ chantier, detailOnglet, setDetailOnglet, modeCompleter
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [c, etat, devis, joursRestants]);
 
-  const chantierStatusBadge = ['en cours', 'suspendu'].includes((c.statut || '').toLowerCase()) ? getChantierStatus(c) : null;
   const devisSource = devis.find(d => String(d.id) === String(c.devisId));
   const estNouveauPlanifie = modeCompleter && (c.statut || '').toLowerCase() === 'planifié';
 
@@ -222,8 +227,147 @@ function ChantierDetail({ chantier, detailOnglet, setDetailOnglet, modeCompleter
     { id: 'plan',  icone: 'plan', titre: 'PLANNING',    ...planTile,  desc: 'Jours prévus − jours réalisés (journal)' },
   ];
 
+  // ── LE VERDICT (hero) — même logique métier, juste mise en avant ──
+  // Couleurs claires lisibles sur fond bleu nuit.
+  const HERO_OK = '#4ADE80', HERO_DANGER = '#FF7A6B', HERO_WARN = '#F5B14A', HERO_MUTED = 'rgba(255,255,255,0.55)';
+  const verdict = (() => {
+    // C10 — chantier terminé : bilan réel (marge réelle vs prévue au devis).
+    if (estTermine && couts.margeReel !== null && couts.margePrevu !== null) {
+      const gagne = couts.margeReel >= 0;
+      return {
+        titre: gagne ? 'BÉNÉFICE RÉALISÉ' : 'PERTE RÉELLE',
+        montant: `${gagne ? '+' : '−'}CHF ${fmtK(Math.abs(Math.round(couts.margeReel)))}`,
+        couleur: gagne ? HERO_OK : HERO_DANGER,
+        sous: couts.margeActuellePct !== null ? `Rentabilité finale ${couts.margeActuellePct}% · chantier bouclé` : 'Chantier bouclé',
+      };
+    }
+    // Projection en cours de chantier.
+    if (etat.projectionDisponible && etat.margeProjeteePct !== null) {
+      const gagne = etat.margeEstimee >= 0;
+      const pct = Math.round(etat.margeProjeteePct * 10) / 10;
+      const couleur = etat.margeEstimee < 0 ? HERO_DANGER : etat.margeProjeteePct <= 10 ? HERO_WARN : HERO_OK;
+      return {
+        titre: gagne ? 'BÉNÉFICE ESTIMÉ À LA FIN' : 'PERTE ESTIMÉE À LA FIN',
+        montant: `${gagne ? '+' : '−'}CHF ${fmtK(Math.abs(Math.round(etat.margeEstimee)))}`,
+        couleur,
+        sous: `Coûtera au total CHF ${fmtK(etat.coutFinalEstime)} · rentabilité ${pct}%`,
+      };
+    }
+    // Trop tôt / non démarré : pas de chiffre, message sobre.
+    return {
+      titre: 'PROJECTION',
+      montant: etat.totalJoursReels > 0 ? 'Bientôt disponible' : 'Chantier non démarré',
+      couleur: HERO_MUTED,
+      sous: etat.totalJoursReels > 0 ? 'Fiable dès 20% d\'avancement' : 'Saisir la première journée',
+      petit: true,
+    };
+  })();
+
+  const bs = badgeStatut(c.statut);
+  const clientNom = client ? (client.entreprise || `${client.prenom || ''} ${client.nom || ''}`.trim()) : null;
+  const onglets = [
+    { id: 'analyse',   label: 'Analyse' },
+    { id: 'financier', label: 'Financier' },
+    { id: 'detail',    label: 'Détail' },
+  ];
+
   return (<React.Fragment key="detail">
     <div>
+      {/* ══ HERO BLEU NUIT (design v1, bord à bord, collé au sommet) ══ */}
+      <div className="page-hero-bleed" data-testid="hero-chantier"
+        style={{ ...heroFond, padding: isMobile ? '16px 16px 0' : '20px 32px 0', position: 'relative' }}>
+
+        {/* Ligne 1 — ☰ · CYNA · CHANTIER · numéro · retour + actions */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18, flexWrap: 'wrap' }}>
+          {ouvrirMenu && (
+            <button onClick={ouvrirMenu} aria-label="Menu" style={{ ...heroBtn, padding: 7 }}><Menu size={16} /></button>
+          )}
+          <span style={{ fontFamily: "'Inter', sans-serif", fontWeight: 800, fontSize: 15, letterSpacing: '0.06em', color: '#fff' }}>CYNA</span>
+          <span style={heroMono(10, 0.55)}>· CHANTIER · {c.numero || '—'}</span>
+          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <button onClick={onRetour} style={heroBtn}><ChevronRight size={13} style={{ transform: 'rotate(180deg)' }} /> Retour</button>
+            {!estNouveauPlanifie && (
+              <button onClick={() => onModifier(c)} style={heroBtn}><Pencil size={13} /> Modifier</button>
+            )}
+            {c.devisId && !isChantierActif(c) && !STATUTS_CLOS.includes(c.statut) && (
+              <button onClick={() => onPasserEnCours(c)} style={heroBtn}><PlayCircle size={13} /> Passer en cours</button>
+            )}
+            {isChantierActif(c) && (
+              <button onClick={() => ouvrirSaisieHeures(c)} style={heroBtn}><Clock size={13} /> Saisir heures</button>
+            )}
+            {/* C8 état 1 → 2 : le patron marque les travaux finis — logique STRICTEMENT inchangée. */}
+            {isChantierActif(c) && (
+              <button
+                onClick={async () => {
+                  if (confirmer && !await confirmer(`Marquer les travaux de « ${c.nom || c.numero} » comme terminés ?\n\nLe chantier passera en « Attente paiement » jusqu'à l'encaissement complet des factures.`, { labelOui: 'Travaux terminés' })) return;
+                  if (setChantiers) setChantiers(prev => prev.map(ch => String(ch.id) === String(c.id) ? { ...ch, statut: STATUT_ATTENTE_PAIEMENT, dateFinTravaux: new Date().toISOString().slice(0, 10) } : ch));
+                  if (afficherNotif) afficherNotif('Travaux terminés — chantier en attente de paiement');
+                }}
+                style={{ ...heroBtn, background: 'rgba(245,177,74,0.22)', border: '1px solid rgba(245,177,74,0.55)', color: '#F5B14A', fontWeight: 700 }}
+              ><CheckCircle size={13} /> Travaux terminés</button>
+            )}
+            <button onClick={() => naviguer('finances', { chantierActif: c.id })} style={heroBtn}><DollarSign size={13} /> Finances</button>
+            <button onClick={() => onSupprimer(c.id)} style={{ ...heroBtn, color: '#FF7A6B' }}><Trash2 size={13} /> Supprimer</button>
+          </div>
+        </div>
+
+        {/* Ligne 2 — nom + ligne mono (lieu · client · état · retard) */}
+        <h1 style={{ fontFamily: "'Inter', sans-serif", fontWeight: 700, fontSize: isMobile ? 24 : 32, margin: '0 0 8px', letterSpacing: '-0.02em', color: '#fff' }}>{c.nom || 'Chantier'}</h1>
+        <div style={{ ...heroMono(11, 0.7), display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          {(c.ville || c.adresse) && <span>{String(c.ville || c.adresse).toUpperCase()}</span>}
+          {clientNom && <><span style={{ opacity: 0.4 }}>·</span><span>{clientNom.toUpperCase()}</span></>}
+          <span style={{ opacity: 0.4 }}>·</span>
+          <span style={{ background: bs.bg, color: bs.color, borderRadius: 5, padding: '2px 8px', fontWeight: 600 }}>{(c.statut || '—').toUpperCase()}</span>
+          {joursRestants !== null && joursRestants < 0 && (
+            <><span style={{ opacity: 0.4 }}>·</span><span style={{ color: HERO_DANGER, fontWeight: 700 }}>{perfMessageCourt.toUpperCase()}</span></>
+          )}
+        </div>
+
+        {/* Ligne 3 — 3 indicateurs (colonnes séparées par filets) + VERDICT à droite */}
+        <div style={{ marginTop: 22, display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: isMobile ? 16 : 0, alignItems: 'stretch' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 0, flex: isMobile ? 'none' : '1 1 0' }}>
+            {tiles.map((t, i) => (
+              <div key={t.id} data-testid={`hero-ind-${t.id}`} style={{ padding: isMobile ? '0 4px' : '0 18px', borderLeft: i === 0 || isMobile ? 'none' : '1px solid rgba(255,255,255,0.12)' }}>
+                <div style={heroMono(9, 0.55)}>{t.titre}</div>
+                <div style={{ ...mono(isMobile ? 18 : 22, t.couleur, 500), lineHeight: 1.1, marginTop: 5 }}>{t.val}</div>
+                <div style={{ ...heroMono(9, 0.5), marginTop: 3 }}>{t.label}</div>
+              </div>
+            ))}
+          </div>
+          <div data-testid="hero-verdict" style={{
+            flex: isMobile ? 'none' : '1.1 1 0',
+            paddingLeft: isMobile ? 0 : 24, marginLeft: isMobile ? 0 : 8,
+            borderLeft: isMobile ? 'none' : '1px solid rgba(255,255,255,0.12)',
+            borderTop: isMobile ? '1px solid rgba(255,255,255,0.12)' : 'none',
+            paddingTop: isMobile ? 14 : 0,
+            display: 'flex', flexDirection: 'column', justifyContent: 'center',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              {verdict.couleur === HERO_DANGER && <AlertTriangle size={12} color={HERO_DANGER} strokeWidth={2.5} />}
+              <span style={{ ...heroMono(9, 1), color: verdict.couleur, letterSpacing: '0.1em', fontWeight: 700 }}>{verdict.titre}</span>
+            </div>
+            <div data-testid="verdict-montant" style={{ ...mono(verdict.petit ? 20 : (isMobile ? 30 : 40), verdict.couleur, 600), lineHeight: 1.05, marginTop: 6, letterSpacing: '-0.02em' }}>{verdict.montant}</div>
+            <div style={{ ...heroMono(11, 0.62), marginTop: 8 }}>{verdict.sous}</div>
+          </div>
+        </div>
+
+        {/* Ligne 4 — onglets (Analyse / Financier / Détail), collés au bas du hero */}
+        <div style={{ display: 'flex', gap: 2, marginTop: 22, overflowX: 'auto', scrollbarWidth: 'none' }}>
+          {onglets.map(o => {
+            const actif = detailOnglet === o.id;
+            return (
+              <button key={o.id} onClick={() => setDetailOnglet(o.id)} style={{
+                background: 'transparent', border: 'none',
+                borderBottom: actif ? '2px solid #fff' : '2px solid transparent',
+                color: actif ? '#fff' : 'rgba(255,255,255,0.6)',
+                padding: '10px 18px', cursor: 'pointer', fontFamily: 'inherit',
+                fontSize: 14, fontWeight: actif ? 700 : 500, whiteSpace: 'nowrap', flexShrink: 0,
+              }}>{o.label}</button>
+            );
+          })}
+        </div>
+      </div>
+
       {modeChantier === 'INIT' && patternChantier && Math.abs(patternChantier.ecartMoyen) >= 1 && (() => {
         const ca = calculerCA(c, devis);
         const budgetSuggere = ca !== null ? Math.round(ca * (1 + patternChantier.ecartMoyen / 100)) : null;
@@ -252,53 +396,6 @@ function ChantierDetail({ chantier, detailOnglet, setDetailOnglet, modeCompleter
           ><Pencil size={14} /> Compléter le chantier</button>
         </div>
       )}
-
-      <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', flexWrap: 'wrap' }}>
-        <button onClick={onRetour} style={btnPrimaire}><ChevronRight size={15} style={{ transform: 'rotate(180deg)' }} /> Retour</button>
-        {!estNouveauPlanifie && (
-          <button onClick={() => onModifier(c)} style={btnSucces}><Pencil size={15} /> Modifier</button>
-        )}
-        {c.devisId && !isChantierActif(c) && !STATUTS_CLOS.includes(c.statut) && (
-          <button
-            onClick={() => onPasserEnCours(c)}
-            style={{ ...btnSucces, background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.4)', color: '#f59e0b', display: 'inline-flex', alignItems: 'center', gap: 6 }}
-          ><PlayCircle size={15} /> Passer en cours</button>
-        )}
-        {isChantierActif(c) && (
-          <button
-            onClick={() => ouvrirSaisieHeures(c)}
-            style={{ ...btnPrimaire, background: 'linear-gradient(135deg, #7c3aed, #6d28d9)', border: '1px solid #7c3aed55' }}
-          ><Clock size={15} /> Saisir heures</button>
-        )}
-        {/* C8 état 1 → 2 : le patron marque les travaux finis (le chantier attend son argent) */}
-        {isChantierActif(c) && (
-          <button
-            onClick={async () => {
-              if (confirmer && !await confirmer(`Marquer les travaux de « ${c.nom || c.numero} » comme terminés ?\n\nLe chantier passera en « Attente paiement » jusqu'à l'encaissement complet des factures.`, { labelOui: 'Travaux terminés' })) return;
-              if (setChantiers) setChantiers(prev => prev.map(ch => String(ch.id) === String(c.id) ? { ...ch, statut: STATUT_ATTENTE_PAIEMENT, dateFinTravaux: new Date().toISOString().slice(0, 10) } : ch));
-              if (afficherNotif) afficherNotif('Travaux terminés — chantier en attente de paiement');
-            }}
-            style={{ ...btnSucces, background: 'rgba(180,83,9,0.15)', border: '1px solid rgba(180,83,9,0.4)', color: '#b45309', display: 'inline-flex', alignItems: 'center', gap: 6 }}
-          ><CheckCircle size={15} /> Travaux terminés</button>
-        )}
-        <button onClick={() => naviguer('finances', { chantierActif: c.id })} style={{ ...DS.btnGhost }}><DollarSign size={15} /> Finances</button>
-        <button onClick={() => onSupprimer(c.id)} style={btnDanger}><Trash2 size={14} /> Supprimer</button>
-      </div>
-
-      <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', marginBottom: 20 }}>
-        {[
-          { id: 'analyse',   label: 'Analyse' },
-          { id: 'financier', label: 'Financier' },
-        ].map(o => (
-          <button key={o.id} onClick={() => setDetailOnglet(o.id)} style={{
-            background: 'transparent', border: 'none',
-            borderBottom: detailOnglet === o.id ? '2px solid #0d3d6e' : '2px solid transparent',
-            color: detailOnglet === o.id ? '#0d3d6e' : 'var(--text-secondary)',
-            padding: '10px 18px', marginBottom: '-1px',
-            cursor: 'pointer', fontSize: 14, fontWeight: detailOnglet === o.id ? 700 : 400,
-          }}>{o.label}</button>
-        ))}
-      </div>
 
       {/* ── C8 état 2 : travaux terminés — l'argent n'est pas (tout) rentré ── */}
       {enAttentePaiement && resteDu > 0.01 && (
@@ -353,35 +450,6 @@ function ChantierDetail({ chantier, detailOnglet, setDetailOnglet, modeCompleter
           </div>
         </div>
       )}
-
-      <div style={{ display: 'grid', gridTemplateColumns: 'var(--g3)', gap: 10, marginBottom: 20 }}>
-        {tiles.map(t => (
-          <div key={t.id} style={{
-            background: `linear-gradient(145deg, ${t.couleur}12 0%, rgba(255,255,255,0.02) 100%)`,
-            border: `1px solid ${t.couleur}30`,
-            borderTop: `3px solid ${t.couleur}`,
-            borderRadius: 12, padding: '16px 18px',
-            boxShadow: `0 2px 12px rgba(0,0,0,0.25), inset 0 1px 0 var(--border-glass)`,
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', color: 'var(--text-muted)', marginBottom: 8 }}>
-              <IconeCode code={t.icone} size={12} color={t.couleur} />
-              {t.titre}
-            </div>
-            <div style={{ fontSize: 22, fontWeight: 900, color: t.couleur, letterSpacing: '-0.5px', lineHeight: 1.1, marginBottom: 6 }}>
-              {t.val}
-            </div>
-            <div style={{ fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.35 }}>
-              {t.label}
-            </div>
-            {t.desc && (
-              <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 5, fontStyle: 'italic', opacity: 0.8, lineHeight: 1.3 }}>
-                {t.desc}
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
-
 
       {detailOnglet === 'analyse' && <>
 
@@ -438,68 +506,6 @@ function ChantierDetail({ chantier, detailOnglet, setDetailOnglet, modeCompleter
           </div>
         </div>
       )}
-
-      {/* ── Contexte — carte d'identité du chantier ────────────────────── */}
-      <div style={{ ...carteStyle, borderLeft: `4px solid ${couleurStatut(c.statut)}` }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-          <div>
-            <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, letterSpacing: '0.5px' }}>{c.numero}</div>
-            <h1 style={{ color: 'var(--text-primary)', margin: '4px 0 0', fontSize: 22, fontWeight: 800, letterSpacing: '-0.3px' }}>{c.nom}</h1>
-            {client && (
-              <div style={{ color: 'var(--text-secondary)', marginTop: '8px', cursor: 'pointer', fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}
-                onClick={() => naviguer('clients', { clientActif: c.clientId })}>
-                {client.prenom} {client.nom} — {client.entreprise} · {client.telephone}
-                <span style={{ color: C.primaire, textDecoration: 'none', fontSize: '12px', fontWeight: 600, background: 'rgba(13,61,110,0.1)', padding: '2px 8px', borderRadius: 6 }}>Voir →</span>
-              </div>
-            )}
-          </div>
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <Badge texte={c.priorite} couleur={c.priorite === 'Haute' ? C.danger : C.info} />
-            <Badge texte={c.statut} couleur={couleurStatut(c.statut)} />
-            {chantierStatusBadge && <Badge texte={chantierStatusBadge.label} couleur={chantierStatusBadge.couleur} glow />}
-            {c.devisId && !isChantierActif(c) && !STATUTS_CLOS.includes(c.statut) && (
-              <Badge texte="CA non comptabilisé" couleur={C.warning} />
-            )}
-            <BadgeRentabilite ca={etat.devisTotal} couts={etat.coutTotalReel} />
-          </div>
-        </div>
-        <div style={{ margin: '20px 0' }}>
-          <BarreAvancement valeur={etat.avancementPct} />
-          <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '6px', fontWeight: 500, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span>
-              {etat.totalJoursPrevus > 0
-                ? <><strong style={{ color: 'var(--text-primary)' }}>{etat.totalJoursReels} j réalisés</strong> sur {etat.totalJoursPrevus} j prévus</>
-                : etat.totalJoursReels > 0
-                  ? <strong style={{ color: 'var(--text-primary)' }}>{etat.totalJoursReels} j réalisés</strong>
-                  : <span style={{ color: 'var(--text-muted)' }}>Chantier non démarré</span>
-              }
-            </span>
-            {etat.totalJoursPrevus > 0 && (
-              <span style={{ fontSize: 11, color: 'var(--text-muted)', background: 'var(--bg-glass-2)', borderRadius: 20, padding: '2px 10px' }}>
-                {etat.avancementPct}%
-              </span>
-            )}
-          </div>
-        </div>
-        <div className="info-grid">
-          {[
-            ['Adresse', `${c.adresse || ''}${c.ville ? ', ' + c.ville : ''}${c.canton ? ' (' + c.canton + ')' : ''}`],
-            ['Dir. travaux', directeurTravaux ? `${directeurTravaux.nom} — ${directeurTravaux.poste || ''}` : (c.conducteur || '—')],
-            ['Début', c.dateDebut],
-            ['Fin prévue', c.dateDebut && c.nombreJours ? calculerDateFinOuvrables(c.dateDebut, c.nombreJours, c.inclusSamedi, c.canton ?? 'GE') : '—'],
-            ['Jours prévus', c.nombreJours ? `${c.nombreJours} jours` : '—'],
-            ['Surface', c.surface ? `${c.surface} m²` : '—'],
-            ['Travaux', c.typesTravaux?.join(', ') || '—'],
-          ].map(([label, val]) => (
-            <div key={label} className="info-item">
-              <span className="info-label">{label}</span>
-              <span className="info-value">{val || '—'}</span>
-            </div>
-          ))}
-        </div>
-        {c.notes && <div style={{ marginTop: '15px', background: 'rgba(245,158,11,0.07)', border: '1px solid rgba(245,158,11,0.2)', padding: '12px 16px', borderRadius: '10px', color: 'var(--text-secondary)', fontSize: 13 }}>{c.notes}</div>}
-      </div>
-
 
       {/* ── 2. POURQUOI — bloc RETARD groupé : constaté + projeté (une seule zone) ── */}
       {etat.totalJoursReels > 0 && perfConfig && (
@@ -930,6 +936,43 @@ function ChantierDetail({ chantier, detailOnglet, setDetailOnglet, modeCompleter
         )}
       </div>
       </>}
+
+      {detailOnglet === 'detail' && (
+        <div style={carteStyle}>
+          <div className="ds-card-title" style={{ margin: '0 0 16px' }}>Détail du chantier</div>
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            {[
+              ['Adresse', `${c.adresse || ''}${c.ville ? (c.adresse ? ', ' : '') + c.ville : ''}${c.canton ? ' (' + c.canton + ')' : ''}`.trim()],
+              ['Dir. travaux', directeurTravaux ? `${directeurTravaux.nom}${directeurTravaux.poste ? ' — ' + directeurTravaux.poste : ''}` : (c.conducteur || '')],
+              ['Client', clientNom || ''],
+              ['Début', c.dateDebut || ''],
+              ['Fin prévue', c.dateDebut && c.nombreJours ? calculerDateFinOuvrables(c.dateDebut, c.nombreJours, c.inclusSamedi, c.canton ?? 'GE') : ''],
+              ['Jours prévus', c.nombreJours ? `${c.nombreJours} jours` : ''],
+              ['Surface', c.surface ? `${c.surface} m²` : ''],
+              ['Priorité', c.priorite || ''],
+              ['Travaux', c.typesTravaux?.join(', ') || ''],
+            ].map(([label, val], i) => (
+              <div key={label} style={{
+                display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 16,
+                padding: '11px 0', borderTop: i === 0 ? 'none' : '1px solid var(--border)',
+              }}>
+                <span style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-muted)', flexShrink: 0 }}>{label}</span>
+                <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', textAlign: 'right', wordBreak: 'break-word' }}>{val || '—'}</span>
+              </div>
+            ))}
+          </div>
+          {c.notes && (
+            <div style={{ marginTop: 16 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-muted)', marginBottom: 6 }}>Notes</div>
+              <div style={{ background: 'rgba(245,158,11,0.07)', border: '1px solid rgba(245,158,11,0.2)', padding: '12px 16px', borderRadius: 10, color: 'var(--text-secondary)', fontSize: 13, lineHeight: 1.5 }}>{c.notes}</div>
+            </div>
+          )}
+          {client && (
+            <button onClick={() => naviguer('clients', { clientActif: c.clientId })}
+              style={{ ...DS.btnGhost, marginTop: 16, fontSize: 12 }}>Voir la fiche client →</button>
+          )}
+        </div>
+      )}
 
     </div>
   </React.Fragment>);

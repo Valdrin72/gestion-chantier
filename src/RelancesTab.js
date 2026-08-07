@@ -2,9 +2,10 @@
 // CYNA — Tableau de relances factures
 // ============================================================
 import React, { useState, useMemo } from 'react';
-import { CheckCircle, Mail, Send, Copy, X, AlertTriangle, Clock, FileText } from 'lucide-react';
+import { CheckCircle, Mail, Send, Copy, X, AlertTriangle } from 'lucide-react';
 import { prochainRappel, niveauInfo, genererTexteRappel, marquerRappelEnvoye } from './relances';
 import { DS } from './ds';
+import { V1, mono, carteV1, RYTHME } from './design/v1';
 
 const fmt = (n) => (parseFloat(n) || 0).toLocaleString('fr-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
@@ -136,27 +137,6 @@ function BadgeNiveau({ niveau }) {
   );
 }
 
-// ── KPI card gradient ─────────────────────────────────────────
-function KpiCard({ label, val, sub, gradient, glow, Icon }) {
-  return (
-    <div style={{
-      background: gradient, borderRadius: 16, padding: '20px',
-      boxShadow: `0 4px 20px ${glow}, 0 1px 4px rgba(0,0,0,0.12)`,
-      border: '1px solid rgba(255,255,255,0.15)',
-      position: 'relative', overflow: 'hidden',
-    }}>
-      <div style={{ position: 'absolute', right: -18, top: -18, width: 70, height: 70, borderRadius: '50%', background: 'rgba(255,255,255,0.1)' }} />
-      <div style={{ position: 'absolute', right: -28, bottom: -28, width: 90, height: 90, borderRadius: '50%', background: 'rgba(255,255,255,0.06)' }} />
-      <div style={{ background: 'rgba(255,255,255,0.18)', borderRadius: 10, width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 14, position: 'relative' }}>
-        <Icon size={16} strokeWidth={2} style={{ color: '#fff' }} />
-      </div>
-      <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.72)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 5, position: 'relative' }}>{label}</div>
-      <div style={{ fontSize: 22, fontWeight: 900, color: '#fff', letterSpacing: '-0.5px', lineHeight: 1, position: 'relative' }}>{val}</div>
-      {sub && <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.6)', marginTop: 7, position: 'relative' }}>{sub}</div>}
-    </div>
-  );
-}
-
 // ── Composant principal ───────────────────────────────────────
 export default function RelancesTab({ factures = [], clients = [], chantiers = [], setFactures, afficherNotif }) {
   const [modalItem, setModalItem] = useState(null);
@@ -174,9 +154,6 @@ export default function RelancesTab({ factures = [], clients = [], chantiers = [
     aRelancer.reduce((s, { f }) => s + montantRestant(f), 0),
     [aRelancer]
   );
-  const nbNiveau1 = aRelancer.filter(({ prochaine }) => prochaine.niveau === 1).length;
-  const nbNiveau3 = aRelancer.filter(({ prochaine }) => prochaine.niveau === 3).length;
-
   const handleMarquerEnvoye = (item) => {
     const miseAJour = marquerRappelEnvoye(item.f, item.prochaine.niveau);
     setFactures(prev => prev.map(f => String(f.id) === String(item.f.id) ? miseAJour : f));
@@ -200,50 +177,17 @@ export default function RelancesTab({ factures = [], clients = [], chantiers = [
 
   return (
     <div>
-      {/* ── KPIs ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 14, marginBottom: 28 }}>
-        <KpiCard
-          label="Factures à relancer"
-          val={String(aRelancer.length)}
-          sub={`${aRelancer.length > 1 ? 'relances' : 'relance'} à envoyer`}
-          gradient={DS.kpi.amber.gradient}
-          glow={DS.kpi.amber.glow}
-          Icon={Clock}
-        />
-        <KpiCard
-          label="Montant impayé"
-          val={`CHF ${fmt(totalSouffrance)}`}
-          sub="Solde total impayé à relancer"
-          gradient={DS.kpi.red.gradient}
-          glow={DS.kpi.red.glow}
-          Icon={AlertTriangle}
-        />
-        <KpiCard
-          label="Rappel 1"
-          val={String(nbNiveau1)}
-          sub={`facture${nbNiveau1 !== 1 ? 's' : ''} — 1er rappel`}
-          gradient={DS.kpi.blue.gradient}
-          glow={DS.kpi.blue.glow}
-          Icon={FileText}
-        />
-        <KpiCard
-          label="Mise en demeure"
-          val={String(nbNiveau3)}
-          sub={`dernier rappel avant procédure · ${nbNiveau3} facture${nbNiveau3 !== 1 ? 's' : ''}`}
-          gradient={DS.kpi.purple.gradient}
-          glow={DS.kpi.purple.glow}
-          Icon={AlertTriangle}
-        />
-      </div>
+      {/* Les 4 chiffres (à relancer / impayé / 1er rappel / mise en demeure) vivent
+          désormais dans le hero de Finances — ici on va droit au tableau d'actions. */}
 
-      {/* ── Tableau ── */}
-      <div style={{ ...DS.card, padding: 0, overflow: 'hidden', marginBottom: 0 }}>
+      {/* ── Tableau v1 ── */}
+      <div style={{ ...carteV1, padding: 0, overflow: 'hidden', marginBottom: RYTHME.entreCartes }}>
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr>
                 {['Facture', 'Client', 'Chantier', 'Montant restant', 'Retard', 'Niveau', 'Actions'].map(col => (
-                  <th key={col} style={DS.th}>{col}</th>
+                  <th key={col} style={{ ...mono(10, V1.texteMuted), textAlign: 'left', textTransform: 'uppercase', letterSpacing: '0.06em', padding: '12px 14px', borderBottom: `1px solid ${V1.separation}`, background: '#FAFBFC', whiteSpace: 'nowrap' }}>{col}</th>
                 ))}
               </tr>
             </thead>
@@ -252,61 +196,59 @@ export default function RelancesTab({ factures = [], clients = [], chantiers = [
                 const client = clients.find(c => String(c.id) === String(f.clientId));
                 const chantier = chantiers.find(c => String(c.id) === String(f.chantierId));
                 const restant = montantRestant(f);
-                const info = niveauInfo(prochaine.niveau);
+                const td = { padding: '13px 14px', borderBottom: `1px solid ${V1.separation}`, verticalAlign: 'middle' };
 
                 return (
                   <tr key={f.id} style={{ transition: 'background 0.15s' }}
-                    onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-hover)'; }}
+                    onMouseEnter={e => { e.currentTarget.style.background = V1.bleuFond + '55'; }}
                     onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
                   >
                     {/* Facture */}
-                    <td style={DS.td}>
-                      <div style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{f.numero || f.id}</div>
-                      <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
+                    <td style={td}>
+                      <div style={{ ...mono(12, V1.bleu, 600) }}>{f.numero || f.id}</div>
+                      <div style={{ fontSize: 11, color: V1.texteMuted, marginTop: 2 }}>
                         Échue le {f.dateEcheance ? f.dateEcheance.split('-').reverse().join('.') : '—'}
                       </div>
                     </td>
 
                     {/* Client */}
-                    <td style={DS.td}>
-                      <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>
+                    <td style={td}>
+                      <span style={{ color: V1.texte, fontWeight: 600 }}>
                         {client?.entreprise || client?.nom || '—'}
                       </span>
                     </td>
 
                     {/* Chantier */}
-                    <td style={{ ...DS.td, maxWidth: 180 }}>
-                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', display: 'block', color: 'var(--text-secondary)' }}>
+                    <td style={{ ...td, maxWidth: 180 }}>
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', display: 'block', color: V1.texteMuted }}>
                         {chantier?.nom || chantier?.numero || '—'}
                       </span>
                     </td>
 
                     {/* Montant restant */}
-                    <td style={DS.td}>
-                      <span style={{ fontWeight: 800, color: info?.couleur || 'var(--text-primary)', fontSize: 14 }}>
-                        CHF {fmt(restant)}
-                      </span>
+                    <td style={td}>
+                      <span style={{ ...mono(14, V1.danger, 600) }}>CHF {fmt(restant)}</span>
                     </td>
 
                     {/* Retard */}
-                    <td style={DS.td}>
+                    <td style={td}>
                       <span style={{
                         display: 'inline-flex', alignItems: 'center', gap: 4,
                         padding: '3px 9px', borderRadius: 20, fontSize: 11, fontWeight: 700,
-                        background: 'rgba(239,68,68,0.1)', color: '#ef4444',
-                        border: '1px solid rgba(239,68,68,0.22)',
+                        background: V1.danger + '14', color: V1.danger,
+                        border: `1px solid ${V1.danger}30`,
                       }}>
-                        {prochaine.joursRetard}j de retard
+                        {prochaine.joursRetard}J
                       </span>
                     </td>
 
                     {/* Niveau */}
-                    <td style={DS.td}>
+                    <td style={td}>
                       <BadgeNiveau niveau={prochaine.niveau} />
                     </td>
 
                     {/* Actions */}
-                    <td style={{ ...DS.td, whiteSpace: 'nowrap' }}>
+                    <td style={{ ...td, whiteSpace: 'nowrap' }}>
                       <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                         <button
                           onClick={() => setModalItem({ f, prochaine })}
@@ -332,6 +274,12 @@ export default function RelancesTab({ factures = [], clients = [], chantiers = [
             </tbody>
           </table>
         </div>
+      </div>
+
+      {/* ── Total à récupérer (pied) ── */}
+      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'flex-end', gap: 10, padding: '4px 6px' }}>
+        <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: V1.texteMuted }}>Total à récupérer</span>
+        <span style={{ ...mono(18, V1.danger, 600) }}>CHF {fmt(totalSouffrance)}</span>
       </div>
 
       {/* ── Modal lettre ── */}

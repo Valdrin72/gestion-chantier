@@ -1,16 +1,26 @@
 // ============================================================
 // CYNA — MODULE FINANCES (Factures + Paiements unifiés)
 // ============================================================
-import React, { useState, useMemo, useCallback } from 'react';
-import { DollarSign, FileText, Clock, AlertTriangle, CreditCard, TrendingUp, Calendar, Zap, CheckCircle } from 'lucide-react';
+import React, { useState, useMemo, useCallback, useLayoutEffect } from 'react';
+import { DollarSign, FileText, Clock, AlertTriangle, CreditCard, TrendingUp, Calendar, Zap, CheckCircle, Menu, Plus } from 'lucide-react';
 import Factures from '../Factures';
 import RelancesTab from '../RelancesTab';
-import { getIntervallesPeriode, getPeriodeLabel, facturesInPeriode, calculerCA, calculerCAForfait, calculerStatutFacture, calculerEtatChantier, tauxTVAParam, margePortefeuille, couleurMarge, SEUILS } from '../donnees';
+import { getIntervallesPeriode, getPeriodeLabel, facturesInPeriode, calculerCA, calculerCAForfait, calculerStatutFacture, calculerEtatChantier, tauxTVAParam, margePortefeuille } from '../donnees';
 import { useApp } from '../context/AppContext';
 import { prochainRappel } from '../relances';
+import { V1, mono, carteV1, heroFond, heroMono, RYTHME } from '../design/v1';
 
 const fmt  = (n) => (parseFloat(n) || 0).toLocaleString('fr-CH', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 const fmtK = (n) => { const v = parseFloat(n) || 0; return v >= 1000 ? `${(v/1000).toFixed(1)}k` : String(Math.round(v)); };
+
+// Bouton translucide du hero bleu nuit (mêmes tokens que les autres pages v1).
+const heroBtn = { background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.18)', borderRadius: 8, padding: '6px 11px', cursor: 'pointer', color: '#fff', display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: 'inherit', fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap' };
+// Solde restant d'une facture (source unique : montantTTC − Σ paiements). Lecture seule.
+const soldeRestantFacture = (f) => {
+  const total = parseFloat(f.montantTTC) || parseFloat(f.montantHT) || 0;
+  const paye = (f.paiementsHistorique || []).reduce((s, p) => s + (parseFloat(p.montant) || 0), 0);
+  return Math.max(0, total - paye);
+};
 
 // ── Composant Trésorerie prévisionnelle ──────────────────────────────────────
 function Tresorerie({ factures = [], chantiers = [], clients = [], devis = [], parametres = null, onEmettreFacture = null, onEmettreExtra = null, pointages = [] }) {
@@ -184,61 +194,24 @@ function Tresorerie({ factures = [], chantiers = [], clients = [], devis = [], p
 
   return (
     <div>
-      {/* ── Signal global ── */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 20px', borderRadius: 14, marginBottom: 24, background: signal.bg, border: `1px solid ${signal.couleur}30`, borderLeft: `4px solid ${signal.couleur}` }}>
-        <signal.Icone size={20} color={signal.couleur} strokeWidth={2} style={{ flexShrink: 0 }} />
-        <span style={{ fontSize: 14, fontWeight: 700, color: signal.couleur }}>{signal.texte}</span>
+      {/* ── Signal impayés — bandeau discret (bord gauche coloré) ── */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 16px', borderRadius: 12, marginBottom: RYTHME.entreSections, background: signal.couleur + '0f', border: `1px solid ${signal.couleur}30`, borderLeft: `4px solid ${signal.couleur}` }}>
+        <signal.Icone size={16} color={signal.couleur} strokeWidth={2} style={{ flexShrink: 0 }} />
+        <span style={{ fontSize: 13, fontWeight: 700, color: signal.couleur }}>{signal.texte}</span>
       </div>
 
-      {/* ── Rappel rentabilité (même chiffre que l'Accueil) — « est-ce que je gagne de l'argent ? » ── */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap', padding: '16px 20px', borderRadius: 14, marginBottom: 24, background: 'var(--ds-card-bg)', border: '1px solid var(--ds-card-border)', boxShadow: 'var(--ds-card-shadow)' }}>
-        <div>
-          <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px', color: 'var(--text-muted)', marginBottom: 4 }}>
-            Marge moyenne à ce jour · en tenant compte du poids de chaque chantier
-          </div>
-          <div style={{ fontSize: 28, fontWeight: 900, letterSpacing: '-0.5px', lineHeight: 1, color: marge.pct === null ? 'var(--text-muted)' : couleurMarge(marge.pct) }}>
-            {marge.pct === null ? '—' : `${Math.round(marge.pct)}%`}
-          </div>
-          <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>
-            {marge.nbAnalyses > 0
-              ? `sur ${marge.nbAnalyses} chantier${marge.nbAnalyses > 1 ? 's' : ''} avec coûts saisis`
-              : 'Aucun chantier avec coûts saisis'}
-          </div>
-        </div>
-        {marge.nbAnalyses > 0 && (
-          <div style={{ display: 'flex', gap: 16, marginLeft: 'auto', flexWrap: 'wrap' }}>
-            {[
-              { n: marge.nbVert,   label: `sain (≥${SEUILS.margeRentable}%)`, couleur: '#10b981' },
-              { n: marge.nbLimite, label: `limite (${SEUILS.margeLimite}–${SEUILS.margeRentable}%)`, couleur: '#f59e0b' },
-              { n: marge.nbDanger, label: `danger (<${SEUILS.margeLimite}%)`, couleur: '#ef4444' },
-            ].map(b => (
-              <div key={b.label} style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: 20, fontWeight: 800, color: b.couleur }}>{b.n}</div>
-                <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>{b.label}</div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* ── KPIs ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 14, marginBottom: 28 }}>
+      {/* ── KPIs Trésorerie — une seule ligne v1 (liseré coloré) : À encaisser / Cette semaine / Facturable / Marge ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: RYTHME.entreCartes, marginBottom: RYTHME.entreSections }}>
         {[
-          { label: 'À encaisser (total)', val: `CHF ${fmt(data.totalAEncaisser)}`, couleur: '#0d3d6e', Icon: Clock,       sub: `${data.impayees.length} facture${data.impayees.length !== 1 ? 's' : ''} impayée${data.impayees.length !== 1 ? 's' : ''} en cours`, desc: 'Solde restant à recevoir sur toutes les factures ouvertes' },
-          { label: 'En retard',           val: `CHF ${fmt(data.totalRetard)}`,     couleur: '#ef4444', Icon: AlertTriangle, sub: data.totalRetard > 0 ? 'Action immédiate requise' : 'Aucun retard', desc: 'Factures dont la date d\'échéance est dépassée' },
-          { label: 'Cette semaine',       val: `CHF ${fmt(data.totalCetteSemaine)}`,couleur: '#f59e0b', Icon: Zap,          sub: 'Échéances dans les 7 prochains jours', desc: 'Montant à encaisser d\'ici 7 jours' },
-          { label: 'Facturable maintenant',val: `CHF ${fmt(data.totalAFacturer)}`,couleur: '#10b981', Icon: TrendingUp,   sub: `${data.aFacturer.length} chantier${data.aFacturer.length !== 1 ? 's' : ''} — selon avancement`, desc: 'CA × avancement% − déjà facturé, sur chantiers actifs' },
+          { label: 'À ENCAISSER',  val: `CHF ${fmt(data.totalAEncaisser)}`, couleur: V1.danger, sub: `${data.impayees.length} facture${data.impayees.length !== 1 ? 's' : ''} impayée${data.impayees.length !== 1 ? 's' : ''} · dont ${fmt(data.totalRetard)} en retard` },
+          { label: 'CETTE SEMAINE', val: `CHF ${fmt(data.totalCetteSemaine)}`, couleur: V1.warn, sub: 'Échéances dans les 7 prochains jours' },
+          { label: 'FACTURABLE MAINTENANT', val: `CHF ${fmt(data.totalAFacturer)}`, couleur: V1.ok, sub: `${data.aFacturer.length} chantier${data.aFacturer.length !== 1 ? 's' : ''} — selon avancement` },
+          { label: 'MARGE MOYENNE', val: marge.pct === null ? '—' : `${Math.round(marge.pct)}%`, couleur: V1.bleu, sub: marge.nbAnalyses > 0 ? `sur ${marge.nbAnalyses} chantier${marge.nbAnalyses > 1 ? 's' : ''} avec coûts saisis` : 'Aucun chantier avec coûts saisis' },
         ].map(k => (
-          <div key={k.label} style={{ background: 'var(--ds-card-bg)', border: '1px solid var(--ds-card-border)', borderRadius: 14, padding: '18px 20px', boxShadow: 'var(--ds-card-shadow)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-              <div style={{ width: 36, height: 36, borderRadius: 10, background: k.couleur + '14', border: `1px solid ${k.couleur}28`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                <k.Icon size={16} style={{ color: k.couleur }} strokeWidth={2} />
-              </div>
-              <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px', color: 'var(--text-muted)' }}>{k.label}</div>
-            </div>
-            <div style={{ fontSize: 22, fontWeight: 900, color: 'var(--text-primary)', letterSpacing: '-0.5px', lineHeight: 1.1 }}>{k.val}</div>
-            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 5 }}>{k.sub}</div>
-            {k.desc && <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 4, fontStyle: 'italic', opacity: 0.75 }}>{k.desc}</div>}
+          <div key={k.label} style={{ ...carteV1, borderTop: `3px solid ${k.couleur}` }}>
+            <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: V1.texteMuted, marginBottom: 8 }}>{k.label}</div>
+            <div style={{ ...mono(22, k.couleur, 600), lineHeight: 1.1 }}>{k.val}</div>
+            <div style={{ fontSize: 11, color: V1.texteMuted, marginTop: 6, lineHeight: 1.35 }}>{k.sub}</div>
           </div>
         ))}
       </div>
@@ -253,15 +226,17 @@ function Tresorerie({ factures = [], chantiers = [], clients = [], devis = [], p
           {data.semaines.map((s, i) => {
             const pct = data.maxSemaine > 0 ? (s.montant / data.maxSemaine) * 100 : 0;
             const hasData = s.montant > 0;
+            // Semaine courante en bleu profond, semaines suivantes en gris/bleu clair.
+            const couleurBarre = i === 0 ? V1.bleu : V1.bleuClair;
             return (
               <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
                 {hasData && (
-                  <div style={{ fontSize: 9, fontWeight: 700, color: '#0d3d6e' }}>{fmtK(s.montant)}</div>
+                  <div style={{ ...mono(9, i === 0 ? V1.bleu : V1.texteMuted, 600) }}>{fmtK(s.montant)}</div>
                 )}
                 <div style={{ width: '100%', flex: 1, display: 'flex', alignItems: 'flex-end' }}>
-                  <div style={{ width: '100%', height: hasData ? `${Math.max(pct, 6)}%` : '4px', background: hasData ? `linear-gradient(180deg, #0d3d6e, #082d52)` : 'var(--border-glass)', borderRadius: '4px 4px 0 0', transition: 'height 0.3s', minHeight: 4 }} />
+                  <div style={{ width: '100%', height: hasData ? `${Math.max(pct, 6)}%` : '4px', background: hasData ? couleurBarre : V1.separation, borderRadius: '4px 4px 0 0', transition: 'height 0.3s', minHeight: 4 }} />
                 </div>
-                <div style={{ fontSize: 9, color: 'var(--text-muted)', textAlign: 'center', fontWeight: 600, whiteSpace: 'nowrap' }}>{s.label}</div>
+                <div style={{ fontSize: 9, color: i === 0 ? V1.bleu : V1.texteMuted, textAlign: 'center', fontWeight: i === 0 ? 700 : 600, whiteSpace: 'nowrap' }}>{s.label}</div>
               </div>
             );
           })}
@@ -510,9 +485,17 @@ export default function Finances({
   parametres = null,
   pointages = [],
 }) {
-  const { confirmer, afficherNotif } = useApp();
+  const { confirmer, afficherNotif, ouvrirMenu, setPeriodeGlobale = () => {} } = useApp();
   const [onglet, setOnglet] = useState('tresorerie');
   const [preRemplirFacture, setPreRemplirFacture] = useState(null);
+  // Signal incrémental → demande d'ouverture du formulaire « Nouvelle facture » (bouton du hero).
+  const [nouvelleFactureSignal, setNouvelleFactureSignal] = useState(0);
+
+  // La page passe en « hero plein écran » (Topbar blanc masqué) comme Accueil / Chantiers / fiche.
+  useLayoutEffect(() => {
+    document.body.classList.add('hero-fullscreen');
+    return () => document.body.classList.remove('hero-fullscreen');
+  }, []);
 
   // Ouverture directe d'un onglet via naviguer('finances', { onglet: 'paiements' })
   // (ex. clic sur une alerte de paiement). Ids valides = les 4 onglets de Finances.
@@ -619,11 +602,39 @@ export default function Finances({
     [factures]
   );
 
+  // KPIs relances (mêmes fonctions que RelancesTab) — pour le bandeau adaptatif du hero.
+  const relancesKpis = useMemo(() => {
+    const aRelancer = factures.map(f => ({ f, prochaine: prochainRappel(f) })).filter(x => x.prochaine !== null);
+    return {
+      nbARelancer: aRelancer.length,
+      montantImpaye: aRelancer.reduce((s, { f }) => s + soldeRestantFacture(f), 0),
+      nb1erRappel: aRelancer.filter(x => x.prochaine.niveau === 1).length,
+      nbMiseEnDemeure: aRelancer.filter(x => x.prochaine.niveau === 3).length,
+    };
+  }, [factures]);
+
   const tabs = [
     { id: 'tresorerie', label: 'Trésorerie',          count: null,    badgeRouge: false },
     { id: 'factures',   label: 'Factures',            count: facturesPeriode.filter(f => f.statut !== 'annulee').length, badgeRouge: false },
     { id: 'relances',   label: 'Relances',            count: nbRelances > 0 ? nbRelances : null, badgeRouge: nbRelances > 0 },
   ];
+
+  // ── Les 4 chiffres du hero s'ADAPTENT à l'onglet actif ──
+  const heroChiffres = onglet === 'relances'
+    ? [
+        { label: 'À RELANCER',      val: String(relancesKpis.nbARelancer),           couleur: '#F5B14A' },
+        { label: 'MONTANT IMPAYÉ',  val: `CHF ${fmt(relancesKpis.montantImpaye)}`,    couleur: '#FF7A6B' },
+        { label: '1ER RAPPEL',      val: String(relancesKpis.nb1erRappel),           couleur: '#8FBCE6' },
+        { label: 'MISE EN DEMEURE', val: String(relancesKpis.nbMiseEnDemeure),       couleur: '#C88BF0' },
+      ]
+    : [
+        { label: 'TOTAL FACTURÉ', val: `CHF ${fmt(kpis.totalFacture)}`, couleur: '#8FBCE6' },
+        { label: 'TOTAL PAYÉ',    val: `CHF ${fmt(kpis.totalPaye)}`,    couleur: '#4ADE80' },
+        { label: 'EN ATTENTE',    val: `CHF ${fmt(kpis.enAttente)}`,    couleur: '#F5B14A' },
+        { label: 'EN RETARD',     val: `CHF ${fmt(kpis.enRetard)}`,     couleur: '#FF7A6B' },
+      ];
+
+  const PERIODES = [{ id: 'semaine', label: 'Cette semaine' }, { id: 'mois', label: 'Ce mois' }, { id: 'annee', label: 'Cette année' }];
 
   // setFactures pour RelancesTab : met à jour dans le tableau COMPLET (orphelines incluses)
   const setFacturesRelances = useCallback((updater) => {
@@ -632,13 +643,70 @@ export default function Finances({
 
   return (
     <div>
-      {/* ── En-tête ── */}
-      <div className="page-header-row">
-        <div className="page-title-block">
-          <div className="page-title-main">Finances</div>
-          <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 2 }}>
-            {getPeriodeLabel(periodeGlobale)} — Factures, paiements et suivi financier
+      {/* ══ HERO BLEU NUIT (design v1, bord à bord, collé au sommet) ══ */}
+      <div className="page-hero-bleed" data-testid="hero-finances"
+        style={{ ...heroFond, padding: '20px 32px 0', position: 'relative' }}>
+
+        {/* Ligne 1 — ☰ · CYNA · FINANCES / 03 · période · sélecteur + Nouvelle facture */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18, flexWrap: 'wrap' }}>
+          {ouvrirMenu && (
+            <button onClick={ouvrirMenu} aria-label="Menu" style={{ ...heroBtn, padding: 7 }}><Menu size={16} /></button>
+          )}
+          <span style={{ fontFamily: "'Inter', sans-serif", fontWeight: 800, fontSize: 15, letterSpacing: '0.06em', color: '#fff' }}>CYNA</span>
+          <span style={heroMono(10, 0.55)}>· FINANCES / 03 · {getPeriodeLabel(periodeGlobale).toUpperCase()}</span>
+          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <select value={periodeGlobale} onChange={e => setPeriodeGlobale(e.target.value)} aria-label="Période"
+              style={{ ...heroBtn, padding: '6px 8px' }}>
+              {PERIODES.map(p => <option key={p.id} value={p.id} style={{ color: '#16233A' }}>{p.label}</option>)}
+            </select>
+            <button onClick={() => { setOnglet('factures'); setNouvelleFactureSignal(n => n + 1); }}
+              style={{ ...heroBtn, background: 'rgba(255,255,255,0.16)', border: '1px solid rgba(255,255,255,0.3)', fontWeight: 700 }}>
+              <Plus size={14} /> Nouvelle facture
+            </button>
           </div>
+        </div>
+
+        {/* Ligne 2 — titre + ligne mono */}
+        <div style={heroMono(11, 0.6)}>FINANCES / 03</div>
+        <h1 style={{ fontFamily: "'Inter', sans-serif", fontWeight: 700, fontSize: 34, margin: '8px 0 8px', letterSpacing: '-0.02em', color: '#fff' }}>Finances</h1>
+        <div style={heroMono(11, 0.7)}>FACTURES · PAIEMENTS · SUIVI FINANCIER</div>
+
+        {/* Ligne 3 — les 4 chiffres clés (adaptés à l'onglet) */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginTop: 20 }} data-testid="hero-chiffres">
+          {heroChiffres.map(t => (
+            <div key={t.label} data-testid={`hero-kpi-${t.label.toLowerCase().replace(/\s+/g, '-')}`}
+              style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 12, padding: '12px 14px' }}>
+              <div style={heroMono(9, 0.6)}>{t.label}</div>
+              <div style={{ ...mono(22, t.couleur, 500), lineHeight: 1.1, marginTop: 4 }}>{t.val}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Ligne 4 — onglets collés au bas du hero (avec compteurs) */}
+        <div style={{ display: 'flex', gap: 2, marginTop: 22, overflowX: 'auto', scrollbarWidth: 'none' }}>
+          {tabs.map(t => {
+            const actif = onglet === t.id;
+            return (
+              <button key={t.id} onClick={() => setOnglet(t.id)} style={{
+                background: 'transparent', border: 'none',
+                borderBottom: actif ? '2px solid #fff' : '2px solid transparent',
+                color: actif ? '#fff' : 'rgba(255,255,255,0.6)',
+                padding: '10px 18px', cursor: 'pointer', fontFamily: 'inherit',
+                fontSize: 14, fontWeight: actif ? 700 : 500, whiteSpace: 'nowrap', flexShrink: 0,
+                display: 'flex', alignItems: 'center', gap: 8,
+              }}>
+                {t.label}
+                {t.count !== null && (
+                  <span style={{
+                    background: t.badgeRouge ? 'rgba(255,122,107,0.25)' : 'rgba(255,255,255,0.16)',
+                    color: t.badgeRouge ? '#FF7A6B' : '#fff',
+                    border: t.badgeRouge ? '1px solid rgba(255,122,107,0.5)' : '1px solid rgba(255,255,255,0.2)',
+                    borderRadius: 20, padding: '1px 8px', fontSize: 11, fontWeight: 700,
+                  }}>{t.count}</span>
+                )}
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -659,33 +727,6 @@ export default function Finances({
         </div>
       )}
 
-      {/* ── KPIs résumé — gradients saturés (identiques Dashboard) ── */}
-      <div className="kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'var(--g4)', gap: 14, marginBottom: 28 }}>
-        {[
-          { label: 'Total facturé',  val: `CHF ${fmt(kpis.totalFacture)}`,  sub: 'Toutes factures émises', desc: 'Σ montantTTC hors annulées', gradient: 'linear-gradient(135deg, #1E40AF 0%, #3B82F6 100%)', glow: 'rgba(59,130,246,0.32)',   Icon: FileText },
-          { label: 'Total payé',     val: `CHF ${fmt(kpis.totalPaye)}`,     sub: 'Paiements reçus des clients', desc: 'Σ montantPaye sur toutes les factures', gradient: 'linear-gradient(135deg, #065F46 0%, #10B981 100%)', glow: 'rgba(16,185,129,0.32)',  Icon: DollarSign },
-          { label: 'En attente',     val: `CHF ${fmt(kpis.enAttente)}`,     sub: 'Pas encore échu', desc: 'Factures envoyées/partielles — échéance future', gradient: 'linear-gradient(135deg, #92400E 0%, #F59E0B 100%)', glow: 'rgba(245,158,11,0.32)', Icon: Clock },
-          { label: 'En retard',      val: `CHF ${fmt(kpis.enRetard)}`,      sub: 'Échéance dépassée — à relancer', desc: 'Factures impayées dont l\'échéance est passée', gradient: 'linear-gradient(135deg, #991B1B 0%, #EF4444 100%)', glow: 'rgba(239,68,68,0.32)',   Icon: AlertTriangle },
-        ].map(k => (
-          <div key={k.label} className="kpi-card" style={{
-            background: k.gradient, borderRadius: 16, padding: '22px 20px', minHeight: 130,
-            boxShadow: `0 4px 20px ${k.glow}, 0 1px 4px rgba(0,0,0,0.12)`,
-            border: '1px solid rgba(255,255,255,0.15)',
-            position: 'relative', overflow: 'hidden',
-          }}>
-            <div style={{ position: 'absolute', right: -18, top: -18, width: 80, height: 80, borderRadius: '50%', background: 'rgba(255,255,255,0.1)' }} />
-            <div style={{ position: 'absolute', right: -32, bottom: -32, width: 100, height: 100, borderRadius: '50%', background: 'rgba(255,255,255,0.06)' }} />
-            <div style={{ background: 'rgba(255,255,255,0.18)', borderRadius: 10, width: 38, height: 38, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16, position: 'relative' }}>
-              <k.Icon size={18} strokeWidth={2} style={{ color: '#ffffff' }} />
-            </div>
-            <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.72)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 6 }}>{k.label}</div>
-            <div className="kpi-val" style={{ fontSize: 26, fontWeight: 900, color: '#ffffff', letterSpacing: '-0.8px', lineHeight: 1, position: 'relative' }}>{k.val}</div>
-            <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.6)', marginTop: 8, position: 'relative' }}>{k.sub}</div>
-            {k.desc && <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.42)', marginTop: 3, fontStyle: 'italic', position: 'relative' }}>{k.desc}</div>}
-          </div>
-        ))}
-      </div>
-
       {/* ── Alertes retard ── */}
       {kpis.enRetard > 0 && (() => {
         const today = new Date().toISOString().slice(0, 10);
@@ -699,33 +740,6 @@ export default function Finances({
           </div>
         );
       })()}
-
-      {/* ── Navigation onglets ── */}
-      <div style={{ display: 'flex', gap: 0, marginBottom: 24, borderBottom: '1px solid var(--border-glass)' }}>
-        {tabs.map(t => (
-          <button key={t.id} onClick={() => setOnglet(t.id)} style={{
-            background: 'transparent', border: 'none',
-            borderBottom: `2px solid ${onglet === t.id ? 'rgba(59,130,246,0.8)' : 'transparent'}`,
-            color: onglet === t.id ? '#0d3d6e' : 'var(--text-secondary)',
-            padding: '10px 22px', fontSize: 14,
-            fontWeight: onglet === t.id ? 700 : 500,
-            cursor: 'pointer', transition: 'all 0.18s',
-            display: 'flex', alignItems: 'center', gap: 8,
-          }}>
-            {t.label}
-            {t.count !== null && (
-              <span style={{
-                background: t.badgeRouge ? 'rgba(239,68,68,0.15)' : 'var(--border-glass-strong)',
-                color: t.badgeRouge ? '#ef4444' : 'inherit',
-                border: t.badgeRouge ? '1px solid rgba(239,68,68,0.3)' : 'none',
-                borderRadius: 20, padding: '1px 8px', fontSize: 11, fontWeight: 700,
-              }}>
-                {t.count}
-              </span>
-            )}
-          </button>
-        ))}
-      </div>
 
       {/* ── Contenu ── */}
       {onglet === 'tresorerie' && (
@@ -745,6 +759,7 @@ export default function Finances({
           hideHeader
           preRemplir={preRemplirFacture}
           onConsumePreRemplir={() => setPreRemplirFacture(null)}
+          nouvelleFactureSignal={nouvelleFactureSignal}
         />
       </div>
       {onglet === 'relances' && (

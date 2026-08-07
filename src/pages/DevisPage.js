@@ -1,11 +1,12 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useLayoutEffect } from 'react';
 import {
   Plus, Pencil, Trash2, HardHat, Receipt,
-  DollarSign, Clock, FileText, TrendingUp, FileDown, Download, Archive,
+  Clock, FileDown, Download, Archive, Menu,
 } from 'lucide-react';
-import { fmtN, C, creerFactureDepuisDevis, getIntervallesPeriode } from '../donnees';
+import { fmtN, C, creerFactureDepuisDevis, getIntervallesPeriode, getPeriodeLabel } from '../donnees';
 import { exportCSV } from '../utils/exportCSV';
 import { DS } from '../ds';
+import { V1, mono, carteV1, heroFond, heroMono, RYTHME } from '../design/v1';
 import { useApp } from '../context/AppContext';
 import { exportDevis } from '../ExportPDF';
 import AssistantDevisIA from '../AssistantDevisIA';
@@ -18,8 +19,6 @@ const inputStyle = DS.input;
 const labelStyle = DS.label;
 const carteStyle = DS.card;
 const btnPrimaire = DS.btnPrimary;
-const btnSucces = DS.btnSuccess;
-const btnDanger = DS.btnDanger;
 
 const PAGE_SIZE = 50;
 
@@ -136,9 +135,18 @@ function CalculateurMO({ surface, onApply }) {
   );
 }
 
+// Bouton translucide du hero bleu nuit (mêmes tokens que les autres pages v1).
+const heroBtn = { background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.18)', borderRadius: 8, padding: '6px 11px', cursor: 'pointer', color: '#fff', display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: 'inherit', fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap' };
+const PERIODES = [{ id: 'semaine', label: 'Cette semaine' }, { id: 'mois', label: 'Ce mois' }, { id: 'annee', label: 'Cette année' }];
+
 function Devis() {
-  const { devis, setDevis, clients, parametres, naviguer, setChantiers, chantiers, factures, setFactures, contexte = {}, afficherNotif, confirmer, periodeGlobale = 'mois' } = useApp();
+  const { devis, setDevis, clients, parametres, naviguer, setChantiers, chantiers, factures, setFactures, contexte = {}, afficherNotif, confirmer, periodeGlobale = 'mois', setPeriodeGlobale = () => {}, ouvrirMenu } = useApp();
   const [ajout, setAjout] = useState(false);
+  // La page passe en « hero plein écran » (Topbar blanc masqué) comme les autres pages v1.
+  useLayoutEffect(() => {
+    document.body.classList.add('hero-fullscreen');
+    return () => document.body.classList.remove('hero-fullscreen');
+  }, []);
   const [filtreDevis, setFiltreDevis] = useState('Tous');
   const [page, setPage] = useState(0);
   const [voirArchives, setVoirArchives] = useState(false);
@@ -297,20 +305,7 @@ function Devis() {
 
   return (
     <div>
-      <div className="page-header-row">
-        <div className="page-title-block">
-          <div className="page-title-main">Devis</div>
-          <div className="page-title-sub">{devisActifs.length} devis · {(() => { const { debut, fin } = getIntervallesPeriode(periodeGlobale); const ds = debut.toISOString().slice(0,10); const fs = fin.toISOString().slice(0,10); return devisActifs.filter(d => { const dt = (d.dateEmission || d.date || ''); return d.statut?.toLowerCase() === 'accepté' && dt >= ds && dt <= fs; }).length; })()} acceptés ({periodeGlobale === 'semaine' ? 'semaine' : periodeGlobale === 'mois' ? 'ce mois' : "l'année"})</div>
-        </div>
-        <div className="page-actions-group">
-          {devis.length > 0 && (
-            <button onClick={exporterCSV} style={{ ...DS.btnGhost }}><Download size={14} /> Exporter CSV</button>
-          )}
-          <button onClick={() => { setForm(vide); setAjout(!ajout); }} style={btnPrimaire}><Plus size={14} /> Nouveau devis</button>
-        </div>
-      </div>
-
-      {/* ── KPI GRID ── */}
+      {/* ══ HERO BLEU NUIT (design v1, bord à bord, collé au sommet) ══ */}
       {(() => {
         const { debut, fin } = getIntervallesPeriode(periodeGlobale);
         const debutStr = debut.toISOString().slice(0, 10);
@@ -320,32 +315,52 @@ function Devis() {
         const caSigné = devisAcceptes.reduce((s, d) => s + caDevis(d), 0);
         const tauxAcceptation = devisPeriode.length > 0 ? Math.round((devisAcceptes.length / devisPeriode.length) * 100) : 0;
         const enAttente = devisActifs.filter(d => d.statut?.toLowerCase() === 'envoyé');
-        const montantAttente = enAttente.reduce((s, d) => s + caDevis(d), 0);
         const now = Date.now();
         const delaisMoyen = enAttente.length > 0
           ? Math.round(enAttente.reduce((s, d) => { const dt = d.dateEmission || d.date; return dt ? s + Math.floor((now - new Date(dt)) / 86400000) : s; }, 0) / enAttente.length)
           : null;
-        const kpiItems = [
-          { label: 'CA SIGNÉ',            val: `CHF ${fmtN(caSigné)}`, sous: `${devisAcceptes.length} accepté${devisAcceptes.length !== 1 ? 's' : ''} / ${devisPeriode.length} ce ${periodeGlobale === 'semaine' ? 'sem.' : periodeGlobale === 'mois' ? 'mois' : 'an'}`, desc: 'Σ montantHT des devis acceptés sur la période', Icon: DollarSign, ...DS.kpi.green },
-          { label: "TAUX D'ACCEPTATION",  val: `${tauxAcceptation}%`, sous: `sur ${devisPeriode.length} devis (période)`, desc: 'Devis acceptés / total envoyés × 100', Icon: TrendingUp, ...DS.kpi.blue },
-          { label: 'EN ATTENTE RÉPONSE',  val: enAttente.length, sous: montantAttente > 0 ? `CHF ${fmtN(montantAttente)} en jeu` : 'Aucun en cours', desc: 'Devis envoyés sans réponse client', Icon: Clock, ...DS.kpi.amber },
-          { label: 'DÉLAI MOYEN',         val: delaisMoyen !== null ? `${delaisMoyen}j` : '—', sous: 'depuis envoi', desc: 'Moy. jours depuis date d\'envoi (en attente)', Icon: FileText, ...DS.kpi.purple },
+        const heroChiffres = [
+          { label: 'CA SIGNÉ',            val: `CHF ${fmtN(caSigné)}`,                       couleur: '#4ADE80' },
+          { label: "TAUX D'ACCEPTATION",  val: `${tauxAcceptation}%`,                        couleur: '#8FBCE6' },
+          { label: 'EN ATTENTE RÉPONSE',  val: String(enAttente.length),                     couleur: '#F5B14A' },
+          { label: 'DÉLAI MOYEN',         val: delaisMoyen !== null ? `${delaisMoyen}j` : '—', couleur: '#C88BF0' },
         ];
+        const suffixePeriode = periodeGlobale === 'semaine' ? 'CETTE SEMAINE' : periodeGlobale === 'mois' ? 'CE MOIS' : 'CETTE ANNÉE';
         return (
-          <div className="kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'var(--g4)', gap: 16, marginBottom: 20 }}>
-            {kpiItems.map(k => (
-              <div key={k.label} className="kpi-card" style={{ background: k.gradient, borderRadius: 16, padding: '22px 20px', minHeight: 120, boxShadow: `0 4px 20px ${k.glow}, 0 1px 4px rgba(0,0,0,0.12)`, border: '1px solid rgba(255,255,255,0.15)', position: 'relative', overflow: 'hidden' }}>
-                <div style={{ position: 'absolute', right: -18, top: -18, width: 80, height: 80, borderRadius: '50%', background: 'rgba(255,255,255,0.1)' }} />
-                <div style={{ position: 'absolute', right: -32, bottom: -32, width: 100, height: 100, borderRadius: '50%', background: 'rgba(255,255,255,0.06)' }} />
-                <div style={{ background: 'rgba(255,255,255,0.18)', borderRadius: 10, width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 14, position: 'relative' }}>
-                  <k.Icon size={17} strokeWidth={2} style={{ color: '#fff' }} />
-                </div>
-                <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.7)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 5, position: 'relative' }}>{k.label}</div>
-                <div className="kpi-val" style={{ fontSize: 26, fontWeight: 900, color: '#fff', letterSpacing: '-0.8px', lineHeight: 1, position: 'relative' }}>{k.val}</div>
-                {k.sous && <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.62)', marginTop: 5, position: 'relative' }}>{k.sous}</div>}
-                {k.desc && <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.45)', marginTop: 3, fontStyle: 'italic', position: 'relative' }}>{k.desc}</div>}
+          <div className="page-hero-bleed" data-testid="hero-devis" style={{ ...heroFond, padding: '20px 32px 0', position: 'relative' }}>
+            {/* Ligne 1 — ☰ · CYNA · DEVIS / 04 · période · sélecteur + CSV + Nouveau devis */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18, flexWrap: 'wrap' }}>
+              {ouvrirMenu && (
+                <button onClick={ouvrirMenu} aria-label="Menu" style={{ ...heroBtn, padding: 7 }}><Menu size={16} /></button>
+              )}
+              <span style={{ fontFamily: "'Inter', sans-serif", fontWeight: 800, fontSize: 15, letterSpacing: '0.06em', color: '#fff' }}>CYNA</span>
+              <span style={heroMono(10, 0.55)}>· DEVIS / 04 · {getPeriodeLabel(periodeGlobale).toUpperCase()}</span>
+              <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                <select value={periodeGlobale} onChange={e => setPeriodeGlobale(e.target.value)} aria-label="Période" style={{ ...heroBtn, padding: '6px 8px' }}>
+                  {PERIODES.map(p => <option key={p.id} value={p.id} style={{ color: '#16233A' }}>{p.label}</option>)}
+                </select>
+                {devis.length > 0 && (
+                  <button onClick={exporterCSV} style={heroBtn}><Download size={13} /> Exporter CSV</button>
+                )}
+                <button onClick={() => { setForm(vide); setAjout(!ajout); }} style={{ ...heroBtn, background: 'rgba(255,255,255,0.16)', border: '1px solid rgba(255,255,255,0.3)', fontWeight: 700 }}><Plus size={14} /> Nouveau devis</button>
               </div>
-            ))}
+            </div>
+
+            {/* Ligne 2 — titre + ligne mono */}
+            <div style={heroMono(11, 0.6)}>DEVIS / 04</div>
+            <h1 style={{ fontFamily: "'Inter', sans-serif", fontWeight: 700, fontSize: 34, margin: '8px 0 8px', letterSpacing: '-0.02em', color: '#fff' }}>Devis</h1>
+            <div style={heroMono(11, 0.7)}>{devisActifs.length} DEVIS · {devisAcceptes.length} ACCEPTÉS {suffixePeriode}</div>
+
+            {/* Ligne 3 — les 4 chiffres clés */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginTop: 20, paddingBottom: 24 }} data-testid="hero-chiffres">
+              {heroChiffres.map(t => (
+                <div key={t.label} data-testid={`hero-kpi-${t.label.toLowerCase().replace(/[^a-zà-ÿ]+/g, '-').replace(/^-|-$/g, '')}`}
+                  style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 12, padding: '12px 14px' }}>
+                  <div style={heroMono(9, 0.6)}>{t.label}</div>
+                  <div style={{ ...mono(22, t.couleur, 500), lineHeight: 1.1, marginTop: 4 }}>{t.val}</div>
+                </div>
+              ))}
+            </div>
           </div>
         );
       })()}
@@ -354,25 +369,32 @@ function Devis() {
       {(() => {
         const STATUTS_DEVIS = ['Tous', 'brouillon', 'envoyé', 'accepté', 'refusé'];
         return (
-          <div style={{ display: 'flex', gap: '6px', marginBottom: '20px', flexWrap: 'wrap' }}>
-            {STATUTS_DEVIS.map(s => (
-              <button key={s} onClick={() => setFiltreDevis(s)} style={{
-                background: filtreDevis === s ? DS.brand.soft : 'transparent',
-                color: filtreDevis === s ? DS.brand.secondary : 'var(--text-muted)',
-                border: '1px solid transparent',
-                padding: '5px 14px', borderRadius: '20px', cursor: 'pointer', fontSize: '13px',
-                fontWeight: filtreDevis === s ? 600 : 400, fontFamily: 'inherit',
-                textTransform: 'capitalize',
-              }}>{s}</button>
-            ))}
+          <div style={{ display: 'flex', gap: 8, marginBottom: RYTHME.entreCartes, flexWrap: 'wrap' }}>
+            {STATUTS_DEVIS.map(s => {
+              const actif = filtreDevis === s;
+              return (
+                <button key={s} onClick={() => setFiltreDevis(s)} style={{
+                  background: actif ? V1.bleu : 'transparent',
+                  color: actif ? '#fff' : V1.texteMuted,
+                  border: actif ? `1px solid ${V1.bleu}` : `1px solid ${V1.separation}`,
+                  padding: '7px 14px', borderRadius: 20, cursor: 'pointer', fontSize: 13,
+                  fontWeight: actif ? 700 : 500, fontFamily: 'inherit',
+                  textTransform: 'capitalize', transition: 'all 0.15s',
+                }}>{s}</button>
+              );
+            })}
           </div>
         );
       })()}
 
       {ajout && (
         <div style={carteStyle}>
-          <div style={{ marginBottom: 20 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20, flexWrap: 'wrap' }}>
             <div className="ds-card-title" style={{ margin: 0 }}>{form.id ? 'Modifier' : 'Nouveau'} devis</div>
+            {form.numero && <span style={{ ...mono(11, V1.bleu, 600) }}>{form.numero}</span>}
+            {form.statut && (() => { const st = DS.statuts[form.statut] || { bg: '#F1F5F9', color: '#475569' }; return (
+              <span style={{ ...mono(10, st.color, 600), textTransform: 'uppercase', letterSpacing: '0.04em', background: st.bg, borderRadius: 20, padding: '3px 10px' }}>{form.statut}</span>
+            ); })()}
           </div>
           {!form.id && (
             <AssistantDevisIA
@@ -654,8 +676,8 @@ function Devis() {
             </div>
           )}
           <div style={{ display: 'flex', gap: '10px' }}>
-            <button onClick={sauvegarder} style={btnSucces}>Sauvegarder</button>
-            <button onClick={() => { setAjout(false); setForm(vide); setErreurs({}); }} style={btnDanger}>Annuler</button>
+            <button onClick={sauvegarder} style={btnPrimaire}>Sauvegarder</button>
+            <button onClick={() => { setAjout(false); setForm(vide); setErreurs({}); }} style={DS.btnGhost}>Annuler</button>
           </div>
         </div>
       )}
@@ -682,9 +704,9 @@ function Devis() {
         const totalPages = Math.ceil(devisFiltres.length / PAGE_SIZE);
         const devisPage = devisFiltres.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
         return (
-      <div style={{ ...DS.card, padding: 0, overflow: 'hidden' }}>
+      <div style={{ ...carteV1, padding: 0, overflow: 'hidden' }}>
         {devisFiltres.length === 0 ? (
-          <div style={{ padding: '40px 24px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 14 }}>
+          <div style={{ padding: '40px 24px', textAlign: 'center', color: V1.texteMuted, fontSize: 14 }}>
             Aucun devis à afficher
           </div>
         ) : (
@@ -693,7 +715,7 @@ function Devis() {
               <thead>
                 <tr>
                   {['Référence', 'Date', 'Client', 'Chantier lié', 'CA HT', 'Statut', 'Actions'].map(col => (
-                    <th key={col} style={DS.th}>{col}</th>
+                    <th key={col} style={{ ...mono(10, V1.texteMuted), textAlign: 'left', textTransform: 'uppercase', letterSpacing: '0.06em', padding: '12px 14px', borderBottom: `1px solid ${V1.separation}`, background: '#FAFBFC', whiteSpace: 'nowrap' }}>{col}</th>
                   ))}
                 </tr>
               </thead>
@@ -710,51 +732,52 @@ function Devis() {
                   const chantierLie = chantiers.find(ch => String(ch.devisId) === String(d.id));
                   const isAccepte = d.statut?.toLowerCase() === 'accepté';
                   const statutStyle = DS.statuts[d.statut] || { bg: '#F1F5F9', color: '#475569' };
+                  const td = { padding: '13px 14px', borderBottom: `1px solid ${V1.separation}`, verticalAlign: 'middle' };
                   return (
                     <tr
                       key={d.id}
                       style={{ transition: 'background 0.15s' }}
-                      onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-hover)'}
+                      onMouseEnter={e => e.currentTarget.style.background = V1.bleuFond + '55'}
                       onMouseLeave={e => e.currentTarget.style.background = ''}
                     >
-                      <td style={DS.td}>
-                        <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.4px' }}>{d.numero}</span>
+                      <td style={td}>
+                        <span style={{ ...mono(12, V1.bleu, 600) }}>{d.numero}</span>
                       </td>
-                      <td style={DS.td}>
-                        <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{formatDateCH(d.date)}</span>
+                      <td style={td}>
+                        <span style={{ ...mono(11, V1.texteMuted) }}>{formatDateCH(d.date)}</span>
                       </td>
-                      <td style={{ ...DS.td, maxWidth: 200 }}>
-                        <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{client?.entreprise || 'Client inconnu'}</div>
-                        <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 1 }}>{client?.prenom} {client?.nom}</div>
+                      <td style={{ ...td, maxWidth: 200 }}>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: V1.texte, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{client?.entreprise || 'Client inconnu'}</div>
+                        <div style={{ fontSize: 11, color: V1.texteMuted, marginTop: 1 }}>{client?.prenom} {client?.nom}</div>
                       </td>
-                      <td style={DS.td}>
+                      <td style={td}>
                         {chantierLie ? (
                           <span
                             onClick={() => naviguer('chantiers', { chantierActif: chantierLie.id })}
-                            style={{ fontSize: 11, fontWeight: 700, background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.3)', color: '#10b981', padding: '3px 10px', borderRadius: 20, cursor: 'pointer', display: 'inline-block' }}
+                            style={{ ...mono(11, V1.ok, 600), background: V1.ok + '14', border: `1px solid ${V1.ok}35`, padding: '3px 10px', borderRadius: 20, cursor: 'pointer', display: 'inline-block' }}
                           >{chantierLie.numero} →</span>
                         ) : (
-                          <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>—</span>
+                          <span style={{ fontSize: 12, color: V1.texteMuted }}>—</span>
                         )}
                       </td>
-                      <td style={DS.td}>
-                        <span style={{ fontSize: 13, fontWeight: 800, color: isAccepte ? '#10b981' : 'var(--text-primary)' }}>
+                      <td style={{ ...td, textAlign: 'right' }}>
+                        <span style={{ ...mono(14, isAccepte ? V1.ok : V1.texte, 600) }}>
                           CHF {fmtN(montant + totalRegie + totalAvenants)}
                         </span>
                         {totalAvenants > 0 && (
                           <div style={{ fontSize: 10, color: '#8b5cf6', marginTop: 1 }}>dont CHF {fmtN(Math.round(totalAvenants))} avenants</div>
                         )}
                         {totalRegie > 0 && (
-                          <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 1 }}>dont CHF {fmtN(Math.round(totalRegie))} régie</div>
+                          <div style={{ fontSize: 10, color: V1.texteMuted, marginTop: 1 }}>dont CHF {fmtN(Math.round(totalRegie))} régie</div>
                         )}
                       </td>
-                      <td style={DS.td}>
+                      <td style={td}>
                         <span style={{
-                          fontSize: 11, fontWeight: 700, color: statutStyle.color, background: statutStyle.bg,
-                          borderRadius: 20, padding: '3px 10px', whiteSpace: 'nowrap', display: 'inline-block',
+                          ...mono(10, statutStyle.color, 600), textTransform: 'uppercase', letterSpacing: '0.04em',
+                          background: statutStyle.bg, borderRadius: 20, padding: '3px 10px', whiteSpace: 'nowrap', display: 'inline-block',
                         }}>{d.statut}</span>
                       </td>
-                      <td style={{ ...DS.td, whiteSpace: 'nowrap' }}>
+                      <td style={{ ...td, whiteSpace: 'nowrap' }}>
                         <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
                           {!chantierLie && isAccepte && (
                             <button onClick={() => ouvrirConfirmConversion(d)} style={{ ...DS.btnSuccess, padding: '6px 12px', fontSize: 12, gap: 5 }}>
@@ -775,7 +798,7 @@ function Devis() {
                                   setFactures([...factures, nouvelleFacture]);
                                   naviguer('finances');
                                 }}
-                                style={{ background: 'rgba(139,92,246,0.12)', color: '#8b5cf6', border: '1px solid rgba(139,92,246,0.3)', borderRadius: 8, padding: '6px 12px', cursor: 'pointer', fontSize: 12, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 5, fontFamily: 'inherit', transition: 'all 0.15s' }}
+                                style={{ background: V1.bleu + '14', color: V1.bleu, border: `1px solid ${V1.bleu}35`, borderRadius: 8, padding: '6px 12px', cursor: 'pointer', fontSize: 12, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 5, fontFamily: 'inherit', transition: 'all 0.15s' }}
                                 title={chantierLie ? 'Créer la facture depuis ce devis' : 'Attention : aucun chantier lié à ce devis'}
                               >
                                 <Receipt size={13} /> Créer la facture{!chantierLie && ' ⚠'}

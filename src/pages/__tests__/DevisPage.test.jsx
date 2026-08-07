@@ -191,7 +191,8 @@ describe('DevisPage — validation formulaire', () => {
 
     // Remplir client uniquement, pas de montant
     const selects = screen.getAllByRole('combobox');
-    fireEvent.change(selects[0], { target: { value: '1' } });
+    const clientSelect = selects.find(s => within(s).queryAllByRole('option').some(o => o.value === '1'));
+    fireEvent.change(clientSelect, { target: { value: '1' } });
 
     fireEvent.click(screen.getByRole('button', { name: /Sauvegarder/i }));
 
@@ -221,7 +222,8 @@ describe('DevisPage — création d\'un devis (fix typesTravaux)', () => {
 
     // 1. Sélectionner un client
     const selects = screen.getAllByRole('combobox');
-    fireEvent.change(selects[0], { target: { value: '1' } });
+    const clientSelect = selects.find(s => within(s).queryAllByRole('option').some(o => o.value === '1'));
+    fireEvent.change(clientSelect, { target: { value: '1' } });
 
     // 2. Saisir le montant HT
     fireEvent.change(
@@ -248,7 +250,8 @@ describe('DevisPage — création d\'un devis (fix typesTravaux)', () => {
     fireEvent.click(screen.getByRole('button', { name: /Nouveau devis/i }));
 
     const selects = screen.getAllByRole('combobox');
-    fireEvent.change(selects[0], { target: { value: '1' } });
+    const clientSelect = selects.find(s => within(s).queryAllByRole('option').some(o => o.value === '1'));
+    fireEvent.change(clientSelect, { target: { value: '1' } });
     fireEvent.change(
       screen.getByPlaceholderText("Ex : 45'000"),
       { target: { value: '15000' } },
@@ -266,7 +269,8 @@ describe('DevisPage — création d\'un devis (fix typesTravaux)', () => {
     fireEvent.click(screen.getByRole('button', { name: /Nouveau devis/i }));
 
     const selects = screen.getAllByRole('combobox');
-    fireEvent.change(selects[0], { target: { value: '1' } });
+    const clientSelect = selects.find(s => within(s).queryAllByRole('option').some(o => o.value === '1'));
+    fireEvent.change(clientSelect, { target: { value: '1' } });
     fireEvent.change(screen.getByPlaceholderText("Ex : 45'000"), { target: { value: '10000' } });
 
     // Sélectionner puis désélectionner
@@ -283,7 +287,8 @@ describe('DevisPage — création d\'un devis (fix typesTravaux)', () => {
     fireEvent.click(screen.getByRole('button', { name: /Nouveau devis/i }));
 
     const selects = screen.getAllByRole('combobox');
-    fireEvent.change(selects[0], { target: { value: '1' } });
+    const clientSelect = selects.find(s => within(s).queryAllByRole('option').some(o => o.value === '1'));
+    fireEvent.change(clientSelect, { target: { value: '1' } });
     fireEvent.change(screen.getByPlaceholderText("Ex : 45'000"), { target: { value: '20000' } });
 
     fireEvent.click(screen.getByRole('button', { name: /Cloisons vitrées/i }));
@@ -308,7 +313,8 @@ describe('DevisPage — création d\'un devis (fix typesTravaux)', () => {
     fireEvent.click(screen.getByRole('button', { name: /Nouveau devis/i }));
 
     const selects = screen.getAllByRole('combobox');
-    fireEvent.change(selects[0], { target: { value: '1' } });
+    const clientSelect = selects.find(s => within(s).queryAllByRole('option').some(o => o.value === '1'));
+    fireEvent.change(clientSelect, { target: { value: '1' } });
     fireEvent.change(screen.getByPlaceholderText("Ex : 45'000"), { target: { value: '12000' } });
     fireEvent.click(screen.getByRole('button', { name: /Cloisons vitrées/i }));
     fireEvent.click(screen.getByRole('button', { name: /Sauvegarder/i }));
@@ -852,7 +858,8 @@ describe('DevisPage — compte neuf (PARAMETRES_DEFAUT)', () => {
 
     // Sélectionner client
     const selects = screen.getAllByRole('combobox');
-    fireEvent.change(selects[0], { target: { value: '1' } });
+    const clientSelect = selects.find(s => within(s).queryAllByRole('option').some(o => o.value === '1'));
+    fireEvent.change(clientSelect, { target: { value: '1' } });
 
     // Saisir montant HT
     fireEvent.change(

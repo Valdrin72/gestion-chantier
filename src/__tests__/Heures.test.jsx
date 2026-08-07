@@ -1,6 +1,6 @@
 import React from 'react';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { screen, fireEvent } from '@testing-library/react';
+import { screen, fireEvent, within } from '@testing-library/react';
 import Heures from '../Heures';
 import { renderWithApp } from '../test-utils/renderWithApp';
 
@@ -117,12 +117,13 @@ describe('Heures — grille hebdomadaire', () => {
     renderHeures();
     fireEvent.click(screen.getByRole('button', { name: /saisir des heures/i }));
 
-    // PointageFormulaire : 3 comboboxes (employé, chantier, catégorie) + 1 spinbutton (heures)
+    // Le hero de la page ajoute un <select> période → on cible les selects du formulaire
+    // par leurs options (robuste à l'ordre), pas par index.
     const comboboxes = screen.getAllByRole('combobox');
-    // comboboxes[0] = employé select
-    fireEvent.change(comboboxes[0], { target: { value: '1' } });
-    // comboboxes[1] = chantier select dans LigneRepartition
-    fireEvent.change(comboboxes[1], { target: { value: 'CH3' } });
+    const employeSelect = comboboxes.find(s => within(s).queryAllByRole('option').some(o => o.value === '1'));
+    fireEvent.change(employeSelect, { target: { value: '1' } });
+    const chantierSelect = comboboxes.find(s => within(s).queryAllByRole('option').some(o => o.value === 'CH3'));
+    fireEvent.change(chantierSelect, { target: { value: 'CH3' } });
 
     // Spinbutton = heures dans LigneRepartition
     const spinbutton = screen.getByRole('spinbutton');

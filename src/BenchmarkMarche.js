@@ -1,18 +1,18 @@
 import React, { useMemo, useState } from 'react';
 import { TrendingUp, TrendingDown, Award, AlertTriangle, CheckCircle, Lightbulb } from 'lucide-react';
-import { DS } from './ds';
 import { useApp } from './context/AppContext';
 import { fmtN, calculerCoutsChantier, calculerCA, SEUILS } from './donnees';
+import { V1, BADGES_V1, mono, carteV1 } from './design/v1';
 
 const STATUTS_TERMINES = ['terminé', 'facturé', 'clôturé'];
 const isTermine = c => STATUTS_TERMINES.includes(c.statut?.trim().toLowerCase());
 
 function BadgeMarge({ pct }) {
-  if (pct === null || isNaN(pct)) return <span style={{ color: 'var(--text-muted)' }}>—</span>;
-  const couleur = pct >= SEUILS.margeRentable ? '#10b981' : pct >= SEUILS.margeLimite ? '#f59e0b' : '#ef4444';
-  const bg = pct >= SEUILS.margeRentable ? '#f0fdf4' : pct >= SEUILS.margeLimite ? '#fffbeb' : '#fef2f2';
+  if (pct === null || isNaN(pct)) return <span style={{ color: V1.texteMuted }}>—</span>;
+  const couleur = pct >= SEUILS.margeRentable ? V1.ok : pct >= SEUILS.margeLimite ? V1.warn : V1.danger;
+  const bg = pct >= SEUILS.margeRentable ? BADGES_V1.ok.bg : pct >= SEUILS.margeLimite ? BADGES_V1.warn.bg : BADGES_V1.danger.bg;
   return (
-    <span style={{ background: bg, color: couleur, border: `1px solid ${couleur}30`, borderRadius: 20, padding: '2px 10px', fontSize: 12, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
+    <span style={{ ...mono(12, couleur, 700), background: bg, border: `1px solid ${couleur}30`, borderRadius: 20, padding: '2px 10px' }}>
       {pct >= 0 ? '+' : ''}{Math.round(pct * 10) / 10}%
     </span>
   );
@@ -114,9 +114,9 @@ export default function BenchmarkMarche({ chantiers = [], devis = [], parametres
 
   if (termines.length === 0) {
     return (
-      <div style={{ ...DS.card, textAlign: 'center', padding: '60px 40px', color: 'var(--text-muted)' }}>
+      <div style={{ ...carteV1, textAlign: 'center', padding: '60px 40px', color: V1.texteMuted }}>
         <TrendingUp size={40} strokeWidth={1.2} style={{ opacity: 0.3, marginBottom: 16 }} />
-        <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 8 }}>Aucun chantier terminé</div>
+        <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 8, color: V1.texte }}>Aucun chantier terminé</div>
         <div style={{ fontSize: 13 }}>Le benchmark s'affiche après la clôture de vos premiers chantiers</div>
       </div>
     );
@@ -131,57 +131,57 @@ export default function BenchmarkMarche({ chantiers = [], devis = [], parametres
         </div>
       </div>
 
-      {/* KPIs résumé */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 24 }}>
+      {/* KPIs résumé — cartes v1 sobres */}
+      <div className="kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 24 }}>
         {[
-          { label: 'Chantiers analysés', val: termines.length, couleur: '#0d3d6e' },
-          { label: 'CA total réalisé', val: `CHF ${fmtN(Math.round(termines.reduce((s, c) => s + (calculerCA(c, devis) || 0), 0) / 1000))}k`, couleur: '#10b981' },
-          { label: 'Marge max (type)', val: meilleurMarge > -999 ? `${Math.round(meilleurMarge * 10) / 10}%` : '—', couleur: '#10b981' },
-          { label: 'Marge min (type)', val: piresMarge < 999 ? `${Math.round(piresMarge * 10) / 10}%` : '—', couleur: piresMarge < 0 ? '#ef4444' : '#f59e0b' },
+          { label: 'Chantiers analysés', val: termines.length, couleur: V1.bleu },
+          { label: 'CA total réalisé', val: `CHF ${fmtN(Math.round(termines.reduce((s, c) => s + (calculerCA(c, devis) || 0), 0) / 1000))}k`, couleur: V1.ok },
+          { label: 'Marge max (type)', val: meilleurMarge > -999 ? `${Math.round(meilleurMarge * 10) / 10}%` : '—', couleur: V1.ok },
+          { label: 'Marge min (type)', val: piresMarge < 999 ? `${Math.round(piresMarge * 10) / 10}%` : '—', couleur: piresMarge < 0 ? V1.danger : V1.warn },
         ].map(k => (
-          <div key={k.label} style={{ ...DS.card, padding: '14px 16px' }}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 6 }}>{k.label}</div>
-            <div style={{ fontSize: 20, fontWeight: 900, color: k.couleur }}>{k.val}</div>
+          <div key={k.label} style={{ ...carteV1, borderTop: `3px solid ${k.couleur}`, padding: '14px 16px' }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: V1.texteMuted, textTransform: 'uppercase', marginBottom: 6 }}>{k.label}</div>
+            <div style={{ ...mono(20, k.couleur, 700) }}>{k.val}</div>
           </div>
         ))}
       </div>
 
-      {/* Contrôles */}
+      {/* Contrôles — pastilles v1 (actif bleu CYNA plein), défilables sur mobile */}
       <div style={{ display: 'flex', gap: 12, marginBottom: 20, flexWrap: 'wrap', alignItems: 'center' }}>
-        <div style={{ display: 'flex', gap: 6 }}>
+        <div style={{ display: 'flex', gap: 6, overflowX: 'auto', scrollbarWidth: 'none', paddingBottom: 2 }}>
           {[
             { id: 'type', label: 'Par type de travaux' },
             { id: 'client', label: 'Par client' },
             { id: 'taille', label: 'Par taille' },
           ].map(v => (
             <button key={v.id} onClick={() => setVue(v.id)}
-              style={{ borderRadius: 20, padding: '6px 14px', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', border: '1px solid', transition: 'all 0.15s',
-                background: vue === v.id ? '#4f46e5' : 'transparent',
-                color: vue === v.id ? 'white' : 'var(--text-muted)',
-                borderColor: vue === v.id ? '#4f46e5' : 'var(--border)' }}>
+              style={{ borderRadius: 20, padding: '6px 14px', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', border: '1px solid', transition: 'all 0.15s', whiteSpace: 'nowrap', flexShrink: 0,
+                background: vue === v.id ? V1.bleu : 'transparent',
+                color: vue === v.id ? '#fff' : V1.texteMuted,
+                borderColor: vue === v.id ? V1.bleu : V1.separation }}>
               {v.label}
             </button>
           ))}
         </div>
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 6, alignItems: 'center' }}>
-          <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Trier par :</span>
+          <span style={{ fontSize: 11, color: V1.texteMuted }}>Trier par :</span>
           {[{ id: 'marge', label: 'Marge' }, { id: 'ca', label: 'CA' }, { id: 'nb', label: 'Nb chantiers' }].map(t => (
             <button key={t.id} onClick={() => setTriBenchmark(t.id)}
-              style={{ borderRadius: 8, padding: '4px 10px', fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', border: '1px solid',
-                background: triBenchmark === t.id ? '#f1f5f9' : 'transparent',
-                color: triBenchmark === t.id ? '#1e293b' : 'var(--text-muted)',
-                borderColor: triBenchmark === t.id ? '#cbd5e1' : 'var(--border)' }}>
+              style={{ borderRadius: 8, padding: '4px 10px', fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', border: '1px solid', whiteSpace: 'nowrap',
+                background: triBenchmark === t.id ? V1.bleuFond : 'transparent',
+                color: triBenchmark === t.id ? V1.bleu : V1.texteMuted,
+                borderColor: triBenchmark === t.id ? V1.bleu + '55' : V1.separation }}>
               {t.label}
             </button>
           ))}
         </div>
       </div>
 
-      {/* Tableau */}
-      <div style={{ ...DS.card, padding: 0, overflow: 'hidden' }}>
+      {/* Tableau — v1 (défilable sur mobile) */}
+      <div style={{ ...carteV1, padding: 0, overflowX: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
           <thead>
-            <tr style={{ background: 'var(--bg-glass)', borderBottom: '1px solid var(--border)' }}>
+            <tr style={{ background: V1.page, borderBottom: `1px solid ${V1.separation}` }}>
               {[
                 { label: vue === 'type' ? 'Type de travaux' : vue === 'client' ? 'Client' : 'Taille', align: 'left' },
                 { label: 'Nb chantiers', align: 'center' },
@@ -190,7 +190,7 @@ export default function BenchmarkMarche({ chantiers = [], devis = [], parametres
                 { label: 'Marge globale', align: 'center' },
                 { label: 'Performance', align: 'center' },
               ].map(h => (
-                <th key={h.label} style={{ padding: '10px 14px', textAlign: h.align, fontWeight: 700, fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase' }}>{h.label}</th>
+                <th key={h.label} style={{ padding: '10px 14px', textAlign: h.align, fontWeight: 700, fontSize: 10, color: V1.texteMuted, textTransform: 'uppercase' }}>{h.label}</th>
               ))}
             </tr>
           </thead>
@@ -203,30 +203,30 @@ export default function BenchmarkMarche({ chantiers = [], devis = [], parametres
                 ? (g.chantiers[0]?.clientNom || `Client #${g.clientId}`)
                 : g.nom;
               return (
-                <tr key={i} style={{ borderBottom: '1px solid var(--border)', background: estMeilleur ? '#f0fdf440' : estPire ? '#fef2f240' : 'transparent' }}>
-                  <td style={{ padding: '12px 14px', fontWeight: 600 }}>
+                <tr key={i} style={{ borderBottom: `1px solid ${V1.separation}`, background: estMeilleur ? V1.ok + '0d' : estPire ? V1.danger + '0d' : 'transparent' }}>
+                  <td style={{ padding: '12px 14px', fontWeight: 600, color: V1.texte }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      {estMeilleur && <Award size={14} color="#f59e0b" title="Meilleur type" />}
-                      {estPire && <AlertTriangle size={14} color="#f59e0b" title="À améliorer" />}
+                      {estMeilleur && <Award size={14} color={V1.warn} title="Meilleur type" />}
+                      {estPire && <AlertTriangle size={14} color={V1.warn} title="À améliorer" />}
                       {label}
                     </div>
                   </td>
                   <td style={{ padding: '12px 14px', textAlign: 'center' }}>
-                    <span style={{ background: 'var(--bg-glass)', borderRadius: 20, padding: '2px 10px', fontWeight: 700 }}>{g.nbChantiers}</span>
+                    <span style={{ ...mono(12, V1.texte, 700), background: V1.bleuFond, borderRadius: 20, padding: '2px 10px' }}>{g.nbChantiers}</span>
                   </td>
-                  <td style={{ padding: '12px 14px', textAlign: 'right', fontWeight: 700 }}>CHF {fmtN(Math.round(g.caTotal))}</td>
-                  <td style={{ padding: '12px 14px', textAlign: 'right', color: 'var(--text-muted)' }}>CHF {fmtN(Math.round(caMoyen))}</td>
+                  <td style={{ padding: '12px 14px', textAlign: 'right', ...mono(13, V1.texte, 700) }}>CHF {fmtN(Math.round(g.caTotal))}</td>
+                  <td style={{ padding: '12px 14px', textAlign: 'right', ...mono(13, V1.texteMuted) }}>CHF {fmtN(Math.round(caMoyen))}</td>
                   <td style={{ padding: '12px 14px', textAlign: 'center' }}>
                     <BadgeMarge pct={g.marge} />
                   </td>
                   <td style={{ padding: '12px 14px', textAlign: 'center' }}>
                     {g.marge >= SEUILS.margeRentable ? (
-                      <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 700, color: '#10b981' }}><CheckCircle size={12} /> Rentable</span>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 700, color: V1.ok }}><CheckCircle size={12} /> Rentable</span>
                     ) : g.marge >= SEUILS.margeLimite ? (
-                      <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 700, color: '#f59e0b' }}><AlertTriangle size={12} /> Limite</span>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 700, color: V1.warn }}><AlertTriangle size={12} /> Limite</span>
                     ) : g.marge !== null ? (
-                      <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 700, color: '#ef4444' }}><TrendingDown size={12} /> Non rentable</span>
-                    ) : <span style={{ color: 'var(--text-muted)' }}>—</span>}
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 700, color: V1.danger }}><TrendingDown size={12} /> Non rentable</span>
+                    ) : <span style={{ color: V1.texteMuted }}>—</span>}
                   </td>
                 </tr>
               );
@@ -235,19 +235,19 @@ export default function BenchmarkMarche({ chantiers = [], devis = [], parametres
         </table>
       </div>
 
-      {/* Insight automatique */}
+      {/* Insight automatique — encarts v1 (empilés sur mobile) */}
       {donneesActives.length >= 2 && (
-        <div style={{ marginTop: 16, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+        <div style={{ marginTop: 16, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 12 }}>
           {donneesActives[0]?.marge !== null && (
-            <div style={{ padding: '14px 16px', background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 12, fontSize: 12 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 700, color: '#15803d', marginBottom: 4 }}><Lightbulb size={13} /> Type le plus rentable</div>
-              <div style={{ color: '#166534' }}><strong>{donneesActives[0].nom}</strong> — marge de {Math.round(donneesActives[0].marge * 10) / 10}% sur {donneesActives[0].nbChantiers} chantier{donneesActives[0].nbChantiers > 1 ? 's' : ''}. Priorisez ce type de contrat.</div>
+            <div style={{ padding: '14px 16px', background: BADGES_V1.ok.bg, border: `1px solid ${V1.ok}44`, borderLeft: `4px solid ${V1.ok}`, borderRadius: 12, fontSize: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 700, color: V1.ok, marginBottom: 4 }}><Lightbulb size={13} /> Type le plus rentable</div>
+              <div style={{ color: V1.texte }}><strong>{donneesActives[0].nom}</strong> — marge de {Math.round(donneesActives[0].marge * 10) / 10}% sur {donneesActives[0].nbChantiers} chantier{donneesActives[0].nbChantiers > 1 ? 's' : ''}. Priorisez ce type de contrat.</div>
             </div>
           )}
           {donneesActives[donneesActives.length - 1]?.marge !== null && donneesActives[donneesActives.length - 1].marge < SEUILS.margeRentable && (
-            <div style={{ padding: '14px 16px', background: '#fffbeb', border: '1px solid #fcd34d', borderRadius: 12, fontSize: 12 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 700, color: '#92400e', marginBottom: 4 }}><TrendingDown size={13} /> Type à améliorer</div>
-              <div style={{ color: '#78350f' }}><strong>{donneesActives[donneesActives.length - 1].nom}</strong> — marge de {Math.round(donneesActives[donneesActives.length - 1].marge * 10) / 10}%. Revoir le pricing ou réduire les coûts sur ces chantiers.</div>
+            <div style={{ padding: '14px 16px', background: BADGES_V1.warn.bg, border: `1px solid ${V1.warn}44`, borderLeft: `4px solid ${V1.warn}`, borderRadius: 12, fontSize: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 700, color: V1.warn, marginBottom: 4 }}><TrendingDown size={13} /> Type à améliorer</div>
+              <div style={{ color: V1.texte }}><strong>{donneesActives[donneesActives.length - 1].nom}</strong> — marge de {Math.round(donneesActives[donneesActives.length - 1].marge * 10) / 10}%. Revoir le pricing ou réduire les coûts sur ces chantiers.</div>
             </div>
           )}
         </div>

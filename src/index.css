@@ -152,6 +152,7 @@
   --g6      : repeat(6, 1fr);
   --g-dash  : 1.25fr 1fr 0.75fr;
   --g-params: 260px 1fr;
+  --g-ia    : 200px 1fr;
   --g-form3 : 1fr 1fr 1fr;
   --g-form2 : 1fr 1fr;
   --g-devis : 1fr 2fr 1fr 1fr;
@@ -1008,6 +1009,13 @@ tr:last-child td { border-bottom: none; }
   --g-3a   : 1fr;
   --g-2a   : 1fr 1fr auto;
   --g-line : 1fr 1fr auto;
+
+  /* ⚠ Les custom properties doivent être DANS une règle (ex. :root) pour être
+     appliquées — les déclarations nues ci-dessus sont ignorées par les navigateurs
+     (correctif global à traiter dans un patch séparé, impact toutes pages). */
+  :root {
+    --g-ia : 1fr; /* Centre IA : menu déroulant pleine largeur au-dessus du panneau */
+  }
 
   /* Tables avec scroll horizontal */
   .table-responsive { overflow-x: auto; -webkit-overflow-scrolling: touch; }

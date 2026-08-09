@@ -9,7 +9,14 @@ import { useApp } from '../../context/AppContext';
 import { construireCorrespondance, pseudonymiserTexte, reidentifier } from '../../lib/pseudonymisation';
 import { calculerCoutsChantier } from '../../donnees';
 import { joursReelsChantier } from '../../calculs/pointagesHelper';
-import { DS } from '../../ds';
+import { V1, BADGES_V1, mono, carteV1 } from '../../design/v1';
+
+// Bouton d'action v1 — bleu CYNA plein (mêmes proportions que l'ancien bouton primaire).
+const btnV1 = {
+  background: V1.bleu, color: '#fff', border: 'none', borderRadius: 9,
+  padding: '9px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer',
+  display: 'inline-flex', alignItems: 'center', gap: 7, fontFamily: 'inherit',
+};
 
 // ── Limite mémoire partagée ─────────────────────────────────────
 const LIMITE_MEMOIRE = 8000;
@@ -84,7 +91,7 @@ function MarkdownSimple({ texte }) {
       {lignes.map((ligne, i) => {
         if (!ligne.trim()) return <br key={i} />;
         if (ligne.startsWith('**') && ligne.endsWith('**'))
-          return <p key={i} style={{ fontWeight: 700, color: DS.brand.secondary, marginTop: 12, marginBottom: 4 }}>{ligne.replace(/\*\*/g, '')}</p>;
+          return <p key={i} style={{ fontWeight: 700, color: V1.bleu, marginTop: 12, marginBottom: 4 }}>{ligne.replace(/\*\*/g, '')}</p>;
         if (ligne.startsWith('- ') || ligne.startsWith('• '))
           return <p key={i} style={{ paddingLeft: 16, marginBottom: 4 }}>• <GrasInline texte={ligne.replace(/^[-•]\s/, '')} /></p>;
         return <p key={i} style={{ marginBottom: 4 }}><GrasInline texte={ligne} /></p>;
@@ -97,7 +104,7 @@ function MarkdownSimple({ texte }) {
 function ResultatIA({ texte, error, loading }) {
   if (loading) {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '24px 0', color: DS.brand.secondary }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '24px 0', color: V1.bleu }}>
         <Loader size={16} style={{ animation: 'spin 1s linear infinite' }} />
         <span style={{ fontSize: 14 }}>Claude analyse en cours…</span>
       </div>
@@ -105,7 +112,7 @@ function ResultatIA({ texte, error, loading }) {
   }
   if (error) {
     return (
-      <div style={{ display: 'flex', gap: 10, padding: '14px 16px', background: '#fef2f2', borderRadius: 10, border: '1px solid #fecaca', color: '#dc2626' }}>
+      <div style={{ display: 'flex', gap: 10, padding: '14px 16px', background: BADGES_V1.danger.bg, borderRadius: 10, border: `1px solid ${V1.danger}44`, color: V1.danger }}>
         <AlertCircle size={16} style={{ marginTop: 2, flexShrink: 0 }} />
         <div>
           <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 2 }}>Erreur</div>
@@ -118,10 +125,10 @@ function ResultatIA({ texte, error, loading }) {
   return (
     <div style={{ background: 'var(--bg-page)', borderRadius: 10, padding: '16px 18px', border: '1px solid var(--border)', marginTop: 16 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12, paddingBottom: 10, borderBottom: '1px solid var(--border)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: DS.brand.secondary, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: V1.bleu, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
           <Sparkles size={12} /> Analyse Claude AI
         </div>
-        <span style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, color: DS.brand.secondary, opacity: 0.7 }}>
+        <span style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, color: V1.bleu, opacity: 0.7 }}>
           <Brain size={11} /> Mémorisé automatiquement
         </span>
       </div>
@@ -181,7 +188,7 @@ function ConversationSuite({ contexteInitial, memoire, autoSave, placeholder }) 
 
   return (
     <div style={{ borderTop: '1px solid var(--border)', paddingTop: 14, marginTop: 4 }}>
-      <div style={{ fontSize: 12, fontWeight: 700, color: DS.brand.secondary, display: 'flex', alignItems: 'center', gap: 6, marginBottom: messages.length > 0 ? 12 : 10 }}>
+      <div style={{ fontSize: 12, fontWeight: 700, color: V1.bleu, display: 'flex', alignItems: 'center', gap: 6, marginBottom: messages.length > 0 ? 12 : 10 }}>
         <MessageSquare size={13} /> Continuer la discussion
       </div>
 
@@ -197,12 +204,12 @@ function ConversationSuite({ contexteInitial, memoire, autoSave, placeholder }) 
               : <BulleMessage key={i} msg={msg} />
           )}
           {loading && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: DS.brand.secondary, fontSize: 13 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: V1.bleu, fontSize: 13 }}>
               <Loader size={14} style={{ animation: 'spin 1s linear infinite' }} /> Claude réfléchit…
             </div>
           )}
           {error && (
-            <div style={{ padding: '10px 14px', background: '#fef2f2', borderRadius: 10, border: '1px solid #fecaca', color: '#dc2626', fontSize: 13 }}>{error}</div>
+            <div style={{ padding: '10px 14px', background: BADGES_V1.danger.bg, borderRadius: 10, border: `1px solid ${V1.danger}44`, color: V1.danger, fontSize: 13 }}>{error}</div>
           )}
           <div ref={bottomRef} />
         </div>
@@ -220,7 +227,7 @@ function ConversationSuite({ contexteInitial, memoire, autoSave, placeholder }) 
         <button
           onClick={envoyer}
           disabled={!input.trim() || loading}
-          style={{ ...DS.btnPrimary, padding: '10px 14px', borderRadius: 10, display: 'flex', alignItems: 'center', opacity: (!input.trim() || loading) ? 0.5 : 1, flexShrink: 0 }}>
+          style={{ ...btnV1, padding: '10px 14px', borderRadius: 10, display: 'flex', alignItems: 'center', opacity: (!input.trim() || loading) ? 0.5 : 1, flexShrink: 0 }}>
           <SendHorizontal size={15} />
         </button>
       </div>
@@ -260,14 +267,14 @@ function PanneauMemoire({ memoire, onSave }) {
   };
 
   return (
-    <div style={{ background: 'var(--bg-page)', border: `1px solid ${DS.brand.secondary}44`, borderRadius: 10, padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+    <div style={{ background: 'var(--bg-page)', border: `1px solid ${V1.bleu}44`, borderRadius: 10, padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <div style={{ fontSize: 12, fontWeight: 700, color: DS.brand.secondary, display: 'flex', alignItems: 'center', gap: 6 }}>
+        <div style={{ fontSize: 12, fontWeight: 700, color: V1.bleu, display: 'flex', alignItems: 'center', gap: 6 }}>
           <Brain size={13} /> Mémoire CYNA
         </div>
         <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6 }}>
           {nb > 0 && (
-            <span style={{ fontSize: 11, background: DS.brand.soft, color: DS.brand.secondary, padding: '2px 8px', borderRadius: 10, fontWeight: 700 }}>
+            <span style={{ fontSize: 11, background: V1.bleuFond, color: V1.bleu, padding: '2px 8px', borderRadius: 10, fontWeight: 700 }}>
               {nb} insight{nb > 1 ? 's' : ''} accumulé{nb > 1 ? 's' : ''}
             </span>
           )}
@@ -282,18 +289,18 @@ function PanneauMemoire({ memoire, onSave }) {
       />
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
         <button onClick={sauver}
-          style={{ ...DS.btnPrimary, display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
+          style={{ ...btnV1, display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
           <Save size={13} /> {sauve ? 'Sauvegardé ✓' : 'Sauvegarder'}
         </button>
         {nb > 3 && (
           <button onClick={condenser} disabled={loading}
-            style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '8px 14px', borderRadius: 8, border: `1px solid ${DS.brand.secondary}55`, background: DS.brand.soft, color: DS.brand.secondary, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', opacity: loading ? 0.6 : 1 }}>
+            style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '8px 14px', borderRadius: 8, border: `1px solid ${V1.bleu}55`, background: V1.bleuFond, color: V1.bleu, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', opacity: loading ? 0.6 : 1 }}>
             <Sparkles size={13} /> {loading ? 'Condensation…' : 'Condenser avec Claude'}
           </button>
         )}
         {texte && (
           <button onClick={() => { setTexte(''); onSave(''); }}
-            style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '8px 14px', borderRadius: 8, border: '1px solid #fecaca', background: '#fef2f2', color: '#dc2626', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>
+            style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '8px 14px', borderRadius: 8, border: `1px solid ${V1.danger}44`, background: BADGES_V1.danger.bg, color: V1.danger, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>
             <Trash2 size={13} /> Effacer tout
           </button>
         )}
@@ -341,7 +348,7 @@ function AnalyseChantier({ memoire, onSauvegarder, autoSave }) {
           {actifs.map(c => <option key={c.id} value={c.id}>{c.nom || c.numero} — {c.statut}</option>)}
         </select>
         <button onClick={analyser} disabled={!chantierId || loading}
-          style={{ ...DS.btnPrimary, display: 'flex', alignItems: 'center', gap: 6, opacity: (!chantierId || loading) ? 0.6 : 1 }}>
+          style={{ ...btnV1, display: 'flex', alignItems: 'center', gap: 6, opacity: (!chantierId || loading) ? 0.6 : 1 }}>
           <Sparkles size={14} /> Analyser
         </button>
       </div>
@@ -398,7 +405,7 @@ function SuggestionDevis({ memoire, onSauvegarder, autoSave }) {
         </div>
       </div>
       <button onClick={generer} disabled={!form.description.trim() || loading}
-        style={{ ...DS.btnPrimary, display: 'flex', alignItems: 'center', gap: 6, alignSelf: 'flex-start', opacity: (!form.description.trim() || loading) ? 0.6 : 1 }}>
+        style={{ ...btnV1, display: 'flex', alignItems: 'center', gap: 6, alignSelf: 'flex-start', opacity: (!form.description.trim() || loading) ? 0.6 : 1 }}>
         <Sparkles size={14} /> Générer le chiffrage
       </button>
       <ResultatIA texte={resultat} error={error} loading={loading} onSauvegarder={onSauvegarder} />
@@ -428,7 +435,7 @@ function ExplicationAlertes({ memoire, onSauvegarder, autoSave }) {
       <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 16 }}>
         Claude explique tes alertes actives en langage clair et propose des actions.
       </p>
-      <div style={{ padding: '12px 16px', background: nonLues.length > 0 ? '#fff7ed' : '#f0fdf4', borderRadius: 10, border: `1px solid ${nonLues.length > 0 ? '#fed7aa' : '#bbf7d0'}`, marginBottom: 16, fontSize: 13 }}>
+      <div style={{ padding: '12px 16px', background: nonLues.length > 0 ? BADGES_V1.warn.bg : BADGES_V1.ok.bg, borderRadius: 10, border: `1px solid ${nonLues.length > 0 ? V1.warn : V1.ok}44`, marginBottom: 16, fontSize: 13 }}>
         <span style={{ fontWeight: 600 }}>{nonLues.length} alerte{nonLues.length !== 1 ? 's' : ''} non lue{nonLues.length !== 1 ? 's' : ''}</span>
         {nonLues.length > 0 && (
           <span style={{ color: 'var(--text-secondary)', marginLeft: 8 }}>
@@ -437,7 +444,7 @@ function ExplicationAlertes({ memoire, onSauvegarder, autoSave }) {
         )}
       </div>
       <button onClick={expliquer} disabled={nonLues.length === 0 || loading}
-        style={{ ...DS.btnPrimary, display: 'flex', alignItems: 'center', gap: 6, opacity: (nonLues.length === 0 || loading) ? 0.6 : 1 }}>
+        style={{ ...btnV1, display: 'flex', alignItems: 'center', gap: 6, opacity: (nonLues.length === 0 || loading) ? 0.6 : 1 }}>
         <Sparkles size={14} /> Expliquer les alertes
       </button>
       <ResultatIA texte={resultat} error={error} loading={loading} onSauvegarder={onSauvegarder} />
@@ -475,14 +482,14 @@ function AnalysePortefeuille({ memoire, onSauvegarder, autoSave }) {
       </p>
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 20 }}>
         {[{ label: 'Chantiers actifs', val: nbActifs }, { label: 'Total chantiers', val: chantiers.length }, { label: 'Factures', val: factures.length }].map(k => (
-          <div key={k.label} style={{ padding: '10px 16px', background: DS.brand.soft, borderRadius: 10, border: `1px solid ${DS.brand.secondary}33` }}>
-            <div style={{ fontSize: 20, fontWeight: 800, color: DS.brand.secondary }}>{k.val}</div>
-            <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{k.label}</div>
+          <div key={k.label} style={{ padding: '10px 16px', background: V1.bleuFond, borderRadius: 10, border: `1px solid ${V1.bleu}33` }}>
+            <div style={{ ...mono(20, V1.bleu, 600) }}>{k.val}</div>
+            <div style={{ fontSize: 11, color: V1.texteMuted }}>{k.label}</div>
           </div>
         ))}
       </div>
       <button onClick={analyser} disabled={chantiers.length === 0 || loading}
-        style={{ ...DS.btnPrimary, display: 'flex', alignItems: 'center', gap: 6, opacity: (chantiers.length === 0 || loading) ? 0.6 : 1 }}>
+        style={{ ...btnV1, display: 'flex', alignItems: 'center', gap: 6, opacity: (chantiers.length === 0 || loading) ? 0.6 : 1 }}>
         <Sparkles size={14} /> Analyser le portefeuille
       </button>
       <ResultatIA texte={resultat} error={error} loading={loading} onSauvegarder={onSauvegarder} />
@@ -545,7 +552,7 @@ function Anticiper({ memoire, onSauvegarder, autoSave }) {
         <span style={{ fontSize: 13, fontWeight: 600 }}>Horizon de prévision :</span>
         {['30', '60', '90'].map(j => (
           <button key={j} onClick={() => setHorizon(j)}
-            style={{ padding: '7px 18px', borderRadius: 20, border: `1px solid ${horizon === j ? DS.brand.secondary : 'var(--border)'}`, background: horizon === j ? DS.brand.soft : 'transparent', color: horizon === j ? DS.brand.secondary : 'var(--text-main)', fontWeight: horizon === j ? 700 : 400, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>
+            style={{ padding: '7px 18px', borderRadius: 20, border: `1px solid ${horizon === j ? V1.bleu : V1.separation}`, background: horizon === j ? V1.bleu : 'transparent', color: horizon === j ? '#fff' : V1.texteMuted, fontWeight: horizon === j ? 700 : 500, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>
             J+{j}
           </button>
         ))}
@@ -556,14 +563,14 @@ function Anticiper({ memoire, onSauvegarder, autoSave }) {
           { label: 'Factures en attente', val: factures.filter(f => f.statut?.trim().toLowerCase() !== 'payée').length },
           { label: 'Alertes actives', val: (agentState?.alertes || []).filter(a => !a.lu).length },
         ].map(k => (
-          <div key={k.label} style={{ padding: '10px 16px', background: DS.brand.soft, borderRadius: 10, border: `1px solid ${DS.brand.secondary}33` }}>
-            <div style={{ fontSize: 20, fontWeight: 800, color: DS.brand.secondary }}>{k.val}</div>
-            <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{k.label}</div>
+          <div key={k.label} style={{ padding: '10px 16px', background: V1.bleuFond, borderRadius: 10, border: `1px solid ${V1.bleu}33` }}>
+            <div style={{ ...mono(20, V1.bleu, 600) }}>{k.val}</div>
+            <div style={{ fontSize: 11, color: V1.texteMuted }}>{k.label}</div>
           </div>
         ))}
       </div>
       <button onClick={anticiper} disabled={chantiers.length === 0 || loading}
-        style={{ ...DS.btnPrimary, display: 'flex', alignItems: 'center', gap: 6, opacity: (chantiers.length === 0 || loading) ? 0.6 : 1 }}>
+        style={{ ...btnV1, display: 'flex', alignItems: 'center', gap: 6, opacity: (chantiers.length === 0 || loading) ? 0.6 : 1 }}>
         <Telescope size={14} /> Anticiper à J+{horizon}
       </button>
       <ResultatIA texte={resultat} error={error} loading={loading} onSauvegarder={onSauvegarder} />
@@ -583,7 +590,7 @@ function BulleMessage({ msg }) {
       <div style={{
         maxWidth: '88%', padding: '10px 14px',
         borderRadius: estUser ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
-        background: estUser ? DS.brand.secondary : 'var(--bg-page)',
+        background: estUser ? V1.bleu : 'var(--bg-page)',
         color: estUser ? '#fff' : 'var(--text-main)',
         border: estUser ? 'none' : '1px solid var(--border)',
         fontSize: 13, lineHeight: 1.65,
@@ -633,7 +640,7 @@ function ChatLibre({ memoire, setMemoire }) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12, height: 'calc(100vh - 280px)', minHeight: 420 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
         <button onClick={() => setShowMemoire(v => !v)}
-          style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', borderRadius: 8, border: `1px solid ${DS.brand.secondary}55`, background: memoire ? DS.brand.soft : 'transparent', color: DS.brand.secondary, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+          style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', borderRadius: 8, border: `1px solid ${V1.bleu}55`, background: memoire ? V1.bleuFond : 'transparent', color: V1.bleu, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
           <Brain size={13} />
           Mémoire CYNA {memoire ? '(active)' : '(vide)'}
           {showMemoire ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
@@ -654,7 +661,7 @@ function ChatLibre({ memoire, setMemoire }) {
       <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 14, padding: '4px 2px' }}>
         {messages.length === 0 && (
           <div style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: 13, padding: '40px 0' }}>
-            <Sparkles size={28} style={{ margin: '0 auto 12px', display: 'block', color: DS.brand.secondary, opacity: 0.5 }} />
+            <Sparkles size={28} style={{ margin: '0 auto 12px', display: 'block', color: V1.bleu, opacity: 0.5 }} />
             <div style={{ fontWeight: 600, marginBottom: 6 }}>Bonjour, je suis Claude AI</div>
             <div style={{ fontSize: 12 }}>Posez-moi n'importe quelle question sur vos chantiers, devis, réglementation BTP…</div>
             <div style={{ fontSize: 12, marginTop: 4 }}>Je mémorise notre conversation et apprends à connaître CYNA.</div>
@@ -666,13 +673,13 @@ function ChatLibre({ memoire, setMemoire }) {
           </div>
         ))}
         {loading && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: DS.brand.secondary, fontSize: 13 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: V1.bleu, fontSize: 13 }}>
             <Loader size={14} style={{ animation: 'spin 1s linear infinite' }} />
             Claude réfléchit…
           </div>
         )}
         {error && (
-          <div style={{ display: 'flex', gap: 8, padding: '10px 14px', background: '#fef2f2', borderRadius: 10, border: '1px solid #fecaca', color: '#dc2626', fontSize: 13 }}>
+          <div style={{ display: 'flex', gap: 8, padding: '10px 14px', background: BADGES_V1.danger.bg, borderRadius: 10, border: `1px solid ${V1.danger}44`, color: V1.danger, fontSize: 13 }}>
             <AlertCircle size={14} style={{ flexShrink: 0, marginTop: 1 }} /> {error}
           </div>
         )}
@@ -687,7 +694,7 @@ function ChatLibre({ memoire, setMemoire }) {
           style={{ flex: 1, padding: '10px 14px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-main)', fontSize: 13, resize: 'none', fontFamily: 'inherit', lineHeight: 1.5 }}
         />
         <button onClick={envoyer} disabled={!input.trim() || loading}
-          style={{ ...DS.btnPrimary, padding: '10px 14px', borderRadius: 10, display: 'flex', alignItems: 'center', gap: 6, opacity: (!input.trim() || loading) ? 0.5 : 1, flexShrink: 0 }}>
+          style={{ ...btnV1, padding: '10px 14px', borderRadius: 10, display: 'flex', alignItems: 'center', gap: 6, opacity: (!input.trim() || loading) ? 0.5 : 1, flexShrink: 0 }}>
           <SendHorizontal size={15} />
         </button>
       </div>
@@ -760,7 +767,7 @@ function GenererEmail({ memoire, onSauvegarder }) {
           style={{ ...inputStyle, resize: 'vertical' }} />
       </div>
       <button onClick={generer} disabled={!form.destinataire.trim() || !form.contexte.trim() || loading}
-        style={{ ...DS.btnPrimary, display: 'flex', alignItems: 'center', gap: 6, alignSelf: 'flex-start', opacity: (!form.destinataire.trim() || !form.contexte.trim() || loading) ? 0.6 : 1 }}>
+        style={{ ...btnV1, display: 'flex', alignItems: 'center', gap: 6, alignSelf: 'flex-start', opacity: (!form.destinataire.trim() || !form.contexte.trim() || loading) ? 0.6 : 1 }}>
         <Sparkles size={14} /> {phase === 'chat' ? 'Regénérer' : 'Générer l\'email'}
       </button>
 
@@ -768,7 +775,7 @@ function GenererEmail({ memoire, onSauvegarder }) {
       {phase === 'chat' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12, borderTop: '1px solid var(--border)', paddingTop: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <div style={{ fontSize: 12, fontWeight: 600, color: DS.brand.secondary, display: 'flex', alignItems: 'center', gap: 5 }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: V1.bleu, display: 'flex', alignItems: 'center', gap: 5 }}>
               <Mail size={12} /> Retouchez l'email directement en discutant
             </div>
             <button onClick={() => { setPhase('form'); setMessages([]); }}
@@ -784,12 +791,12 @@ function GenererEmail({ memoire, onSauvegarder }) {
               </div>
             ))}
             {loading && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: DS.brand.secondary, fontSize: 13 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: V1.bleu, fontSize: 13 }}>
                 <Loader size={14} style={{ animation: 'spin 1s linear infinite' }} /> Claude rédige…
               </div>
             )}
             {error && (
-              <div style={{ padding: '10px 14px', background: '#fef2f2', borderRadius: 10, border: '1px solid #fecaca', color: '#dc2626', fontSize: 13 }}>
+              <div style={{ padding: '10px 14px', background: BADGES_V1.danger.bg, borderRadius: 10, border: `1px solid ${V1.danger}44`, color: V1.danger, fontSize: 13 }}>
                 {error}
               </div>
             )}
@@ -804,7 +811,7 @@ function GenererEmail({ memoire, onSauvegarder }) {
               style={{ flex: 1, padding: '10px 14px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-main)', fontSize: 13, resize: 'none', fontFamily: 'inherit', lineHeight: 1.5 }}
             />
             <button onClick={() => envoyer()} disabled={!input.trim() || loading}
-              style={{ ...DS.btnPrimary, padding: '10px 14px', borderRadius: 10, display: 'flex', alignItems: 'center', opacity: (!input.trim() || loading) ? 0.5 : 1, flexShrink: 0 }}>
+              style={{ ...btnV1, padding: '10px 14px', borderRadius: 10, display: 'flex', alignItems: 'center', opacity: (!input.trim() || loading) ? 0.5 : 1, flexShrink: 0 }}>
               <SendHorizontal size={15} />
             </button>
           </div>
@@ -836,7 +843,7 @@ function ComparerDevis({ memoire, onSauvegarder, autoSave }) {
   };
 
   const ColonneDevis = ({ titre, vals, setVals, accent }) => (
-    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 10, padding: '14px 16px', background: DS.brand.soft, borderRadius: 10, border: `1px solid ${accent}33` }}>
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 10, padding: '14px 16px', background: V1.bleuFond, borderRadius: 10, border: `1px solid ${accent}33` }}>
       <div style={{ fontSize: 12, fontWeight: 700, color: accent, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 2 }}>{titre}</div>
       <div style={fieldStyle}>
         <label style={labelStyle}>Nom / Référence *</label>
@@ -860,8 +867,8 @@ function ComparerDevis({ memoire, onSauvegarder, autoSave }) {
         Compare deux devis côte à côte et obtiens une analyse IA avec recommandations.
       </p>
       <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
-        <ColonneDevis titre="Devis 1" vals={devis1} setVals={setDevis1} accent={DS.brand.secondary} />
-        <ColonneDevis titre="Devis 2" vals={devis2} setVals={setDevis2} accent="#6366f1" />
+        <ColonneDevis titre="Devis 1" vals={devis1} setVals={setDevis1} accent={V1.bleu} />
+        <ColonneDevis titre="Devis 2" vals={devis2} setVals={setDevis2} accent={V1.marine} />
       </div>
       <div style={fieldStyle}>
         <label style={labelStyle}>Critères de comparaison (optionnel)</label>
@@ -870,7 +877,7 @@ function ComparerDevis({ memoire, onSauvegarder, autoSave }) {
           style={{ padding: '9px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-main)', fontSize: 13, fontFamily: 'inherit' }} />
       </div>
       <button onClick={comparer} disabled={!devis1.nom.trim() || !devis2.nom.trim() || loading}
-        style={{ ...DS.btnPrimary, display: 'flex', alignItems: 'center', gap: 6, alignSelf: 'flex-start', opacity: (!devis1.nom.trim() || !devis2.nom.trim() || loading) ? 0.6 : 1 }}>
+        style={{ ...btnV1, display: 'flex', alignItems: 'center', gap: 6, alignSelf: 'flex-start', opacity: (!devis1.nom.trim() || !devis2.nom.trim() || loading) ? 0.6 : 1 }}>
         <Sparkles size={14} /> Comparer
       </button>
       <ResultatIA texte={resultat} error={error} loading={loading} onSauvegarder={onSauvegarder} />
@@ -934,15 +941,15 @@ function AnalyserPdfTexte({ memoire, onSauvegarder }) {
             placeholder="Colle le texte du PDF ici… (Ctrl+A dans votre lecteur PDF, puis copier-coller)"
             style={{ padding: '9px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-main)', fontSize: 13, resize: 'vertical', fontFamily: 'inherit' }} />
           <button onClick={analyser} disabled={!texte.trim() || loading}
-            style={{ ...DS.btnPrimary, display: 'flex', alignItems: 'center', gap: 6, alignSelf: 'flex-start', opacity: (!texte.trim() || loading) ? 0.6 : 1 }}>
+            style={{ ...btnV1, display: 'flex', alignItems: 'center', gap: 6, alignSelf: 'flex-start', opacity: (!texte.trim() || loading) ? 0.6 : 1 }}>
             <Sparkles size={14} /> Analyser et discuter
           </button>
         </>
       ) : (
         /* Mode chat : résumé du document + bouton pour revenir */
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', background: DS.brand.soft, borderRadius: 10, border: `1px solid ${DS.brand.secondary}33` }}>
-          <FileSearch size={14} color={DS.brand.secondary} style={{ flexShrink: 0 }} />
-          <div style={{ flex: 1, fontSize: 12, color: DS.brand.secondary, fontWeight: 600 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', background: V1.bleuFond, borderRadius: 10, border: `1px solid ${V1.bleu}33` }}>
+          <FileSearch size={14} color={V1.bleu} style={{ flexShrink: 0 }} />
+          <div style={{ flex: 1, fontSize: 12, color: V1.bleu, fontWeight: 600 }}>
             {typeDoc} · {texte.length} caractères analysés
           </div>
           <button onClick={() => { setPhase('form'); setMessages([]); }}
@@ -955,7 +962,7 @@ function AnalyserPdfTexte({ memoire, onSauvegarder }) {
       {/* Zone de conversation */}
       {phase === 'chat' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12, borderTop: '1px solid var(--border)', paddingTop: 12 }}>
-          <div style={{ fontSize: 12, fontWeight: 600, color: DS.brand.secondary, display: 'flex', alignItems: 'center', gap: 5 }}>
+          <div style={{ fontSize: 12, fontWeight: 600, color: V1.bleu, display: 'flex', alignItems: 'center', gap: 5 }}>
             <FileSearch size={12} /> Posez toutes vos questions sur ce document
           </div>
 
@@ -966,12 +973,12 @@ function AnalyserPdfTexte({ memoire, onSauvegarder }) {
               </div>
             ))}
             {loading && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: DS.brand.secondary, fontSize: 13 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: V1.bleu, fontSize: 13 }}>
                 <Loader size={14} style={{ animation: 'spin 1s linear infinite' }} /> Claude analyse…
               </div>
             )}
             {error && (
-              <div style={{ padding: '10px 14px', background: '#fef2f2', borderRadius: 10, border: '1px solid #fecaca', color: '#dc2626', fontSize: 13 }}>
+              <div style={{ padding: '10px 14px', background: BADGES_V1.danger.bg, borderRadius: 10, border: `1px solid ${V1.danger}44`, color: V1.danger, fontSize: 13 }}>
                 {error}
               </div>
             )}
@@ -986,7 +993,7 @@ function AnalyserPdfTexte({ memoire, onSauvegarder }) {
               style={{ flex: 1, padding: '10px 14px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-main)', fontSize: 13, resize: 'none', fontFamily: 'inherit', lineHeight: 1.5 }}
             />
             <button onClick={() => envoyer()} disabled={!input.trim() || loading}
-              style={{ ...DS.btnPrimary, padding: '10px 14px', borderRadius: 10, display: 'flex', alignItems: 'center', opacity: (!input.trim() || loading) ? 0.5 : 1, flexShrink: 0 }}>
+              style={{ ...btnV1, padding: '10px 14px', borderRadius: 10, display: 'flex', alignItems: 'center', opacity: (!input.trim() || loading) ? 0.5 : 1, flexShrink: 0 }}>
               <SendHorizontal size={15} />
             </button>
           </div>
@@ -1012,9 +1019,9 @@ const FEATURES = [
 // ── Écran : Assistant IA désactivé (interrupteur OFF) ──────────
 function IADesactivee() {
   return (
-    <div style={{ background: 'var(--bg-card)', borderRadius: 12, border: '1px solid var(--border)', padding: '28px 24px', maxWidth: 620 }}>
+    <div style={{ ...carteV1, padding: '28px 24px', maxWidth: 620 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
-        <Brain size={20} color={DS.brand.secondary} />
+        <Brain size={20} color={V1.bleu} />
         <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>Assistant IA désactivé</h3>
       </div>
       <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
@@ -1032,9 +1039,9 @@ function IADesactivee() {
 // ── Écran : consentement avant le premier envoi (IA activée, pas encore confirmée) ──
 function IAConsentement({ onAccept }) {
   return (
-    <div style={{ background: 'var(--bg-card)', borderRadius: 12, border: `2px solid ${DS.brand.secondary}55`, padding: '28px 24px', maxWidth: 640 }}>
+    <div style={{ ...carteV1, border: `2px solid ${V1.bleu}55`, padding: '28px 24px', maxWidth: 640 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
-        <AlertCircle size={20} color={DS.brand.secondary} />
+        <AlertCircle size={20} color={V1.bleu} />
         <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>Avant d'utiliser l'Assistant IA</h3>
       </div>
       <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
@@ -1052,14 +1059,15 @@ function IAConsentement({ onAccept }) {
         Tu peux désactiver complètement l'Assistant IA à tout moment dans Paramètres → Confidentialité.
       </p>
       <button onClick={onAccept}
-        style={{ ...DS.btnPrimary, display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+        style={{ ...btnV1, display: 'inline-flex', alignItems: 'center', gap: 8 }}>
         <Sparkles size={14} /> J'ai compris — activer les analyses
       </button>
     </div>
   );
 }
 
-export default function ClaudeIAPanel() {
+// onInsights : remonte le compteur d'insights au hero partagé de CentreIA (affichage seul).
+export default function ClaudeIAPanel({ onInsights }) {
   const [feature, setFeature] = useState('anticiper');
   const { parametres, setParametres } = useApp();
   const iaActivee = parametres?.parametres?.iaActivee !== false; // activé par défaut
@@ -1067,6 +1075,10 @@ export default function ClaudeIAPanel() {
   const { memoire, setMemoire, sauvegarder, autoSave } = useMemoire();
   const nb = compteurInsights(memoire);
   const active = FEATURES.find(f => f.id === feature);
+
+  useEffect(() => {
+    if (onInsights) onInsights(nb);
+  }, [onInsights, nb]);
 
   // Interrupteur maître OFF → panneau inactif, rien ne part.
   if (!iaActivee) return <IADesactivee />;
@@ -1096,11 +1108,13 @@ export default function ClaudeIAPanel() {
   };
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '200px 1fr', gap: 20, alignItems: 'start' }}>
-      {/* Menu latéral */}
-      <div style={{ background: 'var(--bg-card)', borderRadius: 12, border: '1px solid var(--border)', overflow: 'hidden' }}>
+    // Grille responsive : menu latéral 200px / panneau — sur mobile le menu passe
+    // en déroulant pleine largeur au-dessus du panneau (var CSS --g-ia).
+    <div style={{ display: 'grid', gridTemplateColumns: 'var(--g-ia, 200px 1fr)', gap: 20, alignItems: 'start' }}>
+      {/* Menu latéral — carte v1, item actif en bleu CYNA plein */}
+      <div style={{ ...carteV1, padding: 0, overflow: 'hidden' }} data-testid="ia-menu">
         {/* Indicateur mémoire */}
-        <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: memoire ? DS.brand.secondary : 'var(--text-muted)', fontWeight: 600 }}>
+        <div style={{ padding: '10px 14px', borderBottom: `1px solid ${V1.separation}`, display: 'flex', alignItems: 'center', gap: 6, ...mono(11, nb > 0 ? V1.bleu : V1.texteMuted, 600) }}>
           <Brain size={11} />
           {nb > 0 ? `${nb} insight${nb > 1 ? 's' : ''} mémorisé${nb > 1 ? 's' : ''}` : 'Mémoire vide'}
         </div>
@@ -1110,10 +1124,10 @@ export default function ClaudeIAPanel() {
             <button key={f.id} onClick={() => setFeature(f.id)}
               style={{
                 width: '100%', display: 'flex', alignItems: 'center', gap: 10,
-                padding: '12px 14px', background: isActive ? DS.brand.soft : 'transparent',
-                color: isActive ? DS.brand.secondary : 'var(--text-main)',
-                border: 'none', borderLeft: isActive ? `3px solid ${DS.brand.secondary}` : '3px solid transparent',
-                cursor: 'pointer', fontSize: 13, fontWeight: isActive ? 600 : 400,
+                padding: '12px 14px', background: isActive ? V1.bleu : 'transparent',
+                color: isActive ? '#fff' : V1.texteMuted,
+                border: 'none',
+                cursor: 'pointer', fontSize: 13, fontWeight: isActive ? 700 : 500,
                 fontFamily: 'inherit', textAlign: 'left', transition: 'all 0.15s',
               }}>
               <f.Icon size={14} style={{ flexShrink: 0 }} />
@@ -1124,12 +1138,12 @@ export default function ClaudeIAPanel() {
         })}
       </div>
 
-      {/* Contenu */}
-      <div style={{ background: 'var(--bg-card)', borderRadius: 12, border: '1px solid var(--border)', padding: '20px 22px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 18, paddingBottom: 14, borderBottom: '1px solid var(--border)' }}>
-          {active && <active.Icon size={16} color={DS.brand.secondary} />}
-          <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700 }}>{active?.label}</h3>
-          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, color: DS.brand.secondary, fontWeight: 600 }}>
+      {/* Contenu — panneau carte v1 */}
+      <div style={{ ...carteV1, padding: '20px 22px' }} data-testid="ia-panneau">
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 18, paddingBottom: 14, borderBottom: `1px solid ${V1.separation}` }}>
+          {active && <active.Icon size={16} color={V1.bleu} />}
+          <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: V1.texte }}>{active?.label}</h3>
+          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 5, ...mono(11, V1.bleu, 600) }}>
             <Sparkles size={11} /> Claude AI
           </div>
         </div>

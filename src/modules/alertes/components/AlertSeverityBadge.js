@@ -1,11 +1,13 @@
 import React from 'react';
+import { mono } from '../../../design/v1.js';
 
+// Badges de gravité — design v1 (mono, couleurs socle, aucun violet).
 const SEVERITY_STYLES = {
-  INFO:     { background: '#f1f5f9', color: '#475569', border: '1px solid #e2e8f0' },
-  LOW:      { background: '#dbeafe', color: '#1e40af', border: '1px solid #bfdbfe' },
-  MEDIUM:   { background: '#fef3c7', color: '#b45309', border: '1px solid #fde68a' },
-  HIGH:     { background: '#ffedd5', color: '#c2410c', border: '1px solid #fed7aa' },
-  CRITICAL: { background: '#fee2e2', color: '#b91c1c', border: '1px solid #fecaca' },
+  INFO:     { background: '#EEF1F5', color: '#5B6B80' },
+  LOW:      { background: '#E6EDF5', color: '#1E5FAF' },
+  MEDIUM:   { background: '#FAEEDA', color: '#854F0B' },
+  HIGH:     { background: '#FBE4D3', color: '#C2410C' },
+  CRITICAL: { background: '#FCEBEB', color: '#A32D2D' },
 };
 
 const SEVERITY_LABELS = {
@@ -16,11 +18,13 @@ export function AlertSeverityBadge({ severity }) {
   const style = SEVERITY_STYLES[severity] ?? SEVERITY_STYLES.INFO;
   return (
     <span style={{
-      ...style,
+      ...mono(10, style.color, 700),
+      background: style.background,
+      border: `1px solid ${style.color}30`,
       borderRadius: 20,
-      padding: '2px 8px',
-      fontSize: 11,
-      fontWeight: 700,
+      padding: '2px 9px',
+      textTransform: 'uppercase',
+      letterSpacing: '0.04em',
       display: 'inline-flex',
       alignItems: 'center',
       whiteSpace: 'nowrap',

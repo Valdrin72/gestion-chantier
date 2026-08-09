@@ -1,4 +1,4 @@
-import React, { useState, useLayoutEffect } from 'react';
+import React, { useState, useLayoutEffect, useCallback } from 'react';
 import { Bot, Shield, Sparkles, Menu, RefreshCw } from 'lucide-react';
 import Agents, { NB_AGENTS } from '../Agents';
 import AuditApp from '../AuditApp';
@@ -32,10 +32,19 @@ function CentreIA() {
     { id: 'audit',  label: 'Audit',     Icon: Shield },
   ];
 
+  // ── Onglet AUDIT : le hero porte le score, les compteurs et « Relancer l'audit ».
+  //    Le moteur d'audit reste dans AuditApp ; il remonte son résumé via onSummary
+  //    et reçoit le signal « Relancer » — aucun calcul n'est dupliqué ni modifié.
+  const [auditSummary, setAuditSummary] = useState(null);
+  const [auditRelanceSignal, setAuditRelanceSignal] = useState(0);
+  const [auditFiltreNiveau, setAuditFiltreNiveau] = useState('Tous');
+  const handleAuditSummary = useCallback((s) => setAuditSummary(s), []);
+  const toggleAuditNiveau = (niv) => setAuditFiltreNiveau(prev => (prev === niv ? 'Tous' : niv));
+
   const meta = ONGLET_META[onglet];
   const HeroIcon = meta.Icon;
 
-  // ── Les 4 chiffres du hero (onglet Agents IA uniquement en lot 1) ──
+  // ── Chiffres du hero — Agents IA ──
   const scoreGlobal = agentState?.scoreGlobal ?? null;
   const alertesNonLues = (agentState?.alertes || []).filter(a => !a.lu);
   const memoire = agentState?.memoire || {};
@@ -43,12 +52,25 @@ function CentreIA() {
   const forcerExecution = agentState?.forcerExecution;
 
   const scoreCouleur = scoreGlobal === null ? '#8FBCE6' : scoreGlobal >= 75 ? '#4ADE80' : scoreGlobal >= 50 ? '#F5B14A' : '#FF7A6B';
-  const heroChiffres = onglet === 'agents' ? [
-    { label: 'SCORE ENTREPRISE', val: scoreGlobal !== null ? `${scoreGlobal}/100` : '—', couleur: scoreCouleur },
-    { label: 'AGENTS ACTIFS',    val: `${NB_AGENTS}/${NB_AGENTS}`,                        couleur: '#8FBCE6' },
-    { label: 'ALERTES ACTIVES',  val: alertesNonLues.length,                             couleur: alertesNonLues.length > 0 ? '#FF7A6B' : '#4ADE80' },
-    { label: 'MÉMOIRE ACCUMULÉE', val: `${Object.keys(memoire).length} agents`,          couleur: '#8FBCE6' },
-  ] : [];
+  const auditScore = auditSummary?.score ?? null;
+  const auditScoreCouleur = auditScore === null ? '#8FBCE6' : auditScore >= 75 ? '#4ADE80' : auditScore >= 55 ? '#F5B14A' : '#FF7A6B';
+
+  let heroChiffres = [];
+  if (onglet === 'agents') {
+    heroChiffres = [
+      { label: 'SCORE ENTREPRISE', val: scoreGlobal !== null ? `${scoreGlobal}/100` : '—', couleur: scoreCouleur },
+      { label: 'AGENTS ACTIFS',    val: `${NB_AGENTS}/${NB_AGENTS}`,                        couleur: '#8FBCE6' },
+      { label: 'ALERTES ACTIVES',  val: alertesNonLues.length,                             couleur: alertesNonLues.length > 0 ? '#FF7A6B' : '#4ADE80' },
+      { label: 'MÉMOIRE ACCUMULÉE', val: `${Object.keys(memoire).length} agents`,          couleur: '#8FBCE6' },
+    ];
+  } else if (onglet === 'audit') {
+    heroChiffres = [
+      { label: 'SCORE COHÉRENCE', val: auditScore !== null ? `${auditScore}/100` : '—', couleur: auditScoreCouleur },
+      { label: 'ERREURS',         val: auditSummary?.nbErreurs ?? '—',  couleur: '#FF7A6B', onClick: () => toggleAuditNiveau('err'),  actif: auditFiltreNiveau === 'err' },
+      { label: 'AVERTISSEMENTS',  val: auditSummary?.nbWarnings ?? '—', couleur: '#F5B14A', onClick: () => toggleAuditNiveau('warn'), actif: auditFiltreNiveau === 'warn' },
+      { label: 'OK',              val: auditSummary?.nbOk ?? '—',       couleur: '#4ADE80', onClick: () => toggleAuditNiveau('ok'),   actif: auditFiltreNiveau === 'ok' },
+    ];
+  }
 
   return (
     <div>
@@ -69,6 +91,12 @@ function CentreIA() {
                 {running ? 'Exécution...' : 'Forcer exécution'}
               </button>
             )}
+            {onglet === 'audit' && (
+              <button onClick={() => setAuditRelanceSignal(n => n + 1)}
+                style={{ ...heroBtn, background: 'rgba(255,255,255,0.16)', border: '1px solid rgba(255,255,255,0.3)', fontWeight: 700 }}>
+                <RefreshCw size={14} /> Relancer l'audit
+              </button>
+            )}
           </div>
         </div>
 
@@ -80,16 +108,29 @@ function CentreIA() {
         </h1>
         <div style={heroMono(11, 0.7)}>{meta.ligne}</div>
 
-        {/* Ligne 3 — les 4 chiffres clés (onglet Agents IA) */}
+        {/* Ligne 3 — les chiffres clés (adaptés à l'onglet ; compteurs Audit filtrables) */}
         {heroChiffres.length > 0 && (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginTop: 20 }} data-testid="hero-chiffres">
-            {heroChiffres.map(t => (
-              <div key={t.label} data-testid={`hero-kpi-${t.label.toLowerCase().replace(/\s+/g, '-')}`}
-                style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 12, padding: '12px 14px' }}>
+            {heroChiffres.map(t => {
+              const commun = {
+                'data-testid': `hero-kpi-${t.label.toLowerCase().replace(/\s+/g, '-')}`,
+                style: {
+                  background: t.actif ? 'rgba(255,255,255,0.16)' : 'rgba(255,255,255,0.06)',
+                  border: `1px solid ${t.actif ? 'rgba(255,255,255,0.4)' : 'rgba(255,255,255,0.12)'}`,
+                  borderRadius: 12, padding: '12px 14px', textAlign: 'left',
+                },
+              };
+              const contenu = (<>
                 <div style={heroMono(9, 0.6)}>{t.label}</div>
                 <div style={{ ...mono(22, t.couleur, 500), lineHeight: 1.1, marginTop: 4 }}>{t.val}</div>
-              </div>
-            ))}
+              </>);
+              return t.onClick ? (
+                <button key={t.label} onClick={t.onClick} {...commun}
+                  style={{ ...commun.style, cursor: 'pointer', fontFamily: 'inherit' }}>{contenu}</button>
+              ) : (
+                <div key={t.label} {...commun}>{contenu}</div>
+              );
+            })}
           </div>
         )}
 
@@ -117,7 +158,11 @@ function CentreIA() {
       {/* ── Contenu ── */}
       {onglet === 'agents' && <Agents {...agentState} hideHeader />}
       {onglet === 'claude' && <ClaudeIAPanel />}
-      {onglet === 'audit'  && <AuditApp chantiers={chantiers} devis={devis} factures={factures} clients={clients} parametres={parametres} />}
+      {onglet === 'audit'  && (
+        <AuditApp chantiers={chantiers} devis={devis} factures={factures} clients={clients} parametres={parametres}
+          hideHeader onSummary={handleAuditSummary} relanceSignal={auditRelanceSignal}
+          filtreNiveau={auditFiltreNiveau} setFiltreNiveau={setAuditFiltreNiveau} />
+      )}
     </div>
   );
 }

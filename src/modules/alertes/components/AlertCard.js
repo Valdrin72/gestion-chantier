@@ -1,15 +1,17 @@
 import React, { useState } from 'react';
 import { Bell, Clock, X, CheckCircle2 } from 'lucide-react';
 import { DS } from '../../../ds.js';
+import { V1, mono, carteV1 } from '../../../design/v1.js';
 import { AlertSeverityBadge } from './AlertSeverityBadge.js';
 import { useAlertActions } from '../hooks/useAlertActions.js';
 
+// Bord gauche coloré par gravité (couleurs pleines v1, lisibles sur carte blanche).
 const SEVERITY_BORDER = {
-  INFO:     '#e2e8f0',
-  LOW:      '#bfdbfe',
-  MEDIUM:   '#fde68a',
-  HIGH:     '#fed7aa',
-  CRITICAL: '#fecaca',
+  INFO:     V1.texteMuted,
+  LOW:      V1.bleuMoyen,
+  MEDIUM:   V1.warn,
+  HIGH:     '#C2410C',
+  CRITICAL: V1.danger,
 };
 
 function timeAgo(date) {
@@ -31,11 +33,11 @@ export function AlertCard({ alert, onNavigate }) {
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{
-        ...DS.cardInset,
-        borderLeft: `3px solid ${borderColor}`,
-        marginBottom: 8,
+        ...carteV1,
+        borderLeft: `4px solid ${borderColor}`,
+        marginBottom: 10,
         transition: 'box-shadow 0.15s',
-        boxShadow: hovered ? '0 2px 12px rgba(0,0,0,0.08)' : DS.cardInset.boxShadow,
+        boxShadow: hovered ? '0 4px 16px rgba(16,38,73,0.12)' : carteV1.boxShadow,
       }}
     >
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
@@ -44,14 +46,14 @@ export function AlertCard({ alert, onNavigate }) {
           <div style={{ minWidth: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
               <AlertSeverityBadge severity={alert.severity} />
-              <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{timeAgo(alert.createdAt)}</span>
+              <span style={{ ...mono(10, V1.texteMuted), textTransform: 'uppercase', letterSpacing: '0.04em' }}>{timeAgo(alert.createdAt)}</span>
               {alert.contextRef?.label && (
-                <span style={{ fontSize: 11, color: 'var(--text-secondary)', fontStyle: 'italic' }}>
+                <span style={{ ...mono(10, V1.texteMuted), fontStyle: 'italic' }}>
                   {alert.contextRef.label}
                 </span>
               )}
             </div>
-            <p style={{ margin: '6px 0 0', fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>
+            <p style={{ margin: '6px 0 0', fontSize: 13, fontWeight: 700, color: V1.texte }}>
               {alert.title}
             </p>
           </div>
@@ -85,17 +87,17 @@ export function AlertCard({ alert, onNavigate }) {
         </div>
       </div>
 
-      <p style={{ margin: '6px 0 0 24px', fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+      <p style={{ margin: '6px 0 0 24px', fontSize: 12, color: V1.texteMuted, lineHeight: 1.5 }}>
         {alert.message}
       </p>
 
       {alert.actions && alert.actions.length > 0 && (
-        <div style={{ display: 'flex', gap: 6, marginTop: 8, marginLeft: 24, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: 6, marginTop: 10, marginLeft: 24, flexWrap: 'wrap' }}>
           {alert.actions.map((action, i) => (
             <button
               key={i}
               onClick={() => onNavigate?.(action.target)}
-              style={{ ...DS.btnGhost, padding: '3px 10px', fontSize: 11 }}
+              style={{ background: V1.bleu, color: '#fff', border: 'none', borderRadius: 8, padding: '6px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
             >
               {action.label}
             </button>

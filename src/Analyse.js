@@ -6,6 +6,7 @@ import { useApp } from './context/AppContext';
 import Statistiques from './Statistiques';
 import Rapport from './Rapport';
 import Marges from './Marges';
+import { V1, mono, carteV1 } from './design/v1';
 
 const carteStyle = DS.card;
 
@@ -38,8 +39,8 @@ export const VUES_ANALYSE = [
 // En-tête de sous-section, affiché au-dessus de chaque ancien contenu dans une vue.
 function SectionAnalyse({ titre }) {
   return (
-    <div style={{ margin: '10px 0 14px', paddingBottom: 8, borderBottom: '2px solid rgba(13,61,110,0.15)' }}>
-      <span style={{ fontSize: 15, fontWeight: 800, color: '#0d3d6e', letterSpacing: '-0.2px' }}>{titre}</span>
+    <div style={{ margin: '10px 0 14px', paddingBottom: 8, borderBottom: `2px solid ${V1.separation}` }}>
+      <span style={{ fontSize: 13, fontWeight: 700, color: V1.bleu, textTransform: 'uppercase', letterSpacing: '0.12em' }}>{titre}</span>
     </div>
   );
 }
@@ -256,19 +257,21 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
     <div>
       <div className="page-title-main" style={{ marginBottom: 24 }}>Analyse financière avancée</div>
 
-      {/* VUES (4) — regroupement des 12 anciens sous-onglets */}
-      <div style={{ display: 'flex', gap: '0', marginBottom: '25px', flexWrap: 'wrap', borderBottom: '1px solid var(--border)' }}>
-        {VUES_ANALYSE.map(v => (
-          <button key={v.id} onClick={() => setVue(v.id)} style={{
-            background: 'transparent',
-            color: vue === v.id ? '#0d3d6e' : 'var(--text-secondary)',
-            border: 'none',
-            borderBottom: vue === v.id ? '2px solid rgba(13,61,110,0.8)' : '2px solid transparent',
-            padding: '10px 18px',
-            marginBottom: '-1px',
-            borderRadius: '0', cursor: 'pointer', fontSize: '14px', fontWeight: vue === v.id ? '600' : 'normal'
-          }}>{v.label}</button>
-        ))}
+      {/* VUES (4) — sous-onglets v1 (actif bleu CYNA plein), défilables sur mobile */}
+      <div style={{ display: 'flex', gap: 6, marginBottom: 25, overflowX: 'auto', scrollbarWidth: 'none', paddingBottom: 2 }}>
+        {VUES_ANALYSE.map(v => {
+          const actif = vue === v.id;
+          return (
+            <button key={v.id} onClick={() => setVue(v.id)} style={{
+              background: actif ? V1.bleu : 'transparent',
+              color: actif ? '#fff' : V1.texteMuted,
+              border: `1px solid ${actif ? V1.bleu : V1.separation}`,
+              borderRadius: 20, padding: '6px 16px', cursor: 'pointer', fontFamily: 'inherit',
+              fontSize: 13, fontWeight: actif ? 700 : 600, whiteSpace: 'nowrap', flexShrink: 0,
+              transition: 'all 0.15s',
+            }}>{v.label}</button>
+          );
+        })}
       </div>
 
       {/* ===== RENTABILITÉ NETTE ===== */}
@@ -276,7 +279,7 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
       {montre('rentabilite') && (
         <div>
           {/* PARAMÈTRES */}
-          <div style={carteStyle}>
+          <div style={carteV1}>
             <div className="ds-card-title">Paramètres fiscaux et sociaux</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px' }}>
               {[
@@ -305,26 +308,26 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
           </div>
 
           {/* CASCADE DE RENTABILITÉ */}
-          <div style={carteStyle}>
+          <div style={carteV1}>
             <div className="ds-card-title">Cascade de rentabilité</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               {[
-                { label: 'Chiffre d\'affaires total', val: caTotal, pct: 100, couleur: '#10b981', bg: 'rgba(16,185,129,0.08)', bold: false, big: false },
-                { label: 'Coûts directs chantiers', val: -coutsTotal, pct: caTotal > 0 ? -(Math.round((coutsTotal / caTotal) * 1000) / 10) : 0, couleur: '#ef4444', bg: 'rgba(239,68,68,0.08)', bold: false, big: false },
-                { label: '= Marge brute', val: margeAvantCharges, pct: caTotal > 0 ? Math.round((margeAvantCharges / caTotal) * 1000) / 10 : 0, couleur: margeAvantCharges >= 0 ? '#10b981' : '#ef4444', bg: 'var(--bg-hover)', bold: true, big: false },
-                { label: 'Charges sociales', val: -chargesSociales, pct: caTotal > 0 ? -(Math.round((chargesSociales / caTotal) * 1000) / 10) : 0, couleur: '#f59e0b', bg: 'rgba(245,158,11,0.08)', bold: false, big: false },
-                { label: 'Frais généraux', val: -fraisGeneraux, pct: caTotal > 0 ? -(Math.round((fraisGeneraux / caTotal) * 1000) / 10) : 0, couleur: '#f59e0b', bg: 'rgba(245,158,11,0.08)', bold: false, big: false },
-                { label: '= Résultat avant impôts', val: margeAvantImpots, pct: caTotal > 0 ? Math.round((margeAvantImpots / caTotal) * 1000) / 10 : 0, couleur: margeAvantImpots >= 0 ? '#10b981' : '#ef4444', bg: 'var(--bg-hover)', bold: true, big: false },
-                { label: 'Impôts estimés', val: -impots, pct: caTotal > 0 ? -(Math.round((impots / caTotal) * 1000) / 10) : 0, couleur: '#ef4444', bg: 'rgba(239,68,68,0.08)', bold: false, big: false },
-                { label: '= MARGE NETTE', val: margeNette, pct: margeNettePct, couleur: margeNette >= 0 ? '#10b981' : '#ef4444', bg: margeNette >= 0 ? 'rgba(16,185,129,0.12)' : 'rgba(239,68,68,0.10)', bold: true, big: true },
+                { label: 'Chiffre d\'affaires total', val: caTotal, pct: 100, couleur: V1.ok, bg: 'rgba(30,138,76,0.08)', bold: false, big: false },
+                { label: 'Coûts directs chantiers', val: -coutsTotal, pct: caTotal > 0 ? -(Math.round((coutsTotal / caTotal) * 1000) / 10) : 0, couleur: V1.danger, bg: 'rgba(192,57,43,0.08)', bold: false, big: false },
+                { label: '= Marge brute', val: margeAvantCharges, pct: caTotal > 0 ? Math.round((margeAvantCharges / caTotal) * 1000) / 10 : 0, couleur: margeAvantCharges >= 0 ? V1.ok : V1.danger, bg: 'var(--bg-hover)', bold: true, big: false },
+                { label: 'Charges sociales', val: -chargesSociales, pct: caTotal > 0 ? -(Math.round((chargesSociales / caTotal) * 1000) / 10) : 0, couleur: V1.warn, bg: 'rgba(232,145,43,0.08)', bold: false, big: false },
+                { label: 'Frais généraux', val: -fraisGeneraux, pct: caTotal > 0 ? -(Math.round((fraisGeneraux / caTotal) * 1000) / 10) : 0, couleur: V1.warn, bg: 'rgba(232,145,43,0.08)', bold: false, big: false },
+                { label: '= Résultat avant impôts', val: margeAvantImpots, pct: caTotal > 0 ? Math.round((margeAvantImpots / caTotal) * 1000) / 10 : 0, couleur: margeAvantImpots >= 0 ? V1.ok : V1.danger, bg: 'var(--bg-hover)', bold: true, big: false },
+                { label: 'Impôts estimés', val: -impots, pct: caTotal > 0 ? -(Math.round((impots / caTotal) * 1000) / 10) : 0, couleur: V1.danger, bg: 'rgba(192,57,43,0.08)', bold: false, big: false },
+                { label: '= MARGE NETTE', val: margeNette, pct: margeNettePct, couleur: margeNette >= 0 ? V1.ok : V1.danger, bg: margeNette >= 0 ? 'rgba(30,138,76,0.12)' : 'rgba(192,57,43,0.10)', bold: true, big: true },
               ].map((s) => (
-                <div key={s.label} style={{ background: s.bg, borderRadius: '10px', padding: s.big ? '18px 20px' : '12px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: s.bold ? `2px solid ${s.couleur}` : 'none' }}>
-                  <div style={{ fontWeight: s.bold ? 'bold' : 'normal', fontSize: s.big ? '16px' : '14px', color: s.bold ? s.couleur : 'var(--text-primary)' }}>{s.label}</div>
+                <div key={s.label} style={{ background: s.bg, borderRadius: '10px', padding: s.big ? '18px 20px' : '12px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: s.bold ? `2px solid ${s.couleur}` : `1px solid ${V1.separation}` }}>
+                  <div style={{ fontWeight: s.bold ? 'bold' : 'normal', fontSize: s.big ? '16px' : '14px', color: s.bold ? s.couleur : V1.texte }}>{s.label}</div>
                   <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
-                    <div style={{ fontSize: s.big ? '22px' : '16px', fontWeight: 'bold', color: s.couleur }}>
+                    <div style={{ ...mono(s.big ? 22 : 16, s.couleur, 700) }}>
                       CHF {fmtN(Math.abs(s.val))}
                     </div>
-                    <div style={{ background: s.couleur + '18', color: s.couleur, padding: '3px 12px', borderRadius: '12px', fontSize: '13px', minWidth: '60px', textAlign: 'center', fontWeight: 600 }}>
+                    <div style={{ ...mono(13, s.couleur, 600), background: s.couleur + '18', padding: '3px 12px', borderRadius: '12px', minWidth: '60px', textAlign: 'center' }}>
                       {s.pct}%
                     </div>
                   </div>
@@ -334,18 +337,18 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
           </div>
 
           {/* SEUIL DE RENTABILITÉ */}
-          <div style={carteStyle}>
+          <div style={carteV1}>
             <div className="ds-card-title">Seuil de rentabilité</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '15px' }}>
               {[
-                { label: 'Seuil de rentabilité', val: `CHF ${fmtN(Math.round(seuilRentabilite))}`, couleur: '#f59e0b', bg: 'rgba(245,158,11,0.12)', desc: 'CA signé minimum à réaliser' },
-                { label: 'CA signé actuel', val: `CHF ${fmtN(Math.round(caTotal))}`, couleur: caTotal >= seuilRentabilite ? '#10b981' : '#ef4444', bg: caTotal >= seuilRentabilite ? 'rgba(16,185,129,0.10)' : 'rgba(239,68,68,0.09)', desc: caTotal >= seuilRentabilite ? 'Au-dessus du seuil' : 'En dessous du seuil' },
-                { label: 'Écart au seuil', val: `CHF ${fmtN(Math.abs(Math.round(caTotal - seuilRentabilite)))}`, couleur: caTotal >= seuilRentabilite ? '#10b981' : '#ef4444', bg: 'var(--bg-hover)', desc: caTotal >= seuilRentabilite ? 'Marge de sécurité' : 'Manque à combler' },
+                { label: 'Seuil de rentabilité', val: `CHF ${fmtN(Math.round(seuilRentabilite))}`, couleur: V1.warn, desc: 'CA signé minimum à réaliser' },
+                { label: 'CA signé actuel', val: `CHF ${fmtN(Math.round(caTotal))}`, couleur: caTotal >= seuilRentabilite ? V1.ok : V1.danger, desc: caTotal >= seuilRentabilite ? 'Au-dessus du seuil' : 'En dessous du seuil' },
+                { label: 'Écart au seuil', val: `CHF ${fmtN(Math.abs(Math.round(caTotal - seuilRentabilite)))}`, couleur: caTotal >= seuilRentabilite ? V1.ok : V1.danger, desc: caTotal >= seuilRentabilite ? 'Marge de sécurité' : 'Manque à combler' },
               ].map(s => (
-                <div key={s.label} style={{ background: s.bg, border: `2px solid ${s.couleur}`, borderRadius: '12px', padding: '20px', textAlign: 'center' }}>
-                  <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>{s.label}</div>
-                  <div style={{ fontSize: '22px', fontWeight: 'bold', color: s.couleur, margin: '8px 0' }}>{s.val}</div>
-                  <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>{s.desc}</div>
+                <div key={s.label} style={{ ...carteV1, borderTop: `3px solid ${s.couleur}`, padding: '20px', textAlign: 'center' }}>
+                  <div style={{ fontSize: '13px', color: V1.texteMuted }}>{s.label}</div>
+                  <div style={{ ...mono(22, s.couleur, 700), margin: '8px 0' }}>{s.val}</div>
+                  <div style={{ fontSize: '12px', color: V1.texteMuted }}>{s.desc}</div>
                 </div>
               ))}
             </div>
@@ -479,7 +482,7 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
             </div>
           )}
 
-          <div style={carteStyle}>
+          <div style={{ ...carteV1, overflowX: 'auto' }}>
             <div className="ds-card-title">Comparaison Prévu vs Réel par chantier</div>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
@@ -496,23 +499,23 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
                       <strong style={{ color: 'var(--text-primary)' }}>{c.nom}</strong>
                       <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>{c.statut}</div>
                     </td>
-                    <td style={{ padding: '10px 12px', fontSize: '13px', color: 'var(--text-primary)' }}>{c.montantTotal !== null ? `CHF ${fmtN(c.montantTotal)}` : '—'}</td>
-                    <td style={{ padding: '10px 12px', fontSize: '13px', color: 'var(--text-primary)' }}>CHF {fmtN(c.couts.totalCoutsPrevu)}</td>
-                    <td style={{ padding: '10px 12px', fontSize: '13px', fontWeight: 'bold', color: 'var(--text-primary)' }}>CHF {fmtN(c.couts.totalCoutsReel)}</td>
+                    <td style={{ padding: '10px 12px', ...mono(13, V1.texte) }}>{c.montantTotal !== null ? `CHF ${fmtN(c.montantTotal)}` : '—'}</td>
+                    <td style={{ padding: '10px 12px', ...mono(13, V1.texte) }}>CHF {fmtN(c.couts.totalCoutsPrevu)}</td>
+                    <td style={{ padding: '10px 12px', ...mono(13, V1.texte, 700) }}>CHF {fmtN(c.couts.totalCoutsReel)}</td>
                     <td style={{ padding: '10px 12px' }}>
-                      <span style={{ background: couleurEcart(c.ecartBudget) + '18', color: couleurEcart(c.ecartBudget), fontWeight: 600, padding: '3px 10px', borderRadius: '12px', fontSize: '12px' }}>
+                      <span style={{ ...mono(12, couleurEcart(c.ecartBudget), 600), background: couleurEcart(c.ecartBudget) + '18', padding: '3px 10px', borderRadius: '12px' }}>
                         {parseFloat(c.ecartBudget) > 0 ? '+' : ''}{c.ecartBudget}%
                       </span>
                     </td>
                     <td style={{ padding: '10px 12px' }}>
-                      <span style={{ background: couleurMarge(c.couts.margeActuellePct) + '18', color: couleurMarge(c.couts.margeActuellePct), fontWeight: 600, padding: '3px 10px', borderRadius: '12px', fontSize: '12px' }}>
+                      <span style={{ ...mono(12, couleurMarge(c.couts.margeActuellePct), 600), background: couleurMarge(c.couts.margeActuellePct) + '18', padding: '3px 10px', borderRadius: '12px' }}>
                         {c.couts.margeActuellePct !== null ? `${c.couts.margeActuellePct}%` : '—'}
                       </span>
                     </td>
-                    <td style={{ padding: '10px 12px', fontSize: '13px', color: 'var(--text-primary)' }}>{c.joursPrevu}j</td>
-                    <td style={{ padding: '10px 12px', fontSize: '13px', color: 'var(--text-primary)' }}>{Math.round(c.joursReel * 10) / 10}j</td>
+                    <td style={{ padding: '10px 12px', ...mono(13, V1.texte) }}>{c.joursPrevu}j</td>
+                    <td style={{ padding: '10px 12px', ...mono(13, V1.texte) }}>{Math.round(c.joursReel * 10) / 10}j</td>
                     <td style={{ padding: '10px 12px' }}>
-                      <span style={{ background: couleurEcart(Math.abs(c.ecartJours)) + '18', color: couleurEcart(Math.abs(c.ecartJours)), fontWeight: 600, padding: '3px 10px', borderRadius: '12px', fontSize: '12px' }}>
+                      <span style={{ ...mono(12, couleurEcart(Math.abs(c.ecartJours)), 600), background: couleurEcart(Math.abs(c.ecartJours)) + '18', padding: '3px 10px', borderRadius: '12px' }}>
                         {parseFloat(c.ecartJours) > 0 ? '+' : ''}{c.ecartJours}%
                       </span>
                     </td>
@@ -523,7 +526,7 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
           </div>
 
           {/* HEURES */}
-          <div style={carteStyle}>
+          <div style={{ ...carteV1, overflowX: 'auto' }}>
             <div className="ds-card-title">Heures travaillées vs facturées</div>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
@@ -538,17 +541,17 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
                   const margeParHeure = c.heuresRealise > 0 && c.couts.margeReel != null ? Math.round(c.couts.margeReel / c.heuresRealise) : null;
                   return (
                     <tr key={c.id} style={{ borderBottom: '1px solid var(--ds-td-border)' }}>
-                      <td style={{ padding: '10px 12px' }}><strong style={{ color: 'var(--text-primary)' }}>{c.nom}</strong></td>
-                      <td style={{ padding: '10px 12px', color: 'var(--text-primary)' }}>{c.heuresPrevu}h</td>
-                      <td style={{ padding: '10px 12px', fontWeight: 'bold', color: 'var(--text-primary)' }}>{c.heuresRealise}h</td>
+                      <td style={{ padding: '10px 12px' }}><strong style={{ color: V1.texte }}>{c.nom}</strong></td>
+                      <td style={{ padding: '10px 12px', ...mono(13, V1.texte) }}>{c.heuresPrevu}h</td>
+                      <td style={{ padding: '10px 12px', ...mono(13, V1.texte, 700) }}>{c.heuresRealise}h</td>
                       <td style={{ padding: '10px 12px' }}>
-                        <span style={{ background: (parseFloat(c.tauxFacturation) >= 90 ? '#10b981' : '#f59e0b') + '18', color: parseFloat(c.tauxFacturation) >= 90 ? '#10b981' : '#f59e0b', fontWeight: 600, padding: '3px 10px', borderRadius: '12px', fontSize: '12px' }}>
+                        <span style={{ ...mono(12, parseFloat(c.tauxFacturation) >= 90 ? V1.ok : V1.warn, 600), background: (parseFloat(c.tauxFacturation) >= 90 ? V1.ok : V1.warn) + '18', padding: '3px 10px', borderRadius: '12px' }}>
                           {c.tauxFacturation}%
                         </span>
                       </td>
-                      <td style={{ padding: '10px 12px', color: 'var(--text-primary)' }}>CHF {c.coutParHeure}/h</td>
-                      <td style={{ padding: '10px 12px', color: 'var(--text-primary)', fontWeight: 'bold' }}>CHF {c.caParHeure}/h</td>
-                      <td style={{ padding: '10px 12px', color: margeParHeure === null ? 'var(--text-muted)' : margeParHeure >= 0 ? '#10b981' : '#ef4444', fontWeight: 'bold' }}>{margeParHeure === null ? '—' : `CHF ${margeParHeure}/h`}</td>
+                      <td style={{ padding: '10px 12px', ...mono(13, V1.texte) }}>CHF {c.coutParHeure}/h</td>
+                      <td style={{ padding: '10px 12px', ...mono(13, V1.texte, 700) }}>CHF {c.caParHeure}/h</td>
+                      <td style={{ padding: '10px 12px', ...mono(13, margeParHeure === null ? V1.texteMuted : margeParHeure >= 0 ? V1.ok : V1.danger, 700) }}>{margeParHeure === null ? '—' : `CHF ${margeParHeure}/h`}</td>
                     </tr>
                   );
                 })}
@@ -562,7 +565,7 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
       {montre('employes') && <SectionAnalyse titre="Coût horaire" />}
       {montre('employes') && (
         <div>
-          <div style={carteStyle}>
+          <div style={{ ...carteV1, overflowX: 'auto' }}>
             <div className="ds-card-title">Coût réel par employé</div>
             {donneesEmployes.length === 0 ? (
               <p style={{ color: 'var(--text-secondary)' }}>Aucun employé affecté à des chantiers</p>
@@ -584,19 +587,19 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
                         </div>
                         <strong style={{ color: 'var(--text-primary)' }}>{e.nom}</strong>
                       </td>
-                      <td style={{ padding: '10px 12px', fontSize: '13px', color: 'var(--text-primary)' }}>{e.poste}</td>
-                      <td style={{ padding: '10px 12px', fontSize: '13px', color: 'var(--text-primary)' }}>{e.joursTotal}j</td>
-                      <td style={{ padding: '10px 12px', fontSize: '13px', color: 'var(--text-primary)' }}>{e.heuresTotal}h</td>
-                      <td style={{ padding: '10px 12px', fontSize: '13px', color: 'var(--text-primary)' }}>CHF {fmtN(e.coutTotal)}</td>
-                      <td style={{ padding: '10px 12px', fontSize: '13px', color: '#f59e0b' }}>CHF {fmtN(Math.round(e.chargesSoc))}</td>
-                      <td style={{ padding: '10px 12px', fontWeight: 'bold', color: '#ef4444' }}>CHF {fmtN(Math.round(e.coutReel))}</td>
+                      <td style={{ padding: '10px 12px', fontSize: '13px', color: V1.texte }}>{e.poste}</td>
+                      <td style={{ padding: '10px 12px', ...mono(13, V1.texte) }}>{e.joursTotal}j</td>
+                      <td style={{ padding: '10px 12px', ...mono(13, V1.texte) }}>{e.heuresTotal}h</td>
+                      <td style={{ padding: '10px 12px', ...mono(13, V1.texte) }}>CHF {fmtN(e.coutTotal)}</td>
+                      <td style={{ padding: '10px 12px', ...mono(13, V1.warn) }}>CHF {fmtN(Math.round(e.chargesSoc))}</td>
+                      <td style={{ padding: '10px 12px', ...mono(13, V1.danger, 700) }}>CHF {fmtN(Math.round(e.coutReel))}</td>
                       <td style={{ padding: '10px 12px' }}>
-                        <span style={{ background: '#0d3d6e18', color: '#0d3d6e', fontWeight: 600, padding: '3px 10px', borderRadius: '12px', fontSize: '12px' }}>
+                        <span style={{ ...mono(12, V1.bleu, 600), background: V1.bleu + '18', padding: '3px 10px', borderRadius: '12px' }}>
                           CHF {e.coutHoraire}/h
                         </span>
                       </td>
                       <td style={{ padding: '10px 12px' }}>
-                        <span style={{ background: (parseFloat(e.productivite) >= 150 ? '#10b981' : parseFloat(e.productivite) >= 100 ? '#f59e0b' : '#ef4444') + '18', color: parseFloat(e.productivite) >= 150 ? '#10b981' : parseFloat(e.productivite) >= 100 ? '#f59e0b' : '#ef4444', fontWeight: 600, padding: '3px 10px', borderRadius: '12px', fontSize: '12px' }}>
+                        <span style={{ ...mono(12, parseFloat(e.productivite) >= 150 ? V1.ok : parseFloat(e.productivite) >= 100 ? V1.warn : V1.danger, 600), background: (parseFloat(e.productivite) >= 150 ? V1.ok : parseFloat(e.productivite) >= 100 ? V1.warn : V1.danger) + '18', padding: '3px 10px', borderRadius: '12px' }}>
                           {e.productivite}%
                         </span>
                       </td>
@@ -608,18 +611,18 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
           </div>
 
           {/* RÉSUMÉ MASSE SALARIALE */}
-          <div style={carteStyle}>
+          <div style={carteV1}>
             <div className="ds-card-title">Masse salariale totale</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '15px' }}>
               {[
-                { label: 'Salaires bruts', val: `CHF ${fmtN(donneesEmployes.reduce((t, e) => t + e.coutTotal, 0))}`, couleur: '#10b981', bg: 'rgba(16,185,129,0.12)' },
-                { label: 'Charges sociales', val: `CHF ${fmtN(Math.round(donneesEmployes.reduce((t, e) => t + e.chargesSoc, 0)))}`, couleur: '#f59e0b', bg: 'rgba(245,158,11,0.12)' },
-                { label: 'Coût total RH', val: `CHF ${fmtN(Math.round(donneesEmployes.reduce((t, e) => t + e.coutReel, 0)))}`, couleur: '#ef4444', bg: 'rgba(239,68,68,0.12)' },
-                { label: '% du CA signé', val: `${caTotal > 0 ? Math.round((donneesEmployes.reduce((t, e) => t + e.coutReel, 0) / caTotal) * 1000) / 10 : 0}%`, couleur: '#8b5cf6', bg: 'rgba(139,92,246,0.12)' },
+                { label: 'Salaires bruts', val: `CHF ${fmtN(donneesEmployes.reduce((t, e) => t + e.coutTotal, 0))}`, couleur: V1.ok },
+                { label: 'Charges sociales', val: `CHF ${fmtN(Math.round(donneesEmployes.reduce((t, e) => t + e.chargesSoc, 0)))}`, couleur: V1.warn },
+                { label: 'Coût total RH', val: `CHF ${fmtN(Math.round(donneesEmployes.reduce((t, e) => t + e.coutReel, 0)))}`, couleur: V1.danger },
+                { label: '% du CA signé', val: `${caTotal > 0 ? Math.round((donneesEmployes.reduce((t, e) => t + e.coutReel, 0) / caTotal) * 1000) / 10 : 0}%`, couleur: V1.bleu },
               ].map(s => (
-                <div key={s.label} style={{ background: s.bg, border: `2px solid ${s.couleur}`, borderRadius: '12px', padding: '18px', textAlign: 'center' }}>
-                  <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>{s.label}</div>
-                  <div style={{ fontSize: '20px', fontWeight: 'bold', color: s.couleur, marginTop: '5px' }}>{s.val}</div>
+                <div key={s.label} style={{ ...carteV1, borderTop: `3px solid ${s.couleur}`, padding: '18px', textAlign: 'center' }}>
+                  <div style={{ fontSize: '12px', color: V1.texteMuted }}>{s.label}</div>
+                  <div style={{ ...mono(20, s.couleur, 700), marginTop: '5px' }}>{s.val}</div>
                 </div>
               ))}
             </div>

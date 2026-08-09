@@ -695,19 +695,19 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
       {montre('projection') && <SectionAnalyse titre="Projections" />}
       {montre('projection') && (
         <div>
-          <div style={carteStyle}>
+          <div style={carteV1}>
             <div className="ds-card-title">Projections CA signé annuel {new Date().getFullYear()}</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '15px', marginBottom: '25px' }}>
               {[
-                { label: 'CA signé réalisé', val: `CHF ${fmtN(Math.round(caRealise))}`, couleur: '#10b981', desc: `${moisActuel + 1} mois` }, // eslint-disable-line no-undef
-                { label: 'Moyenne/mois', val: `CHF ${fmtN(Math.round(moyenneMensuelle))}`, couleur: '#10b981', desc: 'Tendance actuelle' },
-                { label: 'Projection annuelle', val: `CHF ${fmtN(Math.round(projectionAnnuelle))}`, couleur: '#8b5cf6', desc: 'Sur 12 mois' },
-                { label: 'CA signé prévisionnel', val: `CHF ${fmtN(Math.round(caPrevisionnel))}`, couleur: '#f59e0b', desc: `Réalisé + ${moisRestants} mois prévus` },
+                { label: 'CA signé réalisé', val: `CHF ${fmtN(Math.round(caRealise))}`, couleur: V1.ok, desc: `${moisActuel + 1} mois` }, // eslint-disable-line no-undef
+                { label: 'Moyenne/mois', val: `CHF ${fmtN(Math.round(moyenneMensuelle))}`, couleur: V1.ok, desc: 'Tendance actuelle' },
+                { label: 'Projection annuelle', val: `CHF ${fmtN(Math.round(projectionAnnuelle))}`, couleur: V1.bleu, desc: 'Sur 12 mois' },
+                { label: 'CA signé prévisionnel', val: `CHF ${fmtN(Math.round(caPrevisionnel))}`, couleur: V1.warn, desc: `Réalisé + ${moisRestants} mois prévus` },
               ].map(s => (
-                <div key={s.label} style={{ background: s.couleur + '10', border: `1px solid ${s.couleur}28`, borderRadius: '12px', padding: '18px', textAlign: 'center' }}>
-                  <div style={{ fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px', color: 'var(--text-muted)', marginBottom: '6px' }}>{s.label}</div>
-                  <div style={{ fontSize: '18px', fontWeight: 800, color: s.couleur, margin: '0 0 4px', letterSpacing: '-0.3px' }}>{s.val}</div>
-                  <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{s.desc}</div>
+                <div key={s.label} style={{ ...carteV1, borderTop: `3px solid ${s.couleur}`, padding: '18px', textAlign: 'center' }}>
+                  <div style={{ fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px', color: V1.texteMuted, marginBottom: '6px' }}>{s.label}</div>
+                  <div style={{ ...mono(18, s.couleur, 700), margin: '0 0 4px' }}>{s.val}</div>
+                  <div style={{ fontSize: '11px', color: V1.texteMuted }}>{s.desc}</div>
                 </div>
               ))}
             </div>
@@ -727,17 +727,16 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
                 const imp = avantImpots > 0 ? avantImpots * (tauxImpots / 100) : 0;
                 const nette = avantImpots - imp;
                 const pct = s.ca > 0 ? Math.round((nette / s.ca) * 1000) / 10 : 0;
-                const couleurs = ['#ef4444', '#10b981', '#10b981'];
-                const bgs = ['rgba(239,68,68,0.09)', 'rgba(16,185,129,0.10)', 'rgba(16,185,129,0.10)'];
+                const couleurs = [V1.danger, V1.ok, V1.ok];
                 return (
-                  <div key={s.scenario} style={{ background: bgs[i], border: `2px solid ${couleurs[i]}`, borderRadius: '12px', padding: '20px', textAlign: 'center' }}>
+                  <div key={s.scenario} style={{ ...carteV1, borderTop: `3px solid ${couleurs[i]}`, padding: '20px', textAlign: 'center' }}>
                     <div style={{ fontWeight: 'bold', color: couleurs[i], marginBottom: '10px' }}>{s.scenario}</div>
-                    <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>CA signé projeté</div>
-                    <div style={{ fontSize: '18px', fontWeight: 'bold', color: couleurs[i] }}>CHF {fmtN(Math.round(s.ca))}</div>
-                    <div style={{ margin: '10px 0', borderTop: '1px solid var(--border-glass-strong)', paddingTop: '10px' }}>
-                      <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Marge nette</div>
-                      <div style={{ fontSize: '22px', fontWeight: 'bold', color: nette >= 0 ? '#10b981' : '#ef4444' }}>CHF {fmtN(Math.round(nette))}</div>
-                      <div style={{ fontSize: '14px', color: nette >= 0 ? '#10b981' : '#ef4444' }}>({pct}%)</div>
+                    <div style={{ fontSize: '13px', color: V1.texteMuted }}>CA signé projeté</div>
+                    <div style={{ ...mono(18, couleurs[i], 700) }}>CHF {fmtN(Math.round(s.ca))}</div>
+                    <div style={{ margin: '10px 0', borderTop: `1px solid ${V1.separation}`, paddingTop: '10px' }}>
+                      <div style={{ fontSize: '13px', color: V1.texteMuted }}>Marge nette</div>
+                      <div style={{ ...mono(22, nette >= 0 ? V1.ok : V1.danger, 700) }}>CHF {fmtN(Math.round(nette))}</div>
+                      <div style={{ ...mono(14, nette >= 0 ? V1.ok : V1.danger) }}>({pct}%)</div>
                     </div>
                   </div>
                 );
@@ -834,7 +833,7 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
       {montre('objectifs') && (
         <div>
           {/* Saisie objectifs */}
-          <div style={carteStyle}>
+          <div style={carteV1}>
             <div className="ds-card-title">Définir les objectifs annuels</div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px,1fr))', gap: 20 }}>
               {[
@@ -865,40 +864,36 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
               const pctNb = objectifs.nbChantiers > 0 ? Math.min((nbChantiersReel / objectifs.nbChantiers) * 100, 100) : 0;
 
               return [
-                { label: 'CA signé annuel', cible: `CHF ${fmtN(Math.round(objectifs.caAnnuel))}`, reel: `CHF ${fmtN(Math.round(caReel))}`, pct: pctCA, couleur: pctCA >= 80 ? '#10b981' : pctCA >= 50 ? '#f59e0b' : '#ef4444' },
-                { label: 'Marge nette', cible: `${objectifs.margeCible}%`, reel: `${margeReelle}%`, pct: pctMarge, couleur: pctMarge >= 80 ? '#10b981' : pctMarge >= 50 ? '#f59e0b' : '#ef4444' },
-                { label: 'Chantiers', cible: `${objectifs.nbChantiers}`, reel: `${nbChantiersReel}`, pct: pctNb, couleur: pctNb >= 80 ? '#10b981' : pctNb >= 50 ? '#f59e0b' : '#ef4444' },
+                { label: 'CA signé annuel', cible: `CHF ${fmtN(Math.round(objectifs.caAnnuel))}`, reel: `CHF ${fmtN(Math.round(caReel))}`, pct: pctCA, couleur: pctCA >= 80 ? V1.ok : pctCA >= 50 ? V1.warn : V1.danger },
+                { label: 'Marge nette', cible: `${objectifs.margeCible}%`, reel: `${margeReelle}%`, pct: pctMarge, couleur: pctMarge >= 80 ? V1.ok : pctMarge >= 50 ? V1.warn : V1.danger },
+                { label: 'Chantiers', cible: `${objectifs.nbChantiers}`, reel: `${nbChantiersReel}`, pct: pctNb, couleur: pctNb >= 80 ? V1.ok : pctNb >= 50 ? V1.warn : V1.danger },
               ].map(item => (
-                <div key={item.label} className="premium-card" style={{
-                  ...DS.cardCompact,
-                  border: `1px solid ${item.couleur}28`, padding: '22px', position: 'relative', overflow: 'hidden',
-                }}>
-                  <div style={{ position: 'absolute', top: 0, left: 16, right: 16, height: 1, background: `linear-gradient(90deg, transparent, ${item.couleur}45 50%, transparent)` }} />
-                  <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px', color: 'var(--text-muted)', marginBottom: 8 }}>{item.label}</div>
+                <div key={item.label} style={{ ...carteV1, borderTop: `3px solid ${item.couleur}`, padding: '22px' }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px', color: V1.texteMuted, marginBottom: 8 }}>{item.label}</div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 10 }}>
-                    <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.4px' }}>{item.reel}</div>
-                    <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Cible: {item.cible}</div>
+                    <div style={{ ...mono(22, V1.texte, 700) }}>{item.reel}</div>
+                    <div style={{ ...mono(12, V1.texteMuted) }}>Cible: {item.cible}</div>
                   </div>
-                  <div style={{ background: 'var(--border-soft)', borderRadius: 8, height: 10, overflow: 'hidden' }}>
-                    <div style={{ background: `linear-gradient(90deg, ${item.couleur}, ${item.couleur}cc)`, width: `${item.pct}%`, height: '100%', borderRadius: 8, boxShadow: `0 0 8px ${item.couleur}55`, transition: 'width 0.5s ease' }} />
+                  <div style={{ background: V1.separation, borderRadius: 8, height: 10, overflow: 'hidden' }}>
+                    <div style={{ background: item.couleur, width: `${item.pct}%`, height: '100%', borderRadius: 8, transition: 'width 0.5s ease' }} />
                   </div>
-                  <div style={{ fontSize: 12, color: item.couleur, fontWeight: 700, marginTop: 6 }}>{Math.round(item.pct)}% de l'objectif atteint</div>
+                  <div style={{ ...mono(12, item.couleur, 700), marginTop: 6 }}>{Math.round(item.pct)}% de l'objectif atteint</div>
                 </div>
               ));
             })()}
           </div>
 
           {/* Chantiers classifiés par rentabilité */}
-          <div style={carteStyle}>
+          <div style={carteV1}>
             <div className="ds-card-title">Rentabilité par chantier — Vue d'ensemble</div>
             <div style={{ display: 'flex', gap: 10, marginBottom: 20, flexWrap: 'wrap' }}>
               {['Rentable', 'Limite', 'Non rentable'].map(label => {
                 const count = donneesChantiers.filter(c => statutRentabilite(c.couts.margeActuellePct).label === label).length;
-                const couleurs = { Rentable: '#10b981', Limite: '#f59e0b', 'Non rentable': '#ef4444' };
+                const couleurs = { Rentable: V1.ok, Limite: V1.warn, 'Non rentable': V1.danger };
                 return (
-                  <div key={label} style={{ background: couleurs[label] + '12', border: `1px solid ${couleurs[label]}30`, borderRadius: 12, padding: '14px 20px', flex: 1, minWidth: 120, textAlign: 'center' }}>
-                    <div style={{ fontSize: 24, fontWeight: 800, color: couleurs[label] }}>{count}</div>
-                    <div style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.4px' }}>{label}</div>
+                  <div key={label} style={{ ...carteV1, borderTop: `3px solid ${couleurs[label]}`, padding: '14px 20px', flex: 1, minWidth: 120, textAlign: 'center' }}>
+                    <div style={{ ...mono(24, couleurs[label], 700) }}>{count}</div>
+                    <div style={{ fontSize: 11, color: V1.texteMuted, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.4px' }}>{label}</div>
                   </div>
                 );
               })}
@@ -913,20 +908,19 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
                     .map(c => {
                       const r = statutRentabilite(c.couts.margeActuellePct);
                       return (
-                        <div key={c.id} className="premium-card" style={{
-                          ...DS.cardCompact,
-                          border: `1px solid ${r.couleur}28`, borderLeft: `3px solid ${r.couleur}`,
+                        <div key={c.id} style={{
+                          ...carteV1, borderLeft: `4px solid ${r.couleur}`,
                           padding: '14px 18px',
                           display: 'flex', alignItems: 'center', gap: 16,
                         }}>
-                          <span style={{ background: r.couleur + '22', color: r.couleur, border: `1px solid ${r.couleur}44`, borderRadius: 20, padding: '3px 10px', fontSize: 11, fontWeight: 700, flexShrink: 0 }}>{r.label}</span>
+                          <span style={{ ...mono(11, r.couleur, 700), background: r.couleur + '22', border: `1px solid ${r.couleur}44`, borderRadius: 20, padding: '3px 10px', flexShrink: 0 }}>{r.label}</span>
                           <div style={{ flex: 1 }}>
-                            <div style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: 14 }}>{c.nom}</div>
-                            {c.depassements.length > 0 && <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{c.depassements.join(' · ')}</div>}
+                            <div style={{ fontWeight: 600, color: V1.texte, fontSize: 14 }}>{c.nom}</div>
+                            {c.depassements.length > 0 && <div style={{ fontSize: 11, color: V1.texteMuted, marginTop: 2 }}>{c.depassements.join(' · ')}</div>}
                           </div>
                           <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                            <div style={{ fontSize: 16, fontWeight: 800, color: r.couleur }}>{c.couts.margeActuellePct !== null ? `${c.couts.margeActuellePct}%` : '—'}</div>
-                            <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>marge réelle</div>
+                            <div style={{ ...mono(16, r.couleur, 700) }}>{c.couts.margeActuellePct !== null ? `${c.couts.margeActuellePct}%` : '—'}</div>
+                            <div style={{ fontSize: 11, color: V1.texteMuted }}>marge réelle</div>
                           </div>
                         </div>
                       );

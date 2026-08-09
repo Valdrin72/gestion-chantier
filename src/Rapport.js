@@ -4,8 +4,9 @@ import { DS } from './ds';
 import { joursReelsChantier } from './calculs/pointagesHelper';
 import { useApp } from './context/AppContext';
 import useIsMobile from './hooks/useIsMobile';
+import { V1, mono, carteV1 } from './design/v1';
 
-const carteStyle = DS.card;
+const carteStyle = carteV1;
 
 const getSemaine = () => {
   const now = new Date();
@@ -86,30 +87,28 @@ export default function Rapport({ chantiers, clients, devis = [], parametres, fa
       {/* ALERTES */}
       {alertes.length > 0 && (
         <div className="alert-banner alert-banner-danger" style={{ marginBottom: '20px' }}>
-          <div style={{ fontWeight: 700, color: '#ef4444', fontSize: '16px', marginBottom: '10px' }}>{alertes.length} alerte(s) urgente(s) cette semaine !</div>
+          <div style={{ fontWeight: 700, color: V1.danger, fontSize: '16px', marginBottom: '10px' }}>{alertes.length} alerte(s) urgente(s) cette semaine !</div>
           {alertes.map(c => {
             const r = joursReelsChantier(pointages, c.id);
             const j = c.nombreJours > 0 ? c.nombreJours - r : null;
             const al = getAlerte(j);
-            return <div key={c.id} style={{ color: '#ef4444', marginBottom: '4px' }}>› <strong>{c.nom}</strong> — {al?.texte}</div>;
+            return <div key={c.id} style={{ color: V1.danger, marginBottom: '4px' }}>› <strong>{c.nom}</strong> — {al?.texte}</div>;
           })}
         </div>
       )}
 
-      {/* KPIs — gradients saturés */}
+      {/* KPIs — cartes v1 sobres (liseré coloré par état) */}
       <div className="kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'var(--g4)', gap: 16, marginBottom: 24 }}>
         {[
-          { label: 'EN COURS',      val: chantiersEnCours.length,      gradient: 'linear-gradient(135deg, #1E40AF 0%, #3B82F6 100%)', glow: 'rgba(59,130,246,0.32)', badge: `${chantiersPlanifies.length} planifiés` },
-          { label: 'CA SIGNÉ TOUS CHANTIERS', val: `CHF ${fmtN(caTotal)}`,        gradient: 'linear-gradient(135deg, #065F46 0%, #10B981 100%)', glow: 'rgba(16,185,129,0.32)', badge: `CHF ${fmtN(totalPaiementsRecus)} reçus` },
-          { label: 'EN ATTENTE',    val: `CHF ${fmtN(totalPaiementsAttente)}`, gradient: 'linear-gradient(135deg, #92400E 0%, #F59E0B 100%)', glow: 'rgba(245,158,11,0.32)' },
-          { label: 'EN RETARD',     val: `CHF ${fmtN(totalPaiementsRetard)}`,  gradient: totalPaiementsRetard > 0 ? 'linear-gradient(135deg, #991B1B 0%, #EF4444 100%)' : 'linear-gradient(135deg, #065F46 0%, #10B981 100%)', glow: totalPaiementsRetard > 0 ? 'rgba(239,68,68,0.32)' : 'rgba(16,185,129,0.32)' },
+          { label: 'EN COURS',      val: chantiersEnCours.length,      couleur: V1.bleu, badge: `${chantiersPlanifies.length} planifiés` },
+          { label: 'CA SIGNÉ TOUS CHANTIERS', val: `CHF ${fmtN(caTotal)}`,        couleur: V1.ok, badge: `CHF ${fmtN(totalPaiementsRecus)} reçus` },
+          { label: 'EN ATTENTE',    val: `CHF ${fmtN(totalPaiementsAttente)}`, couleur: V1.warn },
+          { label: 'EN RETARD',     val: `CHF ${fmtN(totalPaiementsRetard)}`,  couleur: totalPaiementsRetard > 0 ? V1.danger : V1.ok },
         ].map(k => (
-          <div key={k.label} style={{ background: k.gradient, borderRadius: 16, padding: '22px 20px', minHeight: 120, boxShadow: `0 4px 20px ${k.glow}, 0 1px 4px rgba(0,0,0,0.12)`, border: '1px solid rgba(255,255,255,0.15)', position: 'relative', overflow: 'hidden' }}>
-            <div style={{ position: 'absolute', right: -18, top: -18, width: 80, height: 80, borderRadius: '50%', background: 'rgba(255,255,255,0.1)' }} />
-            <div style={{ position: 'absolute', right: -32, bottom: -32, width: 100, height: 100, borderRadius: '50%', background: 'rgba(255,255,255,0.06)' }} />
-            <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.7)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 8, position: 'relative' }}>{k.label}</div>
-            <div style={{ fontSize: 24, fontWeight: 900, color: '#fff', letterSpacing: '-0.8px', lineHeight: 1, position: 'relative' }}>{k.val}</div>
-            {k.badge && <span style={{ display: 'inline-block', marginTop: 7, background: 'rgba(255,255,255,0.22)', color: '#fff', borderRadius: 20, padding: '1px 8px', fontSize: 10, fontWeight: 700, position: 'relative' }}>{k.badge}</span>}
+          <div key={k.label} style={{ ...carteV1, borderTop: `3px solid ${k.couleur}`, padding: '20px', minHeight: 110 }}>
+            <div style={{ fontSize: 9, color: V1.texteMuted, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 8 }}>{k.label}</div>
+            <div style={{ ...mono(24, k.couleur, 700), lineHeight: 1 }}>{k.val}</div>
+            {k.badge && <span style={{ ...mono(10, k.couleur, 700), display: 'inline-block', marginTop: 8, background: k.couleur + '18', borderRadius: 20, padding: '2px 9px' }}>{k.badge}</span>}
           </div>
         ))}
       </div>
@@ -141,27 +140,27 @@ export default function Rapport({ chantiers, clients, devis = [], parametres, fa
                         const _clos = ['terminé', 'termine', 'clôturé', 'cloture', 'facturé', 'facture'].includes(_statutL);
                         const avancementJournal = c.nombreJours > 0 ? Math.min(100, Math.round((r / c.nombreJours) * 100)) : 0;
                         const progress = _clos ? 100 : Math.max(0, Math.min(100, avancementJournal || Number(c.avancement ?? 0)));
-                        let color = '#ef4444';
-                        if (progress > 30) color = '#f59e0b';
-                        if (progress > 70) color = '#22c55e';
+                        let color = V1.danger;
+                        if (progress > 30) color = V1.warn;
+                        if (progress > 70) color = V1.ok;
                         return (
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <div style={{ background: 'var(--border)', borderRadius: '10px', height: '8px', width: '80px', overflow: 'hidden' }}>
-                              <div style={{ background: `linear-gradient(90deg, ${color}, ${color}cc)`, width: `${progress}%`, height: '8px', borderRadius: '10px', transition: 'width 0.4s ease', boxShadow: `0 0 8px ${color}` }} />
+                            <div style={{ background: V1.separation, borderRadius: '10px', height: '8px', width: '80px', overflow: 'hidden' }}>
+                              <div style={{ background: color, width: `${progress}%`, height: '8px', borderRadius: '10px', transition: 'width 0.4s ease' }} />
                             </div>
-                            <span style={{ fontSize: '13px', fontWeight: 700 }}>{progress}%</span>
+                            <span style={{ ...mono(13, V1.texte, 700) }}>{progress}%</span>
                           </div>
                         );
                       })()}
                     </td>
                     <td style={{ padding: '12px 15px' }}>
-                      <span style={{ color: al ? al.couleur : '#10b981', fontWeight: 700 }}>
+                      <span style={{ ...mono(13, al ? al.couleur : V1.ok, 700) }}>
                         {j !== null ? `${j}j` : '-'}
                       </span>
                       {al && <div style={{ fontSize: '11px', color: al.couleur }}>{al.texte}</div>}
                     </td>
                     <td style={{ padding: '12px 15px' }}>
-                      <span style={{ background: (parseFloat(couts.margeActuellePct) >= 15 ? '#10b98118' : '#ef444418'), color: parseFloat(couts.margeActuellePct) >= 15 ? '#10b981' : '#ef4444', fontWeight: 600, padding: '3px 10px', borderRadius: '12px', fontSize: '12px' }}>
+                      <span style={{ ...mono(12, parseFloat(couts.margeActuellePct) >= 15 ? V1.ok : V1.danger, 600), background: (parseFloat(couts.margeActuellePct) >= 15 ? V1.ok : V1.danger) + '18', padding: '3px 10px', borderRadius: '12px' }}>
                         {couts.margeActuellePct}%
                       </span>
                     </td>
@@ -178,13 +177,13 @@ export default function Rapport({ chantiers, clients, devis = [], parametres, fa
         <div className="ds-card-title">Paiements de la semaine</div>
         <div style={{ display: 'grid', gridTemplateColumns: 'var(--g3)', gap: '12px', marginBottom: '20px' }}>
           {[
-            { label: 'Reçus', val: `CHF ${fmtN(totalPaiementsRecus)}`, couleur: '#10b981', bg: 'rgba(16,185,129,0.12)' },
-            { label: 'En attente', val: `CHF ${fmtN(totalPaiementsAttente)}`, couleur: '#f59e0b', bg: 'rgba(245,158,11,0.12)' },
-            { label: 'En retard', val: `CHF ${fmtN(totalPaiementsRetard)}`, couleur: '#ef4444', bg: 'rgba(239,68,68,0.12)' },
+            { label: 'Reçus', val: `CHF ${fmtN(totalPaiementsRecus)}`, couleur: V1.ok },
+            { label: 'En attente', val: `CHF ${fmtN(totalPaiementsAttente)}`, couleur: V1.warn },
+            { label: 'En retard', val: `CHF ${fmtN(totalPaiementsRetard)}`, couleur: V1.danger },
           ].map(s => (
-            <div key={s.label} style={{ background: s.bg, border: `2px solid ${s.couleur}`, borderRadius: '10px', padding: '15px', textAlign: 'center' }}>
-              <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>{s.label}</div>
-              <div style={{ fontSize: '22px', fontWeight: 700, color: s.couleur, marginTop: '5px' }}>{s.val}</div>
+            <div key={s.label} style={{ ...carteV1, borderTop: `3px solid ${s.couleur}`, padding: '15px', textAlign: 'center' }}>
+              <div style={{ fontSize: '13px', color: V1.texteMuted }}>{s.label}</div>
+              <div style={{ ...mono(22, s.couleur, 700), marginTop: '5px' }}>{s.val}</div>
             </div>
           ))}
         </div>
@@ -192,7 +191,7 @@ export default function Rapport({ chantiers, clients, devis = [], parametres, fa
         {/* LISTE FACTURES EN RETARD (source unique : factures) */}
         {totalPaiementsRetard > 0 && (
           <div>
-            <div style={{ fontSize: '12px', fontWeight: 700, color: '#ef4444', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: 8 }}>Paiements en retard à relancer</div>
+            <div style={{ fontSize: '12px', fontWeight: 700, color: V1.danger, textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: 8 }}>Paiements en retard à relancer</div>
             {chantiers.map(c => {
               const today = new Date().toISOString().slice(0, 10);
               const retards = factures
@@ -202,13 +201,13 @@ export default function Rapport({ chantiers, clients, devis = [], parametres, fa
               if (retards.length === 0) return null;
               const client = clients.find(cl => String(cl.id) === String(c.clientId));
               return (
-                <div key={c.id} style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid #ef4444', borderRadius: '8px', padding: '12px', marginBottom: '8px' }}>
-                  <div style={{ fontWeight: 700, color: '#ef4444' }}>{c.nom} — {client?.entreprise}</div>
+                <div key={c.id} style={{ background: 'rgba(192,57,43,0.08)', border: `1px solid ${V1.danger}`, borderRadius: '8px', padding: '12px', marginBottom: '8px' }}>
+                  <div style={{ fontWeight: 700, color: V1.danger }}>{c.nom} — {client?.entreprise}</div>
                   {retards.map(f => {
                     const restant = Math.max(0, (parseFloat(f.montantTTC) || 0) - (parseFloat(f.montantPaye) || 0));
                     return (
-                      <div key={f.id} style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '4px' }}>
-                        Facture {f.numero} — <strong>CHF {fmtN(restant)}</strong> — Échéance : {f.dateEcheance}
+                      <div key={f.id} style={{ fontSize: '13px', color: V1.texteMuted, marginTop: '4px' }}>
+                        Facture {f.numero} — <strong style={{ ...mono(13, V1.texte, 700) }}>CHF {fmtN(restant)}</strong> — Échéance : {f.dateEcheance}
                       </div>
                     );
                   })}
@@ -240,11 +239,11 @@ export default function Rapport({ chantiers, clients, devis = [], parametres, fa
                     <td style={{ padding: '12px 15px' }}>{client?.entreprise || '-'}</td>
                     <td style={{ padding: '12px 15px' }}>{c.dateDebut}</td>
                     <td style={{ padding: '12px 15px' }}>{calculerDateFinOuvrables(c.dateDebut, c.nombreJours, c.inclusSamedi, c.canton ?? 'GE')}</td>
-                    <td style={{ padding: '12px 15px', fontWeight: 700, color: 'var(--text-primary)' }}>
+                    <td style={{ padding: '12px 15px', ...mono(13, V1.texte, 700) }}>
                       {calculerCA(c, devis) !== null ? `CHF ${fmtN(calculerCA(c, devis))}` : '— Aucun devis lié'}
                     </td>
                     <td style={{ padding: '12px 15px' }}>
-                      <span style={{ background: (isChantierActif(c) ? '#f59e0b' : '#0d3d6e') + '18', color: isChantierActif(c) ? '#f59e0b' : '#0d3d6e', fontWeight: 600, padding: '3px 10px', borderRadius: '12px', fontSize: '12px' }}>
+                      <span style={{ ...mono(12, isChantierActif(c) ? V1.warn : V1.bleu, 600), background: (isChantierActif(c) ? V1.warn : V1.bleu) + '18', padding: '3px 10px', borderRadius: '12px' }}>
                         {c.statut}
                       </span>
                     </td>

@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { fmtN, couleurScoreSante, libelleScoreSante } from './donnees';
 import { DS } from './ds';
+import { V1, mono, carteV1 } from './design/v1';
 
 // Protège contre les valeurs non-string (action:{page,ctx}, detail:objet...)
 function safeStr(v) {
@@ -223,6 +224,10 @@ const AGENTS_META = [
   },
 ];
 
+// Nombre d'agents du système — exposé pour que le hero partagé (CentreIA) affiche
+// le même « N/N » que l'en-tête interne, sans dupliquer la liste. Aucune logique.
+export const NB_AGENTS = AGENTS_META.length;
+
 const TIER_META = {
   1: { label: 'Tier 1 — Analyse pure', couleur: '#0d3d6e', bg: '#e8f0f9' },
   2: { label: 'Tier 2 — Intelligence croisée', couleur: '#8b5cf6', bg: '#f5f3ff' },
@@ -242,6 +247,7 @@ export default function Agents({
   patterns = {}, rapports = [], dernierRun = null, running = false, nbNonLues = 0, agentData = {},
   scoreGlobal = null, priorites = [], memoire = {},
   forcerExecution, marquerLu, marquerTousLus, simulerRapport,
+  hideHeader = false, // design v1 : le hero de CentreIA porte l'en-tête + les 4 chiffres + « Forcer exécution »
 }) {
   const [onglet, setOnglet] = useState('coach');
   const [expanded, setExpanded] = useState({});
@@ -278,7 +284,8 @@ export default function Agents({
 
   return (
     <div>
-      {/* ── EN-TÊTE ── */}
+      {/* ── EN-TÊTE + 4 chiffres (masqués quand le hero de CentreIA les porte) ── */}
+      {!hideHeader && (<>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
         <div>
           <div className="page-title-main" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -302,7 +309,7 @@ export default function Agents({
           { label: 'SCORE ENTREPRISE', val: scoreGlobal !== null ? `${scoreGlobal}/100` : '—', gradient: scoreGlobal >= 75 ? 'linear-gradient(135deg,#065F46,#10B981)' : scoreGlobal >= 50 ? 'linear-gradient(135deg,#92400E,#F59E0B)' : 'linear-gradient(135deg,#991B1B,#EF4444)', glow: 'rgba(16,185,129,0.32)', badge: libelleScoreSante(scoreGlobal) },
           { label: 'AGENTS ACTIFS', val: `${nbActifs}/${AGENTS_META.length}`, gradient: 'linear-gradient(135deg,#1E40AF,#3B82F6)', glow: 'rgba(59,130,246,0.32)' },
           { label: 'ALERTES ACTIVES', val: alertesNonLues.length, gradient: alertesNonLues.length > 0 ? 'linear-gradient(135deg,#991B1B,#EF4444)' : 'linear-gradient(135deg,#065F46,#10B981)', glow: 'rgba(239,68,68,0.32)', badge: alertesNonLues.length > 0 ? `${alertesNonLues.length} non lues` : 'Tout lu' },
-          { label: 'MÉMOIRE ACCUMULÉE', val: `${Object.keys(memoire).length} agents`, gradient: 'linear-gradient(135deg,#4C1D95,#8B5CF6)', glow: 'rgba(139,92,246,0.32)', badge: 'Données persistées' },
+          { label: 'MÉMOIRE ACCUMULÉE', val: `${Object.keys(memoire).length} agents`, gradient: 'linear-gradient(135deg,#0E2A4F,#1E5FAF)', glow: 'rgba(30,95,175,0.32)', badge: 'Données persistées' },
         ].map(k => (
           <div key={k.label} style={{ background: k.gradient, borderRadius: 16, padding: '20px', minHeight: 110, boxShadow: `0 4px 20px ${k.glow}`, border: '1px solid rgba(255,255,255,0.15)', position: 'relative', overflow: 'hidden' }}>
             <div style={{ position: 'absolute', right: -18, top: -18, width: 80, height: 80, borderRadius: '50%', background: 'rgba(255,255,255,0.1)' }} />
@@ -312,6 +319,7 @@ export default function Agents({
           </div>
         ))}
       </div>
+      </>)}
 
       {/* ── ONGLETS ── */}
       <div style={{ display: 'flex', gap: 2, background: 'var(--bg-glass-2)', border: '1px solid var(--border)', borderRadius: 10, padding: 3, marginBottom: 24, width: 'fit-content', flexWrap: 'wrap' }}>
@@ -344,60 +352,63 @@ export default function Agents({
             </div>
           ) : (
             <>
-              {/* Score entreprise */}
+              {/* Score entreprise — carte v1 */}
               {scoreGlobal !== null && (
-                <div style={{ ...DS.card, marginBottom: 20, padding: '20px 24px', display: 'flex', alignItems: 'center', gap: 20 }}>
+                <div style={{ ...carteV1, marginBottom: 20, padding: '20px 24px', display: 'flex', alignItems: 'center', gap: 20, borderLeft: `4px solid ${couleurScoreSante(scoreGlobal)}` }}>
                   <div style={{ textAlign: 'center', flexShrink: 0 }}>
-                    <div style={{ fontSize: 48, fontWeight: 900, color: couleurScoreSante(scoreGlobal), lineHeight: 1 }}>{scoreGlobal}</div>
-                    <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', marginTop: 4 }}>Score /100</div>
+                    <div style={{ ...mono(48, couleurScoreSante(scoreGlobal), 600), lineHeight: 1 }}>{scoreGlobal}</div>
+                    <div style={{ fontSize: 11, color: V1.texteMuted, fontWeight: 700, textTransform: 'uppercase', marginTop: 4 }}>Score /100</div>
                   </div>
-                  <div style={{ width: 1, height: 60, background: 'var(--border)', flexShrink: 0 }} />
+                  <div style={{ width: 1, height: 60, background: V1.separation, flexShrink: 0 }} />
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 700, fontSize: 16, color: 'var(--text-primary)', marginBottom: 6 }}>
+                    <div style={{ fontFamily: "'Inter', sans-serif", fontWeight: 700, fontSize: 16, color: V1.texte, marginBottom: 6 }}>
                       {libelleScoreSante(scoreGlobal)}
                     </div>
-                    <div style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+                    <div style={{ fontSize: 13, color: V1.texteMuted, lineHeight: 1.6 }}>
                       Basé sur l'analyse de {AGENTS_META.length} agents · {alertes.filter(a => !a.lu).length} alertes non traitées · Synthèse en temps réel
                     </div>
                   </div>
                 </div>
               )}
 
-              {/* Top priorités */}
-              <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', color: 'var(--text-muted)', marginBottom: 12 }}>Vos {priorites.length} priorités d'action</div>
+              {/* Top priorités — cartes v1 à bord gauche coloré par urgence */}
+              <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: V1.bleu, marginBottom: 12 }}>Vos {priorites.length} priorités d'action</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                {priorites.map((p, i) => (
-                  <div key={i} style={{ ...DS.card, padding: '16px 20px', display: 'flex', gap: 16, alignItems: 'flex-start', borderLeft: `4px solid ${i === 0 ? '#ef4444' : i === 1 ? '#f59e0b' : '#0d3d6e'}` }}>
-                    <div style={{ width: 32, height: 32, borderRadius: '50%', background: i === 0 ? '#fee2e2' : i === 1 ? '#fef3c7' : '#e8f0f9', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                      {i === 0 ? <AlertTriangle size={15} color="#ef4444" /> : i === 1 ? <AlertCircle size={15} color="#f59e0b" /> : <Target size={15} color="#0d3d6e" />}
+                {priorites.map((p, i) => {
+                  const urg = i === 0 ? V1.danger : i === 1 ? V1.warn : V1.bleu;
+                  return (
+                  <div key={i} style={{ ...carteV1, padding: '16px 20px', display: 'flex', gap: 16, alignItems: 'flex-start', borderLeft: `4px solid ${urg}` }}>
+                    <div style={{ width: 32, height: 32, borderRadius: '50%', background: urg + '18', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      {i === 0 ? <AlertTriangle size={15} color={urg} /> : i === 1 ? <AlertCircle size={15} color={urg} /> : <Target size={15} color={urg} />}
                     </div>
-                    <div style={{ flex: 1 }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 5, flexWrap: 'wrap' }}>
-                        <span style={{ background: i === 0 ? '#fee2e2' : i === 1 ? '#fef3c7' : '#e8f0f9', color: i === 0 ? '#991b1b' : i === 1 ? '#92400e' : '#0d3d6e', borderRadius: 20, padding: '2px 10px', fontSize: 10, fontWeight: 700 }}>{safeStr(p.categorie)}</span>
-                        <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Impact : {safeStr(p.impact)}</span>
+                        <span style={{ ...mono(10, urg, 700), textTransform: 'uppercase', letterSpacing: '0.04em', background: urg + '16', border: `1px solid ${urg}30`, borderRadius: 20, padding: '2px 10px' }}>{safeStr(p.categorie)}</span>
+                        <span style={{ ...mono(10, V1.texteMuted) }}>IMPACT : {safeStr(p.impact)}</span>
                       </div>
-                      <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-primary)', marginBottom: 4 }}>{safeStr(p.action)}</div>
-                      <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{safeStr(p.detail)}</div>
+                      <div style={{ fontWeight: 700, fontSize: 14, color: V1.texte, marginBottom: 4 }}>{safeStr(p.action)}</div>
+                      <div style={{ fontSize: 12, color: V1.texteMuted }}>{safeStr(p.detail)}</div>
                     </div>
-                    <div style={{ fontSize: 18, fontWeight: 900, color: 'var(--text-muted)', flexShrink: 0 }}>#{i + 1}</div>
+                    <div style={{ ...mono(18, V1.texteMuted, 700), flexShrink: 0 }}>#{i + 1}</div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
 
-              {/* Stats des autres agents */}
+              {/* 6 indicateurs — cartes v1, valeurs en mono */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginTop: 20 }}>
                 {[
-                  { label: 'Trésorerie J+30', val: agentData?.TresoreriePredictor?.solde30 !== undefined ? `CHF ${fmtN(agentData.TresoreriePredictor.solde30)}` : '—', couleur: (agentData?.TresoreriePredictor?.solde30 || 0) >= 0 ? '#10b981' : '#ef4444', sub: 'Solde net prévu' },
-                  { label: 'CA Projeté Année', val: agentData?.ProjectionAnnuelle?.caProjecte ? `CHF ${fmtN(agentData.ProjectionAnnuelle.caProjecte)}` : '—', couleur: '#0d3d6e', sub: `${agentData?.ProjectionAnnuelle?.txAtteinte || '—'}% de l'objectif` },
-                  { label: 'À Facturer Maintenant', val: agentData?.OptimisationFacturation?.totalFacturable ? `CHF ${fmtN(agentData.OptimisationFacturation.totalFacturable)}` : '—', couleur: '#10b981', sub: `${agentData?.OptimisationFacturation?.opportunites?.length || 0} chantier(s)` },
-                  { label: 'DSO Moyen', val: agentData?.DSOAnalyse?.dsoMoyen !== undefined ? `${agentData.DSOAnalyse.dsoMoyen} jours` : '—', couleur: (agentData?.DSOAnalyse?.dsoMoyen || 0) <= 30 ? '#10b981' : '#ef4444', sub: 'Standard BTP : 30j' },
-                  { label: 'Qualité Données', val: agentData?.AnomaliesDonnees?.score !== undefined ? `${agentData.AnomaliesDonnees.score}/100` : '—', couleur: (agentData?.AnomaliesDonnees?.score || 0) >= 80 ? '#10b981' : '#f59e0b', sub: `${agentData?.AnomaliesDonnees?.nbAnomalies || 0} anomalie(s)` },
-                  { label: 'Risque Max', val: agentData?.RadarPrecoce?.risques?.[0] ? `${agentData.RadarPrecoce.risques[0].score}/100` : '0/100', couleur: (agentData?.RadarPrecoce?.risques?.[0]?.score || 0) >= 60 ? '#ef4444' : '#10b981', sub: agentData?.RadarPrecoce?.risques?.[0]?.nom || 'Aucun chantier à risque' },
+                  { label: 'Trésorerie J+30', val: agentData?.TresoreriePredictor?.solde30 !== undefined ? `CHF ${fmtN(agentData.TresoreriePredictor.solde30)}` : '—', couleur: (agentData?.TresoreriePredictor?.solde30 || 0) >= 0 ? V1.ok : V1.danger, sub: 'Solde net prévu' },
+                  { label: 'CA Projeté Année', val: agentData?.ProjectionAnnuelle?.caProjecte ? `CHF ${fmtN(agentData.ProjectionAnnuelle.caProjecte)}` : '—', couleur: V1.bleu, sub: `${agentData?.ProjectionAnnuelle?.txAtteinte || '—'}% de l'objectif` },
+                  { label: 'À Facturer Maintenant', val: agentData?.OptimisationFacturation?.totalFacturable ? `CHF ${fmtN(agentData.OptimisationFacturation.totalFacturable)}` : '—', couleur: V1.ok, sub: `${agentData?.OptimisationFacturation?.opportunites?.length || 0} chantier(s)` },
+                  { label: 'DSO Moyen', val: agentData?.DSOAnalyse?.dsoMoyen !== undefined ? `${agentData.DSOAnalyse.dsoMoyen} jours` : '—', couleur: (agentData?.DSOAnalyse?.dsoMoyen || 0) <= 30 ? V1.ok : V1.danger, sub: 'Standard BTP : 30j' },
+                  { label: 'Qualité Données', val: agentData?.AnomaliesDonnees?.score !== undefined ? `${agentData.AnomaliesDonnees.score}/100` : '—', couleur: (agentData?.AnomaliesDonnees?.score || 0) >= 80 ? V1.ok : V1.warn, sub: `${agentData?.AnomaliesDonnees?.nbAnomalies || 0} anomalie(s)` },
+                  { label: 'Risque Max', val: agentData?.RadarPrecoce?.risques?.[0] ? `${agentData.RadarPrecoce.risques[0].score}/100` : '0/100', couleur: (agentData?.RadarPrecoce?.risques?.[0]?.score || 0) >= 60 ? V1.danger : V1.ok, sub: agentData?.RadarPrecoce?.risques?.[0]?.nom || 'Aucun chantier à risque' },
                 ].map(item => (
-                  <div key={item.label} style={{ ...DS.card, padding: '14px 16px' }}>
-                    <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 5 }}>{item.label}</div>
-                    <div style={{ fontSize: 20, fontWeight: 900, color: item.couleur, letterSpacing: '-0.5px', marginBottom: 2 }}>{safeStr(item.val)}</div>
-                    <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{safeStr(item.sub)}</div>
+                  <div key={item.label} style={{ ...carteV1, padding: '14px 16px', borderTop: `3px solid ${item.couleur}` }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: V1.texteMuted, marginBottom: 5 }}>{item.label}</div>
+                    <div style={{ ...mono(20, item.couleur, 600), marginBottom: 2 }}>{safeStr(item.val)}</div>
+                    <div style={{ fontSize: 11, color: V1.texteMuted }}>{safeStr(item.sub)}</div>
                   </div>
                 ))}
               </div>

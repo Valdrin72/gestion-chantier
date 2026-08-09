@@ -1,10 +1,14 @@
-import React, { useState } from 'react';
-import { ChevronRight } from 'lucide-react';
+import React, { useState, useLayoutEffect } from 'react';
+import { ChevronRight, Menu } from 'lucide-react';
 import { fmtN, C } from '../donnees';
 import { DS } from '../ds';
+import { V1, mono, carteV1, heroFond, heroMono } from '../design/v1';
 import { useApp } from '../context/AppContext';
 import { pointagesApresRestauration, totalHeuresPointages } from '../utils/importGuard';
 import SimulateurScenarios from '../demo/SimulateurScenarios';
+
+// Bouton translucide du hero bleu nuit (mêmes tokens que les autres pages v1).
+const heroBtn = { background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.18)', borderRadius: 8, padding: '6px 11px', cursor: 'pointer', color: '#fff', display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: 'inherit', fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap' };
 
 
 // Sanitise une saisie de taux financier : jamais NaN, jamais négatif.
@@ -49,7 +53,7 @@ function ChampFinancier({ label, fieldKey, isTVA, value, onCommit }) {
 
 const inputStyle = DS.input;
 const labelStyle = DS.label;
-const carteStyle = DS.card;
+const carteStyle = carteV1; // design v1 : toutes les cartes de section en style v1
 const thStyle = DS.th;
 const tdStyle = DS.td;
 const btnPrimaire = DS.btnPrimary;
@@ -57,13 +61,18 @@ const btnSucces  = DS.btnSuccess;
 const btnDanger  = DS.btnDanger;
 
 function Parametres({ parametres, setParametres, clients = [], setClients = () => {}, chantiers = [], setChantiers = () => {}, devis = [], setDevis = () => {}, factures = [], setFactures = () => {}, pointages = [], setPointages = () => {}, naviguer = () => {} }) {
+  // La page passe en « hero plein écran » (Topbar blanc masqué) comme les autres pages v1.
+  useLayoutEffect(() => {
+    document.body.classList.add('hero-fullscreen');
+    return () => document.body.classList.remove('hero-fullscreen');
+  }, []);
   const [onglet, setOnglet] = useState('dashboard');
   const [nouvelleLocalite, setNouvelleLocalite] = useState({ nom: '', tarifJour: '' });
   const [nouveauTravail, setNouveauTravail] = useState({ nom: '', unite: 'm²', tarifBase: '' });
   const [saved, setSaved] = useState(false);
   const timerSaved = React.useRef(null);
   const importRef = React.useRef(null);
-  const { confirmer, afficherNotif } = useApp();
+  const { confirmer, afficherNotif, ouvrirMenu } = useApp();
   const [memoireVidee, setMemoireVidee] = useState(false);
 
   const iaActivee = parametres.parametres?.iaActivee !== false; // activé par défaut
@@ -204,40 +213,44 @@ function Parametres({ parametres, setParametres, clients = [], setClients = () =
           <span style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: 14 }}>Paramètres enregistrés</span>
         </div>
       )}
-      <div className="page-header-row">
-        <div className="page-title-block">
-          <div className="page-title-main">Paramètres</div>
-          <div className="page-title-sub">Configuration de l'application · sauvegarde automatique</div>
+      {/* ══ HERO BLEU NUIT (design v1, bord à bord, collé au sommet) ══ */}
+      <div className="page-hero-bleed" data-testid="hero-parametres" style={{ ...heroFond, padding: '20px 32px 24px', position: 'relative' }}>
+        <input ref={importRef} type="file" accept=".json" style={{ display: 'none' }} onChange={importerDonnees} />
+        {/* Ligne 1 — ☰ · CYNA · PARAMÈTRES / 11 · boutons backup */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18, flexWrap: 'wrap' }}>
+          {ouvrirMenu && (
+            <button onClick={ouvrirMenu} aria-label="Menu" style={{ ...heroBtn, padding: 7 }}><Menu size={16} /></button>
+          )}
+          <span style={{ fontFamily: "'Inter', sans-serif", fontWeight: 800, fontSize: 15, letterSpacing: '0.06em', color: '#fff' }}>CYNA</span>
+          <span style={heroMono(10, 0.55)}>· PARAMÈTRES / 11</span>
+          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <button onClick={() => importRef.current?.click()} style={heroBtn} title="Restaurer depuis un fichier backup CYNA (.json)">Restaurer backup</button>
+            <button onClick={exporterDonnees} style={heroBtn} title="Télécharger une sauvegarde complète de vos données">Exporter backup</button>
+            <button onClick={() => sauv({ ...parametres })} style={{ ...heroBtn, background: 'rgba(74,222,128,0.2)', border: '1px solid rgba(74,222,128,0.5)', color: '#4ADE80', fontWeight: 700 }}>Sauvegarder tout</button>
+          </div>
         </div>
-        <div className="page-actions-group">
-          <input ref={importRef} type="file" accept=".json" style={{ display: 'none' }} onChange={importerDonnees} />
-          <button onClick={() => importRef.current?.click()} style={btnPrimaire} title="Restaurer depuis un fichier backup CYNA (.json)">
-            Restaurer backup
-          </button>
-          <button onClick={exporterDonnees} style={{ ...btnSucces, background: 'linear-gradient(135deg, #0d3d6e, #1a5a9e)' }} title="Télécharger une sauvegarde complète de vos données">
-            Exporter backup
-          </button>
-          <button onClick={() => sauv({ ...parametres })} style={btnSucces}>
-            Sauvegarder tout
-          </button>
-        </div>
+
+        {/* Ligne 2 — titre + ligne mono */}
+        <div style={heroMono(11, 0.6)}>PARAMÈTRES / 11</div>
+        <h1 style={{ fontFamily: "'Inter', sans-serif", fontWeight: 700, fontSize: 34, margin: '8px 0 8px', letterSpacing: '-0.02em', color: '#fff' }}>Paramètres</h1>
+        <div style={heroMono(11, 0.7)}>CONFIGURATION DE L'APPLICATION · SAUVEGARDE AUTOMATIQUE</div>
       </div>
+
       <div style={{ display: 'grid', gridTemplateColumns: 'var(--g-params)', gap: 20, alignItems: 'start' }}>
         {/* ── Sidebar nav ── */}
-        <div style={{ ...DS.card, padding: 8 }}>
+        <div style={{ ...carteV1, padding: 8 }}>
           {onglets.map(o => {
             const isActive = onglet === o.id;
             return (
               <div key={o.id} onClick={() => setOnglet(o.id)} style={{
                 display: 'flex', alignItems: 'center', gap: 10,
                 padding: '10px 12px', borderRadius: 10, cursor: 'pointer',
-                background: isActive ? DS.brand.soft : 'transparent',
-                color: isActive ? DS.brand.secondary : 'var(--text-primary)',
+                background: isActive ? V1.bleu : 'transparent',
+                color: isActive ? '#fff' : V1.texte,
                 transition: 'all 0.15s', marginBottom: 2,
               }}>
                 <span style={{ flex: 1, fontSize: 13, fontWeight: isActive ? 700 : 500 }}>{o.label}</span>
-                <span style={{ fontSize: 10, color: isActive ? DS.brand.soft : 'var(--text-muted)', flex: 2, display: 'none' }}>{o.desc}</span>
-                <ChevronRight size={14} strokeWidth={2} style={{ color: isActive ? DS.brand.secondary : 'var(--text-muted)', flexShrink: 0 }} />
+                <ChevronRight size={14} strokeWidth={2} style={{ color: isActive ? 'rgba(255,255,255,0.9)' : V1.texteMuted, flexShrink: 0 }} />
               </div>
             );
           })}
@@ -252,11 +265,11 @@ function Parametres({ parametres, setParametres, clients = [], setClients = () =
           <div className="ds-card-title" style={{ marginBottom: '20px' }}>Paramètres du Dashboard</div>
           <div style={{ display: 'grid', gridTemplateColumns: 'var(--g-form3)', gap: '15px' }}>
             {[['Alerte jours restants', 'joursAlerte'], ['Nb chantiers affichés', 'nbChantiersAffiche'], ['Période stats (mois)', 'periodeStats']].map(([label, key]) => (
-              <div key={key} style={{ background: 'var(--bg-glass-2)', border: '1px solid var(--border)', borderRadius: '12px', padding: '15px' }}>
+              <div key={key} style={{ background: V1.bleuFond, border: `1px solid ${V1.bleu}22`, borderRadius: '12px', padding: '15px' }}>
                 <label style={labelStyle}>{label}</label>
                 <input type="number" value={parametres.parametres?.[key] || ''} placeholder="5"
                   onChange={e => sauv({ ...parametres, parametres: { ...parametres.parametres, [key]: parseFloat(e.target.value) } })}
-                  style={{ ...inputStyle, fontWeight: 'bold', fontSize: '18px', color: C.primaire, borderColor: C.primaire, borderWidth: '2px' }} />
+                  style={{ ...inputStyle, ...mono(18, V1.bleu, 700), borderColor: V1.bleu, borderWidth: '2px' }} />
               </div>
             ))}
           </div>
@@ -271,7 +284,7 @@ function Parametres({ parametres, setParametres, clients = [], setClients = () =
               <div style={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', color: 'var(--text-muted)', marginBottom: '12px' }}>Statuts disponibles</div>
               {['À chiffrer', 'Devis envoyé', 'Validé', 'En préparation', 'Planifié', 'En cours', 'Suspendu', 'Attente paiement', 'Terminé', 'Facturé', 'Clôturé'].map(s => (
                 <div key={s} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 0', borderBottom: '1px solid var(--border)' }}>
-                  <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: { 'En cours': C.warning, 'Attente paiement': C.orange, 'Terminé': C.secondaire, 'Planifié': C.info, 'Suspendu': C.danger, 'Facturé': C.violet }[s] || C.primaire }} />
+                  <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: { 'En cours': C.warning, 'Attente paiement': C.orange, 'Terminé': C.secondaire, 'Planifié': C.info, 'Suspendu': C.danger, 'Facturé': V1.bleuMoyen }[s] || C.primaire }} />
                   <span style={{ fontSize: '14px' }}>{s}</span>
                 </div>
               ))}

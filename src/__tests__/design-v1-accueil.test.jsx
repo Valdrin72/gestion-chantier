@@ -7,7 +7,7 @@
  */
 import React from 'react';
 import { describe, it, expect, vi, beforeAll } from 'vitest';
-import { screen, fireEvent } from '@testing-library/react';
+import { screen, fireEvent, within } from '@testing-library/react';
 import { renderWithApp } from '../test-utils/renderWithApp';
 import { fmtCH } from '../design/v1';
 import Dashboard from '../pages/Dashboard';
@@ -55,14 +55,16 @@ const CTX = {
 describe('HERO — score santé + actions du directeur (vraies données agentState)', () => {
   it('affiche « Bonjour Valdrin », le score 60/100 et l\'action 01 du jour', () => {
     renderWithApp(<Dashboard />, CTX);
-    expect(screen.getByTestId('hero-direction')).toBeInTheDocument();
-    expect(screen.getByText(/Bonjour Valdrin/)).toBeInTheDocument();
-    expect(screen.getByText('60')).toBeInTheDocument();               // anneau score
-    expect(screen.getByText(/SANTÉ ENTREPRISE · À SURVEILLER/)).toBeInTheDocument();
-    expect(screen.getByText('ACTIONS DU JOUR')).toBeInTheDocument();
-    expect(screen.getByText('Relancer Client SA — FAC-100')).toBeInTheDocument();
+    // Le hero (Actions du jour) et le DirecteurBloc (onglets matin/soir/lundi) coexistent
+    // volontairement : on scope les assertions au hero plutôt qu'au DOM entier.
+    const hero = within(screen.getByTestId('hero-direction'));
+    expect(hero.getByText(/Bonjour Valdrin/)).toBeInTheDocument();
+    expect(hero.getByText('60')).toBeInTheDocument();               // anneau score
+    expect(hero.getByText(/SANTÉ ENTREPRISE · À SURVEILLER/)).toBeInTheDocument();
+    expect(hero.getByText('ACTIONS DU JOUR')).toBeInTheDocument();
+    expect(hero.getByText('Relancer Client SA — FAC-100')).toBeInTheDocument();
     // Ligne mono : 1 chantier actif – 2 collaborateurs (vraies données)
-    expect(screen.getByText(/1 CHANTIER ACTIF – 2 COLLABORATEURS/)).toBeInTheDocument();
+    expect(hero.getByText(/1 CHANTIER ACTIF – 2 COLLABORATEURS/)).toBeInTheDocument();
   });
 });
 

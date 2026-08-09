@@ -1,34 +1,40 @@
 import React, { useState, useMemo } from 'react';
-import { Plus, Clock, Calendar, X } from 'lucide-react';
+import { Clock, Calendar, X } from 'lucide-react';
 import { DS } from './ds';
+import { V1, mono, carteV1, heroFond, heroMono } from './design/v1';
 
+// Catégories — palette v1 : Réunion bleu, Livraison vert, RDV Client ambre, Autre gris.
 const CATEGORIES = [
-  { id: 'reunion',    label: 'Réunion',    bg: '#ede9fe', color: '#5b21b6' },
-  { id: 'livraison',  label: 'Livraison',  bg: '#fef3c7', color: '#92400e' },
-  { id: 'rdv_client', label: 'RDV Client', bg: '#e8f0f9', color: '#0d3d6e' },
+  { id: 'reunion',    label: 'Réunion',    bg: '#E6EDF5', color: '#1E5FAF' },
+  { id: 'livraison',  label: 'Livraison',  bg: '#EAF3DE', color: '#3B6D11' },
+  { id: 'rdv_client', label: 'RDV Client', bg: '#FAEEDA', color: '#854F0B' },
   { id: 'autre',      label: 'Autre',      bg: '#f1f5f9', color: '#475569' },
 ];
 
 const FORM_VIDE = { titre: '', date: '', categorie: 'reunion' };
 
-export default function Calendrier({ chantiers = [], clients = [], devis = [], factures = [] }) {
+export default function Calendrier({
+  chantiers = [], clients = [], devis = [], factures = [],
+  // Props contrôlées par le hero de PlanningPage (design v1). Optionnelles :
+  // sans elles le composant garde son état interne (rendu standalone inchangé).
+  viewDate: viewDateProp, nouvelEvenementSignal = 0,
+}) {
   const today = new Date();
-  const [viewDate, setViewDate] = useState(new Date(today.getFullYear(), today.getMonth(), 1));
+  // Le mois affiché est piloté par le hero de PlanningPage ; fallback interne : mois courant.
+  const [viewDateInterne] = useState(() => new Date(today.getFullYear(), today.getMonth(), 1));
+  const viewDate = viewDateProp ?? viewDateInterne;
   const [customEvents, setCustomEvents] = useState(() => {
     try { return JSON.parse(localStorage.getItem('cyna_cal_events') || '[]'); } catch { return []; }
   });
   const [modal, setModal] = useState(null); // null | { form }
 
+  // Ouverture de la modale « Nouvel événement » demandée depuis le hero.
+  React.useEffect(() => {
+    if (nouvelEvenementSignal > 0) setModal({ form: { ...FORM_VIDE, date: '' } });
+  }, [nouvelEvenementSignal]);
+
   const year = viewDate.getFullYear();
   const month = viewDate.getMonth();
-
-  const monthLabel = viewDate.toLocaleDateString('fr-CH', { month: 'long', year: 'numeric' });
-  const prevMonthLabel = new Date(year, month - 1, 1).toLocaleDateString('fr-CH', { month: 'short' });
-  const nextMonthLabel = new Date(year, month + 1, 1).toLocaleDateString('fr-CH', { month: 'short' });
-
-  const goToday = () => setViewDate(new Date(today.getFullYear(), today.getMonth(), 1));
-  const prevMonth = () => setViewDate(new Date(year, month - 1, 1));
-  const nextMonth = () => setViewDate(new Date(year, month + 1, 1));
 
   const ouvrirModal = (dateISO = '') => {
     setModal({ form: { ...FORM_VIDE, date: dateISO } });
@@ -138,7 +144,6 @@ export default function Calendrier({ chantiers = [], clients = [], devis = [], f
   const isToday = (day) => day !== null && today.getFullYear() === year && today.getMonth() === month && today.getDate() === day;
 
   const JOURS = ['LUN', 'MAR', 'MER', 'JEU', 'VEN', 'SAM', 'DIM'];
-  const btnStyle = { background: 'var(--ds-btn-ghost-bg)', border: '1px solid var(--ds-btn-ghost-border)', borderRadius: 8, padding: '8px 14px', cursor: 'pointer', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', fontFamily: 'inherit', transition: 'all 0.15s' };
 
   const isoFromCell = (day) => {
     if (!day) return '';
@@ -149,29 +154,14 @@ export default function Calendrier({ chantiers = [], clients = [], devis = [], f
 
   return (
     <div>
-      {/* Header */}
-      <div className="page-header-row">
-        <div className="page-title-block">
-          <div className="page-title-main">Calendrier</div>
-          <div className="page-title-sub" style={{ textTransform: 'capitalize' }}>{monthLabel}</div>
-        </div>
-        <div className="page-actions-group">
-          <button onClick={prevMonth} style={btnStyle}>← {prevMonthLabel}</button>
-          <button onClick={goToday} style={btnStyle}>Aujourd'hui</button>
-          <button onClick={nextMonth} style={btnStyle}>{nextMonthLabel} →</button>
-          <button onClick={() => ouvrirModal()} style={{ ...DS.btnPrimary, display: 'flex', alignItems: 'center', gap: 6 }}>
-            <Plus size={14} strokeWidth={2.5} /> Nouvel événement
-          </button>
-        </div>
-      </div>
-
-      <div style={{ display: 'grid', gridTemplateColumns: '3fr 1fr', gap: 20, alignItems: 'start' }}>
+      {/* La navigation mensuelle et « Nouvel événement » vivent dans le hero de PlanningPage. */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 3fr) minmax(240px, 1fr)', gap: 20, alignItems: 'start' }}>
 
         {/* Calendar grid */}
-        <div style={{ ...DS.card, padding: 0, overflow: 'hidden' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', borderBottom: '1px solid var(--ds-card-border)' }}>
+        <div style={{ ...carteV1, padding: 0, overflow: 'hidden' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', borderBottom: `1px solid ${V1.separation}`, background: '#FAFBFC' }}>
             {JOURS.map(j => (
-              <div key={j} style={{ padding: '12px 0', textAlign: 'center', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{j}</div>
+              <div key={j} style={{ padding: '12px 0', textAlign: 'center', ...mono(10, V1.texteMuted, 600), textTransform: 'uppercase', letterSpacing: '0.06em' }}>{j}</div>
             ))}
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)' }}>
@@ -194,7 +184,7 @@ export default function Calendrier({ chantiers = [], clients = [], devis = [], f
                     <div style={{
                       display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                       width: 26, height: 26, borderRadius: '50%',
-                      background: isToday(cell.day) ? '#0d3d6e' : 'transparent',
+                      background: isToday(cell.day) ? V1.marine : 'transparent',
                       color: isToday(cell.day) ? '#fff' : 'var(--text-primary)',
                       fontSize: 13, fontWeight: isToday(cell.day) ? 700 : 500, marginBottom: 4,
                     }}>
@@ -231,7 +221,7 @@ export default function Calendrier({ chantiers = [], clients = [], devis = [], f
         </div>
 
         {/* Upcoming events */}
-        <div style={DS.card}>
+        <div style={carteV1}>
           <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--text-primary)', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
             <Calendar size={15} strokeWidth={2} style={{ color: '#0d3d6e' }} />
             Prochains événements
@@ -288,15 +278,20 @@ export default function Calendrier({ chantiers = [], clients = [], devis = [], f
       {modal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(4px)' }}
           onClick={() => setModal(null)}>
-          <div style={{ background: 'var(--bg-card)', border: '1px solid var(--ds-card-border)', borderRadius: 18, padding: 28, width: '100%', maxWidth: 420, boxShadow: '0 20px 60px rgba(0,0,0,0.4)' }}
+          <div style={{ background: 'var(--bg-card)', border: '1px solid var(--ds-card-border)', borderRadius: 18, overflow: 'hidden', width: '100%', maxWidth: 420, boxShadow: '0 20px 60px rgba(0,0,0,0.4)' }}
             onClick={e => e.stopPropagation()}>
 
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-              <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--text-primary)' }}>Nouvel événement</div>
-              <button onClick={() => setModal(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 4 }}>
-                <X size={18} />
+            {/* En-tête bleu nuit (grille technique) */}
+            <div style={{ ...heroFond, padding: '16px 22px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+              <div>
+                <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 16, fontWeight: 700, color: '#fff' }}>Nouvel événement</div>
+                <div style={{ ...heroMono(10, 0.65), marginTop: 3 }}>AGENDA · RÉUNION / LIVRAISON / RDV</div>
+              </div>
+              <button onClick={() => setModal(null)} style={{ background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.25)', borderRadius: 8, cursor: 'pointer', color: '#fff', padding: '6px 8px', display: 'inline-flex' }}>
+                <X size={16} />
               </button>
             </div>
+            <div style={{ padding: '0 24px 24px' }}>
 
             <div style={{ marginBottom: 16 }}>
               <label style={DS.label}>Titre</label>
@@ -347,6 +342,7 @@ export default function Calendrier({ chantiers = [], clients = [], devis = [], f
                 style={{ ...DS.btnPrimary, opacity: (!modal.form.titre.trim() || !modal.form.date) ? 0.5 : 1 }}>
                 Ajouter
               </button>
+            </div>
             </div>
           </div>
         </div>

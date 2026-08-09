@@ -1,14 +1,17 @@
 import React, { useState, useMemo, useCallback } from 'react';
-import { Zap, Calendar, LayoutList } from 'lucide-react';
+import { Zap, Calendar } from 'lucide-react';
 import { calculerDateFinOuvrables, getAlerte } from './donnees';
 import { joursReelsChantier } from './calculs/pointagesHelper';
 import { useApp } from './context/AppContext';
 import { DS } from './ds';
+import { V1, mono, carteV1, heroFond, heroMono } from './design/v1';
+import useIsMobile from './hooks/useIsMobile';
 import { TOUS_STATUTS } from './constants/statuts';
 
 const MOIS = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
 const JOURS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
-const PALETTE = ['#0d3d6e','#10b981','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#f97316','#ec4899'];
+// Palette par chantier — sans violet (design v1 : le violet disparaît, bleu CYNA à la place).
+const PALETTE = ['#0d3d6e','#10b981','#f59e0b','#ef4444','#4C8FD1','#06b6d4','#f97316','#ec4899'];
 
 // ── Helpers Gantt ────────────────────────────────────────────────
 function getLundiDeSemaine(d) {
@@ -102,18 +105,18 @@ function GanttView({ chantiers, chantiersNonPlanifies, offsetSemaines, ouvrirMod
   });
 
   return (
-    <div style={{ ...DS.card, padding: 0, overflow: 'hidden' }}>
+    <div style={{ ...carteV1, padding: 0, overflow: 'hidden' }}>
       {/* En-tête */}
-      <div style={{ display: 'flex', borderBottom: '2px solid var(--border)', background: 'var(--ds-th-bg)' }}>
-        <div style={{ width: COL_NOM, flexShrink: 0, padding: '10px 16px', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px', color: 'var(--text-muted)', borderRight: '1px solid var(--border)' }}>
+      <div style={{ display: 'flex', borderBottom: `2px solid ${V1.separation}`, background: '#FAFBFC' }}>
+        <div style={{ width: COL_NOM, flexShrink: 0, padding: '10px 16px', ...mono(10, V1.texteMuted), textTransform: 'uppercase', letterSpacing: '0.06em', borderRight: `1px solid ${V1.separation}` }}>
           Chantier
         </div>
         <div style={{ width: COL_TIMELINE, overflowX: 'auto', scrollbarWidth: 'none' }}>
           <div style={{ display: 'flex', minWidth: '100%' }}>
             {semaines.map(({ lundi, weekNum }, i) => (
-              <div key={i} style={{ flex: `0 0 ${100 / NB_SEMAINES}%`, padding: '10px 4px', textAlign: 'center', fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', borderRight: i < NB_SEMAINES - 1 ? '1px solid var(--border)' : 'none', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+              <div key={i} style={{ flex: `0 0 ${100 / NB_SEMAINES}%`, padding: '10px 4px', textAlign: 'center', ...mono(10, V1.texteMuted, 600), borderRight: i < NB_SEMAINES - 1 ? `1px solid ${V1.separation}` : 'none' }}>
                 S{weekNum}<br />
-                <span style={{ fontWeight: 500, letterSpacing: 0 }}>{formatDateCourt(lundi)}</span>
+                <span style={{ ...mono(9, V1.texteMuted, 400) }}>{formatDateCourt(lundi)}</span>
               </div>
             ))}
           </div>
@@ -205,14 +208,27 @@ function GanttView({ chantiers, chantiersNonPlanifies, offsetSemaines, ouvrirMod
   );
 }
 
-export default function Planning({ chantiers, setChantiers, clients, parametres, naviguer }) {
+export default function Planning({
+  chantiers, setChantiers, clients, parametres, naviguer,
+  // Props contrôlées par le hero de PlanningPage (design v1). Optionnelles :
+  // sans elles le composant garde son état interne (rendu standalone inchangé).
+  vue: vueProp, moisActuel: moisProp, anneeActuelle: anneeProp,
+  onMoisPrecedent, onMoisSuivant, ganttOffset: ganttOffsetProp,
+  showOptimiseur: showOptimiseurProp, setShowOptimiseur: setShowOptimiseurProp,
+}) {
   const { pointages = [] } = useApp();
-  const [moisActuel, setMoisActuel] = useState(new Date().getMonth());
-  const [anneeActuelle, setAnneeActuelle] = useState(new Date().getFullYear());
+  const isMobile = useIsMobile();
+  const [moisInterne, setMoisInterne] = useState(new Date().getMonth());
+  const [anneeInterne, setAnneeInterne] = useState(new Date().getFullYear());
   const [modal, setModal] = useState(null); // null ou { chantier, form }
-  const [showOptimiseur, setShowOptimiseur] = useState(false);
-  const [vue, setVue] = useState('calendrier'); // 'calendrier' | 'gantt'
-  const [ganttOffset, setGanttOffset] = useState(0); // offset en semaines pour la timeline Gantt
+  const [showOptimiseurInterne, setShowOptimiseurInterne] = useState(false);
+
+  const vue = vueProp ?? 'calendrier';
+  const moisActuel = moisProp ?? moisInterne;
+  const anneeActuelle = anneeProp ?? anneeInterne;
+  const ganttOffset = ganttOffsetProp ?? 0;
+  const showOptimiseur = showOptimiseurProp ?? showOptimiseurInterne;
+  const setShowOptimiseur = setShowOptimiseurProp ?? setShowOptimiseurInterne;
 
   // couleurStatut importé depuis ds.js — source unique DS.statuts
 
@@ -254,16 +270,16 @@ export default function Planning({ chantiers, setChantiers, clients, parametres,
     });
   }, [setChantiers]);
 
-  // ── Navigation mois ────────────────────────────────────────────
-  const moisPrecedent = () => {
-    if (moisActuel === 0) { setMoisActuel(11); setAnneeActuelle(anneeActuelle - 1); }
-    else setMoisActuel(moisActuel - 1);
-  };
+  // ── Navigation mois — pilotée par le hero (fallback interne en standalone) ──
+  const moisPrecedent = onMoisPrecedent ?? (() => {
+    if (moisActuel === 0) { setMoisInterne(11); setAnneeInterne(anneeActuelle - 1); }
+    else setMoisInterne(moisActuel - 1);
+  });
 
-  const moisSuivant = () => {
-    if (moisActuel === 11) { setMoisActuel(0); setAnneeActuelle(anneeActuelle + 1); }
-    else setMoisActuel(moisActuel + 1);
-  };
+  const moisSuivant = onMoisSuivant ?? (() => {
+    if (moisActuel === 11) { setMoisInterne(0); setAnneeInterne(anneeActuelle + 1); }
+    else setMoisInterne(moisActuel + 1);
+  });
 
   const nbJoursMois = useMemo(
     () => new Date(anneeActuelle, moisActuel + 1, 0).getDate(),
@@ -425,83 +441,28 @@ export default function Planning({ chantiers, setChantiers, clients, parametres,
     return { employes, suggestions };
   }, [chantiers, parametres, pointages]);
 
-  // ── Style pills toggle ──────────────────────────────────────
-  const pillActive   = { background: 'rgba(13,61,110,0.12)', color: '#0d3d6e', border: '1px solid rgba(13,61,110,0.35)', borderRadius: 8, padding: '6px 14px', cursor: 'pointer', fontSize: 13, fontWeight: 700, fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', gap: 6, transition: 'all 0.15s' };
-  const pillInactive = { background: 'var(--ds-btn-ghost-bg)', color: 'var(--text-secondary)', border: '1px solid var(--ds-btn-ghost-border)', borderRadius: 8, padding: '6px 14px', cursor: 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', gap: 6, transition: 'all 0.15s' };
-
   return (
     <div>
-      {/* ── HEADER ──────────────────────────────────────────────── */}
-      <div className="page-header-row">
-        <div className="page-title-block">
-          <div className="page-title-main">Planning</div>
-          <div className="page-title-sub">
-            {vue === 'calendrier'
-              ? `${chantiersDuMois.length} chantier${chantiersDuMois.length !== 1 ? 's' : ''} ce mois`
-              : `Vue Gantt — 12 semaines`}
-            {chantiersNonPlanifies.length > 0 && ` · ${chantiersNonPlanifies.length} sans date`}
-          </div>
-        </div>
-        <div className="page-actions-group">
-          {/* Toggle Calendrier / Gantt */}
-          <div style={{ display: 'flex', background: 'var(--bg-hover)', borderRadius: 10, padding: 3, gap: 3 }}>
-            <button onClick={() => setVue('calendrier')} style={vue === 'calendrier' ? pillActive : pillInactive} title="Vue calendrier mensuel">
-              <Calendar size={14} />Calendrier
-            </button>
-            <button onClick={() => setVue('gantt')} style={vue === 'gantt' ? pillActive : pillInactive} title="Vue Gantt timeline">
-              <LayoutList size={14} />Gantt
-            </button>
-          </div>
-
-          {/* Navigation contextuelle */}
-          {vue === 'calendrier' ? (
-            <>
-              <button onClick={moisPrecedent} style={btnNav} title="Mois précédent">←</button>
-              <button onClick={() => { setMoisActuel(new Date().getMonth()); setAnneeActuelle(new Date().getFullYear()); }} style={btnNav}>Aujourd'hui</button>
-              <button onClick={moisSuivant} style={btnNav} title="Mois suivant">→</button>
-            </>
-          ) : (
-            <>
-              <button onClick={() => setGanttOffset(v => v - 4)} style={btnNav} title="−4 semaines">←</button>
-              <button onClick={() => setGanttOffset(0)} style={btnNav} title="Centrer sur aujourd'hui">Aujourd'hui</button>
-              <button onClick={() => setGanttOffset(v => v + 4)} style={btnNav} title="+4 semaines">→</button>
-            </>
-          )}
-
-          <button
-            onClick={() => setShowOptimiseur(v => !v)}
-            style={{
-              background: showOptimiseur ? 'rgba(139,92,246,0.18)' : 'rgba(139,92,246,0.08)',
-              color: '#8b5cf6',
-              border: `1px solid ${showOptimiseur ? 'rgba(139,92,246,0.5)' : 'rgba(139,92,246,0.25)'}`,
-              borderRadius: 8, padding: '6px 14px', cursor: 'pointer',
-              fontSize: 13, fontWeight: 600, fontFamily: 'inherit',
-              transition: 'all 0.15s',
-            }}
-          >
-            <Zap size={14} style={{ marginRight: 5 }} />Optimiser l'équipe
-          </button>
-        </div>
-      </div>
+      {/* Le header et la bascule Calendrier/Gantt vivent désormais dans le hero de PlanningPage. */}
 
       {/* ── PANNEAU OPTIMISEUR ──────────────────────────────────── */}
       {showOptimiseur && (
-        <div style={{ ...DS.card, marginBottom: 24 }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+        <div style={{ ...carteV1, padding: 0, overflow: 'hidden', marginBottom: 24 }} data-testid="panneau-optimiseur">
+          {/* En-tête bleu nuit (grille technique) */}
+          <div style={{ ...heroFond, padding: '14px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div>
-              <div style={{ fontWeight: 800, fontSize: 16, color: 'var(--text-primary)' }}>
-                <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Zap size={15} />Suggestions IA — Affectation optimale</span>
+              <div style={{ fontFamily: "'Inter', sans-serif", fontWeight: 700, fontSize: 15, color: '#fff', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Zap size={15} />Suggestions IA — Affectation optimale
               </div>
-              <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 3 }}>
-                Basé sur la charge actuelle et les spécialités
-              </div>
+              <div style={{ ...heroMono(10, 0.65), marginTop: 3 }}>BASÉ SUR LA CHARGE ACTUELLE ET LES SPÉCIALITÉS</div>
             </div>
             <button
               onClick={() => setShowOptimiseur(false)}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: 'var(--text-muted)', fontFamily: 'inherit', lineHeight: 1, padding: '4px 8px' }}
+              style={{ background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.25)', borderRadius: 8, cursor: 'pointer', fontSize: 16, color: '#fff', fontFamily: 'inherit', lineHeight: 1, padding: '6px 10px' }}
               aria-label="Fermer"
             >×</button>
           </div>
+          <div style={{ padding: 16 }}>
 
           {suggestionsOptimiseur.employes.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '24px 0', color: 'var(--text-muted)', fontSize: 13 }}>
@@ -517,7 +478,7 @@ export default function Planning({ chantiers, setChantiers, clients, parametres,
                 const urgenceColor = joursRestants === null ? '#94a3b8' : joursRestants < 0 ? '#ef4444' : joursRestants <= 3 ? '#f59e0b' : '#10b981';
                 const accentColor = PALETTE[idx % PALETTE.length];
                 return (
-                  <div key={c.id} style={{ background: 'var(--bg-hover)', borderRadius: 12, padding: '14px 16px', borderLeft: `4px solid ${accentColor}` }}>
+                  <div key={c.id} style={{ background: V1.page, border: `1px solid ${V1.separation}`, borderRadius: 12, padding: '14px 16px', borderLeft: `4px solid ${accentColor}` }}>
                     {/* En-tête chantier */}
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
                       <div>
@@ -540,21 +501,16 @@ export default function Planning({ chantiers, setChantiers, clients, parametres,
                       </div>
                     </div>
 
-                    {/* Équipe suggérée */}
+                    {/* Équipe suggérée — nom + métier, charge en mono (initiales retirées) */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                       {equipes.map((emp, i) => (
-                        <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--bg-card)', borderRadius: 8, padding: '8px 12px' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                            <div style={{ width: 30, height: 30, borderRadius: '50%', background: `${accentColor}22`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, color: accentColor, flexShrink: 0 }}>
-                              {(emp.nom || '?').charAt(0).toUpperCase()}
-                            </div>
-                            <div>
-                              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>{emp.nom || '—'}</div>
-                              {emp.poste && <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{emp.poste}</div>}
-                            </div>
+                        <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: V1.carte, border: `1px solid ${V1.separation}`, borderRadius: 8, padding: '8px 12px' }}>
+                          <div>
+                            <div style={{ fontSize: 13, fontWeight: 700, color: V1.texte }}>{emp.nom || '—'}</div>
+                            {emp.poste && <div style={{ ...mono(10, V1.texteMuted), marginTop: 1 }}>{emp.poste}</div>}
                           </div>
                           <div style={{ textAlign: 'right' }}>
-                            <div style={{ fontSize: 11, color: emp.charge === 0 ? '#10b981' : emp.charge >= 3 ? '#ef4444' : '#f59e0b', fontWeight: 600 }}>
+                            <div style={{ ...mono(10, emp.charge === 0 ? V1.ok : emp.charge >= 3 ? V1.danger : V1.warn, 600) }}>
                               {emp.raison}
                             </div>
                           </div>
@@ -567,8 +523,9 @@ export default function Planning({ chantiers, setChantiers, clients, parametres,
             </div>
           )}
 
-          <div style={{ marginTop: 16, paddingTop: 12, borderTop: '1px solid var(--border)', fontSize: 11, color: 'var(--text-muted)', textAlign: 'center' }}>
+          <div style={{ marginTop: 16, paddingTop: 12, borderTop: `1px solid ${V1.separation}`, fontSize: 11, color: V1.texteMuted, textAlign: 'center' }}>
             Ces suggestions sont basées sur la charge actuelle. Modifiez les équipes dans la fiche chantier.
+          </div>
           </div>
         </div>
       )}
@@ -601,7 +558,7 @@ export default function Planning({ chantiers, setChantiers, clients, parametres,
 
       {/* ── LAYOUT 2 COLONNES (vue calendrier uniquement) ───────── */}
       {vue === 'calendrier' && (
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 20, alignItems: 'start' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '2fr 1fr', gap: 20, alignItems: 'start' }}>
 
         {/* ── COLONNE GAUCHE : liste chantiers ── */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -623,8 +580,8 @@ export default function Planning({ chantiers, setChantiers, clients, parametres,
 
           {/* Chantiers du mois */}
           {chantiersDuMois.length === 0 ? (
-            <div style={{ ...DS.card, textAlign: 'center', padding: '48px 24px', color: 'var(--text-muted)' }}>
-              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 12 }}><Calendar size={32} color="var(--text-muted)" /></div>
+            <div style={{ ...carteV1, textAlign: 'center', padding: '48px 24px', color: V1.texteMuted }}>
+              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 12 }}><Calendar size={32} color={V1.texteMuted} /></div>
               <div style={{ fontWeight: 600, fontSize: 15 }}>Aucun chantier ce mois</div>
               <div style={{ fontSize: 13, marginTop: 6 }}>Changez de mois ou planifiez un chantier</div>
             </div>
@@ -639,27 +596,27 @@ export default function Planning({ chantiers, setChantiers, clients, parametres,
               const client = clients.find(cl => String(cl.id) === String(c.clientId));
               const alerte = getAlerte(jours);
               return (
-                <div key={c.id} style={{ ...DS.card, transition: 'box-shadow 0.15s' }}
-                  onMouseEnter={e => { e.currentTarget.style.boxShadow = 'var(--shadow-hover)'; }}
-                  onMouseLeave={e => { e.currentTarget.style.boxShadow = 'var(--ds-card-shadow)'; }}
+                <div key={c.id} style={{ ...carteV1, borderLeft: `4px solid ${chantierColors[c.id] || V1.bleu}`, transition: 'box-shadow 0.15s' }}
+                  onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 4px 16px rgba(16,38,73,0.12)'; }}
+                  onMouseLeave={e => { e.currentTarget.style.boxShadow = carteV1.boxShadow; }}
                 >
                   {/* Ligne 1 : nom + statut + bouton */}
                   <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 14, gap: 10 }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--text-primary)', marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      <div style={{ fontFamily: "'Inter', sans-serif", fontWeight: 700, fontSize: 15, color: V1.texte, marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {c.nom || c.numero}
                       </div>
-                      <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-                        {[client?.nom, c.ville, c.canton].filter(Boolean).join(' · ')}
+                      <div style={{ ...mono(10, V1.texteMuted) }}>
+                        {[client?.nom, c.ville, c.canton].filter(Boolean).join(' · ').toUpperCase()}
                       </div>
                     </div>
                     <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
-                      <span style={{ background: cs.bg, color: cs.color, borderRadius: 6, padding: '3px 10px', fontSize: 11, fontWeight: 600 }}>{c.statut}</span>
+                      <span style={{ ...mono(10, cs.color, 600), textTransform: 'uppercase', letterSpacing: '0.04em', background: cs.bg, borderRadius: 6, padding: '3px 10px' }}>{c.statut}</span>
                       <button onClick={() => ouvrirModal(c)} style={btnEdit}>Modifier</button>
                     </div>
                   </div>
 
-                  {/* Ligne 2 : dates + jours restants */}
+                  {/* Ligne 2 : dates + jours restants (mono) */}
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: 12, marginBottom: 14 }}>
                     {[
                       { lbl: 'Début', val: c.dateDebut ? new Date(c.dateDebut).toLocaleDateString('fr-CH') : '—' },
@@ -667,13 +624,13 @@ export default function Planning({ chantiers, setChantiers, clients, parametres,
                       { lbl: 'Durée', val: c.nombreJours ? `${c.nombreJours}j` : '—' },
                     ].map(item => (
                       <div key={item.lbl}>
-                        <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-muted)', marginBottom: 3 }}>{item.lbl}</div>
-                        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>{item.val}</div>
+                        <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: V1.texteMuted, marginBottom: 3 }}>{item.lbl}</div>
+                        <div style={{ ...mono(12, V1.texte, 600) }}>{item.val}</div>
                       </div>
                     ))}
                     <div style={{ textAlign: 'right' }}>
-                      <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-muted)', marginBottom: 3 }}>Restant</div>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: barColor }}>
+                      <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: V1.texteMuted, marginBottom: 3 }}>Restant</div>
+                      <div style={{ ...mono(12, barColor, 700) }}>
                         {jours === null ? '—' : jours < 0 ? `${Math.abs(jours)}j retard` : jours === 0 ? "Fin auj." : `${jours}j`}
                       </div>
                     </div>
@@ -704,10 +661,10 @@ export default function Planning({ chantiers, setChantiers, clients, parametres,
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
           {/* Mini calendrier */}
-          <div style={DS.card}>
+          <div style={carteV1}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
               <button onClick={moisPrecedent} style={btnNav} title="Mois précédent">‹</button>
-              <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-primary)' }}>{MOIS[moisActuel]} {anneeActuelle}</div>
+              <div style={{ fontFamily: "'Inter', sans-serif", fontWeight: 700, fontSize: 14, color: V1.texte }}>{MOIS[moisActuel]} {anneeActuelle}</div>
               <button onClick={moisSuivant} style={btnNav} title="Mois suivant">›</button>
             </div>
 
@@ -727,7 +684,7 @@ export default function Planning({ chantiers, setChantiers, clients, parametres,
                   <div key={i} style={{
                     aspectRatio: '1', display: 'flex', flexDirection: 'column', alignItems: 'center',
                     justifyContent: 'center', gap: 2, borderRadius: 6, padding: '2px 1px',
-                    background: isToday ? '#0d3d6e' : 'transparent',
+                    background: isToday ? V1.marine : 'transparent',
                   }}>
                     <span style={{
                       fontSize: 11, fontWeight: isToday ? 700 : 400, lineHeight: 1,
@@ -763,7 +720,7 @@ export default function Planning({ chantiers, setChantiers, clients, parametres,
           </div>
 
           {/* Prochains jalons */}
-          <div style={DS.card}>
+          <div style={carteV1}>
             <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-primary)', marginBottom: 14 }}>Prochains jalons</div>
             {prochainsJalons.length === 0 ? (
               <div style={{ color: 'var(--text-muted)', fontSize: 13, textAlign: 'center', padding: '16px 0' }}>Aucun jalon dans les 60 prochains jours</div>

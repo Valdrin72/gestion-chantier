@@ -41,6 +41,11 @@ function CentreIA() {
   const handleAuditSummary = useCallback((s) => setAuditSummary(s), []);
   const toggleAuditNiveau = (niv) => setAuditFiltreNiveau(prev => (prev === niv ? 'Tous' : niv));
 
+  // ── Onglet CLAUDE AI : « N insights mémorisés » en info discrète dans le hero
+  //    (compteur remonté par ClaudeIAPanel via onInsights — affichage seul).
+  const [claudeInsights, setClaudeInsights] = useState(null);
+  const handleClaudeInsights = useCallback((n) => setClaudeInsights(n), []);
+
   const meta = ONGLET_META[onglet];
   const HeroIcon = meta.Icon;
 
@@ -106,7 +111,14 @@ function CentreIA() {
           <HeroIcon size={30} strokeWidth={1.8} />
           {meta.titre}
         </h1>
-        <div style={heroMono(11, 0.7)}>{meta.ligne}</div>
+        <div style={heroMono(11, 0.7)}>
+          {meta.ligne}
+          {onglet === 'claude' && claudeInsights !== null && (
+            claudeInsights > 0
+              ? ` · ${claudeInsights} INSIGHT${claudeInsights > 1 ? 'S' : ''} MÉMORISÉ${claudeInsights > 1 ? 'S' : ''}`
+              : ' · MÉMOIRE VIDE'
+          )}
+        </div>
 
         {/* Ligne 3 — les chiffres clés (adaptés à l'onglet ; compteurs Audit filtrables) */}
         {heroChiffres.length > 0 && (
@@ -157,7 +169,7 @@ function CentreIA() {
 
       {/* ── Contenu ── */}
       {onglet === 'agents' && <Agents {...agentState} hideHeader />}
-      {onglet === 'claude' && <ClaudeIAPanel />}
+      {onglet === 'claude' && <ClaudeIAPanel onInsights={handleClaudeInsights} />}
       {onglet === 'audit'  && (
         <AuditApp chantiers={chantiers} devis={devis} factures={factures} clients={clients} parametres={parametres}
           hideHeader onSummary={handleAuditSummary} relanceSignal={auditRelanceSignal}

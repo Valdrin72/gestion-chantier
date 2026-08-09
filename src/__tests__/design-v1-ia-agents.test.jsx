@@ -95,14 +95,13 @@ describe('BASCULE d\'onglet — contenu change', () => {
   it('cliquer « Audit » puis « Claude AI » change le titre du hero', () => {
     renderIA();
     const hero = () => within(screen.getByTestId('hero-ia'));
-    // → Audit
+    // → Audit (le titre change ; l'onglet Audit a désormais ses propres chiffres — lot 2)
     fireEvent.click(hero().getByRole('button', { name: /^Audit$/i }));
     expect(hero().getByRole('heading', { name: /^Audit$/i })).toBeInTheDocument();
-    // Les 4 chiffres du hero disparaissent hors onglet Agents
-    expect(screen.queryByTestId('hero-chiffres')).toBeNull();
-    // → Claude AI
+    // → Claude AI (aucun chiffre dans le hero pour cet onglet)
     fireEvent.click(hero().getByRole('button', { name: /Claude AI/i }));
     expect(hero().getByRole('heading', { name: /Claude AI/i })).toBeInTheDocument();
+    expect(screen.queryByTestId('hero-chiffres')).toBeNull();
     // → retour Agents IA
     fireEvent.click(hero().getByRole('button', { name: /Agents IA/i }));
     expect(screen.getByTestId('hero-chiffres')).toBeInTheDocument();

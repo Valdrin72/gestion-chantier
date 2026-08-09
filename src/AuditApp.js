@@ -1,20 +1,23 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { Shield, ShieldCheck, ShieldAlert, ShieldX, RefreshCw, ChevronDown, ChevronUp, CheckCircle, AlertTriangle, XCircle, Info, Lightbulb } from 'lucide-react';
 import { DS } from './ds';
 import { joursReelsChantier } from './calculs/pointagesHelper';
 import { useApp } from './context/AppContext';
 import { fmtN, calculerCA, calculerCoutsChantier, SEUILS } from './donnees';
+import { V1, BADGES_V1, mono, carteV1 } from './design/v1';
 
 // ── Niveaux ──────────────────────────────────────────────────
 const NIV = { ok: 'ok', warn: 'warn', err: 'err', info: 'info' };
 const NIV_POIDS = { err: -15, warn: -5, ok: 0, info: 0 };
-const NIV_COULEUR = { ok: '#10b981', warn: '#f59e0b', err: '#ef4444', info: '#0d3d6e' };
-const NIV_BG = { ok: '#f0fdf4', warn: '#fffbeb', err: '#fef2f2', info: '#eff6ff' };
+// Couleurs socle v1 (aucun violet) — états métier exclusivement.
+const NIV_COULEUR = { ok: V1.ok, warn: V1.warn, err: V1.danger, info: V1.bleu };
+const NIV_BG = { ok: BADGES_V1.ok.bg, warn: BADGES_V1.warn.bg, err: BADGES_V1.danger.bg, info: V1.bleuFond };
+const NIV_LABEL = { ok: 'OK', warn: 'Attention', err: 'Erreur', info: 'Info' };
 function NIV_ICON({ niv, size = 14 }) {
-  if (niv === 'ok')   return <CheckCircle  size={size} color="#10b981" />;
-  if (niv === 'warn') return <AlertTriangle size={size} color="#f59e0b" />;
-  if (niv === 'err')  return <XCircle      size={size} color="#ef4444" />;
-  return <Info size={size} color="#0d3d6e" />;
+  if (niv === 'ok')   return <CheckCircle  size={size} color={V1.ok} />;
+  if (niv === 'warn') return <AlertTriangle size={size} color={V1.warn} />;
+  if (niv === 'err')  return <XCircle      size={size} color={V1.danger} />;
+  return <Info size={size} color={V1.bleu} />;
 }
 
 function runCheck({ id, categorie, titre, description, fn, data }) {
@@ -26,47 +29,47 @@ function runCheck({ id, categorie, titre, description, fn, data }) {
   }
 }
 
-function scoreLabel(score) {
-  if (score >= 90) return { label: 'Excellent', couleur: '#10b981' };
-  if (score >= 75) return { label: 'Bon', couleur: '#10b981' };
-  if (score >= 55) return { label: 'À améliorer', couleur: '#f59e0b' };
-  if (score >= 35) return { label: 'Problèmes détectés', couleur: '#ef4444' };
-  return { label: 'Critique', couleur: '#dc2626' };
+export function scoreLabel(score) {
+  if (score >= 90) return { label: 'Excellent', couleur: V1.ok };
+  if (score >= 75) return { label: 'Bon', couleur: V1.ok };
+  if (score >= 55) return { label: 'À améliorer', couleur: V1.warn };
+  if (score >= 35) return { label: 'Problèmes détectés', couleur: V1.danger };
+  return { label: 'Critique', couleur: V1.danger };
 }
 
-// ── Composant carte check ─────────────────────────────────────
+// ── Composant carte check — style v1 (fond teinté par état, badge mono) ──
 function CheckCard({ check, ouvert, onToggle }) {
   const c = NIV_COULEUR[check.niveau];
   const bg = NIV_BG[check.niveau];
   return (
-    <div style={{ background: bg, border: `1px solid ${c}30`, borderRadius: 10, overflow: 'hidden', marginBottom: 6 }}>
-      <div onClick={onToggle} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', cursor: 'pointer' }}>
+    <div style={{ background: bg, border: `1px solid ${c}33`, borderRadius: 12, overflow: 'hidden', marginBottom: 8 }}>
+      <div onClick={onToggle} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '11px 14px', cursor: 'pointer' }}>
         <NIV_ICON niv={check.niveau} />
-        <div style={{ flex: 1 }}>
-          <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>{check.titre}</span>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <span style={{ fontSize: 13, fontWeight: 700, color: V1.texte }}>{check.titre}</span>
           {check.valeur !== undefined && (
-            <span style={{ marginLeft: 8, fontSize: 12, fontWeight: 700, color: c }}>{check.valeur}</span>
+            <span style={{ marginLeft: 8, ...mono(12, c, 600) }}>{check.valeur}</span>
           )}
         </div>
-        <span style={{ fontSize: 10, fontWeight: 700, color: c, background: `${c}18`, border: `1px solid ${c}30`, borderRadius: 20, padding: '2px 8px', textTransform: 'uppercase' }}>
-          {check.niveau === 'ok' ? 'OK' : check.niveau === 'warn' ? 'Attention' : check.niveau === 'err' ? 'Erreur' : 'Info'}
+        <span style={{ ...mono(10, c, 700), background: `${c}18`, border: `1px solid ${c}33`, borderRadius: 20, padding: '2px 9px', textTransform: 'uppercase', letterSpacing: '0.04em', whiteSpace: 'nowrap' }}>
+          {NIV_LABEL[check.niveau]}
         </span>
-        {ouvert ? <ChevronUp size={13} color="var(--text-muted)" /> : <ChevronDown size={13} color="var(--text-muted)" />}
+        {ouvert ? <ChevronUp size={13} color={V1.texteMuted} /> : <ChevronDown size={13} color={V1.texteMuted} />}
       </div>
       {ouvert && (
-        <div style={{ borderTop: `1px solid ${c}20`, padding: '10px 14px', paddingLeft: 38 }}>
-          <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>{check.description}</div>
-          {check.detail && <div style={{ fontSize: 12, color: c, fontWeight: 600, marginBottom: 4 }}>{check.detail}</div>}
+        <div style={{ borderTop: `1px solid ${c}22`, padding: '10px 14px', paddingLeft: 38 }}>
+          <div style={{ fontSize: 12, color: V1.texteMuted, marginBottom: 4 }}>{check.description}</div>
+          {check.detail && <div style={{ ...mono(12, c, 600), marginBottom: 4 }}>{check.detail}</div>}
           {check.recommandation && (
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6, fontSize: 11, background: 'rgba(0,0,0,0.04)', borderRadius: 6, padding: '6px 10px', color: 'var(--text-muted)', marginTop: 6 }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6, fontSize: 11, background: 'rgba(14,42,79,0.04)', borderRadius: 8, padding: '6px 10px', color: V1.texteMuted, marginTop: 6 }}>
               <Lightbulb size={11} style={{ flexShrink: 0, marginTop: 1 }} />
               {check.recommandation}
             </div>
           )}
           {check.items?.length > 0 && (
-            <ul style={{ margin: '8px 0 0', padding: '0 0 0 14px', fontSize: 11, color: 'var(--text-secondary)' }}>
+            <ul style={{ margin: '8px 0 0', padding: '0 0 0 14px', ...mono(11, V1.texteMuted), listStyle: 'disc' }}>
               {check.items.slice(0, 5).map((item, i) => <li key={i} style={{ marginBottom: 2 }}>{item}</li>)}
-              {check.items.length > 5 && <li style={{ color: 'var(--text-muted)' }}>…et {check.items.length - 5} autre(s)</li>}
+              {check.items.length > 5 && <li style={{ color: V1.texteMuted }}>…et {check.items.length - 5} autre(s)</li>}
             </ul>
           )}
         </div>
@@ -641,12 +644,30 @@ function buildChecks({ chantiers, devis, factures, clients, parametres, pointage
 }
 
 // ── Composant principal ───────────────────────────────────────
-export default function AuditApp({ chantiers = [], devis = [], factures = [], clients = [], parametres = {} }) {
+// hideHeader / onSummary / relanceSignal / filtreNiveau contrôlé : permettent au
+// hero partagé de CentreIA (lot 1) de porter le score, les compteurs et « Relancer
+// l'audit » — le moteur d'audit et le calcul du score restent inchangés.
+export default function AuditApp({
+  chantiers = [], devis = [], factures = [], clients = [], parametres = {},
+  hideHeader = false, onSummary, relanceSignal = 0,
+  filtreNiveau: filtreNiveauProp, setFiltreNiveau: setFiltreNiveauProp,
+}) {
   const { pointages = [] } = useApp();
   const [ouvert, setOuvert] = useState({});
   const [filtreCategorie, setFiltreCategorie] = useState('Tous');
-  const [filtreNiveau, setFiltreNiveau] = useState('Tous');
+  const [filtreNiveauLocal, setFiltreNiveauLocal] = useState('Tous');
+  const filtreNiveau = filtreNiveauProp !== undefined ? filtreNiveauProp : filtreNiveauLocal;
+  const setFiltreNiveau = setFiltreNiveauProp || setFiltreNiveauLocal;
   const [refresh, setRefresh] = useState(0);
+
+  // « Relancer l'audit » depuis le hero : un signal incrémental force le recalcul.
+  const relanceRef = useRef(relanceSignal);
+  useEffect(() => {
+    if (relanceSignal !== relanceRef.current) {
+      relanceRef.current = relanceSignal;
+      setRefresh(r => r + 1);
+    }
+  }, [relanceSignal]);
 
   const results = useMemo(() => buildChecks({ chantiers, devis, factures, clients, parametres, pointages }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -663,6 +684,11 @@ export default function AuditApp({ chantiers = [], devis = [], factures = [], cl
   const nbWarnings = results.filter(r => r.niveau === NIV.warn).length;
   const nbOk = results.filter(r => r.niveau === NIV.ok).length;
 
+  // Remonte le résumé (score + compteurs) au hero partagé — affichage seul.
+  useEffect(() => {
+    if (onSummary) onSummary({ score, nbErreurs, nbWarnings, nbOk });
+  }, [onSummary, score, nbErreurs, nbWarnings, nbOk]);
+
   const resultsFiltres = results.filter(r => {
     const catOk = filtreCategorie === 'Tous' || r.categorie === filtreCategorie;
     const nivOk = filtreNiveau === 'Tous' || r.niveau === filtreNiveau;
@@ -673,7 +699,9 @@ export default function AuditApp({ chantiers = [], devis = [], factures = [], cl
   const ScoreIcon = score >= 90 ? ShieldCheck : score >= 60 ? Shield : score >= 35 ? ShieldAlert : ShieldX;
 
   return (
-    <div>
+    <div data-testid="audit-app">
+      {/* En-tête + score global — masqués quand le hero partagé de CentreIA les porte */}
+      {!hideHeader && (<>
       {/* Header */}
       <div className="page-header-row" style={{ marginBottom: 24 }}>
         <div className="page-title-block">
@@ -690,54 +718,58 @@ export default function AuditApp({ chantiers = [], devis = [], factures = [], cl
 
       {/* Score global */}
       <div style={{ display: 'grid', gridTemplateColumns: '280px 1fr', gap: 20, marginBottom: 28 }}>
-        <div style={{ background: `linear-gradient(135deg, ${scoreCouleur}18, ${scoreCouleur}08)`, border: `2px solid ${scoreCouleur}40`, borderRadius: 18, padding: '28px 24px', textAlign: 'center' }}>
+        <div style={{ ...carteV1, borderLeft: `4px solid ${scoreCouleur}`, padding: '28px 24px', textAlign: 'center' }}>
           <ScoreIcon size={40} color={scoreCouleur} strokeWidth={1.5} style={{ marginBottom: 12 }} />
-          <div style={{ fontSize: 56, fontWeight: 900, color: scoreCouleur, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{score}</div>
-          <div style={{ fontSize: 11, color: scoreCouleur, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', marginTop: 4 }}>/ 100</div>
+          <div style={{ ...mono(56, scoreCouleur, 600), lineHeight: 1 }}>{score}</div>
+          <div style={{ ...mono(11, scoreCouleur, 700), textTransform: 'uppercase', letterSpacing: '0.08em', marginTop: 4 }}>/ 100</div>
           <div style={{ fontSize: 15, fontWeight: 800, color: scoreCouleur, marginTop: 10 }}>{scoreLabel_}</div>
-          <div style={{ height: 6, background: 'rgba(0,0,0,0.08)', borderRadius: 3, overflow: 'hidden', marginTop: 14 }}>
+          <div style={{ height: 6, background: V1.separation, borderRadius: 3, overflow: 'hidden', marginTop: 14 }}>
             <div style={{ height: '100%', width: `${score}%`, background: scoreCouleur, borderRadius: 3, transition: 'width 0.6s ease' }} />
           </div>
-          <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 10 }}>{results.length} vérifications effectuées</div>
+          <div style={{ ...mono(11, V1.texteMuted), marginTop: 10 }}>{results.length} vérifications effectuées</div>
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
           {[
-            { label: 'Erreurs', nb: nbErreurs, couleur: '#ef4444', bg: '#fef2f2', filtre: 'err', impact: '-15 pts/erreur' },
-            { label: 'Avertissements', nb: nbWarnings, couleur: '#f59e0b', bg: '#fffbeb', filtre: 'warn', impact: '-5 pts/avert.' },
-            { label: 'OK', nb: nbOk, couleur: '#10b981', bg: '#f0fdf4', filtre: 'ok', impact: 'Aucun impact' },
+            { label: 'Erreurs', nb: nbErreurs, couleur: V1.danger, bg: BADGES_V1.danger.bg, filtre: 'err', impact: '-15 pts/erreur' },
+            { label: 'Avertissements', nb: nbWarnings, couleur: V1.warn, bg: BADGES_V1.warn.bg, filtre: 'warn', impact: '-5 pts/avert.' },
+            { label: 'OK', nb: nbOk, couleur: V1.ok, bg: BADGES_V1.ok.bg, filtre: 'ok', impact: 'Aucun impact' },
           ].map(k => (
             <button key={k.label} onClick={() => setFiltreNiveau(prev => prev === k.filtre ? 'Tous' : k.filtre)}
-              style={{ background: filtreNiveau === k.filtre ? k.bg : 'var(--bg-card)', border: `2px solid ${filtreNiveau === k.filtre ? k.couleur : 'var(--ds-card-border)'}`, borderRadius: 14, padding: '20px 16px', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left', transition: 'all 0.15s' }}>
+              style={{ ...carteV1, background: filtreNiveau === k.filtre ? k.bg : V1.carte, border: `2px solid ${filtreNiveau === k.filtre ? k.couleur : V1.separation}`, padding: '20px 16px', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left', transition: 'all 0.15s' }}>
               <div style={{ marginBottom: 8 }}><NIV_ICON niv={k.filtre} size={20} /></div>
-              <div style={{ fontSize: 32, fontWeight: 900, color: k.couleur }}>{k.nb}</div>
-              <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)', marginTop: 2 }}>{k.label}</div>
-              <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 4 }}>{k.impact}</div>
+              <div style={{ ...mono(32, k.couleur, 600) }}>{k.nb}</div>
+              <div style={{ fontSize: 12, fontWeight: 700, color: V1.texte, marginTop: 2 }}>{k.label}</div>
+              <div style={{ ...mono(10, V1.texteMuted), marginTop: 4 }}>{k.impact}</div>
             </button>
           ))}
         </div>
       </div>
+      </>)}
 
-      {/* Filtres catégorie */}
-      <div style={{ display: 'flex', gap: 6, marginBottom: 20, flexWrap: 'wrap', alignItems: 'center' }}>
-        <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginRight: 4 }}>Catégorie :</span>
-        {categories.map(cat => (
+      {/* Filtres catégorie — pastilles v1 (défilables sur mobile) */}
+      <div style={{ display: 'flex', gap: 6, marginBottom: 20, alignItems: 'center', overflowX: 'auto', scrollbarWidth: 'none', paddingBottom: 2 }} data-testid="audit-filtres">
+        <span style={{ ...mono(11, V1.texteMuted, 700), marginRight: 4, flexShrink: 0 }}>Catégorie :</span>
+        {categories.map(cat => {
+          const actif = filtreCategorie === cat;
+          return (
           <button key={cat} onClick={() => setFiltreCategorie(cat)}
-            style={{ borderRadius: 20, padding: '5px 14px', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', border: '1px solid', transition: 'all 0.15s',
-              background: filtreCategorie === cat ? '#4f46e5' : 'transparent',
-              color: filtreCategorie === cat ? 'white' : 'var(--text-muted)',
-              borderColor: filtreCategorie === cat ? '#4f46e5' : 'var(--border)' }}>
+            style={{ borderRadius: 20, padding: '5px 14px', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', border: '1px solid', transition: 'all 0.15s', whiteSpace: 'nowrap', flexShrink: 0, display: 'inline-flex', alignItems: 'center',
+              background: actif ? V1.bleu : 'transparent',
+              color: actif ? '#fff' : V1.texteMuted,
+              borderColor: actif ? V1.bleu : V1.separation }}>
             {cat}
             {cat !== 'Tous' && (
-              <span style={{ marginLeft: 6, fontSize: 10, background: filtreCategorie === cat ? 'rgba(255,255,255,0.25)' : 'var(--bg-glass)', borderRadius: 10, padding: '1px 5px' }}>
+              <span style={{ marginLeft: 6, ...mono(10, actif ? '#fff' : V1.texteMuted, 600), background: actif ? 'rgba(255,255,255,0.25)' : V1.bleuFond, borderRadius: 10, padding: '1px 6px' }}>
                 {results.filter(r => r.categorie === cat).length}
               </span>
             )}
           </button>
-        ))}
+          );
+        })}
         {filtreNiveau !== 'Tous' && (
           <button onClick={() => setFiltreNiveau('Tous')}
-            style={{ marginLeft: 8, borderRadius: 20, padding: '5px 12px', fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', border: '1px solid #fca5a5', background: '#fef2f2', color: '#dc2626' }}>
+            style={{ marginLeft: 8, borderRadius: 20, padding: '5px 12px', fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', border: `1px solid ${V1.danger}55`, background: BADGES_V1.danger.bg, color: V1.danger, whiteSpace: 'nowrap', flexShrink: 0 }}>
             ✕ Effacer filtre
           </button>
         )}
@@ -752,10 +784,10 @@ export default function AuditApp({ chantiers = [], devis = [], factures = [], cl
         return (
           <div key={cat} style={{ marginBottom: 24 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-              <div style={{ fontSize: 12, fontWeight: 800, color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{cat}</div>
-              {nbErrCat > 0 && <span style={{ background: '#fef2f2', color: '#ef4444', border: '1px solid #fca5a5', borderRadius: 20, padding: '1px 8px', fontSize: 10, fontWeight: 700 }}>{nbErrCat} erreur{nbErrCat > 1 ? 's' : ''}</span>}
-              {nbWarnCat > 0 && <span style={{ background: '#fffbeb', color: '#f59e0b', border: '1px solid #fcd34d', borderRadius: 20, padding: '1px 8px', fontSize: 10, fontWeight: 700 }}>{nbWarnCat} avert.</span>}
-              <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
+              <div style={{ fontSize: 12, fontWeight: 700, color: V1.bleu, textTransform: 'uppercase', letterSpacing: '0.14em' }}>{cat}</div>
+              {nbErrCat > 0 && <span style={{ ...mono(10, V1.danger, 700), background: BADGES_V1.danger.bg, border: `1px solid ${V1.danger}44`, borderRadius: 20, padding: '1px 8px' }}>{nbErrCat} erreur{nbErrCat > 1 ? 's' : ''}</span>}
+              {nbWarnCat > 0 && <span style={{ ...mono(10, V1.warn, 700), background: BADGES_V1.warn.bg, border: `1px solid ${V1.warn}44`, borderRadius: 20, padding: '1px 8px' }}>{nbWarnCat} avert.</span>}
+              <div style={{ flex: 1, height: 1, background: V1.separation }} />
             </div>
             {checksCat.map(check => (
               <CheckCard
@@ -770,7 +802,7 @@ export default function AuditApp({ chantiers = [], devis = [], factures = [], cl
       })}
 
       {resultsFiltres.length === 0 && (
-        <div style={{ ...DS.card, textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
+        <div style={{ ...carteV1, textAlign: 'center', padding: '40px', color: V1.texteMuted, fontSize: 13 }}>
           Aucune vérification correspondant aux filtres sélectionnés
         </div>
       )}

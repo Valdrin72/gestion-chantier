@@ -633,10 +633,10 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
       {/* ===== PAR MÉTRÉ ===== */}
       {montre('corps') && <SectionAnalyse titre="Corps de métier" />}
       {montre('corps') && (
-        <div style={carteStyle}>
+        <div style={{ ...carteV1, overflowX: 'auto' }}>
           <div className="ds-card-title">Rentabilité par type de travaux (CHF/m²)</div>
           {donneesMetres.length === 0 ? (
-            <p style={{ color: 'var(--text-secondary)' }}>Aucune donnée disponible</p>
+            <p style={{ color: V1.texteMuted }}>Aucune donnée disponible</p>
           ) : (
             <>
               <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '25px' }}>
@@ -650,20 +650,20 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
                 <tbody>
                   {donneesMetres.sort((a, b) => parseFloat(b.margePct) - parseFloat(a.margePct)).map((t) => (
                     <tr key={t.nom} style={{ borderBottom: '1px solid var(--ds-td-border)' }}>
-                      <td style={{ padding: '12px 15px' }}><strong style={{ color: 'var(--text-primary)' }}>{t.nom}</strong></td>
-                      <td style={{ padding: '12px 15px', color: 'var(--text-primary)' }}>{t.count}</td>
-                      <td style={{ padding: '12px 15px', color: 'var(--text-primary)' }}>{t.surface} m²</td>
-                      <td style={{ padding: '12px 15px', color: 'var(--text-primary)', fontWeight: 'bold' }}>CHF {t.caParM2}/m²</td>
-                      <td style={{ padding: '12px 15px', color: 'var(--text-primary)' }}>CHF {t.coutParM2}/m²</td>
-                      <td style={{ padding: '12px 15px', color: parseFloat(t.margeParM2) >= 0 ? '#10b981' : '#ef4444', fontWeight: 'bold' }}>
+                      <td style={{ padding: '12px 15px' }}><strong style={{ color: V1.texte }}>{t.nom}</strong></td>
+                      <td style={{ padding: '12px 15px', ...mono(13, V1.texte) }}>{t.count}</td>
+                      <td style={{ padding: '12px 15px', ...mono(13, V1.texte) }}>{t.surface} m²</td>
+                      <td style={{ padding: '12px 15px', ...mono(13, V1.texte, 700) }}>CHF {t.caParM2}/m²</td>
+                      <td style={{ padding: '12px 15px', ...mono(13, V1.texte) }}>CHF {t.coutParM2}/m²</td>
+                      <td style={{ padding: '12px 15px', ...mono(13, parseFloat(t.margeParM2) >= 0 ? V1.ok : V1.danger, 700) }}>
                         CHF {t.margeParM2}/m²
                       </td>
                       <td style={{ padding: '12px 15px' }}>
-                        <span style={{ background: couleurMarge(t.margePct) + '18', color: couleurMarge(t.margePct), fontWeight: 600, padding: '3px 10px', borderRadius: '12px', fontSize: '12px' }}>
+                        <span style={{ ...mono(12, couleurMarge(t.margePct), 600), background: couleurMarge(t.margePct) + '18', padding: '3px 10px', borderRadius: '12px' }}>
                           {t.margePct}%
                         </span>
                       </td>
-                      <td style={{ padding: '12px 15px', color: 'var(--text-primary)' }}>
+                      <td style={{ padding: '12px 15px', color: V1.texte }}>
                         {parseFloat(t.margePct) >= 20 ? 'Excellent' : parseFloat(t.margePct) >= 15 ? 'Correct' : 'Critique'}
                       </td>
                     </tr>
@@ -677,11 +677,11 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
                 {donneesMetres.sort((a, b) => parseFloat(b.margePct) - parseFloat(a.margePct)).slice(0, 3).map((t, i) => {
                   const c = couleurMarge(t.margePct);
                   return (
-                    <div key={t.nom} style={{ background: c + '10', border: `1px solid ${c}28`, borderRadius: '14px', padding: '20px', flex: 1, textAlign: 'center' }}>
-                      <div style={{ fontSize: '24px', marginBottom: '8px' }}>{['1er', '2e', '3e'][i]}</div>
-                      <div style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{t.nom}</div>
-                      <div style={{ fontSize: '22px', fontWeight: 800, color: c, letterSpacing: '-0.3px', marginTop: '4px' }}>{t.margePct}%</div>
-                      <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '3px' }}>CHF {t.margeParM2}/m²</div>
+                    <div key={t.nom} style={{ ...carteV1, borderTop: `3px solid ${c}`, padding: '20px', flex: 1, minWidth: 160, textAlign: 'center' }}>
+                      <div style={{ ...mono(14, V1.texteMuted, 700), marginBottom: '8px' }}>{['1er', '2e', '3e'][i]}</div>
+                      <div style={{ fontWeight: 700, color: V1.texte }}>{t.nom}</div>
+                      <div style={{ ...mono(22, c, 700), marginTop: '4px' }}>{t.margePct}%</div>
+                      <div style={{ ...mono(12, V1.texteMuted), marginTop: '3px' }}>CHF {t.margeParM2}/m²</div>
                     </div>
                   );
                 })}
@@ -949,9 +949,9 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
 
         if (chantiersM2.length === 0) {
           return (
-            <div style={{ ...carteStyle, textAlign: 'center', padding: 48, color: 'var(--text-muted)' }}>
-              <div style={{ fontSize: 32, marginBottom: 12 }}>m²</div>
-              <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 8, color: 'var(--text-primary)' }}>Aucune donnée m² disponible</div>
+            <div style={{ ...carteV1, textAlign: 'center', padding: 48, color: V1.texteMuted }}>
+              <div style={{ ...mono(32, V1.bleuClair, 700), marginBottom: 12 }}>m²</div>
+              <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 8, color: V1.texte }}>Aucune donnée m² disponible</div>
               <div style={{ fontSize: 13 }}>Renseignez la surface dans vos devis ou chantiers pour activer l'analyse au m².</div>
             </div>
           );
@@ -1001,12 +1001,12 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
           return { nom: t.nom, count: chantiersDuType.length, surf, caM2: caM2T, coutM2: coutM2T, margeM2: margeM2T, margePct: margePctT, seuilM2: seuilM2T, rentable, limite };
         }).filter(Boolean);
 
-        // Couleur statut marge
+        // Couleur statut marge (états métier → socle v1)
         const couleurStatut = (pct) => {
-          if (pct === null || !Number.isFinite(pct)) return '#6b7280';
-          if (pct >= SEUILS.margeRentable) return '#10b981';
-          if (pct >= SEUILS.margeLimite)   return '#f59e0b';
-          return '#ef4444';
+          if (pct === null || !Number.isFinite(pct)) return V1.texteMuted;
+          if (pct >= SEUILS.margeRentable) return V1.ok;
+          if (pct >= SEUILS.margeLimite)   return V1.warn;
+          return V1.danger;
         };
         const labelStatut = (pct) => {
           if (pct === null || !Number.isFinite(pct)) return '—';
@@ -1021,31 +1021,31 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
             {/* KPIs globaux */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px,1fr))', gap: 14, marginBottom: 24 }}>
               {[
-                { label: 'Surface analysée', val: `${fmtN(Math.round(surfaceTotale))} m²`, sub: `${lignesM2.length} chantier${lignesM2.length > 1 ? 's' : ''}`, couleur: '#0d3d6e' },
-                { label: 'CA signé moyen / m²', val: caM2Moyen !== null ? `CHF ${fmtN(caM2Moyen)}/m²` : '—', sub: `CA signé total CHF ${fmtN(Math.round(caTotalM2))}`, couleur: '#10b981' },
-                { label: 'Coût moyen / m²', val: coutM2Moyen !== null ? `CHF ${fmtN(coutM2Moyen)}/m²` : '—', sub: `Coût total CHF ${fmtN(Math.round(coutTotalM2))}`, couleur: '#f59e0b' },
-                { label: 'Marge moyenne / m²', val: margeM2Moyenne !== null ? `CHF ${fmtN(margeM2Moyenne)}/m²` : '—', sub: margePctMoyenne !== null ? `${margePctMoyenne}% de marge` : '—', couleur: margePctMoyenne !== null && margePctMoyenne >= 15 ? '#10b981' : '#ef4444' },
+                { label: 'Surface analysée', val: `${fmtN(Math.round(surfaceTotale))} m²`, sub: `${lignesM2.length} chantier${lignesM2.length > 1 ? 's' : ''}`, couleur: V1.bleu },
+                { label: 'CA signé moyen / m²', val: caM2Moyen !== null ? `CHF ${fmtN(caM2Moyen)}/m²` : '—', sub: `CA signé total CHF ${fmtN(Math.round(caTotalM2))}`, couleur: V1.ok },
+                { label: 'Coût moyen / m²', val: coutM2Moyen !== null ? `CHF ${fmtN(coutM2Moyen)}/m²` : '—', sub: `Coût total CHF ${fmtN(Math.round(coutTotalM2))}`, couleur: V1.warn },
+                { label: 'Marge moyenne / m²', val: margeM2Moyenne !== null ? `CHF ${fmtN(margeM2Moyenne)}/m²` : '—', sub: margePctMoyenne !== null ? `${margePctMoyenne}% de marge` : '—', couleur: margePctMoyenne !== null && margePctMoyenne >= 15 ? V1.ok : V1.danger },
               ].map(k => (
-                <div key={k.label} style={{ background: k.couleur + '10', border: `1px solid ${k.couleur}28`, borderRadius: 14, padding: '18px 20px' }}>
-                  <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px', color: 'var(--text-muted)', marginBottom: 8 }}>{k.label}</div>
-                  <div style={{ fontSize: 20, fontWeight: 800, color: k.couleur, letterSpacing: '-0.3px', lineHeight: 1.1 }}>{k.val}</div>
-                  <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 5 }}>{k.sub}</div>
+                <div key={k.label} style={{ ...carteV1, borderTop: `3px solid ${k.couleur}`, padding: '18px 20px' }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px', color: V1.texteMuted, marginBottom: 8 }}>{k.label}</div>
+                  <div style={{ ...mono(20, k.couleur, 700), lineHeight: 1.1 }}>{k.val}</div>
+                  <div style={{ fontSize: 11, color: V1.texteMuted, marginTop: 5 }}>{k.sub}</div>
                 </div>
               ))}
             </div>
 
             {/* Seuil de rentabilité global */}
             {seuilM2Global !== null && (
-              <div style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: 12, padding: '14px 20px', marginBottom: 24, display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
-                <div style={{ fontSize: 20, fontWeight: 900, color: '#f59e0b' }}>CHF {fmtN(seuilM2Global)}/m²</div>
+              <div style={{ background: 'rgba(232,145,43,0.08)', border: `1px solid ${V1.warn}4d`, borderLeft: `4px solid ${V1.warn}`, borderRadius: 12, padding: '14px 20px', marginBottom: 24, display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+                <div style={{ ...mono(20, V1.warn, 700) }}>CHF {fmtN(seuilM2Global)}/m²</div>
                 <div>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>Seuil de rentabilité global (15% marge nette)</div>
-                  <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Pour être rentable à 15% de marge nette, facturer minimum <strong style={{ color: '#f59e0b' }}>CHF {fmtN(seuilM2Global)}/m²</strong></div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: V1.texte }}>Seuil de rentabilité global (15% marge nette)</div>
+                  <div style={{ fontSize: 12, color: V1.texteMuted }}>Pour être rentable à 15% de marge nette, facturer minimum <strong style={{ color: V1.warn }}>CHF {fmtN(seuilM2Global)}/m²</strong></div>
                 </div>
                 {caM2Moyen !== null && (
                   <div style={{ marginLeft: 'auto', textAlign: 'right' }}>
-                    <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>CA signé moyen actuel</div>
-                    <div style={{ fontSize: 16, fontWeight: 800, color: caM2Moyen >= seuilM2Global ? '#10b981' : '#ef4444' }}>CHF {fmtN(caM2Moyen)}/m² {caM2Moyen >= seuilM2Global ? '✓' : '✗'}</div>
+                    <div style={{ fontSize: 12, color: V1.texteMuted }}>CA signé moyen actuel</div>
+                    <div style={{ ...mono(16, caM2Moyen >= seuilM2Global ? V1.ok : V1.danger, 700) }}>CHF {fmtN(caM2Moyen)}/m² {caM2Moyen >= seuilM2Global ? '✓' : '✗'}</div>
                   </div>
                 )}
               </div>
@@ -1053,7 +1053,7 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
 
             {/* Tableau par type de travaux */}
             {typesAvecM2.length > 0 && (
-              <div style={{ ...carteStyle, marginBottom: 24 }}>
+              <div style={{ ...carteV1, marginBottom: 24 }}>
                 <div className="ds-card-title">Par type de travaux</div>
                 <div style={{ overflowX: 'auto' }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -1069,19 +1069,19 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
                         const c = couleurStatut(t.margePct);
                         return (
                           <tr key={t.nom} style={{ borderBottom: '1px solid var(--ds-td-border)' }}>
-                            <td style={{ ...DS.td, fontWeight: 700, color: 'var(--text-primary)' }}>{t.nom}</td>
-                            <td style={DS.td}>{t.count}</td>
-                            <td style={DS.td}>{fmtN(Math.round(t.surf))} m²</td>
-                            <td style={DS.td}>CHF {t.coutM2 !== null ? fmtN(t.coutM2) : '—'}/m²</td>
-                            <td style={{ ...DS.td, fontWeight: 700 }}>CHF {t.caM2 !== null ? fmtN(t.caM2) : '—'}/m²</td>
-                            <td style={{ ...DS.td, color: t.margeM2 !== null && t.margeM2 >= 0 ? '#10b981' : '#ef4444', fontWeight: 700 }}>
+                            <td style={{ ...DS.td, fontWeight: 700, color: V1.texte }}>{t.nom}</td>
+                            <td style={{ ...DS.td, ...mono(13, V1.texte) }}>{t.count}</td>
+                            <td style={{ ...DS.td, ...mono(13, V1.texte) }}>{fmtN(Math.round(t.surf))} m²</td>
+                            <td style={{ ...DS.td, ...mono(13, V1.texte) }}>CHF {t.coutM2 !== null ? fmtN(t.coutM2) : '—'}/m²</td>
+                            <td style={{ ...DS.td, ...mono(13, V1.texte, 700) }}>CHF {t.caM2 !== null ? fmtN(t.caM2) : '—'}/m²</td>
+                            <td style={{ ...DS.td, ...mono(13, t.margeM2 !== null && t.margeM2 >= 0 ? V1.ok : V1.danger, 700) }}>
                               CHF {t.margeM2 !== null ? fmtN(t.margeM2) : '—'}/m²
                             </td>
-                            <td style={{ ...DS.td, color: '#f59e0b', fontWeight: 600 }}>
+                            <td style={{ ...DS.td, ...mono(13, V1.warn, 600) }}>
                               {t.seuilM2 !== null ? `CHF ${fmtN(t.seuilM2)}/m²` : '—'}
                             </td>
                             <td style={DS.td}>
-                              <span style={{ background: c + '18', color: c, border: `1px solid ${c}35`, borderRadius: 20, padding: '3px 10px', fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap' }}>
+                              <span style={{ ...mono(11, c, 700), background: c + '18', border: `1px solid ${c}35`, borderRadius: 20, padding: '3px 10px', whiteSpace: 'nowrap' }}>
                                 {labelStatut(t.margePct)}{t.margePct !== null ? ` (${t.margePct}%)` : ''}
                               </span>
                             </td>
@@ -1095,7 +1095,7 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
             )}
 
             {/* Tableau des chantiers individuels */}
-            <div style={carteStyle}>
+            <div style={carteV1}>
               <div className="ds-card-title">Chantiers individuels avec surface renseignée</div>
               <div style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -1115,30 +1115,30 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
                         <tr key={c.id} style={{ borderBottom: '1px solid var(--ds-td-border)' }}
                           onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-hover)'}
                           onMouseLeave={e => e.currentTarget.style.background = ''}>
-                          <td style={{ ...DS.td, fontWeight: 700, color: 'var(--text-primary)' }}>
+                          <td style={{ ...DS.td, fontWeight: 700, color: V1.texte }}>
                             {c.nom || c.numero}
-                            <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 400, marginTop: 1 }}>{c.statut}</div>
+                            <div style={{ fontSize: 11, color: V1.texteMuted, fontWeight: 400, marginTop: 1 }}>{c.statut}</div>
                           </td>
-                          <td style={DS.td}>{fmtN(c.surface)} m²</td>
-                          <td style={{ ...DS.td, fontWeight: 700, color: '#10b981' }}>
+                          <td style={{ ...DS.td, ...mono(13, V1.texte) }}>{fmtN(c.surface)} m²</td>
+                          <td style={{ ...DS.td, ...mono(13, V1.ok, 700) }}>
                             CHF {c.caM2 !== null ? fmtN(c.caM2) : '—'}/m²
                           </td>
-                          <td style={DS.td}>CHF {c.coutM2 !== null ? fmtN(c.coutM2) : '—'}/m²</td>
-                          <td style={{ ...DS.td, color: c.margeM2 !== null && c.margeM2 >= 0 ? '#10b981' : '#ef4444', fontWeight: 700 }}>
+                          <td style={{ ...DS.td, ...mono(13, V1.texte) }}>CHF {c.coutM2 !== null ? fmtN(c.coutM2) : '—'}/m²</td>
+                          <td style={{ ...DS.td, ...mono(13, c.margeM2 !== null && c.margeM2 >= 0 ? V1.ok : V1.danger, 700) }}>
                             CHF {c.margeM2 !== null ? fmtN(c.margeM2) : '—'}/m²
                           </td>
                           <td style={DS.td}>
-                            <span style={{ background: col + '18', color: col, border: `1px solid ${col}35`, borderRadius: 20, padding: '3px 10px', fontSize: 11, fontWeight: 700 }}>
+                            <span style={{ ...mono(11, col, 700), background: col + '18', border: `1px solid ${col}35`, borderRadius: 20, padding: '3px 10px' }}>
                               {c.margePct !== null ? `${c.margePct}%` : '—'}
                             </span>
                           </td>
                           <td style={DS.td}>
                             {vsM2 !== null ? (
                               <span style={{
-                                background: vsM2 >= 0 ? 'rgba(16,185,129,0.12)' : 'rgba(239,68,68,0.12)',
-                                color: vsM2 >= 0 ? '#10b981' : '#ef4444',
-                                border: `1px solid ${vsM2 >= 0 ? 'rgba(16,185,129,0.3)' : 'rgba(239,68,68,0.3)'}`,
-                                borderRadius: 20, padding: '3px 10px', fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap',
+                                ...mono(11, vsM2 >= 0 ? V1.ok : V1.danger, 700),
+                                background: vsM2 >= 0 ? 'rgba(30,138,76,0.12)' : 'rgba(192,57,43,0.12)',
+                                border: `1px solid ${vsM2 >= 0 ? V1.ok : V1.danger}4d`,
+                                borderRadius: 20, padding: '3px 10px', whiteSpace: 'nowrap',
                               }}>
                                 {vsM2 >= 0 ? '+' : ''}{fmtN(vsM2)} CHF/m²
                                 {vsPct !== null ? ` (${vsPct >= 0 ? '+' : ''}${vsPct}%)` : ''}

@@ -1,11 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useLayoutEffect } from 'react';
 import {
-  Users, HardHat, TrendingUp, Plus, Pencil, Power,
-  DollarSign, Clock, BarChart2,
+  HardHat, Plus, Pencil, Power, BarChart2, Clock, Menu,
 } from 'lucide-react';
 import { fmtN, C, getIntervallesPeriode, getPeriodeLabel, tarifHoraireEmploye } from '../donnees';
 import { DS } from '../ds';
-import { Badge } from '../components/SharedBadges';
+import { V1, mono, carteV1, heroFond, heroMono } from '../design/v1';
 import { useApp } from '../context/AppContext';
 
 const inputStyle = DS.input;
@@ -16,9 +15,20 @@ const btnPrimaire = DS.btnPrimary;
 const btnSucces  = DS.btnSuccess;
 const btnDanger  = DS.btnDanger;
 
+// Bouton translucide du hero bleu nuit (mêmes tokens que les autres pages v1).
+const heroBtn = { background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.18)', borderRadius: 8, padding: '6px 11px', cursor: 'pointer', color: '#fff', display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: 'inherit', fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap' };
+// Couleur du badge poste : métiers terrain bleu, rôles direction/admin ambre.
+const ROLES_DIRECTION = ['chef de chantier', "chef d'équipe", 'comptable'];
+const couleurPosteV1 = (poste) => ROLES_DIRECTION.includes((poste || '').trim().toLowerCase()) ? V1.warn : V1.bleu;
+
 function Employes({ parametres, setParametres, chantiers, naviguer }) {
-  const { profil, afficherNotif, periodeGlobale } = useApp();
+  const { profil, afficherNotif, periodeGlobale, ouvrirMenu } = useApp();
   const voirSalaires = ['cyna', 'cynatech'].includes(profil?.id);
+  // La page passe en « hero plein écran » (Topbar blanc masqué) comme les autres pages v1.
+  useLayoutEffect(() => {
+    document.body.classList.add('hero-fullscreen');
+    return () => document.body.classList.remove('hero-fullscreen');
+  }, []);
   const [onglet, setOnglet] = useState('equipe');
   const [ajout, setAjout] = useState(false);
   const [form, setForm] = useState({ nom: '', poste: 'Ouvrier qualifié', tarifHeure: '', tarifRegieHeure: '', telephone: '', email: '', actif: true });
@@ -37,81 +47,87 @@ function Employes({ parametres, setParametres, chantiers, naviguer }) {
     setForm({ nom: '', poste: 'Ouvrier qualifié', tarifHeure: '', tarifRegieHeure: '', telephone: '', email: '', actif: true });
     if (afficherNotif) afficherNotif(isEdit ? 'Employé mis à jour' : 'Employé ajouté à l\'équipe');
   };
+  const employesAll = parametres.employes || [];
+  const nbActifsTotal = employesAll.filter(e => e.actif !== false).length;
+
   return (
     <div>
-      <div className="page-header-row">
-        <div className="page-title-block">
-          <div className="page-title-main">Équipe</div>
-          <div className="page-title-sub">{(parametres.employes || []).length} employé{(parametres.employes || []).length !== 1 ? 's' : ''} · {(parametres.employes || []).filter(e => e.actif !== false).length} actifs sur le terrain</div>
-        </div>
-        <div className="page-actions-group">
-          <button onClick={() => setAjout(!ajout)} style={btnPrimaire}><Plus size={14}/> Nouvel employé</button>
-        </div>
-      </div>
-
-      {/* ── ONGLETS ── */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
-        {[
-          { key: 'equipe', label: 'Équipe', Icon: Users },
-          { key: 'performance', label: 'Performance', Icon: BarChart2 },
-        ].map(({ key, label, Icon }) => (
-          <button
-            key={key}
-            onClick={() => setOnglet(key)}
-            style={{
-              display: 'inline-flex', alignItems: 'center', gap: 6,
-              padding: '7px 16px', borderRadius: 20, fontSize: 13, fontWeight: 600,
-              cursor: 'pointer', fontFamily: 'inherit',
-              background: onglet === key ? 'linear-gradient(135deg, #0d3d6e 0%, #082d52 100%)' : 'var(--ds-btn-ghost-bg)',
-              color: onglet === key ? '#fff' : 'var(--text-secondary)',
-              boxShadow: onglet === key ? '0 2px 10px rgba(13,61,110,0.30)' : 'none',
-              border: onglet === key ? 'none' : '1px solid var(--ds-btn-ghost-border)',
-            }}
-          >
-            <Icon size={13} /> {label}
-          </button>
-        ))}
-      </div>
-
-      {onglet === 'equipe' && <>
-
-      {/* ── KPI GRID ── */}
+      {/* ══ HERO BLEU NUIT (design v1, bord à bord, collé au sommet) ══ */}
       {(() => {
-        const employes = parametres.employes || [];
-        const nbActifs = employes.filter(e => e.actif !== false).length;
+        const nbActifs = nbActifsTotal;
         const heuresTotal = chantiers.reduce((s, c) => s + (c.journal || []).reduce((js, j) => js + (j.employes || []).reduce((es, e) => es + (parseFloat(e.heuresTravaillees) || 0), 0), 0), 0);
-        const coutMensuel = employes.filter(e => e.actif !== false).reduce((s, e) => s + (parseFloat(e.tarifJour) || 0) * 20, 0);
+        const coutMensuel = employesAll.filter(e => e.actif !== false).reduce((s, e) => s + (parseFloat(e.tarifJour) || 0) * 20, 0);
         // E3 : tarif moyen affiché à l'HEURE (source de saisie) — 2 décimales (ex. 43.75/h).
-        const tarifMoyen = nbActifs > 0 ? Math.round(employes.filter(e => e.actif !== false).reduce((s, e) => s + tarifHoraireEmploye(e), 0) / nbActifs * 100) / 100 : 0;
-        const kpiItems = [
-          { label: 'EFFECTIF',      val: employes.length, Icon: Users,      ...DS.kpi.blue,   badge: `${nbActifs} actifs` },
-          { label: 'HEURES TOTALES',val: `${fmtN(Math.round(heuresTotal))}h`, Icon: Clock, ...DS.kpi.green },
+        const tarifMoyen = nbActifs > 0 ? Math.round(employesAll.filter(e => e.actif !== false).reduce((s, e) => s + tarifHoraireEmploye(e), 0) / nbActifs * 100) / 100 : 0;
+        const heroChiffres = [
+          { label: 'EFFECTIF',       val: String(employesAll.length),                                              couleur: '#8FBCE6', sub: `${nbActifs} actif${nbActifs !== 1 ? 's' : ''}` },
+          { label: 'HEURES TOTALES', val: `${fmtN(Math.round(heuresTotal))}h`,                                      couleur: '#8FBCE6', sub: null },
           ...(voirSalaires ? [
-            { label: 'COÛT MENSUEL',  val: `CHF ${fmtN(coutMensuel)}`, Icon: DollarSign, ...DS.kpi.amber },
-            { label: 'TARIF MOYEN',   val: `CHF ${fmtN(tarifMoyen, tarifMoyen % 1 !== 0 ? 2 : 0)}/h`, Icon: TrendingUp, ...DS.kpi.purple },
+            { label: 'COÛT MENSUEL',  val: `CHF ${fmtN(coutMensuel)}`,                                              couleur: '#F5B14A', sub: null },
+            { label: 'TARIF MOYEN',   val: `CHF ${fmtN(tarifMoyen, tarifMoyen % 1 !== 0 ? 2 : 0)}/h`,               couleur: '#4ADE80', sub: null },
           ] : []),
         ];
+        const onglets = [{ key: 'equipe', label: 'Équipe' }, { key: 'performance', label: 'Performance' }];
         return (
-          <div className="kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'var(--g4)', gap: 16, marginBottom: 20 }}>
-            {kpiItems.map(k => (
-              <div key={k.label} className="kpi-card" style={{ background: k.gradient, borderRadius: 16, padding: '22px 20px', minHeight: 120, boxShadow: `0 4px 20px ${k.glow}, 0 1px 4px rgba(0,0,0,0.12)`, border: '1px solid rgba(255,255,255,0.15)', position: 'relative', overflow: 'hidden' }}>
-                <div style={{ position: 'absolute', right: -18, top: -18, width: 80, height: 80, borderRadius: '50%', background: 'rgba(255,255,255,0.1)' }} />
-                <div style={{ position: 'absolute', right: -32, bottom: -32, width: 100, height: 100, borderRadius: '50%', background: 'rgba(255,255,255,0.06)' }} />
-                <div style={{ background: 'rgba(255,255,255,0.18)', borderRadius: 10, width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 14, position: 'relative' }}>
-                  <k.Icon size={17} strokeWidth={2} style={{ color: '#fff' }} />
-                </div>
-                <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.7)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 5, position: 'relative' }}>{k.label}</div>
-                <div className="kpi-val" style={{ fontSize: 26, fontWeight: 900, color: '#fff', letterSpacing: '-0.8px', lineHeight: 1, position: 'relative' }}>{k.val}</div>
-                {k.badge && <span style={{ display: 'inline-block', marginTop: 7, background: 'rgba(255,255,255,0.22)', color: '#fff', borderRadius: 20, padding: '1px 8px', fontSize: 10, fontWeight: 700, position: 'relative' }}>{k.badge}</span>}
+          <div className="page-hero-bleed" data-testid="hero-equipe" style={{ ...heroFond, padding: '20px 32px 0', position: 'relative' }}>
+            {/* Ligne 1 — ☰ · CYNA · ÉQUIPE / 09 · Nouvel employé */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18, flexWrap: 'wrap' }}>
+              {ouvrirMenu && (
+                <button onClick={ouvrirMenu} aria-label="Menu" style={{ ...heroBtn, padding: 7 }}><Menu size={16} /></button>
+              )}
+              <span style={{ fontFamily: "'Inter', sans-serif", fontWeight: 800, fontSize: 15, letterSpacing: '0.06em', color: '#fff' }}>CYNA</span>
+              <span style={heroMono(10, 0.55)}>· ÉQUIPE / 09</span>
+              <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <button onClick={() => setAjout(!ajout)} style={{ ...heroBtn, background: 'rgba(255,255,255,0.16)', border: '1px solid rgba(255,255,255,0.3)', fontWeight: 700 }}>
+                  <Plus size={14} /> Nouvel employé
+                </button>
               </div>
-            ))}
+            </div>
+
+            {/* Ligne 2 — titre + ligne mono */}
+            <div style={heroMono(11, 0.6)}>ÉQUIPE / 09</div>
+            <h1 style={{ fontFamily: "'Inter', sans-serif", fontWeight: 700, fontSize: 34, margin: '8px 0 8px', letterSpacing: '-0.02em', color: '#fff' }}>Équipe</h1>
+            <div style={heroMono(11, 0.7)}>{employesAll.length} EMPLOYÉ{employesAll.length !== 1 ? 'S' : ''} · {nbActifs} ACTIF{nbActifs !== 1 ? 'S' : ''} SUR LE TERRAIN</div>
+
+            {/* Ligne 3 — les 4 chiffres clés */}
+            <div style={{ display: 'grid', gridTemplateColumns: `repeat(${heroChiffres.length}, 1fr)`, gap: 12, marginTop: 20 }} data-testid="hero-chiffres">
+              {heroChiffres.map(t => (
+                <div key={t.label} data-testid={`hero-kpi-${t.label.toLowerCase().replace(/[^a-zà-ÿ]+/g, '-').replace(/^-|-$/g, '')}`}
+                  style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 12, padding: '12px 14px' }}>
+                  <div style={heroMono(9, 0.6)}>{t.label}</div>
+                  <div style={{ ...mono(22, t.couleur, 500), lineHeight: 1.1, marginTop: 4 }}>{t.val}</div>
+                  {t.sub && <div style={heroMono(9, 0.5)}>{t.sub}</div>}
+                </div>
+              ))}
+            </div>
+
+            {/* Ligne 4 — onglets collés au bas du hero */}
+            <div style={{ display: 'flex', gap: 2, marginTop: 22, overflowX: 'auto', scrollbarWidth: 'none' }}>
+              {onglets.map(o => {
+                const actif = onglet === o.key;
+                return (
+                  <button key={o.key} onClick={() => setOnglet(o.key)} style={{
+                    background: 'transparent', border: 'none',
+                    borderBottom: actif ? '2px solid #fff' : '2px solid transparent',
+                    color: actif ? '#fff' : 'rgba(255,255,255,0.6)',
+                    padding: '10px 18px', cursor: 'pointer', fontFamily: 'inherit',
+                    fontSize: 14, fontWeight: actif ? 700 : 500, whiteSpace: 'nowrap', flexShrink: 0,
+                  }}>{o.label}</button>
+                );
+              })}
+            </div>
           </div>
         );
       })()}
 
+      {onglet === 'equipe' && <>
+
       {ajout && (
-        <div style={carteStyle}>
-          <div className="ds-card-title">{form.id ? 'Modifier' : 'Nouvel'} employé</div>
+        <div style={{ ...carteStyle, borderTop: `3px solid ${V1.bleu}` }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>
+            <div className="ds-card-title" style={{ margin: 0 }}>{form.id ? 'Modifier' : 'Nouvel'} employé</div>
+            {form.id && form.nom && <span style={{ ...mono(11, V1.bleu, 600) }}>{form.nom}</span>}
+          </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'var(--g-form3)', gap: '15px', marginBottom: '15px' }}>
             <div><label style={labelStyle}>Nom complet *</label><input placeholder="Jean Martin" value={form.nom} onChange={e => setForm({ ...form, nom: e.target.value })} style={inputStyle} /></div>
             <div><label style={labelStyle}>Rôle *</label>
@@ -134,8 +150,8 @@ function Employes({ parametres, setParametres, chantiers, naviguer }) {
             </div>
           </div>
           <div style={{ display: 'flex', gap: '10px' }}>
-            <button onClick={sauvegarder} style={btnSucces}>Sauvegarder</button>
-            <button onClick={() => setAjout(false)} style={btnDanger}>Annuler</button>
+            <button onClick={sauvegarder} style={btnPrimaire}>Sauvegarder</button>
+            <button onClick={() => setAjout(false)} style={DS.btnGhost}>Annuler</button>
           </div>
         </div>
       )}
@@ -148,34 +164,27 @@ function Employes({ parametres, setParametres, chantiers, naviguer }) {
             ).length;
             return t + joursReels;
           }, 0);
-          const couleurPoste = { 'Chef de chantier': C.primaire, "Chef d'équipe": C.info, 'Ouvrier qualifié': C.secondaire, 'Manœuvre': C.orange, 'Sous-traitant': C.violet, 'Technicien': C.cyan, 'Comptable': C.mauve }[e.poste] || C.primaire;
+          const cPoste = couleurPosteV1(e.poste);
           return (
-            <div key={e.id} style={{ ...carteStyle, opacity: e.actif ? 1 : 0.55 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <div style={{
-                  width: '44px', height: '44px',
-                  background: `linear-gradient(135deg, ${couleurPoste}40 0%, ${couleurPoste}20 100%)`,
-                  border: `1px solid ${couleurPoste}40`,
-                  borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  color: couleurPoste, fontWeight: 800, fontSize: '17px',
-                  boxShadow: `0 0 14px ${couleurPoste}25`,
-                }}>{e.nom.charAt(0)}</div>
-                <Badge texte={e.poste} couleur={couleurPoste} />
-              </div>
-              <div style={{ marginTop: '12px' }}>
-                <div style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)' }}>{e.nom}</div>
-                {e.telephone && <div style={{ color: 'var(--text-secondary)', fontSize: '12px', marginTop: '3px' }}>{e.telephone}</div>}
-                {e.email && <div style={{ color: 'var(--text-muted)', fontSize: '12px' }}>{e.email}</div>}
+            <div key={e.id} style={{ ...carteV1, borderTop: `3px solid ${cPoste}`, opacity: e.actif === false ? 0.55 : 1 }}>
+              {/* En-tête : nom + contact (initiales retirées) + badge poste */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 16, fontWeight: 700, color: V1.texte }}>{e.nom}</div>
+                  {e.telephone && <div style={{ ...mono(10, V1.texteMuted), marginTop: 3 }}>{e.telephone}</div>}
+                  {e.email && <div style={{ ...mono(10, V1.texteMuted), marginTop: 1 }}>{e.email}</div>}
+                </div>
+                <span style={{ ...mono(10, cPoste, 600), textTransform: 'uppercase', letterSpacing: '0.04em', background: cPoste + '16', border: `1px solid ${cPoste}30`, borderRadius: 20, padding: '2px 10px', whiteSpace: 'nowrap', flexShrink: 0 }}>{e.poste}</span>
               </div>
               <div style={{ marginTop: '14px', display: 'grid', gridTemplateColumns: voirSalaires ? 'var(--g3)' : 'var(--g2)', gap: '8px' }}>
                 {[
-                  ...(voirSalaires ? [{ label: 'CHF/h', val: `${(() => { const h = tarifHoraireEmploye(e); return h % 1 !== 0 ? h.toFixed(2) : h; })()}`, couleur: C.primaire }] : []),
-                  { label: 'Chantiers', val: chantiersEmp.length, couleur: C.secondaire },
-                  { label: 'Jours', val: joursTotal, couleur: C.violet },
+                  ...(voirSalaires ? [{ label: 'CHF/h', val: `${(() => { const h = tarifHoraireEmploye(e); return h % 1 !== 0 ? h.toFixed(2) : h; })()}`, couleur: V1.bleu }] : []),
+                  { label: 'Chantiers', val: chantiersEmp.length, couleur: V1.ok },
+                  { label: 'Jours', val: joursTotal, couleur: V1.texteMuted },
                 ].map(s => (
                   <div key={s.label} style={{ background: s.couleur + '10', border: `1px solid ${s.couleur}25`, borderRadius: '10px', padding: '10px', textAlign: 'center' }}>
-                    <div style={{ fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-muted)', marginBottom: '3px' }}>{s.label}</div>
-                    <div style={{ fontWeight: 800, color: s.couleur, fontSize: '15px' }}>{s.val}</div>
+                    <div style={{ fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: V1.texteMuted, marginBottom: '3px' }}>{s.label}</div>
+                    <div style={{ ...mono(15, s.couleur, 600) }}>{s.val}</div>
                   </div>
                 ))}
               </div>
@@ -239,90 +248,87 @@ function Employes({ parametres, setParametres, chantiers, naviguer }) {
         const plusActif = metriques.reduce((best, m) => m.heures > (best?.heures || 0) ? m : best, null);
 
         const kpiPerf = [
-          { label: 'HEURES ÉQUIPE', val: `${fmtN(Math.round(totalHeures))}h`, Icon: Clock, ...DS.kpi.blue },
-          ...(voirSalaires ? [{ label: 'COÛT MAIN-D\'ŒUVRE', val: `CHF ${fmtN(Math.round(totalCout))}`, Icon: DollarSign, ...DS.kpi.amber }] : []),
-          { label: 'PLUS ACTIF', val: plusActif ? plusActif.e.nom : '—', Icon: TrendingUp, ...DS.kpi.green },
+          { label: 'HEURES ÉQUIPE', val: `${fmtN(Math.round(totalHeures))}h`, couleur: V1.bleu },
+          ...(voirSalaires ? [{ label: 'COÛT MAIN-D\'ŒUVRE', val: `CHF ${fmtN(Math.round(totalCout))}`, couleur: V1.warn }] : []),
+          { label: 'PLUS ACTIF', val: plusActif ? plusActif.e.nom : '—', couleur: V1.ok },
         ];
 
         const aucuneDonnee = metriques.every(m => m.heures === 0);
+        const td = { padding: '13px 14px', borderBottom: `1px solid ${V1.separation}`, verticalAlign: 'middle' };
 
         return (
           <div>
             {/* Titre période */}
-            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <div style={{ ...mono(11, V1.bleu, 600), textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 6 }}>
               <BarChart2 size={14} />
               Performance équipe — {getPeriodeLabel(periodeGlobale || 'mois')}
             </div>
 
-            {/* KPIs performance */}
-            <div className="kpi-grid" style={{ display: 'grid', gridTemplateColumns: `repeat(${kpiPerf.length}, 1fr)`, gap: 16, marginBottom: 20 }}>
+            {/* KPIs performance — cartes v1 sobres à liseré coloré */}
+            <div style={{ display: 'grid', gridTemplateColumns: `repeat(${kpiPerf.length}, 1fr)`, gap: 16, marginBottom: 20 }} data-testid="perf-kpis">
               {kpiPerf.map(k => (
-                <div key={k.label} className="kpi-card" style={{ background: k.gradient, borderRadius: 16, padding: '22px 20px', minHeight: 110, boxShadow: `0 4px 20px ${k.glow}, 0 1px 4px rgba(0,0,0,0.12)`, border: '1px solid rgba(255,255,255,0.15)', position: 'relative', overflow: 'hidden' }}>
-                  <div style={{ position: 'absolute', right: -18, top: -18, width: 80, height: 80, borderRadius: '50%', background: 'rgba(255,255,255,0.1)' }} />
-                  <div style={{ background: 'rgba(255,255,255,0.18)', borderRadius: 10, width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 12, position: 'relative' }}>
-                    <k.Icon size={17} strokeWidth={2} style={{ color: '#fff' }} />
-                  </div>
-                  <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.7)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 4, position: 'relative' }}>{k.label}</div>
-                  <div className="kpi-val" style={{ fontSize: 22, fontWeight: 900, color: '#fff', letterSpacing: '-0.5px', lineHeight: 1, position: 'relative' }}>{k.val}</div>
+                <div key={k.label} style={{ ...carteV1, borderTop: `3px solid ${k.couleur}` }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: V1.texteMuted, marginBottom: 8 }}>{k.label}</div>
+                  <div style={{ ...mono(20, k.couleur, 600), lineHeight: 1.1 }}>{k.val}</div>
                 </div>
               ))}
             </div>
 
             {/* État vide */}
             {(employesActifs.length === 0 || aucuneDonnee) ? (
-              <div style={{ ...carteStyle, textAlign: 'center', padding: '48px 24px' }}>
-                <Clock size={40} style={{ color: 'var(--text-muted)', marginBottom: 12, opacity: 0.5 }} />
-                <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 6 }}>
+              <div style={{ ...carteV1, textAlign: 'center', padding: '48px 24px' }}>
+                <Clock size={40} style={{ color: V1.texteMuted, marginBottom: 12, opacity: 0.5 }} />
+                <div style={{ fontSize: 15, fontWeight: 700, color: V1.texte, marginBottom: 6 }}>
                   {employesActifs.length === 0 ? 'Aucun employé actif' : 'Aucune heure enregistrée sur cette période'}
                 </div>
-                <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                <div style={{ fontSize: 12, color: V1.texteMuted }}>
                   {employesActifs.length === 0
                     ? 'Ajoutez des employés actifs dans l\'onglet Équipe.'
                     : 'Les heures sont enregistrées dans le journal des chantiers.'}
                 </div>
               </div>
             ) : (
-              <div style={{ ...carteStyle, padding: 0, overflow: 'hidden' }}>
+              <div style={{ ...carteV1, padding: 0, overflow: 'hidden' }}>
+                <div style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead>
                     <tr>
                       {['Employé', 'Poste', 'Heures', 'Jours', ...(voirSalaires ? ['Coût main-d\'œuvre'] : []), 'Chantiers', 'Moy. h/jour'].map(h => (
-                        <th key={h} style={DS.th}>{h}</th>
+                        <th key={h} style={{ ...mono(10, V1.texteMuted), textAlign: 'left', textTransform: 'uppercase', letterSpacing: '0.06em', padding: '12px 14px', borderBottom: `1px solid ${V1.separation}`, background: '#FAFBFC', whiteSpace: 'nowrap' }}>{h}</th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
                     {metriques.map(({ e, heures, jours, coutReel, chantiersActifs, moyHParJour, alerteHeuresSup }) => (
                       <tr key={e.id} style={{ opacity: heures === 0 ? 0.5 : 1 }}>
-                        <td style={DS.td}>
+                        <td style={td}>
+                          {/* Initiales retirées — nom seul + alerte heures sup. */}
                           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                            <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'linear-gradient(135deg, #0d3d6e20 0%, #082d5220 100%)', border: '1px solid #0d3d6e30', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 12, color: '#0d3d6e', flexShrink: 0 }}>
-                              {e.nom.charAt(0)}
-                            </div>
-                            <span style={{ fontWeight: 600 }}>{e.nom}</span>
+                            <span style={{ fontWeight: 700, color: V1.texte }}>{e.nom}</span>
                             {alerteHeuresSup && (
-                              <span style={{ background: '#FEF3C7', color: '#92400E', borderRadius: 20, padding: '2px 8px', fontSize: 10, fontWeight: 700, whiteSpace: 'nowrap' }}>
+                              <span style={{ ...mono(10, V1.warn, 700), background: V1.warn + '18', border: `1px solid ${V1.warn}30`, borderRadius: 20, padding: '2px 8px', whiteSpace: 'nowrap' }}>
                                 ⚠ Heures sup.
                               </span>
                             )}
                           </div>
                         </td>
-                        <td style={DS.td}><span style={{ color: 'var(--text-secondary)', fontSize: 12 }}>{e.poste || '—'}</span></td>
-                        <td style={DS.td}><strong style={{ color: '#0d3d6e' }}>{fmtN(Math.round(heures * 10) / 10)}h</strong></td>
-                        <td style={DS.td}>{jours > 0 ? <strong>{jours}j</strong> : <span style={{ color: 'var(--text-muted)' }}>—</span>}</td>
+                        <td style={td}><span style={{ color: V1.texteMuted, fontSize: 12 }}>{e.poste || '—'}</span></td>
+                        <td style={td}><span style={{ ...mono(13, V1.bleu, 600) }}>{fmtN(Math.round(heures * 10) / 10)}h</span></td>
+                        <td style={td}>{jours > 0 ? <span style={{ ...mono(13, V1.texte, 600) }}>{jours}j</span> : <span style={{ color: V1.texteMuted }}>—</span>}</td>
                         {voirSalaires && (
-                          <td style={DS.td}><strong style={{ color: coutReel > 0 ? '#065F46' : 'var(--text-muted)' }}>{coutReel > 0 ? `CHF ${fmtN(Math.round(coutReel))}` : '—'}</strong></td>
+                          <td style={td}><span style={{ ...mono(13, coutReel > 0 ? V1.ok : V1.texteMuted, 600) }}>{coutReel > 0 ? `CHF ${fmtN(Math.round(coutReel))}` : '—'}</span></td>
                         )}
-                        <td style={DS.td}>
+                        <td style={td}>
                           {chantiersActifs > 0
-                            ? <span style={{ background: '#e8f0f9', color: '#0d3d6e', borderRadius: 20, padding: '2px 9px', fontSize: 11, fontWeight: 700 }}>{chantiersActifs}</span>
-                            : <span style={{ color: 'var(--text-muted)' }}>—</span>}
+                            ? <span style={{ ...mono(11, V1.bleu, 600), background: V1.bleuFond, borderRadius: 20, padding: '2px 9px' }}>{chantiersActifs}</span>
+                            : <span style={{ color: V1.texteMuted }}>—</span>}
                         </td>
-                        <td style={DS.td}>{moyHParJour > 0 ? <span style={{ color: moyHParJour > 9 ? '#92400E' : 'var(--text-secondary)' }}>{moyHParJour}h</span> : <span style={{ color: 'var(--text-muted)' }}>—</span>}</td>
+                        <td style={td}>{moyHParJour > 0 ? <span style={{ ...mono(12, moyHParJour > 9 ? V1.warn : V1.texteMuted, 600) }}>{moyHParJour}h</span> : <span style={{ color: V1.texteMuted }}>—</span>}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
+                </div>
               </div>
             )}
           </div>

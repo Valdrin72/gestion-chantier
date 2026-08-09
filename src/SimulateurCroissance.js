@@ -1,30 +1,30 @@
 import React, { useState, useMemo } from 'react';
 import { TrendingUp, Users, DollarSign, Target, Info, CheckCircle, AlertTriangle } from 'lucide-react';
-import { DS } from './ds';
 import { joursReelsChantier } from './calculs/pointagesHelper';
 import { useApp } from './context/AppContext';
 import { fmtN, calculerCoutsChantier, SEUILS } from './donnees';
+import { V1, mono, carteV1 } from './design/v1';
 
 const JOURS_AN_SUISSE = 220; // ~46 semaines × 5j (jours ouvrables Suisse hors vacances)
 
 function Jauge({ pct, couleur }) {
   const v = Math.min(100, Math.max(0, pct));
   return (
-    <div style={{ height: 8, background: 'var(--bg-glass)', borderRadius: 4, overflow: 'hidden', marginTop: 6 }}>
+    <div style={{ height: 8, background: V1.separation, borderRadius: 4, overflow: 'hidden', marginTop: 6 }}>
       <div style={{ height: '100%', width: `${v}%`, background: couleur, borderRadius: 4, transition: 'width 0.4s ease' }} />
     </div>
   );
 }
 
-function KpiSim({ label, value, sub, couleur = 'var(--text-primary)', icon: Icon }) {
+function KpiSim({ label, value, sub, couleur = V1.texte, icon: Icon }) {
   return (
-    <div style={{ background: 'var(--bg-card)', border: '1px solid var(--ds-card-border)', borderRadius: 14, padding: '16px 20px' }}>
+    <div style={{ ...carteV1, borderTop: `3px solid ${couleur}`, padding: '16px 20px' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
         {Icon && <Icon size={14} color={couleur} strokeWidth={2.5} />}
-        <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</div>
+        <div style={{ fontSize: 11, fontWeight: 700, color: V1.texteMuted, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</div>
       </div>
-      <div style={{ fontSize: 22, fontWeight: 900, color: couleur, fontVariantNumeric: 'tabular-nums' }}>{value}</div>
-      {sub && <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 3 }}>{sub}</div>}
+      <div style={{ ...mono(22, couleur, 700) }}>{value}</div>
+      {sub && <div style={{ fontSize: 11, color: V1.texteMuted, marginTop: 3 }}>{sub}</div>}
     </div>
   );
 }
@@ -33,16 +33,16 @@ function Slider({ label, min, max, step, value, onChange, format = v => v, hint 
   return (
     <div style={{ marginBottom: 20 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-        <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)' }}>{label}</label>
-        <span style={{ fontSize: 13, fontWeight: 800, color: '#0d3d6e', background: 'rgba(13,61,110,0.08)', padding: '2px 10px', borderRadius: 20 }}>{format(value)}</span>
+        <label style={{ fontSize: 12, fontWeight: 700, color: V1.texte }}>{label}</label>
+        <span style={{ ...mono(13, V1.bleu, 700), background: V1.bleuFond, padding: '2px 10px', borderRadius: 20 }}>{format(value)}</span>
       </div>
       <input type="range" min={min} max={max} step={step} value={value}
         onChange={e => onChange(Number(e.target.value))}
-        style={{ width: '100%', accentColor: '#0d3d6e', cursor: 'pointer' }} />
-      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'var(--text-muted)', marginTop: 2 }}>
+        style={{ width: '100%', accentColor: V1.bleu, cursor: 'pointer' }} />
+      <div style={{ display: 'flex', justifyContent: 'space-between', ...mono(10, V1.texteMuted), marginTop: 2 }}>
         <span>{format(min)}</span><span>{format(max)}</span>
       </div>
-      {hint && <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>{hint}</div>}
+      {hint && <div style={{ fontSize: 11, color: V1.texteMuted, marginTop: 4 }}>{hint}</div>}
     </div>
   );
 }
@@ -142,8 +142,8 @@ export default function SimulateurCroissance({ chantiers = [], devis = [], factu
     };
   }, [nbNouveaux, tarifSim, txUtil, txFG, baseMetrics]);
 
-  const couleurMarge = projection.margeNettePct >= SEUILS.margeRentable ? '#10b981'
-    : projection.margeNettePct >= SEUILS.margeLimite ? '#f59e0b' : '#ef4444';
+  const couleurMarge = projection.margeNettePct >= SEUILS.margeRentable ? V1.ok
+    : projection.margeNettePct >= SEUILS.margeLimite ? V1.warn : V1.danger;
 
   return (
     <div>
@@ -156,26 +156,26 @@ export default function SimulateurCroissance({ chantiers = [], devis = [], factu
 
       {/* Base actuelle */}
       <div style={{ marginBottom: 24 }}>
-        <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>Base actuelle (données réelles)</div>
+        <div style={{ fontSize: 12, fontWeight: 700, color: V1.texteMuted, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>Base actuelle (données réelles)</div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12 }}>
-          <KpiSim label="Employés actifs" value={baseMetrics.nbEmployes} sub="équipe actuelle" icon={Users} couleur="#0d3d6e" />
-          <KpiSim label="CA annuel" value={baseMetrics.caAnnuel > 0 ? `CHF ${fmtN(Math.round(baseMetrics.caAnnuel / 1000))}k` : '—'} sub={`${baseMetrics.nbChantiersAnnee} chantiers`} icon={DollarSign} couleur="#10b981" />
-          <KpiSim label="Marge nette moy." value={`${baseMetrics.margesMoyenne}%`} sub="sur chantiers terminés" icon={TrendingUp} couleur={baseMetrics.margesMoyenne >= SEUILS.margeRentable ? '#10b981' : '#f59e0b'} />
-          <KpiSim label="Tarif jour moyen" value={`CHF ${fmtN(baseMetrics.tarifMoyen)}`} sub="coût chargé employeur" icon={Target} couleur="#8b5cf6" />
-          <KpiSim label="Taux d'utilisation" value={`${baseMetrics.txUtilisation}%`} sub={`${baseMetrics.joursParEmploye}j facturés/an/emp.`} icon={TrendingUp} couleur="#f59e0b" />
+          <KpiSim label="Employés actifs" value={baseMetrics.nbEmployes} sub="équipe actuelle" icon={Users} couleur={V1.bleu} />
+          <KpiSim label="CA annuel" value={baseMetrics.caAnnuel > 0 ? `CHF ${fmtN(Math.round(baseMetrics.caAnnuel / 1000))}k` : '—'} sub={`${baseMetrics.nbChantiersAnnee} chantiers`} icon={DollarSign} couleur={V1.ok} />
+          <KpiSim label="Marge nette moy." value={`${baseMetrics.margesMoyenne}%`} sub="sur chantiers terminés" icon={TrendingUp} couleur={baseMetrics.margesMoyenne >= SEUILS.margeRentable ? V1.ok : V1.warn} />
+          <KpiSim label="Tarif jour moyen" value={`CHF ${fmtN(baseMetrics.tarifMoyen)}`} sub="coût chargé employeur" icon={Target} couleur={V1.bleuMoyen} />
+          <KpiSim label="Taux d'utilisation" value={`${baseMetrics.txUtilisation}%`} sub={`${baseMetrics.joursParEmploye}j facturés/an/emp.`} icon={TrendingUp} couleur={V1.warn} />
         </div>
         {baseMetrics.caAnnuel === 0 && (
-          <div style={{ display: 'flex', gap: 10, background: '#fffbeb', border: '1px solid #fcd34d', borderRadius: 10, padding: '10px 14px', marginTop: 12 }}>
-            <Info size={16} color="#d97706" style={{ flexShrink: 0, marginTop: 1 }} />
-            <div style={{ fontSize: 12, color: '#92400e' }}>Aucun chantier cette année — les projections utilisent les paramètres par défaut BTP Genève. Ajoutez des chantiers pour des simulations basées sur vos données réelles.</div>
+          <div style={{ display: 'flex', gap: 10, background: 'rgba(232,145,43,0.08)', border: `1px solid ${V1.warn}40`, borderRadius: 10, padding: '10px 14px', marginTop: 12 }}>
+            <Info size={16} color={V1.warn} style={{ flexShrink: 0, marginTop: 1 }} />
+            <div style={{ fontSize: 12, color: V1.texte }}>Aucun chantier cette année — les projections utilisent les paramètres par défaut BTP Genève. Ajoutez des chantiers pour des simulations basées sur vos données réelles.</div>
           </div>
         )}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, alignItems: 'start' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 24, alignItems: 'start' }}>
         {/* Panneau paramètres */}
-        <div style={DS.card}>
-          <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--text-primary)', marginBottom: 20 }}>Paramètres de simulation</div>
+        <div style={carteV1}>
+          <div style={{ fontWeight: 700, fontSize: 15, color: V1.texte, marginBottom: 20 }}>Paramètres de simulation</div>
 
           <Slider
             label="Nombre d'embauches"
@@ -210,17 +210,17 @@ export default function SimulateurCroissance({ chantiers = [], devis = [], factu
         {/* Panneau résultats */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {/* Score global */}
-          <div style={{ background: projection.rentable ? 'linear-gradient(135deg, #ecfdf5, #d1fae5)' : 'linear-gradient(135deg, #fff7ed, #fef3c7)', border: `1px solid ${couleurMarge}40`, borderRadius: 16, padding: '20px 24px' }}>
+          <div style={{ ...carteV1, background: couleurMarge + '10', borderLeft: `4px solid ${couleurMarge}`, padding: '20px 24px' }}>
             <div style={{ fontSize: 12, fontWeight: 700, color: couleurMarge, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>
               <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
                 {projection.rentable ? <CheckCircle size={13} /> : <AlertTriangle size={13} />}
                 {projection.rentable ? 'Opération rentable' : 'Rentabilité à surveiller'}
               </span>
             </div>
-            <div style={{ fontSize: 32, fontWeight: 900, color: couleurMarge, fontVariantNumeric: 'tabular-nums' }}>
+            <div style={{ ...mono(32, couleurMarge, 700) }}>
               {projection.margeNettePct >= 0 ? '+' : ''}{projection.margeNettePct}%
             </div>
-            <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>Marge nette après frais généraux</div>
+            <div style={{ fontSize: 12, color: V1.texteMuted, marginTop: 2 }}>Marge nette après frais généraux</div>
             <Jauge pct={projection.margeNettePct} couleur={couleurMarge} />
           </div>
 
@@ -230,7 +230,7 @@ export default function SimulateurCroissance({ chantiers = [], devis = [], factu
               label="CA additionnel"
               value={`CHF ${fmtN(Math.round(projection.caAdditionnel / 1000))}k`}
               sub={`${projection.joursFactures}j × CHF ${fmtN(tarifSim)} × ${nbNouveaux} emp.`}
-              icon={DollarSign} couleur="#0d3d6e"
+              icon={DollarSign} couleur={V1.bleu}
             />
             <KpiSim
               label="Marge nette générée"
@@ -242,30 +242,30 @@ export default function SimulateurCroissance({ chantiers = [], devis = [], factu
               label="Break-even"
               value={`${projection.breakEvenMois} mois`}
               sub={`${projection.breakEvenJours}j pour couvrir le coût`}
-              icon={Target} couleur="#8b5cf6"
+              icon={Target} couleur={V1.bleuMoyen}
             />
             <KpiSim
               label="CA total entreprise"
               value={baseMetrics.caAnnuel > 0 ? `CHF ${fmtN(Math.round(projection.caTotal / 1000))}k` : '—'}
               sub={baseMetrics.caAnnuel > 0 ? `vs CHF ${fmtN(Math.round(baseMetrics.caAnnuel / 1000))}k actuel` : 'Ajoutez des chantiers'}
-              icon={TrendingUp} couleur="#10b981"
+              icon={TrendingUp} couleur={V1.ok}
             />
           </div>
 
           {/* Détail calcul */}
-          <div style={{ ...DS.card, background: 'var(--bg-glass)' }}>
-            <div style={{ fontWeight: 700, fontSize: 12, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 12 }}>Détail du calcul</div>
+          <div style={carteV1}>
+            <div style={{ fontWeight: 700, fontSize: 12, color: V1.texteMuted, textTransform: 'uppercase', marginBottom: 12 }}>Détail du calcul</div>
             {[
-              { label: 'CA additionnel brut', val: `+ CHF ${fmtN(projection.caAdditionnel)}`, couleur: '#10b981' },
-              { label: `Frais généraux (${txFG}%)`, val: `− CHF ${fmtN(projection.fraisGeneraux)}`, couleur: '#ef4444' },
+              { label: 'CA additionnel brut', val: `+ CHF ${fmtN(projection.caAdditionnel)}`, couleur: V1.ok },
+              { label: `Frais généraux (${txFG}%)`, val: `− CHF ${fmtN(projection.fraisGeneraux)}`, couleur: V1.danger },
               { label: 'Marge nette projetée', val: `= CHF ${fmtN(projection.margeNette)}`, couleur: couleurMarge, bold: true },
             ].map(r => (
-              <div key={r.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0', borderBottom: '1px solid var(--border)' }}>
-                <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{r.label}</span>
-                <span style={{ fontSize: 13, fontWeight: r.bold ? 800 : 600, color: r.couleur, fontVariantNumeric: 'tabular-nums' }}>{r.val}</span>
+              <div key={r.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0', borderBottom: `1px solid ${V1.separation}` }}>
+                <span style={{ fontSize: 12, color: V1.texteMuted }}>{r.label}</span>
+                <span style={{ ...mono(13, r.couleur, r.bold ? 800 : 600) }}>{r.val}</span>
               </div>
             ))}
-            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 10, lineHeight: 1.5 }}>
+            <div style={{ fontSize: 11, color: V1.texteMuted, marginTop: 10, lineHeight: 1.5 }}>
               * Le tarif jour saisi représente le coût total employeur (salaire + charges ~35%). La marge estimée est basée sur votre marge historique de {baseMetrics.margesMoyenne}%.
             </div>
           </div>

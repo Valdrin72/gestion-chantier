@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import { fmtN, couleurScoreSante, libelleScoreSante } from './donnees';
 import { DS } from './ds';
-import { V1, mono, carteV1 } from './design/v1';
+import { V1, mono, carteV1, BADGES_V1 } from './design/v1';
 
 // Protège contre les valeurs non-string (action:{page,ctx}, detail:objet...)
 function safeStr(v) {
@@ -63,7 +63,7 @@ const AGENTS_META = [
     frequence: 'Toutes les heures', apprentissage: false,
   },
   {
-    id: 'RapportAuto', tier: 1, nom: 'Rapport Auto', Icon: FileBarChart2, couleur: '#8b5cf6',
+    id: 'RapportAuto', tier: 1, nom: 'Rapport Auto', Icon: FileBarChart2, couleur: '#4C8FD1',
     description: 'Génère un résumé hebdomadaire chaque lundi matin au login',
     details: ['Heures saisies semaine écoulée', 'CA facturé sur la période', 'Chantiers avancés / en retard'],
     frequence: 'Chaque lundi', apprentissage: false,
@@ -87,7 +87,7 @@ const AGENTS_META = [
     frequence: 'Toutes les heures', apprentissage: true,
   },
   {
-    id: 'AnomaliesDonnees', tier: 1, nom: 'Anomalies Données', Icon: Shield, couleur: '#6366f1',
+    id: 'AnomaliesDonnees', tier: 1, nom: 'Anomalies Données', Icon: Shield, couleur: '#0E2A4F',
     description: 'Vérifie l\'intégrité des données : liens orphelins, tarifs manquants',
     details: ['Chantiers sans devis', 'Factures sans clientId', 'Employés sans tarifJour'],
     frequence: 'Toutes les heures', apprentissage: false,
@@ -106,7 +106,7 @@ const AGENTS_META = [
     frequence: 'Toutes les heures', apprentissage: false,
   },
   {
-    id: 'ApprentissageMarge', tier: 2, nom: 'Apprentissage Marge', Icon: Brain, couleur: '#a855f7',
+    id: 'ApprentissageMarge', tier: 2, nom: 'Apprentissage Marge', Icon: Brain, couleur: '#1E8A4C',
     description: 'Prédit la marge finale en se basant sur les écarts historiques de MémoireChantier',
     details: ['Lit les patterns de MémoireChantier', 'Prédit marge finale par type de travaux', 'Confiance augmente avec le nombre de chantiers'],
     frequence: 'Toutes les heures', apprentissage: true,
@@ -143,7 +143,7 @@ const AGENTS_META = [
     frequence: 'Toutes les heures', apprentissage: false,
   },
   {
-    id: 'DSOAnalyse', tier: 3, nom: 'DSO Analyse', Icon: Activity, couleur: '#7c3aed',
+    id: 'DSOAnalyse', tier: 3, nom: 'DSO Analyse', Icon: Activity, couleur: '#1E5FAF',
     description: 'Suit l\'évolution du délai moyen de recouvrement dans le temps',
     details: ['DSO moyen entreprise vs standard 30j', 'Tendance sur 3 runs (amélioration/dégradation)', 'Historique persisté dans la mémoire'],
     frequence: 'Toutes les heures', apprentissage: true,
@@ -180,7 +180,7 @@ const AGENTS_META = [
     frequence: 'Toutes les heures', apprentissage: false,
   },
   {
-    id: 'OptimisationEquipe', tier: 2, nom: 'Optimisation Équipe', Icon: Users, couleur: '#7c3aed',
+    id: 'OptimisationEquipe', tier: 2, nom: 'Optimisation Équipe', Icon: Users, couleur: '#8FBCE6',
     description: 'Détecte les déséquilibres de charge et suggère des réaffectations d\'employés',
     details: ['Employés sous-utilisés (< 4h/jour)', 'Chantiers sans saisie récente', 'Suggestions d\'affectation'],
     frequence: 'Toutes les heures', apprentissage: false,
@@ -205,13 +205,13 @@ const AGENTS_META = [
     frequence: 'Toutes les heures', apprentissage: false,
   },
   {
-    id: 'DerivePredictor', tier: 2, nom: 'Dérive Predictor', Icon: TrendingUp, couleur: '#7c3aed',
+    id: 'DerivePredictor', tier: 2, nom: 'Dérive Predictor', Icon: TrendingUp, couleur: '#E8912B',
     description: 'Prédit la dérive budgétaire et temporelle de chaque chantier actif grâce à l\'EAC et au RAD',
     details: ['EAC = coût actuel / (avancement/100) × calibration historique', 'Alerte si dépassement budget projeté > 20%', 'Délai restant estimé par vitesse réelle'],
     frequence: 'Toutes les heures', apprentissage: true,
   },
   {
-    id: 'RapportNaturel', tier: 3, nom: 'Rapport Naturel', Icon: FileText, couleur: '#8b5cf6',
+    id: 'RapportNaturel', tier: 3, nom: 'Rapport Naturel', Icon: FileText, couleur: '#4C8FD1',
     description: 'Génère un résumé exécutif en langage naturel en synthétisant tous les agents Tier 1+2+3',
     details: ['3 à 5 paragraphes automatiques', 'Action prioritaire recommandée', 'Score entreprise /100'],
     frequence: 'Toutes les heures', apprentissage: true,
@@ -229,9 +229,9 @@ const AGENTS_META = [
 export const NB_AGENTS = AGENTS_META.length;
 
 const TIER_META = {
-  1: { label: 'Tier 1 — Analyse pure', couleur: '#0d3d6e', bg: '#e8f0f9' },
-  2: { label: 'Tier 2 — Intelligence croisée', couleur: '#8b5cf6', bg: '#f5f3ff' },
-  3: { label: 'Tier 3 — Synthèse & Anticipation', couleur: '#10b981', bg: '#f0fdf4' },
+  1: { label: 'Tier 1 — Analyse pure', couleur: '#1E5FAF', bg: '#E6EDF5' },
+  2: { label: 'Tier 2 — Intelligence croisée', couleur: '#4C8FD1', bg: '#EAF2FB' },
+  3: { label: 'Tier 3 — Synthèse & Anticipation', couleur: '#1E8A4C', bg: '#EAF3DE' },
 };
 
 const NIVEAU_CONFIG = {
@@ -613,19 +613,19 @@ export default function Agents({
                       const nbRes = (alertes || []).filter(a => a.agent === agent.id).length;
 
                       return (
-                        <div key={agent.id} style={{ ...DS.card, padding: '16px 20px', borderLeft: `3px solid ${agent.couleur}30` }}>
+                        <div key={agent.id} style={{ ...carteV1, padding: '16px 20px', borderLeft: `3px solid ${agent.couleur}` }}>
                           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
                             <div style={{ width: 40, height: 40, borderRadius: 10, background: agent.couleur + '18', border: `1px solid ${agent.couleur}30`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                               <agent.Icon size={18} strokeWidth={1.8} style={{ color: agent.couleur }} />
                             </div>
                             <div style={{ flex: 1, minWidth: 0 }}>
                               <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 3 }}>
-                                <span style={{ fontWeight: 700, fontSize: 14 }}>{agent.nom}</span>
-                                {agent.apprentissage && <span style={{ background: '#f0fdf4', color: '#15803d', border: '1px solid #bbf7d0', borderRadius: 20, padding: '1px 8px', fontSize: 10, fontWeight: 700 }}>APPREND</span>}
-                                {statut.erreur && <span style={{ background: '#fee2e2', color: '#991b1b', borderRadius: 20, padding: '1px 8px', fontSize: 10, fontWeight: 700 }}>ERREUR</span>}
+                                <span style={{ fontWeight: 700, fontSize: 14, color: V1.texte }}>{agent.nom}</span>
+                                {agent.apprentissage && <span style={{ background: BADGES_V1.ok.bg, color: BADGES_V1.ok.color, border: `1px solid ${V1.ok}44`, borderRadius: 20, padding: '1px 8px', fontSize: 10, fontWeight: 700 }}>APPREND</span>}
+                                {statut.erreur && <span style={{ background: BADGES_V1.danger.bg, color: BADGES_V1.danger.color, borderRadius: 20, padding: '1px 8px', fontSize: 10, fontWeight: 700 }}>ERREUR</span>}
                                 {nbRes > 0 && <span style={{ background: agent.couleur + '18', color: agent.couleur, borderRadius: 20, padding: '1px 8px', fontSize: 10, fontWeight: 700 }}>{nbRes} alerte{nbRes > 1 ? 's' : ''}</span>}
                               </div>
-                              <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '0 0 6px' }}>{agent.description}</p>
+                              <p style={{ fontSize: 12, color: V1.texteMuted, margin: '0 0 6px' }}>{agent.description}</p>
                               <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', fontSize: 11 }}>
                                 <span style={{ color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 4 }}><Clock size={10} /> {agent.frequence}</span>
                                 <span style={{ color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 4 }}><Activity size={10} /> {fmtDiff(statut.lastRun)}</span>
@@ -652,9 +652,9 @@ export default function Agents({
                                     </div>
                                   ))}
                                   {agent.apprentissage && memoire[agent.id] && (
-                                    <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 6, padding: '6px 10px', background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 8 }}>
-                                      <Brain size={12} color="#15803d" />
-                                      <span style={{ fontSize: 11, color: '#15803d', fontWeight: 600 }}>Mémoire active — calibrage en cours</span>
+                                    <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 6, padding: '6px 10px', background: BADGES_V1.ok.bg, border: `1px solid ${V1.ok}44`, borderRadius: 8 }}>
+                                      <Brain size={12} color={V1.ok} />
+                                      <span style={{ fontSize: 11, color: BADGES_V1.ok.color, fontWeight: 600 }}>Mémoire active — calibrage en cours</span>
                                     </div>
                                   )}
                                 </div>
@@ -664,10 +664,10 @@ export default function Agents({
                                     <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0 }}>Aucune exécution</p>
                                   ) : logs.map((log) => (
                                     <div key={log.timestamp} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0', borderBottom: '1px solid var(--border)', fontSize: 11 }}>
-                                      {log.erreur ? <AlertTriangle size={10} style={{ color: '#ef4444' }} /> : <CheckCircle size={10} style={{ color: '#10b981' }} />}
+                                      {log.erreur ? <AlertTriangle size={10} style={{ color: V1.danger }} /> : <CheckCircle size={10} style={{ color: V1.ok }} />}
                                       <span style={{ color: 'var(--text-secondary)', flex: 1 }}>{fmtDate(log.timestamp)}</span>
-                                      <span style={{ color: 'var(--text-muted)' }}>{log.dureeMs}ms</span>
-                                      <span style={{ color: log.erreur ? '#ef4444' : '#10b981', fontWeight: 600 }}>
+                                      <span style={{ ...mono(11, V1.texteMuted) }}>{log.dureeMs}ms</span>
+                                      <span style={{ ...mono(11, log.erreur ? V1.danger : V1.ok, 600) }}>
                                         {log.erreur ? 'ERR' : `${log.nbResultats} résultat${log.nbResultats !== 1 ? 's' : ''}`}
                                       </span>
                                     </div>
@@ -805,11 +805,11 @@ export default function Agents({
       ══════════════════════════════════════════════════════ */}
       {onglet === 'memoire' && (
         <TabBoundary label="Mémoire"><div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20, padding: '12px 16px', background: 'linear-gradient(135deg,#f0fdf4,#dcfce7)', border: '1px solid #86efac', borderRadius: 12 }}>
-            <Brain size={18} color="#15803d" />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20, padding: '12px 16px', background: BADGES_V1.ok.bg, border: `1px solid ${V1.ok}44`, borderLeft: `4px solid ${V1.ok}`, borderRadius: 12 }}>
+            <Brain size={18} color={V1.ok} />
             <div>
-              <div style={{ fontWeight: 700, fontSize: 13, color: '#14532d' }}>Mémoire permanente — jamais effacée</div>
-              <div style={{ fontSize: 12, color: '#15803d', marginTop: 2 }}>
+              <div style={{ fontWeight: 700, fontSize: 13, color: V1.texte }}>Mémoire permanente — jamais effacée</div>
+              <div style={{ fontSize: 12, color: V1.texteMuted, marginTop: 2 }}>
                 Chaque exécution enrichit la connaissance. Plus les agents tournent, plus leurs prédictions sont précises.
               </div>
             </div>
@@ -819,32 +819,32 @@ export default function Agents({
           {Object.keys(patterns).length > 0 && (
             <div style={{ marginBottom: 20 }}>
               <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 12 }}>MémoireChantier — Patterns par type (chantiers terminés)</div>
-              <div style={{ ...DS.card, padding: 0, overflow: 'hidden' }}>
+              <div style={{ ...carteV1, padding: 0, overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                   <thead>
-                    <tr style={{ background: 'var(--bg-glass)', borderBottom: '1px solid var(--border)' }}>
+                    <tr style={{ background: V1.page, borderBottom: `1px solid ${V1.separation}` }}>
                       {['Type', 'Nb chantiers', 'Écart coûts moyen', 'Marge réelle moy.', 'Ratio temps'].map(h => (
-                        <th key={h} style={{ padding: '10px 14px', textAlign: h === 'Type' ? 'left' : 'right', fontWeight: 700, fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase' }}>{h}</th>
+                        <th key={h} style={{ padding: '10px 14px', textAlign: h === 'Type' ? 'left' : 'right', fontWeight: 700, fontSize: 10, color: V1.texteMuted, textTransform: 'uppercase' }}>{h}</th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
                     {Object.values(patterns).map(p => (
-                      <tr key={p.type} style={{ borderBottom: '1px solid var(--border)' }}>
+                      <tr key={p.type} style={{ borderBottom: `1px solid ${V1.separation}` }}>
                         <td style={{ padding: '10px 14px' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                            <Brain size={14} style={{ color: '#f59e0b' }} />
-                            <span style={{ fontWeight: 600 }}>{p.type}</span>
+                            <Brain size={14} style={{ color: V1.warn }} />
+                            <span style={{ fontWeight: 600, color: V1.texte }}>{p.type}</span>
                           </div>
                         </td>
-                        <td style={{ padding: '10px 14px', textAlign: 'right', color: 'var(--text-secondary)' }}>{p.count}</td>
-                        <td style={{ padding: '10px 14px', textAlign: 'right', fontWeight: 700, color: p.ecartMoyen > 0 ? '#ef4444' : '#10b981' }}>
+                        <td style={{ padding: '10px 14px', textAlign: 'right', ...mono(12, V1.texteMuted) }}>{p.count}</td>
+                        <td style={{ padding: '10px 14px', textAlign: 'right', ...mono(12, p.ecartMoyen > 0 ? V1.danger : V1.ok, 700) }}>
                           {Number.isFinite(p.ecartMoyen) ? `${p.ecartMoyen > 0 ? '+' : ''}${Math.round(p.ecartMoyen * 10) / 10}%` : '—'}
                         </td>
-                        <td style={{ padding: '10px 14px', textAlign: 'right', fontWeight: 700, color: (p.margeMoyenne || 0) >= 20 ? '#10b981' : (p.margeMoyenne || 0) >= 15 ? '#f59e0b' : '#ef4444' }}>
+                        <td style={{ padding: '10px 14px', textAlign: 'right', ...mono(12, (p.margeMoyenne || 0) >= 20 ? V1.ok : (p.margeMoyenne || 0) >= 15 ? V1.warn : V1.danger, 700) }}>
                           {Number.isFinite(p.margeMoyenne) ? `${Math.round(p.margeMoyenne * 10) / 10}%` : '—'}
                         </td>
-                        <td style={{ padding: '10px 14px', textAlign: 'right', color: 'var(--text-secondary)' }}>
+                        <td style={{ padding: '10px 14px', textAlign: 'right', ...mono(12, V1.texteMuted) }}>
                           {Number.isFinite(p.ratioTempsMoyen) ? `×${Math.round(p.ratioTempsMoyen * 100) / 100}` : '—'}
                         </td>
                       </tr>
@@ -863,24 +863,24 @@ export default function Agents({
               const hasData = agentMemoire && Object.keys(agentMemoire).length > 0;
               const histLen = agentMemoire?.historique?.length || agentMemoire?.dsoHistorique?.length || agentMemoire?.projHistorique?.length || agentMemoire?.predictionsHistorique?.length || agentMemoire?.saisonHistorique?.length || agentMemoire?.coachHistorique?.length || 0;
               return (
-                <div key={agent.id} style={{ ...DS.card, padding: '14px 16px', display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                <div key={agent.id} style={{ ...carteV1, padding: '14px 16px', display: 'flex', gap: 12, alignItems: 'flex-start' }}>
                   <div style={{ width: 36, height: 36, borderRadius: 9, background: agent.couleur + '18', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                     <agent.Icon size={16} style={{ color: agent.couleur }} />
                   </div>
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 3 }}>{agent.nom}</div>
+                    <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 3, color: V1.texte }}>{agent.nom}</div>
                     {hasData ? (
                       <>
-                        <div style={{ fontSize: 12, color: '#15803d', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <div style={{ fontSize: 12, color: V1.ok, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
                           <Brain size={11} />
                           {histLen} entrée{histLen > 1 ? 's' : ''} · précision croissante
                         </div>
-                        <div style={{ height: 4, background: 'var(--border)', borderRadius: 2, overflow: 'hidden' }}>
-                          <div style={{ height: '100%', width: `${Math.min(100, histLen * 10)}%`, background: '#10b981', borderRadius: 2, transition: 'width 0.4s' }} />
+                        <div style={{ height: 4, background: V1.separation, borderRadius: 2, overflow: 'hidden' }}>
+                          <div style={{ height: '100%', width: `${Math.min(100, histLen * 10)}%`, background: V1.ok, borderRadius: 2, transition: 'width 0.4s' }} />
                         </div>
                       </>
                     ) : (
-                      <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>En attente de données…</div>
+                      <div style={{ fontSize: 12, color: V1.texteMuted }}>En attente de données…</div>
                     )}
                   </div>
                 </div>

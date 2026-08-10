@@ -3,15 +3,16 @@ import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { DS } from './ds';
 import { calculerCoutsChantier, fmtN, SEUILS, getIntervallesPeriode, chantiersInPeriode, getPeriodeLabel } from './donnees';
 import { useApp } from './context/AppContext';
-import KpiCard from './components/ui/KpiCard';
+import { V1, BADGES_V1, mono, carteV1 } from './design/v1';
 
 const seuils = { bon: SEUILS.margeRentable, ok: SEUILS.margeLimite };
 
+// Couleurs d'état — socle v1 (seuils métier inchangés).
 function statutMarge(pct) {
-  if (pct === null) return { label: 'N/D', bg: '#F1F5F9', color: '#94A3B8', Icon: Minus };
-  if (pct >= seuils.bon) return { label: `${Math.round(pct * 10) / 10}%`, bg: '#D1FAE5', color: '#065F46', Icon: TrendingUp };
-  if (pct >= seuils.ok)  return { label: `${Math.round(pct * 10) / 10}%`, bg: '#FEF3C7', color: '#92400E', Icon: Minus };
-  return { label: `${Math.round(pct * 10) / 10}%`, bg: '#FEE2E2', color: '#991B1B', Icon: TrendingDown };
+  if (pct === null) return { label: 'N/D', bg: V1.separation, color: V1.texteMuted, Icon: Minus };
+  if (pct >= seuils.bon) return { label: `${Math.round(pct * 10) / 10}%`, bg: BADGES_V1.ok.bg, color: BADGES_V1.ok.color, Icon: TrendingUp };
+  if (pct >= seuils.ok)  return { label: `${Math.round(pct * 10) / 10}%`, bg: BADGES_V1.warn.bg, color: BADGES_V1.warn.color, Icon: Minus };
+  return { label: `${Math.round(pct * 10) / 10}%`, bg: BADGES_V1.danger.bg, color: BADGES_V1.danger.color, Icon: TrendingDown };
 }
 
 export default function Marges({ chantiers = [], clients = [], devis = [], parametres = {}, periodeGlobale = 'annee' }) {
@@ -71,10 +72,10 @@ export default function Marges({ chantiers = [], clients = [], devis = [], param
 
   const fmt = (v) => v !== null ? `CHF ${fmtN(Math.round(v))}` : '—';
 
-  const kpiColor = kpi.margePct === null ? DS.kpi.blue
-    : kpi.margePct >= seuils.bon ? DS.kpi.green
-    : kpi.margePct >= seuils.ok  ? DS.kpi.amber
-    : DS.kpi.red;
+  const kpiColor = kpi.margePct === null ? V1.bleu
+    : kpi.margePct >= seuils.bon ? V1.ok
+    : kpi.margePct >= seuils.ok  ? V1.warn
+    : V1.danger;
 
   return (
     <div>
@@ -88,27 +89,32 @@ export default function Marges({ chantiers = [], clients = [], devis = [], param
         </div>
       </div>
 
-      {/* KPI */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24 }}>
-        <KpiCard label="CA SIGNÉ TOTAL" value={fmt(kpi.caTotal)} {...DS.kpi.blue} />
-        <KpiCard label="COÛTS RÉELS" value={fmt(kpi.coutsTotal)} {...DS.kpi.amber} />
-        <KpiCard label="MARGE TOTALE" value={fmt(kpi.margeTotal)}
-          {...(kpi.margeTotal >= 0 ? DS.kpi.green : DS.kpi.red)} />
-        <KpiCard label="MARGE MOYENNE"
-          value={kpi.margePct !== null ? `${Math.round(kpi.margePct * 10) / 10}%` : '—'}
-          badge={kpi.nbRouge > 0 ? `${kpi.nbRouge} critique${kpi.nbRouge > 1 ? 's' : ''}` : kpi.nbVert > 0 ? `${kpi.nbVert} rentable${kpi.nbVert > 1 ? 's' : ''}` : null}
-          {...kpiColor} />
+      {/* KPI — cartes v1 sobres (liseré coloré par état) */}
+      <div className="kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24 }}>
+        {[
+          { label: 'CA SIGNÉ TOTAL', val: fmt(kpi.caTotal), couleur: V1.bleu },
+          { label: 'COÛTS RÉELS', val: fmt(kpi.coutsTotal), couleur: V1.texteMuted },
+          { label: 'MARGE TOTALE', val: fmt(kpi.margeTotal), couleur: kpi.margeTotal >= 0 ? V1.ok : V1.danger },
+          { label: 'MARGE MOYENNE', val: kpi.margePct !== null ? `${Math.round(kpi.margePct * 10) / 10}%` : '—', couleur: kpiColor,
+            badge: kpi.nbRouge > 0 ? `${kpi.nbRouge} critique${kpi.nbRouge > 1 ? 's' : ''}` : kpi.nbVert > 0 ? `${kpi.nbVert} rentable${kpi.nbVert > 1 ? 's' : ''}` : null },
+        ].map(k => (
+          <div key={k.label} style={{ ...carteV1, borderTop: `3px solid ${k.couleur}`, padding: '16px 18px' }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: V1.texteMuted, textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: 6 }}>{k.label}</div>
+            <div style={{ ...mono(22, k.couleur, 700), lineHeight: 1.1 }}>{k.val}</div>
+            {k.badge && <span style={{ ...mono(10, k.couleur, 700), display: 'inline-block', marginTop: 7, background: k.couleur + '18', borderRadius: 20, padding: '2px 9px' }}>{k.badge}</span>}
+          </div>
+        ))}
       </div>
 
       {/* Légende seuils */}
       <div style={{ display: 'flex', gap: 16, marginBottom: 16, flexWrap: 'wrap' }}>
         {[
-          { bg: '#D1FAE5', color: '#065F46', label: `Rentable ≥ ${seuils.bon}%` },
-          { bg: '#FEF3C7', color: '#92400E', label: `Correct ${seuils.ok}–${seuils.bon}%` },
-          { bg: '#FEE2E2', color: '#991B1B', label: `Critique < ${seuils.ok}%` },
-          { bg: '#F1F5F9', color: '#94A3B8', label: 'Données manquantes' },
+          { bg: BADGES_V1.ok.bg, color: BADGES_V1.ok.color, label: `Rentable ≥ ${seuils.bon}%` },
+          { bg: BADGES_V1.warn.bg, color: BADGES_V1.warn.color, label: `Correct ${seuils.ok}–${seuils.bon}%` },
+          { bg: BADGES_V1.danger.bg, color: BADGES_V1.danger.color, label: `Critique < ${seuils.ok}%` },
+          { bg: V1.separation, color: V1.texteMuted, label: 'Données manquantes' },
         ].map(s => (
-          <div key={s.label} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text-muted)' }}>
+          <div key={s.label} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: V1.texteMuted }}>
             <div style={{ width: 12, height: 12, borderRadius: 3, background: s.bg, border: `1px solid ${s.color}40` }} />
             <span style={{ color: s.color, fontWeight: 600 }}>{s.label}</span>
           </div>
@@ -116,9 +122,9 @@ export default function Marges({ chantiers = [], clients = [], devis = [], param
       </div>
 
       {/* Tableau */}
-      <div style={DS.card}>
+      <div style={carteV1}>
         {rows.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '48px 0', color: 'var(--text-muted)' }}>
+          <div style={{ textAlign: 'center', padding: '48px 0', color: V1.texteMuted }}>
             <TrendingUp size={40} strokeWidth={1.2} style={{ marginBottom: 12, opacity: 0.4 }} />
             <div style={{ fontSize: 14, fontWeight: 600 }}>Aucun chantier</div>
           </div>
@@ -139,32 +145,32 @@ export default function Marges({ chantiers = [], clients = [], devis = [], param
                   const bs = DS.statuts[r.statut] || { bg: '#F1F5F9', color: '#475569' };
                   return (
                     <tr key={r.id} style={{ background: r.margeActuellePct !== null && r.margeActuellePct < seuils.ok ? `${sm.bg}44` : 'transparent' }}>
-                      <td style={{ ...DS.td, fontWeight: 700 }}>{r.nom}</td>
-                      <td style={{ ...DS.td, color: 'var(--text-secondary)' }}>{r.client}</td>
+                      <td style={{ ...DS.td, fontWeight: 700, color: V1.texte }}>{r.nom}</td>
+                      <td style={{ ...DS.td, color: V1.texteMuted }}>{r.client}</td>
                       <td style={DS.td}>
                         <span style={{ background: bs.bg, color: bs.color, borderRadius: 6, padding: '3px 9px', fontSize: 11, fontWeight: 600 }}>
                           {r.statut}
                         </span>
                       </td>
-                      <td style={{ ...DS.td, textAlign: 'right', fontWeight: 600 }}>{fmt(r.ca)}</td>
-                      <td style={{ ...DS.td, textAlign: 'right' }}>{fmt(r.coutsReel)}</td>
-                      <td style={{ ...DS.td, textAlign: 'right', fontWeight: 700, color: r.margeReel === null ? 'var(--text-muted)' : r.margeReel >= 0 ? '#065F46' : '#991B1B' }}>
+                      <td style={{ ...DS.td, textAlign: 'right', ...mono(13, V1.texte, 600) }}>{fmt(r.ca)}</td>
+                      <td style={{ ...DS.td, textAlign: 'right', ...mono(13, V1.texte) }}>{fmt(r.coutsReel)}</td>
+                      <td style={{ ...DS.td, textAlign: 'right', ...mono(13, r.margeReel === null ? V1.texteMuted : r.margeReel >= 0 ? V1.ok : V1.danger, 700) }}>
                         {r.margeReel !== null ? `CHF ${fmtN(Math.round(r.margeReel))}` : '—'}
                       </td>
                       <td style={DS.td}>
                         {r.margeActuellePct !== null ? (
-                          <span style={{ background: sm.bg, color: sm.color, borderRadius: 6, padding: '3px 10px', fontSize: 12, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                          <span style={{ ...mono(12, sm.color, 700), background: sm.bg, borderRadius: 6, padding: '3px 10px', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                             <sm.Icon size={11} strokeWidth={2.5} />
                             {sm.label}
                           </span>
-                        ) : <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>—</span>}
+                        ) : <span style={{ color: V1.texteMuted, fontSize: 12 }}>—</span>}
                       </td>
                       <td style={DS.td}>
                         {r.margePrevuPct !== null ? (
-                          <span style={{ background: sp.bg, color: sp.color, borderRadius: 6, padding: '3px 10px', fontSize: 11, fontWeight: 600 }}>
+                          <span style={{ ...mono(11, sp.color, 600), background: sp.bg, borderRadius: 6, padding: '3px 10px' }}>
                             {sp.label}
                           </span>
-                        ) : <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>—</span>}
+                        ) : <span style={{ color: V1.texteMuted, fontSize: 12 }}>—</span>}
                       </td>
                     </tr>
                   );
@@ -173,19 +179,22 @@ export default function Marges({ chantiers = [], clients = [], devis = [], param
               {/* Ligne total */}
               {kpi.nbAvecDonnees > 0 && (
                 <tfoot>
-                  <tr style={{ background: 'var(--bg-glass)', borderTop: '2px solid var(--ds-card-border)' }}>
-                    <td colSpan={3} style={{ ...DS.td, fontWeight: 800, fontSize: 13 }}>TOTAL ({kpi.nbAvecDonnees} chantiers)</td>
-                    <td style={{ ...DS.td, textAlign: 'right', fontWeight: 800 }}>{fmt(kpi.caTotal)}</td>
-                    <td style={{ ...DS.td, textAlign: 'right', fontWeight: 800 }}>{fmt(kpi.coutsTotal)}</td>
-                    <td style={{ ...DS.td, textAlign: 'right', fontWeight: 900, color: kpi.margeTotal >= 0 ? '#065F46' : '#991B1B' }}>
+                  <tr style={{ background: V1.page, borderTop: `2px solid ${V1.separation}` }}>
+                    <td colSpan={3} style={{ ...DS.td, fontWeight: 800, fontSize: 13, color: V1.texte }}>TOTAL ({kpi.nbAvecDonnees} chantiers)</td>
+                    <td style={{ ...DS.td, textAlign: 'right', ...mono(13, V1.texte, 800) }}>{fmt(kpi.caTotal)}</td>
+                    <td style={{ ...DS.td, textAlign: 'right', ...mono(13, V1.texte, 800) }}>{fmt(kpi.coutsTotal)}</td>
+                    <td style={{ ...DS.td, textAlign: 'right', ...mono(13, kpi.margeTotal >= 0 ? V1.ok : V1.danger, 800) }}>
                       {fmt(kpi.margeTotal)}
                     </td>
                     <td style={DS.td}>
-                      {kpi.margePct !== null && (
-                        <span style={{ ...statutMarge(kpi.margePct), borderRadius: 6, padding: '3px 10px', fontSize: 12, fontWeight: 800, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                          {Math.round(kpi.margePct * 10) / 10}%
-                        </span>
-                      )}
+                      {kpi.margePct !== null && (() => {
+                        const st = statutMarge(kpi.margePct);
+                        return (
+                          <span style={{ ...mono(12, st.color, 800), background: st.bg, borderRadius: 6, padding: '3px 10px', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                            {Math.round(kpi.margePct * 10) / 10}%
+                          </span>
+                        );
+                      })()}
                     </td>
                     <td style={DS.td} />
                   </tr>

@@ -1,10 +1,15 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useLayoutEffect } from 'react';
 import {
   Calculator, UserCog, Percent, FileText, Calendar,
   TrendingUp, Banknote, Target, Users, Plus, Trash2,
-  CheckCircle2, AlertTriangle,
+  CheckCircle2, AlertTriangle, Menu,
 } from 'lucide-react';
 import { DS } from '../ds';
+import { useApp } from '../context/AppContext';
+import { V1, mono, carteV1, heroFond, heroMono } from '../design/v1';
+
+// Bouton translucide du hero bleu nuit (mêmes tokens que les autres pages v1).
+const heroBtn = { background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.18)', borderRadius: 8, padding: '6px 11px', cursor: 'pointer', color: '#fff', display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: 'inherit', fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap' };
 
 // ─── CONSTANTES MÉTIER ───────────────────────────────────────────────────────
 
@@ -238,23 +243,37 @@ function TabPricing() {
     setPostes(ps => ps.map(p => p.id === id ? { ...p, [k]: v } : p));
   }
 
+  const margeCouleur = m => m >= 0.25 ? V1.ok : m >= 0.15 ? V1.warn : V1.danger;
+  const margeVariant = margeGlobale >= 0.25 ? V1.ok : margeGlobale >= 0.15 ? V1.warn : V1.danger;
+  const margeVerdict = margeGlobale >= 0.25 ? 'Cible CYNA atteinte (≥ 25%)' : margeGlobale >= 0.15 ? 'Sous cible — surveiller' : 'Marge insuffisante — revoir';
+
   return (
-    <Card>
-      <CardHeader Icon={FileText} title="Pricing de devis" subtitle="Décomposition par poste — matériaux + main d'œuvre + marges" />
+    <div style={carteV1}>
+      {/* En-tête */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 20 }}>
+        <div style={{ background: V1.bleuFond, borderRadius: 10, padding: 8, color: V1.bleu, display: 'flex', flexShrink: 0 }}>
+          <FileText size={18} />
+        </div>
+        <div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: V1.texte, lineHeight: 1.3 }}>Pricing de devis</div>
+          <div style={{ fontSize: 12, color: V1.texteMuted, marginTop: 2 }}>Décomposition par poste — matériaux + main d'œuvre + marges</div>
+        </div>
+      </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         {postes.map((p, i) => {
           const r = calcules[i];
           return (
-            <div key={p.id} style={{ ...DS.cardInset, padding: 14 }}>
+            <div key={p.id} style={{ ...carteV1, borderLeft: `4px solid ${V1.bleu}`, padding: 14 }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-                <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase' }}>
+                <span style={{ ...mono(11, V1.texteMuted, 700), textTransform: 'uppercase' }}>
                   Poste {i + 1}
                 </span>
                 {postes.length > 1 && (
                   <button
                     onClick={() => setPostes(ps => ps.filter(x => x.id !== p.id))}
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', padding: 4 }}
+                    aria-label="Supprimer le poste"
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: V1.danger, padding: 4 }}
                   >
                     <Trash2 size={14} />
                   </button>
@@ -276,9 +295,9 @@ function TabPricing() {
                 <Field label="Marque mat." suffix="%" value={p.marqueMatPct} onChange={v => upd(p.id, 'marqueMatPct', v)} />
               </div>
               {r.pvHT > 0 && (
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                  <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>PV HT : <strong>{fmtCHF(r.pvHT)}</strong></span>
-                  <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Marge : <strong style={{ color: r.marge >= 0.25 ? '#10b981' : r.marge >= 0.15 ? '#f59e0b' : '#ef4444' }}>{fmtPct(r.marge)}</strong></span>
+                <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', paddingTop: 8, borderTop: `1px solid ${V1.separation}` }}>
+                  <span style={{ fontSize: 12, color: V1.texteMuted }}>PV HT : <strong style={{ ...mono(13, V1.texte, 700) }}>{fmtCHF(r.pvHT)}</strong></span>
+                  <span style={{ fontSize: 12, color: V1.texteMuted }}>Marge : <strong style={{ ...mono(13, margeCouleur(r.marge), 700) }}>{fmtPct(r.marge)}</strong></span>
                 </div>
               )}
             </div>
@@ -287,28 +306,34 @@ function TabPricing() {
 
         <button
           onClick={() => setPostes(ps => [...ps, POSTE_VIDE(String(Date.now()))])}
-          style={{ ...DS.btnGhost, alignSelf: 'flex-start' }}
+          style={{ ...heroBtn, alignSelf: 'flex-start', background: V1.bleu, border: `1px solid ${V1.bleu}`, padding: '8px 14px', fontWeight: 700 }}
         >
           <Plus size={14} /> Ajouter un poste
         </button>
       </div>
 
+      {/* Résultats — 4 cartes v1 */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginTop: 20 }}>
-        <Stat label="Coût total" value={fmtCHF(coutTotal)} size="sm" />
-        <Stat label="Total HT" value={fmtCHF(totalHT)} size="sm" />
-        <Stat label="TVA 8.1%" value={fmtCHF(totalHT * PARAMS.TVA)} size="sm" />
-        <Stat label="Total TTC" value={fmtCHF(totalHT * 1.081)} size="md" />
+        {[
+          { label: 'Coût total', val: fmtCHF(coutTotal), couleur: V1.texteMuted },
+          { label: 'Total HT', val: fmtCHF(totalHT), couleur: V1.texte },
+          { label: 'TVA 8.1%', val: fmtCHF(totalHT * PARAMS.TVA), couleur: V1.texteMuted },
+          { label: 'Total TTC', val: fmtCHF(totalHT * 1.081), couleur: V1.bleu },
+        ].map(s => (
+          <div key={s.label} style={{ ...carteV1, padding: '12px 14px' }}>
+            <div style={{ fontSize: 11, color: V1.texteMuted, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>{s.label}</div>
+            <div style={{ ...mono(18, s.couleur, 700) }}>{s.val}</div>
+          </div>
+        ))}
       </div>
-      <div style={{ marginTop: 10 }}>
-        <Stat
-          label="Marge brute globale"
-          value={`${fmtCHF(totalHT - coutTotal)} (${fmtPct(margeGlobale)})`}
-          variant={margeGlobale >= 0.25 ? 'success' : margeGlobale >= 0.15 ? 'warning' : 'danger'}
-          hint={margeGlobale >= 0.25 ? 'Cible CYNA atteinte (≥ 25%)' : margeGlobale >= 0.15 ? 'Sous cible — surveiller' : 'Marge insuffisante — revoir'}
-          size="md"
-        />
+
+      {/* Marge brute globale — carte à liseré coloré selon l'état */}
+      <div style={{ ...carteV1, borderLeft: `4px solid ${margeVariant}`, padding: '14px 16px', marginTop: 10 }}>
+        <div style={{ fontSize: 11, color: V1.texteMuted, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Marge brute globale</div>
+        <div style={{ ...mono(22, margeVariant, 700) }}>{fmtCHF(totalHT - coutTotal)} ({fmtPct(margeGlobale)})</div>
+        <div style={{ fontSize: 11, color: V1.texteMuted, marginTop: 4 }}>{margeVerdict}</div>
       </div>
-    </Card>
+    </div>
   );
 }
 
@@ -755,58 +780,76 @@ const ONGLETS = [
   { id: 'score',   label: 'Score client',         Icon: Users,      Composant: TabScoreClient },
 ];
 
+// Ligne mono contextuelle par onglet (affichage seul).
+const LIGNE_MONO = {
+  pricing: 'DÉCOMPOSITION PAR POSTE · PV · MARGES · TVA 8.1%',
+  marge:   'MARGE · MARQUE · COEFFICIENT DE VENTE',
+  chr:     'COÛT HORAIRE DE REVIENT · MAIN D\'ŒUVRE',
+  duree:   'DURÉE CHANTIER · CHARGE · EFFECTIF',
+  evm:     'PILOTAGE EVM · CPI · SPI · EAC',
+  treso:   'TRÉSORERIE · DSO · BFR · INTÉRÊTS MORATOIRES',
+  seuil:   'SEUIL DE RENTABILITÉ · POINT MORT',
+  score:   'SCORE CLIENT · RISQUE · ACOMPTE',
+};
+
 export default function CalculsPage() {
+  const { ouvrirMenu } = useApp();
   const [onglet, setOnglet] = useState('pricing');
   const actif = ONGLETS.find(o => o.id === onglet);
   const Composant = actif?.Composant;
 
+  // La page passe en « hero plein écran » (Topbar blanc masqué) comme les autres pages v1.
+  useLayoutEffect(() => {
+    document.body.classList.add('hero-fullscreen');
+    return () => document.body.classList.remove('hero-fullscreen');
+  }, []);
+
   return (
-    <div style={{ maxWidth: 900, margin: '0 auto', padding: '24px 16px' }}>
-      {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
-        <div style={{ background: 'rgba(13,61,110,0.08)', borderRadius: 12, padding: 10, color: '#0d3d6e' }}>
-          <Calculator size={22} />
+    <div>
+      {/* ══ HERO BLEU NUIT (design v1, bord à bord, collé au sommet) — 8 onglets calculateurs ══ */}
+      <div className="page-hero-bleed" data-testid="hero-calculs" style={{ ...heroFond, padding: '20px 32px 0', position: 'relative' }}>
+        {/* Ligne 1 — ☰ · CYNA · CALCULS / 13 · {contexte} */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18, flexWrap: 'wrap' }}>
+          {ouvrirMenu && (
+            <button onClick={ouvrirMenu} aria-label="Menu" style={{ ...heroBtn, padding: 7 }}><Menu size={16} /></button>
+          )}
+          <span style={{ fontFamily: "'Inter', sans-serif", fontWeight: 800, fontSize: 15, letterSpacing: '0.06em', color: '#fff' }}>CYNA</span>
+          <span style={heroMono(10, 0.55)}>· CALCULS / 13 · {actif?.label?.toUpperCase()}</span>
         </div>
-        <div>
-          <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
-            Calculs métier CYNA
-          </h1>
-          <p style={{ fontSize: 13, color: 'var(--text-tertiary)', margin: 0 }}>
-            Pricing · Marges · CHR · EVM · Trésorerie — chaque décision avec un chiffre vérifié
-          </p>
+
+        {/* Ligne 2 — index mono + titre (icône + « Calculs métier ») + ligne mono contextuelle */}
+        <div style={heroMono(11, 0.6)}>CALCULS / 13</div>
+        <h1 style={{ fontFamily: "'Inter', sans-serif", fontWeight: 700, fontSize: 34, margin: '8px 0 8px', letterSpacing: '-0.02em', color: '#fff', display: 'flex', alignItems: 'center', gap: 12 }}>
+          <Calculator size={30} strokeWidth={1.8} />
+          Calculs métier
+        </h1>
+        <div style={heroMono(11, 0.7)}>{LIGNE_MONO[onglet]}</div>
+
+        {/* Ligne 3 — 8 onglets collés au bas du hero (défilables sur mobile) */}
+        <div style={{ display: 'flex', gap: 2, marginTop: 22, overflowX: 'auto', scrollbarWidth: 'none' }}>
+          {ONGLETS.map(o => {
+            const on = o.id === onglet;
+            return (
+              <button key={o.id} onClick={() => setOnglet(o.id)} style={{
+                background: 'transparent', border: 'none',
+                borderBottom: on ? '2px solid #fff' : '2px solid transparent',
+                color: on ? '#fff' : 'rgba(255,255,255,0.6)',
+                padding: '10px 16px', cursor: 'pointer', fontFamily: 'inherit',
+                fontSize: 14, fontWeight: on ? 700 : 500, whiteSpace: 'nowrap', flexShrink: 0,
+                display: 'flex', alignItems: 'center', gap: 7,
+              }}>
+                <o.Icon size={14} />
+                {o.label}
+              </button>
+            );
+          })}
         </div>
       </div>
 
-      {/* Onglets */}
-      <div style={{
-        display: 'flex', gap: 2, overflowX: 'auto', paddingBottom: 2,
-        borderBottom: '1px solid var(--border-light)', marginBottom: 20,
-      }}>
-        {ONGLETS.map(o => {
-          const on = o.id === onglet;
-          return (
-            <button
-              key={o.id}
-              onClick={() => setOnglet(o.id)}
-              style={{
-                display: 'inline-flex', alignItems: 'center', gap: 6,
-                padding: '8px 12px', borderRadius: '8px 8px 0 0', whiteSpace: 'nowrap',
-                border: 'none', borderBottom: on ? '2px solid #0d3d6e' : '2px solid transparent',
-                background: on ? 'rgba(13,61,110,0.06)' : 'transparent',
-                color: on ? '#0d3d6e' : 'var(--text-tertiary)',
-                fontWeight: on ? 700 : 500, fontSize: 13, cursor: 'pointer',
-                transition: 'all 0.14s', fontFamily: 'inherit',
-              }}
-            >
-              <o.Icon size={14} />
-              {o.label}
-            </button>
-          );
-        })}
+      {/* ── Contenu (centré) ── */}
+      <div style={{ maxWidth: 900, margin: '0 auto', padding: '24px 16px' }}>
+        {Composant && <Composant />}
       </div>
-
-      {/* Contenu */}
-      {Composant && <Composant />}
     </div>
   );
 }

@@ -11,6 +11,9 @@ import { V1, mono, carteV1, heroFond, heroMono } from '../design/v1';
 // Bouton translucide du hero bleu nuit (mêmes tokens que les autres pages v1).
 const heroBtn = { background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.18)', borderRadius: 8, padding: '6px 11px', cursor: 'pointer', color: '#fff', display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: 'inherit', fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap' };
 
+// Zone de saisie v1 — carte à bord gauche bleu (données d'entrée des calculateurs).
+const zoneSaisie = { background: V1.carte, border: `1px solid ${V1.separation}`, borderLeft: `4px solid ${V1.bleu}`, borderRadius: 12, padding: 14 };
+
 // ─── CONSTANTES MÉTIER ───────────────────────────────────────────────────────
 
 const PARAMS = {
@@ -117,9 +120,12 @@ function scoreClient(historique) {
 
 // ─── COMPOSANTS UI INTERNES ───────────────────────────────────────────────────
 
+// Briques partagées — modernisées au socle v1 (utilisées par TOUS les onglets
+// sauf Pricing qui est déjà en inline v1). Aucune logique ici : présentation seule.
+
 function Card({ children, style }) {
   return (
-    <div style={{ ...DS.card, marginBottom: 0, ...style }}>
+    <div style={{ ...carteV1, marginBottom: 0, ...style }}>
       {children}
     </div>
   );
@@ -130,18 +136,18 @@ function CardHeader({ Icon, title, subtitle }) {
     <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 20 }}>
       {Icon && (
         <div style={{
-          background: 'rgba(13,61,110,0.08)', borderRadius: 10, padding: 8,
-          color: '#0d3d6e', display: 'flex', flexShrink: 0,
+          background: V1.bleuFond, borderRadius: 10, padding: 8,
+          color: V1.bleu, display: 'flex', flexShrink: 0,
         }}>
           <Icon size={18} />
         </div>
       )}
       <div>
-        <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.3 }}>
+        <div style={{ fontSize: 15, fontWeight: 700, color: V1.texte, lineHeight: 1.3 }}>
           {title}
         </div>
         {subtitle && (
-          <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 2 }}>
+          <div style={{ fontSize: 12, color: V1.texteMuted, marginTop: 2 }}>
             {subtitle}
           </div>
         )}
@@ -153,9 +159,11 @@ function CardHeader({ Icon, title, subtitle }) {
 function Field({ label, value, onChange, suffix, type = 'number', step, min, max }) {
   return (
     <label style={{ display: 'block' }}>
-      <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>
-        {label}
-      </div>
+      {label && (
+        <div style={{ fontSize: 11, fontWeight: 600, color: V1.texteMuted, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>
+          {label}
+        </div>
+      )}
       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
         <input
           type={type}
@@ -167,12 +175,12 @@ function Field({ label, value, onChange, suffix, type = 'number', step, min, max
           style={{
             ...DS.input,
             flex: 1,
-            fontSize: 13,
+            ...mono(13, V1.texte, 600),
             padding: '7px 10px',
           }}
         />
         {suffix && (
-          <span style={{ fontSize: 12, color: 'var(--text-tertiary)', whiteSpace: 'nowrap' }}>
+          <span style={{ ...mono(11, V1.texteMuted), whiteSpace: 'nowrap' }}>
             {suffix}
           </span>
         )}
@@ -185,7 +193,7 @@ function Grid({ cols = 2, gap = 12, children }) {
   return (
     <div style={{
       display: 'grid',
-      gridTemplateColumns: `repeat(${cols}, 1fr)`,
+      gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
       gap,
     }}>
       {children}
@@ -195,25 +203,25 @@ function Grid({ cols = 2, gap = 12, children }) {
 
 function Stat({ label, value, hint, variant = 'default', size = 'md' }) {
   const colors = {
-    default: 'var(--text-primary)',
-    success: '#10b981',
-    warning: '#f59e0b',
-    danger: '#ef4444',
+    default: V1.texte,
+    success: V1.ok,
+    warning: V1.warn,
+    danger: V1.danger,
   };
   const sizes = { sm: 16, md: 22, lg: 28 };
   return (
     <div style={{
-      ...DS.cardInset,
+      background: V1.page, border: `1px solid ${V1.separation}`, borderRadius: 12,
       padding: '12px 14px',
     }}>
-      <div style={{ fontSize: 11, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>
+      <div style={{ fontSize: 11, color: V1.texteMuted, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>
         {label}
       </div>
-      <div style={{ fontSize: sizes[size], fontWeight: 700, color: colors[variant], fontVariantNumeric: 'tabular-nums' }}>
+      <div style={{ ...mono(sizes[size], colors[variant], 700) }}>
         {value}
       </div>
       {hint && (
-        <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 4 }}>
+        <div style={{ fontSize: 11, color: V1.texteMuted, marginTop: 4 }}>
           {hint}
         </div>
       )}
@@ -353,15 +361,17 @@ function TabMarge() {
     <Card>
       <CardHeader Icon={Percent} title="Marge vs Marque" subtitle="Le piège qui coûte le plus cher en BTP — clarifier avant de signer" />
 
-      <Grid cols={3} gap={12}>
-        <Field label="Coût" suffix="CHF" value={cout} onChange={setCout} />
-        <Field label="Prix de vente" suffix="CHF" value={pv} onChange={setPv} />
-        <Field label="Marque cible" suffix="%" value={marqueCible} step="0.5" onChange={setMarqueCible} />
-      </Grid>
+      <div style={{ ...zoneSaisie }}>
+        <Grid cols={3} gap={12}>
+          <Field label="Coût" suffix="CHF" value={cout} onChange={setCout} />
+          <Field label="Prix de vente" suffix="CHF" value={pv} onChange={setPv} />
+          <Field label="Marque cible" suffix="%" value={marqueCible} step="0.5" onChange={setMarqueCible} />
+        </Grid>
+      </div>
 
       <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
-        <div style={{ ...DS.cardInset, padding: 14 }}>
-          <div style={{ fontSize: 11, color: 'var(--text-tertiary)', textTransform: 'uppercase', marginBottom: 10 }}>
+        <div style={{ background: V1.page, border: `1px solid ${V1.separation}`, borderRadius: 12, padding: 14 }}>
+          <div style={{ fontSize: 11, color: V1.texteMuted, textTransform: 'uppercase', marginBottom: 10 }}>
             Résultats observés
           </div>
           <Grid cols={2} gap={10}>
@@ -370,8 +380,8 @@ function TabMarge() {
           </Grid>
         </div>
 
-        <div style={{ background: 'rgba(13,61,110,0.04)', borderRadius: 10, padding: 14, border: '1px solid rgba(13,61,110,0.12)' }}>
-          <div style={{ fontSize: 11, color: '#0d3d6e', textTransform: 'uppercase', fontWeight: 600, marginBottom: 10 }}>
+        <div style={{ background: V1.bleuFond, borderRadius: 12, padding: 14, border: `1px solid ${V1.bleu}22` }}>
+          <div style={{ fontSize: 11, color: V1.bleu, textTransform: 'uppercase', fontWeight: 600, marginBottom: 10 }}>
             À partir de la marque cible ({marqueCible}%)
           </div>
           <Grid cols={2} gap={10}>
@@ -380,8 +390,8 @@ function TabMarge() {
           </Grid>
         </div>
 
-        <div style={{ background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.2)', borderRadius: 8, padding: 12, fontSize: 12, color: 'var(--text-secondary)' }}>
-          <strong>Rappel :</strong> "30% de marge" peut signifier 30% du coût (PV=130) ou 30% du prix de vente (PV=142.86). La différence sur un chantier de CHF 500 000 représente CHF 6 400 d'écart.
+        <div style={{ background: 'rgba(232,145,43,0.07)', border: `1px solid ${V1.warn}33`, borderRadius: 10, padding: 12, fontSize: 12, color: V1.texteMuted }}>
+          <strong style={{ color: V1.texte }}>Rappel :</strong> "30% de marge" peut signifier 30% du coût (PV=130) ou 30% du prix de vente (PV=142.86). La différence sur un chantier de CHF 500 000 représente CHF 6 400 d'écart.
         </div>
       </div>
     </Card>
@@ -409,12 +419,14 @@ function TabCHR() {
     <Card>
       <CardHeader Icon={UserCog} title="Coût Horaire Réel (CHR)" subtitle="Combien coûte réellement une heure productive — base du pricing MO" />
 
-      <Grid cols={2} gap={12}>
-        <Field label="Salaire brut annuel" suffix="CHF" value={salaire} onChange={setSalaire} />
-        <Field label="Charges sociales" suffix="%" step="0.1" value={charges} onChange={setCharges} />
-        <Field label="Coûts indirects / an" suffix="CHF" value={indirects} onChange={setIndirects} />
-        <Field label="Heures productives / an" suffix="h" value={heuresProd} onChange={setHeuresProd} />
-      </Grid>
+      <div style={{ ...zoneSaisie }}>
+        <Grid cols={2} gap={12}>
+          <Field label="Salaire brut annuel" suffix="CHF" value={salaire} onChange={setSalaire} />
+          <Field label="Charges sociales" suffix="%" step="0.1" value={charges} onChange={setCharges} />
+          <Field label="Coûts indirects / an" suffix="CHF" value={indirects} onChange={setIndirects} />
+          <Field label="Heures productives / an" suffix="h" value={heuresProd} onChange={setHeuresProd} />
+        </Grid>
+      </div>
 
       <div style={{ marginTop: 16, display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10 }}>
         <Stat label="Coût total annuel" value={fmtCHF(r.total)} size="sm" />
@@ -671,11 +683,13 @@ function TabSeuil() {
     <Card>
       <CardHeader Icon={Target} title="Seuil de rentabilité" subtitle="À combien de CA tu couvres tous tes frais fixes — point mort annuel" />
 
-      <Grid cols={3} gap={12}>
-        <Field label="Frais fixes annuels" suffix="CHF" value={fixe} onChange={setFixe} />
-        <Field label="Taux MB moyen" suffix="%" step="0.5" value={tauxMB} onChange={setTauxMB} />
-        <Field label="CA réalisé / projeté" suffix="CHF" value={caRealise} onChange={setCaRealise} />
-      </Grid>
+      <div style={{ ...zoneSaisie }}>
+        <Grid cols={3} gap={12}>
+          <Field label="Frais fixes annuels" suffix="CHF" value={fixe} onChange={setFixe} />
+          <Field label="Taux MB moyen" suffix="%" step="0.5" value={tauxMB} onChange={setTauxMB} />
+          <Field label="CA réalisé / projeté" suffix="CHF" value={caRealise} onChange={setCaRealise} />
+        </Grid>
+      </div>
 
       <div style={{ marginTop: 16, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
         <Stat label="Seuil de rentabilité (CA annuel)" value={isFinite(sr) ? fmtCHF(sr) : '—'} size="lg" hint="Frais fixes / Taux MB" />
@@ -689,11 +703,11 @@ function TabSeuil() {
       </div>
 
       {jourAtteinte !== null && (
-        <div style={{ marginTop: 12, ...DS.cardInset, padding: 12, fontSize: 13, color: 'var(--text-secondary)' }}>
-          CYNA doit facturer <strong>{fmtCHF(sr / 12)}</strong> par mois pour ne pas perdre d'argent.
+        <div style={{ marginTop: 12, background: V1.bleuFond, border: `1px solid ${V1.bleu}22`, borderRadius: 10, padding: 12, fontSize: 13, color: V1.texteMuted }}>
+          CYNA doit facturer <strong style={{ ...mono(13, V1.texte, 700) }}>{fmtCHF(sr / 12)}</strong> par mois pour ne pas perdre d'argent.
           {ecart >= 0
-            ? <> Avec le CA projeté, le point mort est atteint le <strong style={{ color: '#10b981' }}>{jourAtteinte}e jour</strong> de l'année.</>
-            : <> Avec le CA projeté, le seuil <strong style={{ color: '#ef4444' }}>n'est pas atteint</strong> — augmenter le CA ou réduire les frais fixes.</>}
+            ? <> Avec le CA projeté, le point mort est atteint le <strong style={{ color: V1.ok }}>{jourAtteinte}e jour</strong> de l'année.</>
+            : <> Avec le CA projeté, le seuil <strong style={{ color: V1.danger }}>n'est pas atteint</strong> — augmenter le CA ou réduire les frais fixes.</>}
         </div>
       )}
     </Card>

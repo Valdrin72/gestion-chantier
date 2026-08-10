@@ -484,16 +484,18 @@ function TabDuree() {
     <Card>
       <CardHeader Icon={Calendar} title="Durée chantier" subtitle="Productivité ajustée → durée totale avec marges opérationnelles" />
 
-      <Grid cols={3} gap={12}>
-        <Field label="Quantité" suffix="m²" value={qte} onChange={setQte} />
-        <Field label="Productivité baseline" suffix="u/j" value={baseline} onChange={setBaseline} />
-        <Field label="Buffer aléas" suffix="%" value={buffer} onChange={setBuffer} />
-        <Field label="Préparation" suffix="j" step="0.5" value={prep} onChange={setPrep} />
-        <Field label="Nettoyage / réception" suffix="j" step="0.5" value={nettoyage} onChange={setNettoyage} />
-      </Grid>
+      <div style={{ ...zoneSaisie }}>
+        <Grid cols={3} gap={12}>
+          <Field label="Quantité" suffix="m²" value={qte} onChange={setQte} />
+          <Field label="Productivité baseline" suffix="u/j" value={baseline} onChange={setBaseline} />
+          <Field label="Buffer aléas" suffix="%" value={buffer} onChange={setBuffer} />
+          <Field label="Préparation" suffix="j" step="0.5" value={prep} onChange={setPrep} />
+          <Field label="Nettoyage / réception" suffix="j" step="0.5" value={nettoyage} onChange={setNettoyage} />
+        </Grid>
+      </div>
 
       <div style={{ marginTop: 16 }}>
-        <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', marginBottom: 8 }}>
+        <div style={{ fontSize: 11, fontWeight: 600, color: V1.texteMuted, textTransform: 'uppercase', marginBottom: 8 }}>
           Coefficients d'ajustement
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 6 }}>
@@ -508,14 +510,14 @@ function TabDuree() {
                   setActifs(n);
                 }}
                 style={{
-                  background: on ? 'rgba(13,61,110,0.08)' : 'var(--ds-card-inset-bg)',
-                  border: `1px solid ${on ? '#0d3d6e' : 'var(--ds-card-inset-border)'}`,
+                  background: on ? V1.bleuFond : V1.page,
+                  border: `1px solid ${on ? V1.bleu : V1.separation}`,
                   borderRadius: 8, padding: '8px 10px', cursor: 'pointer',
-                  textAlign: 'left', transition: 'all 0.14s',
+                  textAlign: 'left', transition: 'all 0.14s', fontFamily: 'inherit',
                 }}
               >
-                <div style={{ fontSize: 12, fontWeight: 600, color: on ? '#0d3d6e' : 'var(--text-secondary)' }}>{c.label}</div>
-                <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>× {c.v}</div>
+                <div style={{ fontSize: 12, fontWeight: 600, color: on ? V1.bleu : V1.texteMuted }}>{c.label}</div>
+                <div style={{ ...mono(11, V1.texteMuted) }}>× {c.v}</div>
               </button>
             );
           })}
@@ -543,19 +545,21 @@ function TabEVM() {
   const r = useMemo(() => calculerEVM({ budget, tempsEcoule, travauxRealises, coutsEngages }),
     [budget, tempsEcoule, travauxRealises, coutsEngages]);
 
-  const statutColors = { OK: '#10b981', VIGILANCE: '#f59e0b', CRITIQUE: '#ef4444' };
+  const statutColors = { OK: V1.ok, VIGILANCE: V1.warn, CRITIQUE: V1.danger };
   const StatutIcon = r.statut === 'OK' ? CheckCircle2 : AlertTriangle;
 
   return (
     <Card>
       <CardHeader Icon={TrendingUp} title="EVM — Pilotage chantier en temps réel" subtitle="Earned Value Management : détecter le dépassement AVANT qu'il arrive" />
 
-      <Grid cols={2} gap={12}>
-        <Field label="Budget total" suffix="CHF" value={budget} onChange={setBudget} />
-        <Field label="Coûts engagés (AC)" suffix="CHF" value={coutsEngages} onChange={setCoutsEngages} />
-        <Field label="% Temps écoulé" suffix="%" min="0" max="100" value={tempsEcoule} onChange={setTempsEcoule} />
-        <Field label="% Travaux réalisés" suffix="%" min="0" max="100" value={travauxRealises} onChange={setTravauxRealises} />
-      </Grid>
+      <div style={{ ...zoneSaisie }}>
+        <Grid cols={2} gap={12}>
+          <Field label="Budget total" suffix="CHF" value={budget} onChange={setBudget} />
+          <Field label="Coûts engagés (AC)" suffix="CHF" value={coutsEngages} onChange={setCoutsEngages} />
+          <Field label="% Temps écoulé" suffix="%" min="0" max="100" value={tempsEcoule} onChange={setTempsEcoule} />
+          <Field label="% Travaux réalisés" suffix="%" min="0" max="100" value={travauxRealises} onChange={setTravauxRealises} />
+        </Grid>
+      </div>
 
       <div style={{ marginTop: 16, display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
         <Stat label="PV (planned value)" value={fmtCHF(r.PV)} size="sm" hint="Dépense prévue à ce stade" />
@@ -577,14 +581,15 @@ function TabEVM() {
 
       <div style={{
         marginTop: 12,
-        background: r.statut === 'OK' ? 'rgba(16,185,129,0.06)' : r.statut === 'VIGILANCE' ? 'rgba(245,158,11,0.06)' : 'rgba(239,68,68,0.06)',
-        border: `1px solid ${r.statut === 'OK' ? 'rgba(16,185,129,0.2)' : r.statut === 'VIGILANCE' ? 'rgba(245,158,11,0.2)' : 'rgba(239,68,68,0.2)'}`,
+        background: statutColors[r.statut] + '12',
+        border: `1px solid ${statutColors[r.statut]}33`,
+        borderLeft: `4px solid ${statutColors[r.statut]}`,
         borderRadius: 10, padding: 14, display: 'flex', gap: 10,
       }}>
         <StatutIcon size={18} color={statutColors[r.statut]} style={{ flexShrink: 0, marginTop: 1 }} />
         <div>
           <div style={{ fontWeight: 700, color: statutColors[r.statut], fontSize: 13 }}>{r.statut}</div>
-          <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 2 }}>
+          <div style={{ fontSize: 13, color: V1.texteMuted, marginTop: 2 }}>
             {r.statut === 'OK' && 'Chantier conforme aux prévisions — continuer la surveillance.'}
             {r.statut === 'VIGILANCE' && 'Dérive légère détectée — identifier la cause avant la prochaine étape.'}
             {r.statut === 'CRITIQUE' && `Action requise immédiatement — dépassement projeté : ${fmtCHF(Math.max(0, r.EAC - budget))}`}
@@ -616,9 +621,9 @@ function TabTresorerie() {
     <Card>
       <CardHeader Icon={Banknote} title="Trésorerie — DSO, BFR, intérêts moratoires" subtitle="Combien le retard de tes clients te coûte vraiment" />
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-        <section>
-          <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', marginBottom: 8 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <section style={{ ...zoneSaisie }}>
+          <div style={{ fontSize: 11, fontWeight: 600, color: V1.bleu, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10 }}>
             DSO — Délai moyen d'encaissement
           </div>
           <Grid cols={3} gap={12}>
@@ -633,8 +638,8 @@ function TabTresorerie() {
           </div>
         </section>
 
-        <section>
-          <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', marginBottom: 8 }}>
+        <section style={{ ...zoneSaisie }}>
+          <div style={{ fontSize: 11, fontWeight: 600, color: V1.bleu, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10 }}>
             BFR — Besoin en fonds de roulement
           </div>
           <Grid cols={2} gap={12}>
@@ -650,8 +655,8 @@ function TabTresorerie() {
           </div>
         </section>
 
-        <section>
-          <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', marginBottom: 8 }}>
+        <section style={{ ...zoneSaisie }}>
+          <div style={{ fontSize: 11, fontWeight: 600, color: V1.bleu, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10 }}>
             Intérêts moratoires (CO art. 104 — 5% l'an)
           </div>
           <Grid cols={2} gap={12}>
@@ -736,8 +741,8 @@ function TabScoreClient() {
     <Card>
       <CardHeader Icon={Users} title="Score client" subtitle="Historique de paiement → catégorie de risque + acompte recommandé" />
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: 8, fontSize: 11, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', padding: '0 4px' }}>
+      <div style={{ ...zoneSaisie, display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: 8, fontSize: 11, fontWeight: 600, color: V1.texteMuted, textTransform: 'uppercase', letterSpacing: '0.05em', padding: '0 4px' }}>
           <span>Montant facture</span><span>Jours de retard</span><span></span>
         </div>
         {paiements.map(p => (
@@ -746,7 +751,8 @@ function TabScoreClient() {
             <Field label="" value={p.retard} suffix="j" onChange={v => upd(p.id, 'retard', v)} />
             <button
               onClick={() => setPaiements(ps => ps.filter(x => x.id !== p.id))}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', padding: '7px 8px' }}
+              aria-label="Supprimer le paiement"
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: V1.danger, padding: '7px 8px' }}
             >
               <Trash2 size={14} />
             </button>
@@ -754,7 +760,7 @@ function TabScoreClient() {
         ))}
         <button
           onClick={() => setPaiements(ps => [...ps, PAIEMENT_VIDE(String(Date.now()))])}
-          style={{ ...DS.btnGhost, alignSelf: 'flex-start', marginTop: 4 }}
+          style={{ ...heroBtn, alignSelf: 'flex-start', marginTop: 4, background: V1.bleu, border: `1px solid ${V1.bleu}`, padding: '8px 14px', fontWeight: 700 }}
         >
           <Plus size={14} /> Ajouter un paiement
         </button>
@@ -771,7 +777,7 @@ function TabScoreClient() {
         <Stat label="Acompte recommandé" value={fmtPct(r.acompte, 0)} hint="À la signature" size="sm" />
       </div>
 
-      <div style={{ marginTop: 12, ...DS.cardInset, padding: 12, fontSize: 13, color: 'var(--text-secondary)' }}>
+      <div style={{ marginTop: 12, background: V1.bleuFond, border: `1px solid ${V1.bleu}22`, borderRadius: 10, padding: 12, fontSize: 13, color: V1.texteMuted }}>
         {r.cat === 'Fiable' && 'Client de confiance. Conditions standards acceptables.'}
         {r.cat === 'Standard' && 'Comportement normal. Conditions standards (30 j, acompte 30%).'}
         {r.cat === 'Lent' && 'Délais récurrents. Acompte 40%, échéance ferme, relance automatique J+15.'}

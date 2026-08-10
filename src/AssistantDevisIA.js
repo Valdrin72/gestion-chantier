@@ -3,19 +3,20 @@ import { Sparkles, ChevronDown, ChevronUp, Check, Award } from 'lucide-react';
 import { DS } from './ds';
 import { useApp } from './context/AppContext';
 import { fmtN, calculerCoutsChantier, SEUILS } from './donnees';
+import { V1, mono } from './design/v1';
 
-function StatBarre({ label, val, min, max, couleur = '#0d3d6e', unite = '' }) {
+function StatBarre({ label, val, min, max, couleur = V1.bleu, unite = '' }) {
   const pct = max > min ? Math.min(100, Math.max(0, ((val - min) / (max - min)) * 100)) : 50;
   return (
     <div style={{ marginBottom: 10 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--text-muted)', marginBottom: 3 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: V1.texteMuted, marginBottom: 3 }}>
         <span>{label}</span>
-        <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{fmtN(Math.round(val))}{unite}</span>
+        <span style={{ ...mono(12, V1.texte, 700) }}>{fmtN(Math.round(val))}{unite}</span>
       </div>
-      <div style={{ height: 5, background: 'var(--bg-glass)', borderRadius: 3, overflow: 'hidden' }}>
+      <div style={{ height: 5, background: V1.separation, borderRadius: 3, overflow: 'hidden' }}>
         <div style={{ height: '100%', width: `${pct}%`, background: couleur, borderRadius: 3 }} />
       </div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, color: 'var(--text-muted)', marginTop: 1 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', ...mono(9, V1.texteMuted), marginTop: 1 }}>
         <span>Min {fmtN(Math.round(min))}{unite}</span><span>Max {fmtN(Math.round(max))}{unite}</span>
       </div>
     </div>
@@ -81,33 +82,33 @@ export default function AssistantDevisIA({ chantiers = [], devis = [], parametre
     return (
       <div style={{ marginBottom: 16 }}>
         <button onClick={() => setOuvert(true)}
-          style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', background: 'linear-gradient(135deg, #f0f4ff, #e8f5e9)', border: '1px solid #c7d7fc', borderRadius: 12, padding: '12px 16px', cursor: 'pointer', fontFamily: 'inherit' }}>
-          <Sparkles size={16} color="#4f46e5" />
+          style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', background: V1.bleuFond, border: `1px solid ${V1.bleu}33`, borderRadius: 12, padding: '12px 16px', cursor: 'pointer', fontFamily: 'inherit' }}>
+          <Sparkles size={16} color={V1.bleu} />
           <div style={{ textAlign: 'left', flex: 1 }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: '#3730a3' }}>Assistant Devis IA</div>
-            <div style={{ fontSize: 11, color: '#6366f1', marginTop: 1 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: V1.bleu }}>Assistant Devis IA</div>
+            <div style={{ fontSize: 11, color: V1.texteMuted, marginTop: 1 }}>
               {Object.keys(stats).length > 0
                 ? `${Object.keys(stats).length} type(s) de travaux analysés — cliquez pour des suggestions basées sur votre historique`
                 : 'Pas encore de chantiers terminés — suggestions disponibles après vos premiers chantiers clôturés'}
             </div>
           </div>
-          <ChevronDown size={16} color="#6366f1" />
+          <ChevronDown size={16} color={V1.bleu} />
         </button>
       </div>
     );
   }
 
   return (
-    <div style={{ marginBottom: 20, background: 'linear-gradient(135deg, #f0f4ff, #f8faff)', border: '1px solid #c7d7fc', borderRadius: 14, padding: '18px 20px' }}>
+    <div style={{ marginBottom: 20, background: V1.bleuFond, border: `1px solid ${V1.bleu}2e`, borderRadius: 14, padding: '18px 20px' }} data-testid="assistant-devis-ia">
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <Sparkles size={16} color="#4f46e5" />
-          <span style={{ fontWeight: 800, fontSize: 14, color: '#3730a3' }}>Assistant Devis IA</span>
-          <span style={{ fontSize: 11, background: '#e0e7ff', color: '#4f46e5', border: '1px solid #c7d7fc', borderRadius: 20, padding: '2px 8px', fontWeight: 600 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          <Sparkles size={16} color={V1.bleu} />
+          <span style={{ fontWeight: 800, fontSize: 14, color: V1.marine }}>Assistant Devis IA</span>
+          <span style={{ fontSize: 11, background: V1.carte, color: V1.bleu, border: `1px solid ${V1.bleu}33`, borderRadius: 20, padding: '2px 8px', fontWeight: 600 }}>
             Basé sur {Object.values(stats).reduce((s, v) => s + v.nbChantiers, 0)} chantier(s) terminé(s)
           </span>
         </div>
-        <button onClick={() => setOuvert(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6366f1', display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, fontFamily: 'inherit' }}>
+        <button onClick={() => setOuvert(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: V1.texteMuted, display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, fontFamily: 'inherit' }}>
           <ChevronUp size={14} /> Réduire
         </button>
       </div>
@@ -120,11 +121,11 @@ export default function AssistantDevisIA({ chantiers = [], devis = [], parametre
         <>
           {/* Sélecteur de type */}
           <div style={{ marginBottom: 16 }}>
-            <label style={{ fontSize: 11, fontWeight: 700, color: '#4f46e5', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: 6 }}>Type de travaux à analyser</label>
+            <label style={{ fontSize: 11, fontWeight: 700, color: V1.bleu, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: 6 }}>Type de travaux à analyser</label>
             <select
               value={typeActif}
               onChange={e => setTypeSelectionne(e.target.value)}
-              style={{ ...DS.input, borderColor: '#c7d7fc', background: 'white' }}
+              style={{ ...DS.input, borderColor: V1.separation, background: V1.carte }}
             >
               {typesDisponibles.map(t => (
                 <option key={t.nom} value={t.nom}>{t.nom} ({stats[t.nom].nbChantiers} chantier{stats[t.nom].nbChantiers > 1 ? 's' : ''})</option>
@@ -139,13 +140,13 @@ export default function AssistantDevisIA({ chantiers = [], devis = [], parametre
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
               {/* Stats */}
               <div>
-                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 10 }}>Statistiques historiques</div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: V1.texteMuted, textTransform: 'uppercase', marginBottom: 10 }}>Statistiques historiques</div>
                 <StatBarre
                   label="Montant HT médian"
                   val={suggestionActive.montant.median}
                   min={suggestionActive.montant.min}
                   max={suggestionActive.montant.max}
-                  couleur="#10b981" unite=" CHF"
+                  couleur={V1.ok} unite=" CHF"
                 />
                 {suggestionActive.duree && (
                   <StatBarre
@@ -153,27 +154,27 @@ export default function AssistantDevisIA({ chantiers = [], devis = [], parametre
                     val={suggestionActive.duree.avg}
                     min={suggestionActive.duree.min}
                     max={suggestionActive.duree.max}
-                    couleur="#0d3d6e" unite="j"
+                    couleur={V1.bleu} unite="j"
                   />
                 )}
                 {suggestionActive.marge && (
                   <div style={{ marginTop: 8 }}>
-                    <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Marge nette réelle moyenne</div>
-                    <div style={{ fontSize: 20, fontWeight: 900, color: suggestionActive.marge.avg >= SEUILS.margeRentable ? '#10b981' : suggestionActive.marge.avg >= SEUILS.margeLimite ? '#f59e0b' : '#ef4444', marginTop: 2 }}>
+                    <div style={{ fontSize: 11, color: V1.texteMuted }}>Marge nette réelle moyenne</div>
+                    <div style={{ ...mono(20, suggestionActive.marge.avg >= SEUILS.margeRentable ? V1.ok : suggestionActive.marge.avg >= SEUILS.margeLimite ? V1.warn : V1.danger, 700), marginTop: 2 }}>
                       {suggestionActive.marge.avg >= 0 ? '+' : ''}{suggestionActive.marge.avg}%
                     </div>
                   </div>
                 )}
                 {suggestionActive.meilleur && (
-                  <div style={{ marginTop: 10, padding: '8px 10px', background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.2)', borderRadius: 8, fontSize: 11, color: '#065f46' }}>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}><Award size={12} color="#059669" /> Meilleur : {suggestionActive.meilleur.nom} — marge {Number.isFinite(suggestionActive.meilleur.marge) ? Math.round(suggestionActive.meilleur.marge * 10) / 10 : '—'}%</span>
+                  <div style={{ marginTop: 10, padding: '8px 10px', background: 'rgba(30,138,76,0.08)', border: `1px solid ${V1.ok}33`, borderRadius: 8, fontSize: 11, color: V1.ok }}>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}><Award size={12} color={V1.ok} /> Meilleur : {suggestionActive.meilleur.nom} — marge {Number.isFinite(suggestionActive.meilleur.marge) ? Math.round(suggestionActive.meilleur.marge * 10) / 10 : '—'}%</span>
                   </div>
                 )}
               </div>
 
               {/* Suggestions à appliquer */}
               <div>
-                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 10 }}>Appliquer au devis</div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: V1.texteMuted, textTransform: 'uppercase', marginBottom: 10 }}>Appliquer au devis</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {[
                     {
@@ -203,15 +204,15 @@ export default function AssistantDevisIA({ chantiers = [], devis = [], parametre
                   ].map(item => {
                     const dejaApplique = item.current === item.val;
                     return (
-                      <div key={item.champ} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'white', border: `1px solid ${dejaApplique ? '#86efac' : '#e5e7eb'}`, borderRadius: 8, padding: '8px 12px' }}>
+                      <div key={item.champ} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: V1.carte, border: `1px solid ${dejaApplique ? V1.ok + '66' : V1.separation}`, borderRadius: 8, padding: '8px 12px' }}>
                         <div>
-                          <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{item.label}</div>
-                          <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>{item.valStr}</div>
+                          <div style={{ fontSize: 11, color: V1.texteMuted }}>{item.label}</div>
+                          <div style={{ ...mono(13, V1.texte, 700) }}>{item.valStr}</div>
                         </div>
                         <button
                           onClick={item.action}
                           disabled={dejaApplique}
-                          style={{ display: 'flex', alignItems: 'center', gap: 4, background: dejaApplique ? '#f0fdf4' : '#4f46e5', color: dejaApplique ? '#16a34a' : 'white', border: 'none', borderRadius: 6, padding: '5px 10px', cursor: dejaApplique ? 'default' : 'pointer', fontSize: 11, fontWeight: 700, fontFamily: 'inherit' }}>
+                          style={{ display: 'flex', alignItems: 'center', gap: 4, background: dejaApplique ? V1.ok + '18' : V1.bleu, color: dejaApplique ? V1.ok : '#fff', border: 'none', borderRadius: 6, padding: '5px 10px', cursor: dejaApplique ? 'default' : 'pointer', fontSize: 11, fontWeight: 700, fontFamily: 'inherit' }}>
                           {dejaApplique ? <><Check size={11} /> Appliqué</> : 'Appliquer'}
                         </button>
                       </div>

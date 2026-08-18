@@ -800,7 +800,7 @@ export const C = {
   danger:     '#ef4444',  // red-500
   warning:    '#f59e0b',  // amber-500
   info:       '#0d3d6e',  // same as primaire
-  violet:     '#6366f1',  // indigo-500
+  violet:     '#4C8FD1',  // = V1.bleuMoyen (bleu moyen CYNA — accent décoratif)
   orange:     '#f97316',  // orange-500
   cyan:       '#06b6d4',  // cyan-500 (Technicien)
   gris:       '#f8fafc',

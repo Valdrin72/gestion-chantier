@@ -91,8 +91,6 @@
   --red-bg        : rgba(239,68,68,0.07);
   --blue          : #1557a0;
   --blue-bg       : rgba(21,87,160,0.08);
-  --purple        : #7c3aed;
-  --purple-bg     : rgba(124,58,237,0.08);
 
   /* ── Rayons ── */
   --radius-sm     : 6px;
@@ -267,7 +265,6 @@
   --orange-bg : rgba(245,158,11,0.10);
   --red-bg    : rgba(239,68,68,0.10);
   --blue-bg   : rgba(59,130,246,0.10);
-  --purple-bg : rgba(139,92,246,0.10);
   --ds-card-bg              : linear-gradient(145deg, rgba(255,255,255,0.055) 0%, rgba(255,255,255,0.028) 100%);
   --ds-card-blur            : blur(14px) saturate(1.5);
   --ds-card-shadow          : 0 2px 8px rgba(0,0,0,0.3), 0 8px 32px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.09);

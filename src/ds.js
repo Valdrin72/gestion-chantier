@@ -225,7 +225,6 @@ export const DS = {
     blue:   { gradient: 'linear-gradient(135deg, #0d3d6e 0%, #1557a0 100%)', glow: 'rgba(13,61,110,0.28)' },
     green:  { gradient: 'linear-gradient(135deg, #047857 0%, #10b981 100%)', glow: 'rgba(16,185,129,0.28)' },
     amber:  { gradient: 'linear-gradient(135deg, #b45309 0%, #f59e0b 100%)', glow: 'rgba(245,158,11,0.28)' },
-    purple: { gradient: 'linear-gradient(135deg, #5b21b6 0%, #7c3aed 100%)', glow: 'rgba(124,58,237,0.28)' },
     red:    { gradient: 'linear-gradient(135deg, #b91c1c 0%, #ef4444 100%)', glow: 'rgba(239,68,68,0.28)' },
   },
 
@@ -236,7 +235,6 @@ export const DS = {
     danger  : { bg: '#fee2e2', color: '#b91c1c' },
     info    : { bg: '#dbeafe', color: '#1e40af' },
     neutral : { bg: '#f1f5f9', color: '#475569' },
-    purple  : { bg: '#ede9fe', color: '#5b21b6' },
     brand   : { bg: '#e8f0f9', color: '#0d3d6e' },
   },
 
@@ -293,8 +291,6 @@ export const DS = {
     greenDark:     '#047857',
     amber:         '#f59e0b',
     amberDark:     '#b45309',
-    purple:        '#7c3aed',
-    purpleDark:    '#5b21b6',
     red:           '#ef4444',
     redDark:       '#b91c1c',
   },

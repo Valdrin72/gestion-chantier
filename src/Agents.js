@@ -900,9 +900,9 @@ export default function Agents({
           {agentData?.RapportNaturel?.paras?.length > 0 ? (
             <div>
               <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 12 }}>Rapport IA — Analyse en langage naturel</div>
-              <div style={{ ...DS.card, padding: '24px 28px', borderLeft: '4px solid #8b5cf6' }}>
+              <div style={{ ...carteV1, padding: '24px 28px', borderLeft: `4px solid ${V1.bleu}` }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
-                  <Bot size={20} color="#8b5cf6" />
+                  <Bot size={20} color={V1.bleu} />
                   <div>
                     <div style={{ fontWeight: 800, fontSize: 14, color: 'var(--text-primary)' }}>Résumé exécutif</div>
                     <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{typeof agentData.RapportNaturel.date === 'string' ? agentData.RapportNaturel.date : ''}</div>
@@ -919,7 +919,7 @@ export default function Agents({
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                   {agentData.RapportNaturel.paras.map((para, i) => (
                     <div key={i} style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-                      <div style={{ width: 24, height: 24, borderRadius: '50%', background: '#8b5cf614', border: '1px solid #8b5cf630', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: '#8b5cf6', flexShrink: 0 }}>
+                      <div style={{ width: 24, height: 24, borderRadius: '50%', background: V1.bleuFond, border: `1px solid ${V1.bleuClair}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: V1.bleu, flexShrink: 0 }}>
                         {i + 1}
                       </div>
                       <p style={{ margin: 0, fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.7 }}>{typeof para === 'string' ? para : ''}</p>
@@ -927,29 +927,29 @@ export default function Agents({
                   ))}
                 </div>
                 {agentData.RapportNaturel.actionPrincipale && (
-                  <div style={{ marginTop: 20, padding: '12px 16px', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 10 }}>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: '#0d3d6e', textTransform: 'uppercase', marginBottom: 4 }}>Action prioritaire recommandée</div>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: '#0d3d6e' }}>{safeStr(agentData.RapportNaturel.actionPrincipale.icone)} {safeStr(agentData.RapportNaturel.actionPrincipale.action)}</div>
-                    <div style={{ fontSize: 12, color: '#0d3d6e', marginTop: 2 }}>{safeStr(agentData.RapportNaturel.actionPrincipale.detail)}</div>
+                  <div style={{ marginTop: 20, padding: '12px 16px', background: V1.bleuFond, border: `1px solid ${V1.bleuClair}`, borderRadius: 10 }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: V1.bleu, textTransform: 'uppercase', marginBottom: 4 }}>Action prioritaire recommandée</div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: V1.bleu }}>{safeStr(agentData.RapportNaturel.actionPrincipale.icone)} {safeStr(agentData.RapportNaturel.actionPrincipale.action)}</div>
+                    <div style={{ fontSize: 12, color: V1.bleu, marginTop: 2 }}>{safeStr(agentData.RapportNaturel.actionPrincipale.detail)}</div>
                   </div>
                 )}
               </div>
             </div>
           ) : (
-            <div style={{ ...DS.card, textAlign: 'center', padding: '28px 20px', color: 'var(--text-muted)', fontSize: 13 }}>
+            <div style={{ ...carteV1, textAlign: 'center', padding: '28px 20px', color: 'var(--text-muted)', fontSize: 13 }}>
               Rapport IA non encore généré — forcez une exécution des agents pour obtenir votre résumé exécutif
             </div>
           )}
 
           {/* ── Briefing intelligent lundi matin ── */}
-          <div style={{ ...DS.card, padding: '22px 26px', borderLeft: '4px solid #8b5cf6' }}>
+          <div style={{ ...carteV1, padding: '22px 26px', borderLeft: `4px solid ${V1.bleu}` }}>
             {/* En-tête */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: simRapport ? 22 : 0 }}>
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <FileBarChart2 size={18} color="#8b5cf6" />
+                  <FileBarChart2 size={18} color={V1.bleu} />
                   <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-primary)' }}>Briefing intelligent — Lundi matin</span>
-                  <span style={{ background: '#f3e8ff', color: '#7c3aed', border: '1px solid #ddd6fe', borderRadius: 20, padding: '1px 8px', fontSize: 10, fontWeight: 700 }}>IA · PRÉDICTIF</span>
+                  <span style={{ background: BADGES_V1.marque.bg, color: BADGES_V1.marque.color, border: `1px solid ${V1.bleuClair}`, borderRadius: 20, padding: '1px 8px', fontSize: 10, fontWeight: 700 }}>IA · PRÉDICTIF</span>
                 </div>
                 <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--text-muted)' }}>
                   Apprend de l'historique · anticipe les risques · recommande les actions prioritaires
@@ -1091,7 +1091,7 @@ export default function Agents({
                   )}
 
                   {/* Note de bas */}
-                  <div style={{ padding: '8px 14px', background: 'rgba(139,92,246,0.04)', border: '1px solid rgba(139,92,246,0.15)', borderRadius: 8, fontSize: 10, color: 'var(--text-muted)' }}>
+                  <div style={{ padding: '8px 14px', background: V1.bleuFond, border: `1px solid ${V1.separation}`, borderRadius: 8, fontSize: 10, color: 'var(--text-muted)' }}>
                     Le rapport réel sera généré automatiquement dès votre première connexion lundi après 7h. Les projections extrapolent le rythme actuel sur {s.joursRestants} jour{s.joursRestants > 1 ? 's' : ''} restants.
                     {s.nbRapportsHistoriques === 0 && ' Aucun historique disponible — la précision augmente semaine après semaine.'}
                   </div>
@@ -1103,17 +1103,17 @@ export default function Agents({
           {/* ── Rapports hebdomadaires RapportAuto ── */}
           <div>
             {rapports.length === 0 ? (
-              <div style={{ ...DS.card, textAlign: 'center', padding: '40px 20px', color: 'var(--text-muted)', fontSize: 13 }}>
+              <div style={{ ...carteV1, textAlign: 'center', padding: '40px 20px', color: 'var(--text-muted)', fontSize: 13 }}>
                 Aucun rapport hebdomadaire généré — RapportAuto crée un résumé chaque lundi matin
               </div>
             ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               {rapports.map(r => (
-                <div key={r.id} style={{ ...DS.card, padding: '18px 22px' }}>
+                <div key={r.id} style={{ ...carteV1, padding: '18px 22px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
-                    <FileBarChart2 size={18} style={{ color: '#8b5cf6' }} />
+                    <FileBarChart2 size={18} style={{ color: V1.bleu }} />
                     <span style={{ fontWeight: 700, fontSize: 14 }}>{r.semaine}</span>
-                    {r.nouveau && <span style={{ background: '#8b5cf614', color: '#8b5cf6', border: '1px solid #8b5cf630', borderRadius: 20, padding: '2px 8px', fontSize: 10, fontWeight: 700 }}>Nouveau</span>}
+                    {r.nouveau && <span style={{ background: BADGES_V1.marque.bg, color: BADGES_V1.marque.color, border: `1px solid ${V1.bleuClair}`, borderRadius: 20, padding: '2px 8px', fontSize: 10, fontWeight: 700 }}>Nouveau</span>}
                     <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--text-muted)' }}>{fmtDate(r.timestamp)}</span>
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10 }}>

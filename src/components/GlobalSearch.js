@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { Search, HardHat, Users, FileText, DollarSign, X, ArrowRight } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { V1 } from '../design/v1';
 
 const COULEUR = {
   chantier: '#10b981',
   client:   '#3b82f6',
   devis:    '#f59e0b',
-  facture:  '#8b5cf6',
+  facture:  V1.bleuMoyen,  // aligné sur le statut « Facturé »
 };
 
 const ICONE = {

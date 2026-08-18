@@ -51,7 +51,7 @@ const SOURCE_LABELS = {
 
 // ── Couleurs statuts ─────────────────────────────────────────
 const STATUT_COLORS = {
-  brouillon:  { bg: 'rgba(139,92,246,0.12)',  text: '#8b5cf6' },
+  brouillon:  { bg: DS.statuts['Brouillon'].bg, text: DS.statuts['Brouillon'].color },  // gris, aligné DS.statuts
   envoyee:    { bg: 'rgba(13,61,110,0.12)',   text: '#0d3d6e' },
   partielle:  { bg: 'rgba(245,158,11,0.12)', text: '#f59e0b' },
   payee:      { bg: 'rgba(16,185,129,0.12)', text: '#10b981' },
@@ -496,7 +496,7 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
           <KpiCard label="Total facturé"  value={`${fmt(kpis.totalFacture)} CHF`}  couleur="#0d3d6e" icon="doc" />
           <KpiCard label="Payé"           value={`${fmt(kpis.totalEncaisse)} CHF`} couleur="#10b981" icon="" />
           <KpiCard label="En retard"      value={`${fmt(kpis.totalRetard)} CHF`}   couleur="#ef4444" icon="" />
-          <KpiCard label="Brouillons"     value={kpis.nbBrouillon}                 couleur="#8b5cf6" icon="edit" />
+          <KpiCard label="Brouillons"     value={kpis.nbBrouillon}                 couleur={DS.statuts['Brouillon'].color} icon="edit" />
         </div>
       )}
 

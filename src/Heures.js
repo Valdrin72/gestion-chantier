@@ -138,8 +138,8 @@ export default function Heures({ chantiers = [], parametres = {}, setChantiers }
 
   const getCellStyle = (hours, dayIndex) => {
     if (!hours) return { background: 'transparent', color: 'var(--text-muted)' };
-    if (dayIndex === 5) return { background: '#ede9fe', color: '#4c1d95' }; // Sam
-    if (dayIndex === 6) return { background: '#ede9fe', color: '#4c1d95' }; // Dim
+    if (dayIndex === 5) return { background: V1.bleuFond, color: V1.bleu }; // Sam
+    if (dayIndex === 6) return { background: V1.bleuFond, color: V1.bleu }; // Dim
     if (hours > 8) return { background: '#fef3c7', color: '#92400e' }; // Supp
     return { background: '#e8f0f9', color: '#0d3d6e' }; // Normal
   };

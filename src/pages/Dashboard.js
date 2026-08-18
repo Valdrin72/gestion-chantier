@@ -472,7 +472,7 @@ function Dashboard() {
     if (total === 0) return { total: 0, segments: [] };
     return { total, segments: [
       { name: "Main d'œuvre", value: (mo / total) * 100, couleur: '#0d3d6e' },
-      { name: 'Matériaux',    value: (mat / total) * 100, couleur: '#8b5cf6' },
+      { name: 'Matériaux',    value: (mat / total) * 100, couleur: '#4C8FD1' },
       { name: 'Sous-traitance', value: (st / total) * 100, couleur: '#10b981' },
       { name: 'Déplacement',  value: (dep / total) * 100, couleur: '#f59e0b' },
       { name: 'Autres',       value: (autres / total) * 100, couleur: '#94a3b8' },

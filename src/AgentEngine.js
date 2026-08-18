@@ -479,7 +479,7 @@ export function simulerRapportLundi({ chantiers, factures, devis, parametres, cl
         icone: tendanceCA === null ? '📊' : tendanceCA >= 0 ? '📈' : '📉',
         label: 'CA facturé projeté lundi',
         valeur: `CHF ${fmtN(projectionCA)}`,
-        couleur: tendanceCA === null ? '#8b5cf6' : tendanceCA >= 0 ? '#10b981' : '#f59e0b',
+        couleur: tendanceCA === null ? '#1E5FAF' : tendanceCA >= 0 ? '#10b981' : '#f59e0b',  // #1E5FAF = V1.bleu (accent IA, pas de baseline)
         detail: tendanceCA !== null ? `${tendanceCA >= 0 ? '+' : ''}${tendanceCA}% vs moyenne historique` : 'Première référence — pas encore de baseline',
       });
     }

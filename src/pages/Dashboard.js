@@ -555,7 +555,7 @@ function Dashboard() {
           const scoreColor = scoreDirecteur === null ? '#94a3b8' : couleurScoreSante(scoreDirecteur);
           return (
             <div onClick={() => naviguer('agents')} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', marginBottom: 12, borderRadius: 10, background: 'var(--bg-glass-2)', border: '1px solid var(--border)', cursor: 'pointer' }}>
-              <Bot size={13} color="#8b5cf6" />
+              <Bot size={13} color={V1.bleu} />
               <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Intelligence IA</span>
               {scoreDirecteur !== null && <span style={{ fontSize: 11, fontWeight: 800, color: scoreColor, background: scoreColor + '18', border: `1px solid ${scoreColor}30`, borderRadius: 20, padding: '2px 8px' }}>Score {scoreDirecteur}/100</span>}
               {alertesCritiques > 0 && <span style={{ fontSize: 11, fontWeight: 700, color: '#ef4444', background: '#ef444418', border: '1px solid #ef444430', borderRadius: 20, padding: '2px 8px' }}>{alertesCritiques} crit.</span>}
@@ -644,7 +644,7 @@ function Dashboard() {
           {/* Alertes IA */}
           <div style={{ ...CARD, cursor: 'pointer' }} onClick={() => naviguer('agents')}>
             <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 4 }}>
-              <Bot size={10} color="#8b5cf6" /> Alertes IA
+              <Bot size={10} color={V1.bleu} /> Alertes IA
             </div>
             {agentAlertes.length === 0 ? (
               <>
@@ -827,10 +827,10 @@ function Dashboard() {
         const scoreColor = scoreDirecteur === null ? '#94a3b8' : couleurScoreSante(scoreDirecteur);
         return (
           <div onClick={() => naviguer('agents')} style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '12px 18px', marginBottom: 20, borderRadius: 12, background: 'var(--bg-glass-2)', border: '1px solid var(--border)', cursor: 'pointer', flexWrap: 'wrap', transition: 'border-color 0.15s' }}
-            onMouseEnter={e => e.currentTarget.style.borderColor = '#4F46E5'}
+            onMouseEnter={e => e.currentTarget.style.borderColor = V1.bleu}
             onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border)'}
           >
-            <Bot size={15} color="#8b5cf6" />
+            <Bot size={15} color={V1.bleu} />
             <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.6px', marginRight: 4 }}>Intelligence IA</span>
             {scoreDirecteur !== null && (
               <span style={{ display: 'flex', alignItems: 'center', gap: 5, background: scoreColor + '18', border: `1px solid ${scoreColor}30`, borderRadius: 20, padding: '3px 10px' }}>
@@ -848,8 +848,8 @@ function Dashboard() {
               </span>
             )}
             {derives.length > 0 && (
-              <span style={{ display: 'flex', alignItems: 'center', gap: 4, background: '#8b5cf618', border: '1px solid #8b5cf630', borderRadius: 20, padding: '3px 10px' }}>
-                <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 700, color: '#8b5cf6' }}><TrendingUp size={12} /> {derives.length} chantier{derives.length > 1 ? 's' : ''} en dérive</span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 4, background: V1.warn + '18', border: `1px solid ${V1.warn}30`, borderRadius: 20, padding: '3px 10px' }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 700, color: V1.warn }}><TrendingUp size={12} /> {derives.length} chantier{derives.length > 1 ? 's' : ''} en dérive</span>
               </span>
             )}
             <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--text-muted)', fontWeight: 500 }}>Voir le Centre IA →</span>
@@ -958,7 +958,7 @@ function Dashboard() {
         <div style={CARD}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
             <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 7 }}>
-              <Bot size={15} strokeWidth={2} style={{ color: '#8b5cf6' }} />
+              <Bot size={15} strokeWidth={2} style={{ color: V1.bleu }} />
               Alertes intelligentes
             </div>
             <button onClick={() => naviguer('agents')} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 11, color: '#0d3d6e', fontWeight: 600, padding: 0, fontFamily: 'inherit' }}>Tout voir →</button>

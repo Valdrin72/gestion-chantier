@@ -8,7 +8,6 @@
 .kpi-blue   { background: linear-gradient(135deg, #1E40AF 0%, #3B82F6 100%); }
 .kpi-green  { background: linear-gradient(135deg, #065F46 0%, #10B981 100%); }
 .kpi-amber  { background: linear-gradient(135deg, #92400E 0%, #F59E0B 100%); }
-.kpi-purple { background: linear-gradient(135deg, #4C1D95 0%, #8B5CF6 100%); }
 .kpi-red    { background: linear-gradient(135deg, #991B1B 0%, #EF4444 100%); }
 
 /* ── Status badges ── */
@@ -18,7 +17,6 @@
 .badge-warning  { background: #fef3c7; color: #92400e; }
 .badge-danger   { background: #fee2e2; color: #991b1b; }
 .badge-neutral  { background: #f3f4f6; color: #4b5563; }
-.badge-purple   { background: #ede9fe; color: #5b21b6; }
 
 /* ── Progress bar ── */
 .progress-track { background: var(--bg-hover); border-radius: 6px; height: 6px; overflow: hidden; }

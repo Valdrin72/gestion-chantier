@@ -803,7 +803,6 @@ export const C = {
   violet:     '#6366f1',  // indigo-500
   orange:     '#f97316',  // orange-500
   cyan:       '#06b6d4',  // cyan-500 (Technicien)
-  mauve:      '#a855f7',  // purple-500 (Comptable)
   gris:       '#f8fafc',
   blanc:      '#ffffff',
 };

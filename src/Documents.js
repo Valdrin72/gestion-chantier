@@ -57,8 +57,8 @@ export default function Documents({ chantiers = [], devis = [], factures = [], c
   const tabStyle = (active) => ({
     padding: '7px 18px', borderRadius: 8, border: 'none', cursor: 'pointer',
     fontFamily: 'inherit', fontSize: 13, fontWeight: 600, transition: 'all 0.15s',
-    background: active ? '#EEF2FF' : 'transparent',
-    color: active ? '#4F46E5' : 'var(--text-muted)',
+    background: active ? '#E6EDF5' : 'transparent',
+    color: active ? '#1E5FAF' : 'var(--text-muted)',
   });
 
   return (

@@ -1,6 +1,7 @@
 import React from 'react';
 
-const COLORS = ['#10b981','#ec4899','#34d399','#f97316','#8b5cf6','#14b8a6','#3b82f6','#f59e0b','#6366f1','#ef4444'];
+// #4C8FD1 (bleu moyen) et #0E2A4F (bleu nuit) = teintes CYNA, remplacent 2 violets (index 4 et 8).
+const COLORS = ['#10b981','#ec4899','#34d399','#f97316','#4C8FD1','#14b8a6','#3b82f6','#f59e0b','#0E2A4F','#ef4444'];
 
 function hashName(name) {
   let h = 0;

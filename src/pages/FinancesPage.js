@@ -334,9 +334,9 @@ function Tresorerie({ factures = [], chantiers = [], clients = [], devis = [], p
 
       {/* ── Extras à facturer ── */}
       {data.extrasAFacturer.length > 0 && (
-        <div style={{ background: 'var(--surface-glass)', border: '1px solid rgba(139,92,246,0.25)', borderRadius: 16, padding: '20px 22px', marginTop: 20 }}>
+        <div style={{ background: 'var(--surface-glass)', border: `1px solid ${V1.bleuClair}`, borderRadius: 16, padding: '20px 22px', marginTop: 20 }}>
           <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Zap size={14} style={{ color: '#8b5cf6' }} />
+            <Zap size={14} style={{ color: V1.bleu }} />
             Extras à facturer
             <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--text-muted)', fontWeight: 500 }}>
               {data.extrasAFacturer.length} extra{data.extrasAFacturer.length !== 1 ? 's' : ''} — Total HT CHF {fmt(data.totalExtrasAFacturer)}
@@ -344,7 +344,7 @@ function Tresorerie({ factures = [], chantiers = [], clients = [], devis = [], p
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 320, overflowY: 'auto' }}>
             {data.extrasAFacturer.map(e => (
-              <div key={e.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 10, background: 'rgba(139,92,246,0.06)', border: '1px solid rgba(139,92,246,0.18)' }}>
+              <div key={e.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 10, background: V1.bleuFond, border: `1px solid ${V1.bleuClair}` }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.description}</div>
                   <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
@@ -352,13 +352,13 @@ function Tresorerie({ factures = [], chantiers = [], clients = [], devis = [], p
                   </div>
                 </div>
                 <div style={{ textAlign: 'right', flexShrink: 0, marginRight: onEmettreExtra ? 12 : 0 }}>
-                  <div style={{ fontSize: 13, fontWeight: 800, color: '#8b5cf6' }}>CHF {fmt(e.montant)}</div>
+                  <div style={{ fontSize: 13, fontWeight: 800, color: V1.bleu }}>CHF {fmt(e.montant)}</div>
                   <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>HT</div>
                 </div>
                 {onEmettreExtra && (
                   <button
                     onClick={() => onEmettreExtra(e)}
-                    style={{ padding: '5px 10px', fontSize: 11, fontWeight: 700, background: '#8b5cf6', color: '#fff', border: 'none', borderRadius: 7, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}
+                    style={{ padding: '5px 10px', fontSize: 11, fontWeight: 700, background: V1.bleu, color: '#fff', border: 'none', borderRadius: 7, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}
                   >
                     Facturer →
                   </button>
@@ -383,7 +383,7 @@ function Tresorerie({ factures = [], chantiers = [], clients = [], devis = [], p
             {[
               { label: 'CA facturé total',    val: `CHF ${fmt(data.caTotalFacture)}`,  couleur: '#0d3d6e', Icon: FileText,   sub: `${data.nbFactures} facture${data.nbFactures !== 1 ? 's' : ''}`, desc: 'Σ montantTTC de toutes les factures émises' },
               { label: 'Total payé',          val: `CHF ${fmt(data.encaisseTotal)}`,    couleur: '#10b981', Icon: DollarSign, sub: `Taux ${data.tauxEncaissement}%`, desc: 'Σ paiements reçus / CA facturé × 100' },
-              { label: 'Montant moyen par facture', val: `CHF ${fmt(data.ticketMoyen)}`,      couleur: '#8b5cf6', Icon: TrendingUp, sub: 'par facture', desc: 'CA total ÷ nombre de factures émises' },
+              { label: 'Montant moyen par facture', val: `CHF ${fmt(data.ticketMoyen)}`,      couleur: V1.bleu, Icon: TrendingUp, sub: 'par facture', desc: 'CA total ÷ nombre de factures émises' },
               { label: 'Temps moyen avant paiement', val: data.delaiMoyen !== null ? `${data.delaiMoyen} j` : '—', couleur: '#f59e0b', Icon: Clock, sub: data.delaiMoyen !== null ? 'sur factures payées' : 'pas encore de données', desc: 'Moy. jours entre émission et encaissement' },
             ].map(k => (
               <div key={k.label} style={{ background: 'var(--ds-card-bg)', border: '1px solid var(--ds-card-border)', borderRadius: 14, padding: '18px 20px', boxShadow: 'var(--ds-card-shadow)' }}>

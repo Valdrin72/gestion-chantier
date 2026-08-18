@@ -507,13 +507,13 @@ function Devis() {
                 />
               </div>
               <div>
-                <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: '#8b5cf6', marginBottom: 6 }}>Surface (m²)</div>
+                <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: V1.bleu, marginBottom: 6 }}>Surface (m²)</div>
                 <input
                   type="number" min="0" step="1"
                   placeholder="Ex : 250"
                   value={form.surface || ''}
                   onChange={e => setForm(f => ({ ...f, surface: parseFloat(e.target.value) || 0 }))}
-                  style={{ ...inputStyle, width: 110, fontSize: 18, fontWeight: 700, borderColor: '#8b5cf660' }}
+                  style={{ ...inputStyle, width: 110, fontSize: 18, fontWeight: 700, borderColor: V1.bleu + '60' }}
                 />
               </div>
               {form.dureeEstimee && parseInt(form.dureeEstimee) > 0 && (
@@ -537,7 +537,7 @@ function Devis() {
                 const prixMoyen = prixMoyenM2Historique?.moyenne ?? null;
                 const count = prixMoyenM2Historique?.count ?? 0;
                 const isOk = prixMoyen !== null ? prixActuel >= prixMoyen * 0.95 : null;
-                const couleur = isOk === null ? '#8b5cf6' : isOk ? '#10b981' : '#f59e0b';
+                const couleur = isOk === null ? V1.bleu : isOk ? '#10b981' : '#f59e0b';
                 return (
                   <div style={{ width: '100%', marginTop: 6, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', paddingBottom: 4 }}>
                     <span style={{ fontSize: 14, color: couleur, fontWeight: 800 }}>
@@ -565,10 +565,10 @@ function Devis() {
           {(parseFloat(form.surface) || 0) > 0 && <CalculateurMO surface={parseFloat(form.surface) || 0} onApply={({ duree, personnes }) => setForm(f => ({ ...f, dureeEstimee: duree, nombrePersonnes: personnes }))} />}
 
           {/* ── Avenants ── */}
-          <div style={{ background: 'rgba(139,92,246,0.04)', border: '1px solid rgba(139,92,246,0.2)', borderRadius: 12, padding: '20px', marginBottom: 20 }}>
+          <div style={{ background: V1.bleuFond, border: `1px solid ${V1.bleuClair}`, borderRadius: 12, padding: '20px', marginBottom: 20 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
               <div>
-                <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: '#8b5cf6' }}>Avenants (travaux supplémentaires)</div>
+                <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: V1.bleu }}>Avenants (travaux supplémentaires)</div>
                 <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>Travaux additionnels négociés — s'ajoutent au CA du devis</div>
               </div>
               <button
@@ -604,8 +604,8 @@ function Devis() {
               const totalAvenants = (form.avenants || []).reduce((s, a) => s + (parseFloat(a.montant) || 0), 0);
               const totalCA = (parseFloat(form.montantHT) || 0) + totalAvenants;
               return (
-                <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid rgba(139,92,246,0.2)', display: 'flex', gap: 24, flexWrap: 'wrap' }}>
-                  <div><span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Total avenants : </span><span style={{ fontWeight: 700, color: '#8b5cf6' }}>CHF {fmtN(Math.round(totalAvenants))}</span></div>
+                <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${V1.bleuClair}`, display: 'flex', gap: 24, flexWrap: 'wrap' }}>
+                  <div><span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Total avenants : </span><span style={{ fontWeight: 700, color: V1.bleu }}>CHF {fmtN(Math.round(totalAvenants))}</span></div>
                   <div><span style={{ fontSize: 11, color: 'var(--text-muted)' }}>CA total (devis + avenants) : </span><span style={{ fontWeight: 800, color: '#10b981' }}>CHF {fmtN(Math.round(totalCA))}</span></div>
                 </div>
               );
@@ -765,7 +765,7 @@ function Devis() {
                           CHF {fmtN(montant + totalRegie + totalAvenants)}
                         </span>
                         {totalAvenants > 0 && (
-                          <div style={{ fontSize: 10, color: '#8b5cf6', marginTop: 1 }}>dont CHF {fmtN(Math.round(totalAvenants))} avenants</div>
+                          <div style={{ fontSize: 10, color: V1.bleu, marginTop: 1 }}>dont CHF {fmtN(Math.round(totalAvenants))} avenants</div>
                         )}
                         {totalRegie > 0 && (
                           <div style={{ fontSize: 10, color: V1.texteMuted, marginTop: 1 }}>dont CHF {fmtN(Math.round(totalRegie))} régie</div>

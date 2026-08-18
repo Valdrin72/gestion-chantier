@@ -8,7 +8,7 @@ const CATEGORIES = [
   { id: 'pendant', label: 'Pendant travaux', couleur: C.warning, bg: 'rgba(245,158,11,0.12)' },
   { id: 'apres', label: 'Après travaux', couleur: C.secondaire, bg: 'rgba(16,185,129,0.12)' },
   { id: 'probleme', label: 'Problème / Imprévu', couleur: C.danger, bg: 'rgba(239,68,68,0.12)' },
-  { id: 'autre', label: 'Autre', couleur: C.violet, bg: 'rgba(139,92,246,0.12)' },
+  { id: 'autre', label: 'Autre', couleur: C.violet, bg: 'rgba(76,143,209,0.12)' },
 ];
 
 export default function Photos({ chantiers, photosData, setPhotosData }) {

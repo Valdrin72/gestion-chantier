@@ -6,7 +6,7 @@
  *
  * Preuve RTL RÉELLE (vrai RapportsPage via renderWithApp) :
  *   1. le hero affiche les 4 onglets (Rapport IA / Analyse / Simulateur / Benchmark) ; ☰ ↦ ouvrirMenu ;
- *   2. le sélecteur de période (Semaine/Mois/Année) appelle setPeriodeGlobale ;
+ *   2. le sélecteur de période a été RETIRÉ (Rapports = vue annuelle globale) — le hero n'en a plus ;
  *   3. onglet Rapport IA : score /100 + points numérotés + action prioritaire aux VRAIES valeurs ;
  *   4. bascule d'onglet : Analyse s'affiche (rendu conservé), le résumé IA disparaît.
  */
@@ -63,12 +63,15 @@ describe('HERO Rapports — 4 onglets + ☰', () => {
   });
 });
 
-describe('SÉLECTEUR DE PÉRIODE — action inchangée', () => {
-  it('cliquer « Semaine » appelle setPeriodeGlobale(\'semaine\')', () => {
-    const setPeriodeGlobale = vi.fn();
-    renderRapports({ periodeGlobale: 'annee', setPeriodeGlobale });
-    fireEvent.click(within(screen.getByTestId('hero-rapports')).getByRole('button', { name: /^Semaine$/ }));
-    expect(setPeriodeGlobale).toHaveBeenCalledWith('semaine');
+describe('SÉLECTEUR DE PÉRIODE — retiré (Rapports = vue annuelle globale)', () => {
+  // Décision patron (cohérence périodes, lot 1) : Rapports est une vue d'ensemble ANNUELLE et son
+  // contenu ne réagit pas à la période → le sélecteur Semaine/Mois/Année, trompeur, a été retiré du hero.
+  it('le hero ne contient plus de bouton Semaine/Mois/Année', () => {
+    renderRapports({ periodeGlobale: 'annee' });
+    const hero = within(screen.getByTestId('hero-rapports'));
+    expect(hero.queryByRole('button', { name: /^Semaine$/ })).toBeNull();
+    expect(hero.queryByRole('button', { name: /^Mois$/ })).toBeNull();
+    expect(hero.queryByRole('button', { name: /^Année$/ })).toBeNull();
   });
 });
 

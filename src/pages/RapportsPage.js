@@ -4,17 +4,10 @@ import Analyse from '../Analyse';
 import SimulateurCroissance from '../SimulateurCroissance';
 import BenchmarkMarche from '../BenchmarkMarche';
 import { useApp } from '../context/AppContext';
-import { getPeriodeLabel } from '../donnees';
 import { V1, mono, carteV1, heroFond, heroMono } from '../design/v1';
 
 // Bouton translucide du hero bleu nuit (mêmes tokens que les autres pages v1).
 const heroBtn = { background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.18)', borderRadius: 8, padding: '6px 11px', cursor: 'pointer', color: '#fff', display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: 'inherit', fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap' };
-
-const PERIODES = [
-  { id: 'semaine', label: 'Semaine' },
-  { id: 'mois',    label: 'Mois' },
-  { id: 'annee',   label: 'Année' },
-];
 
 // Ligne mono contextuelle par onglet (affichage seul).
 const LIGNE_MONO = {
@@ -74,7 +67,7 @@ function RapportIA({ agentData }) {
 }
 
 function RapportsPage({ chantiers, clients, devis, parametres, setParametres, periodeGlobale, naviguer, factures }) {
-  const { agentState, contexte, ouvrirMenu, setPeriodeGlobale = () => {} } = useApp();
+  const { agentState, contexte, ouvrirMenu } = useApp();
   const [onglet, setOnglet] = useState(contexte?.onglet || 'rapport-ia');
   useEffect(() => { if (contexte?.onglet) setOnglet(contexte.onglet); }, [contexte?.onglet]);
 
@@ -95,24 +88,14 @@ function RapportsPage({ chantiers, clients, devis, parametres, setParametres, pe
     <div>
       {/* ══ HERO BLEU NUIT (design v1, bord à bord, collé au sommet) — partagé par les 4 onglets ══ */}
       <div className="page-hero-bleed" data-testid="hero-rapports" style={{ ...heroFond, padding: '20px 32px 0', position: 'relative' }}>
-        {/* Ligne 1 — ☰ · CYNA · RAPPORTS / 12 · période + sélecteur de période à droite */}
+        {/* Ligne 1 — ☰ · CYNA · RAPPORTS / 12. Vue d'ensemble ANNUELLE : pas de sélecteur de période
+            (le contenu est global et ne réagit pas à la période — un sélecteur serait trompeur). */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18, flexWrap: 'wrap' }}>
           {ouvrirMenu && (
             <button onClick={ouvrirMenu} aria-label="Menu" style={{ ...heroBtn, padding: 7 }}><Menu size={16} /></button>
           )}
           <span style={{ fontFamily: "'Inter', sans-serif", fontWeight: 800, fontSize: 15, letterSpacing: '0.06em', color: '#fff' }}>CYNA</span>
-          <span style={heroMono(10, 0.55)}>· RAPPORTS / 12 · {getPeriodeLabel(periodeGlobale).toUpperCase()}</span>
-          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-            {PERIODES.map(p => {
-              const actif = periodeGlobale === p.id;
-              return (
-                <button key={p.id} onClick={() => setPeriodeGlobale(p.id)}
-                  style={{ ...heroBtn, background: actif ? '#fff' : 'rgba(255,255,255,0.1)', color: actif ? V1.marine : '#fff', border: `1px solid ${actif ? '#fff' : 'rgba(255,255,255,0.18)'}`, fontWeight: actif ? 700 : 600 }}>
-                  {p.label}
-                </button>
-              );
-            })}
-          </div>
+          <span style={heroMono(10, 0.55)}>· RAPPORTS / 12</span>
         </div>
 
         {/* Ligne 2 — index mono + titre + ligne mono contextuelle */}

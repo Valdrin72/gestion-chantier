@@ -156,7 +156,7 @@ export default function SimulateurCroissance({ chantiers = [], devis = [], factu
 
       {/* Base actuelle */}
       <div style={{ marginBottom: 24 }}>
-        <div style={{ fontSize: 12, fontWeight: 700, color: V1.texteMuted, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>Base actuelle (données réelles)</div>
+        <div style={{ fontSize: 12, fontWeight: 700, color: V1.texteMuted, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>Base actuelle (données réelles) · basé sur tout l'historique</div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12 }}>
           <KpiSim label="Employés actifs" value={baseMetrics.nbEmployes} sub="équipe actuelle" icon={Users} couleur={V1.bleu} />
           <KpiSim label="CA annuel" value={baseMetrics.caAnnuel > 0 ? `CHF ${fmtN(Math.round(baseMetrics.caAnnuel / 1000))}k` : '—'} sub={`${baseMetrics.nbChantiersAnnee} chantiers`} icon={DollarSign} couleur={V1.ok} />

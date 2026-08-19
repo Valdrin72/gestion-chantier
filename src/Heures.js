@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect, useLayoutEffect } from 'react';
 import { Clock, Menu } from 'lucide-react';
-import { fmtN, getHeuresParEmployeParDate, getIntervallesPeriode } from './donnees';
+import { fmtN, getHeuresParEmployeParDate } from './donnees';
+import { bornesPeriode } from './calculs/periode';
 import { V1, mono, carteV1, heroFond, heroMono } from './design/v1';
 import { useApp } from './context/AppContext';
 import ModalPointageFormulaire from './components/pointages/ModalPointageFormulaire';
@@ -78,9 +79,7 @@ export default function Heures({ chantiers = [], parametres = {}, setChantiers }
         if (!hasSaisie) nsSaisis++;
       });
     } else {
-      const { debut, fin } = getIntervallesPeriode(periodeGlobale);
-      const debutStr = isoDate(debut);
-      const finStr = isoDate(fin);
+      const { debutStr, finStr } = bornesPeriode(periodeGlobale); // source unique periode.js (bornes locales, inclusif)
       actifs.forEach(e => {
         const empHours = hoursMap[e.id] || {};
         let hasSaisie = false;
@@ -114,9 +113,7 @@ export default function Heures({ chantiers = [], parametres = {}, setChantiers }
         return weekDays.some(d => (m[isoDate(d)] || 0) > 8); // 7 jours pour cohérence avec KPI
       }).length;
     }
-    const { debut, fin } = getIntervallesPeriode(periodeGlobale);
-    const debutStr = isoDate(debut);
-    const finStr = isoDate(fin);
+    const { debutStr, finStr } = bornesPeriode(periodeGlobale);
     return employes.filter(e => {
       const m = hoursMap[e.id] || {};
       return Object.entries(m).some(([d, h]) => d >= debutStr && d <= finStr && h > 8);

@@ -127,7 +127,7 @@ export default function BenchmarkMarche({ chantiers = [], devis = [], parametres
       <div className="page-header-row" style={{ marginBottom: 20 }}>
         <div className="page-title-block">
           <div className="page-title-main">Benchmark Interne</div>
-          <div className="page-title-sub">Comparaison de performance basée sur {termines.length} chantier{termines.length > 1 ? 's' : ''} terminé{termines.length > 1 ? 's' : ''}</div>
+          <div className="page-title-sub">Tous les chantiers terminés · toutes périodes — {termines.length} chantier{termines.length > 1 ? 's' : ''}</div>
         </div>
       </div>
 

@@ -44,7 +44,8 @@ function renderSimu() {
 describe('BASE ACTUELLE — 5 cartes (vraies valeurs)', () => {
   it('affiche les 5 indicateurs de base', () => {
     renderSimu();
-    expect(screen.getByText('Base actuelle (données réelles)')).toBeInTheDocument();
+    // Le libellé porte désormais le périmètre global explicite (« · basé sur tout l'historique »).
+    expect(screen.getByText(/Base actuelle \(données réelles\)/)).toBeInTheDocument();
     expect(screen.getByText('Employés actifs')).toBeInTheDocument();
     expect(screen.getByText('CA annuel')).toBeInTheDocument();
     expect(screen.getByText('Marge nette moy.')).toBeInTheDocument();

@@ -136,8 +136,12 @@ export const calculerDateFinOuvrables = (dateDebut, nombreJours, inclusSamedi = 
   if (!dateDebut || !nombreJours) return null;
   const nb = parseInt(nombreJours);
   if (isNaN(nb) || nb <= 0) return null;
-  const date = _parseDateStricte(dateDebut);
-  if (!date) return null; // date invalide ou impossible (#6)
+  const parsee = _parseDateStricte(dateDebut);
+  if (!parsee) return null; // date invalide ou impossible (#6)
+  // _parseDateStricte renvoie minuit UTC ; on reconstruit en minuit LOCAL pour que l'itération
+  // (getDate/getDay) ET la sortie (_isoLocal) soient dans le même fuseau. Sinon la boucle compte les
+  // jours dans une frame et la sérialisation dans une autre → décalage d'un/deux jours selon le fuseau.
+  const date = new Date(parsee.getUTCFullYear(), parsee.getUTCMonth(), parsee.getUTCDate());
   let joursComptés = 0;
   let iterations = 0;
   const maxIterations = nb * 3 + 30;
@@ -146,7 +150,7 @@ export const calculerDateFinOuvrables = (dateDebut, nombreJours, inclusSamedi = 
     date.setDate(date.getDate() + 1);
     if (!_estNonOuvre(date, inclusSamedi, canton)) joursComptés++;
   }
-  return date.toISOString().split('T')[0];
+  return _isoLocal(date);
 };
 
 export const joursOuvrableRestants = (dateDebut, nombreJours, inclusSamedi = false, canton = 'GE') => {

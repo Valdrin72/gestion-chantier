@@ -3,7 +3,8 @@ import {
   Plus, Pencil, Trash2, HardHat, Receipt,
   Clock, FileDown, Download, Archive, Menu,
 } from 'lucide-react';
-import { fmtN, C, creerFactureDepuisDevis, getIntervallesPeriode, getPeriodeLabel } from '../donnees';
+import { fmtN, C, creerFactureDepuisDevis } from '../donnees';
+import { estDansPeriode, caSigneDevisDansPeriode, periodeLabel } from '../calculs/periode';
 import { exportCSV } from '../utils/exportCSV';
 import { DS } from '../ds';
 import { V1, mono, carteV1, heroFond, heroMono, RYTHME } from '../design/v1';
@@ -200,12 +201,6 @@ function Devis() {
     return prix.length > 0 ? { moyenne: prix.reduce((a, b) => a + b, 0) / prix.length, count: prix.length } : null;
   }, [chantiers, devis]);
 
-  const caDevis = (d) => {
-    const base = parseFloat(d.montantHT || d.prixPropose) || 0;
-    const av = Array.isArray(d.avenants) ? d.avenants.reduce((x, a) => x + (parseFloat(a.montant) || 0), 0) : 0;
-    const regie = Array.isArray(d.heuresRegie) ? d.heuresRegie.reduce((x, r) => x + (parseFloat(r.heures) || 0) * (parseFloat(r.tarifHeure) || 0), 0) : 0;
-    return base + av + regie;
-  };
 
   // Ouverture directe du formulaire depuis la sidebar
   React.useEffect(() => {
@@ -307,13 +302,13 @@ function Devis() {
     <div>
       {/* ══ HERO BLEU NUIT (design v1, bord à bord, collé au sommet) ══ */}
       {(() => {
-        const { debut, fin } = getIntervallesPeriode(periodeGlobale);
-        const debutStr = debut.toISOString().slice(0, 10);
-        const finStr = fin.toISOString().slice(0, 10);
-        const devisPeriode = devisActifs.filter(d => { const dt = d.dateEmission || d.date || ''; return dt >= debutStr && dt <= finStr; });
+        // Source unique periode.js (bornes locales, sans décalage UTC). « CA signé » = devis ACCEPTÉS
+        // dont la date ∈ période (base HT + avenants + régie) — DISTINCT du CA facturé (dateEmission/TTC).
+        const devisPeriode = devisActifs.filter(d => estDansPeriode(d.date || d.dateEmission, periodeGlobale));
         const devisAcceptes = devisPeriode.filter(d => d.statut?.toLowerCase() === 'accepté');
-        const caSigné = devisAcceptes.reduce((s, d) => s + caDevis(d), 0);
+        const caSigné = caSigneDevisDansPeriode(devisActifs, periodeGlobale);
         const tauxAcceptation = devisPeriode.length > 0 ? Math.round((devisAcceptes.length / devisPeriode.length) * 100) : 0;
+        // EN ATTENTE / DÉLAI = état COURANT du pipeline (tous les « envoyé »), volontairement hors période.
         const enAttente = devisActifs.filter(d => d.statut?.toLowerCase() === 'envoyé');
         const now = Date.now();
         const delaisMoyen = enAttente.length > 0
@@ -322,8 +317,8 @@ function Devis() {
         const heroChiffres = [
           { label: 'CA SIGNÉ',            val: `CHF ${fmtN(caSigné)}`,                       couleur: '#4ADE80' },
           { label: "TAUX D'ACCEPTATION",  val: `${tauxAcceptation}%`,                        couleur: '#8FBCE6' },
-          { label: 'EN ATTENTE RÉPONSE',  val: String(enAttente.length),                     couleur: '#F5B14A' },
-          { label: 'DÉLAI MOYEN',         val: delaisMoyen !== null ? `${delaisMoyen}j` : '—', couleur: '#C88BF0' },
+          { label: 'EN ATTENTE · EN COURS', val: String(enAttente.length),                     couleur: '#F5B14A' },
+          { label: 'DÉLAI MOYEN · EN COURS', val: delaisMoyen !== null ? `${delaisMoyen}j` : '—', couleur: '#C88BF0' },
         ];
         const suffixePeriode = periodeGlobale === 'semaine' ? 'CETTE SEMAINE' : periodeGlobale === 'mois' ? 'CE MOIS' : 'CETTE ANNÉE';
         return (
@@ -334,7 +329,7 @@ function Devis() {
                 <button onClick={ouvrirMenu} aria-label="Menu" style={{ ...heroBtn, padding: 7 }}><Menu size={16} /></button>
               )}
               <span style={{ fontFamily: "'Inter', sans-serif", fontWeight: 800, fontSize: 15, letterSpacing: '0.06em', color: '#fff' }}>CYNA</span>
-              <span style={heroMono(10, 0.55)}>· DEVIS / 04 · {getPeriodeLabel(periodeGlobale).toUpperCase()}</span>
+              <span style={heroMono(10, 0.55)}>· DEVIS / 04 · {periodeLabel(periodeGlobale).toUpperCase()}</span>
               <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                 <select value={periodeGlobale} onChange={e => setPeriodeGlobale(e.target.value)} aria-label="Période" style={{ ...heroBtn, padding: '6px 8px' }}>
                   {PERIODES.map(p => <option key={p.id} value={p.id} style={{ color: '#16233A' }}>{p.label}</option>)}

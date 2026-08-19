@@ -66,14 +66,15 @@ describe('HERO — 4 chiffres aux vraies valeurs', () => {
     const chiffres = screen.getByTestId('hero-chiffres');
     expect(within(chiffres).getByText('CA SIGNÉ')).toBeInTheDocument();
     expect(within(chiffres).getByText("TAUX D'ACCEPTATION")).toBeInTheDocument();
-    expect(within(chiffres).getByText('EN ATTENTE RÉPONSE')).toBeInTheDocument();
-    expect(within(chiffres).getByText('DÉLAI MOYEN')).toBeInTheDocument();
-    // CA signé = Σ montantHT des acceptés de la période = 40'000
+    // « en cours » : ces 2 KPI sont l'état COURANT du pipeline (hors période) — libellé explicite (lot 2 périodes).
+    expect(within(chiffres).getByText('EN ATTENTE · EN COURS')).toBeInTheDocument();
+    expect(within(chiffres).getByText('DÉLAI MOYEN · EN COURS')).toBeInTheDocument();
+    // CA signé = Σ montantHT des acceptés de la période = 40'000 (via caSigneDevisDansPeriode, valeur inchangée)
     expect(screen.getByTestId('hero-kpi-ca-signé').textContent).toMatch(/40\D?000/);
     // 1 accepté / 2 devis = 50%
     expect(screen.getByTestId("hero-kpi-taux-d-acceptation").textContent).toMatch(/50%/);
     // 1 devis envoyé en attente
-    expect(within(screen.getByTestId('hero-kpi-en-attente-réponse')).getByText('1')).toBeInTheDocument();
+    expect(within(screen.getByTestId('hero-kpi-en-attente-en-cours')).getByText('1')).toBeInTheDocument();
   });
 
   it('le titre « Devis » et le bouton ☰ (drawer) sont dans le hero', () => {

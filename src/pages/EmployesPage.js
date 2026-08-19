@@ -2,7 +2,8 @@ import React, { useState, useLayoutEffect } from 'react';
 import {
   HardHat, Plus, Pencil, Power, BarChart2, Clock, Menu,
 } from 'lucide-react';
-import { fmtN, C, getIntervallesPeriode, getPeriodeLabel, tarifHoraireEmploye } from '../donnees';
+import { fmtN, C, tarifHoraireEmploye } from '../donnees';
+import { estDansPeriode, periodeLabel } from '../calculs/periode';
 import { DS } from '../ds';
 import { V1, mono, carteV1, heroFond, heroMono } from '../design/v1';
 import { useApp } from '../context/AppContext';
@@ -61,7 +62,7 @@ function Employes({ parametres, setParametres, chantiers, naviguer }) {
         const tarifMoyen = nbActifs > 0 ? Math.round(employesAll.filter(e => e.actif !== false).reduce((s, e) => s + tarifHoraireEmploye(e), 0) / nbActifs * 100) / 100 : 0;
         const heroChiffres = [
           { label: 'EFFECTIF',       val: String(employesAll.length),                                              couleur: '#8FBCE6', sub: `${nbActifs} actif${nbActifs !== 1 ? 's' : ''}` },
-          { label: 'HEURES TOTALES', val: `${fmtN(Math.round(heuresTotal))}h`,                                      couleur: '#8FBCE6', sub: null },
+          { label: 'HEURES TOTALES', val: `${fmtN(Math.round(heuresTotal))}h`,                                      couleur: '#8FBCE6', sub: 'toutes périodes' },
           ...(voirSalaires ? [
             { label: 'COÛT MENSUEL',  val: `CHF ${fmtN(coutMensuel)}`,                                              couleur: '#F5B14A', sub: null },
             { label: 'TARIF MOYEN',   val: `CHF ${fmtN(tarifMoyen, tarifMoyen % 1 !== 0 ? 2 : 0)}/h`,               couleur: '#4ADE80', sub: null },
@@ -210,17 +211,14 @@ function Employes({ parametres, setParametres, chantiers, naviguer }) {
 
       {/* ── ONGLET PERFORMANCE ── */}
       {onglet === 'performance' && (() => {
-        const { debut, fin } = getIntervallesPeriode(periodeGlobale || 'mois');
+        const periode = periodeGlobale || 'mois';
         const employesActifs = (parametres.employes || []).filter(e => e.actif !== false);
 
         // Calcul des métriques par employé
         const metriques = employesActifs.map(e => {
           const heures = chantiers.reduce((total, c) =>
             total + (c.journal || [])
-              .filter(j => {
-                const dt = new Date(j.date);
-                return dt >= debut && dt <= fin;
-              })
+              .filter(j => estDansPeriode(j.date, periode)) // source unique periode.js (local, inclusif — plus de décalage UTC)
               .reduce((s, j) =>
                 s + (j.employes || [])
                   .filter(je => String(je.employeId) === String(e.id))
@@ -231,9 +229,10 @@ function Employes({ parametres, setParametres, chantiers, naviguer }) {
           const jours = Math.round(heures / 8 * 10) / 10;
           const coeffMO = e.tarifDejaCharge ? 1 : (parseFloat(parametres?.parametres?.coefficientMainOeuvre) || 1.0);
           const coutReel = jours * (parseFloat(e.tarifJour) || 0) * coeffMO;
+          // Cohérence avec `heures` : chantiers où l'employé a pointé DANS la période (pas tout l'historique).
           const chantiersActifs = chantiers.filter(c =>
             (c.journal || []).some(j =>
-              j.employes?.some(je => String(je.employeId) === String(e.id))
+              estDansPeriode(j.date, periode) && j.employes?.some(je => String(je.employeId) === String(e.id))
             )
           ).length;
           const moyHParJour = jours > 0 ? Math.round(heures / jours * 10) / 10 : 0;
@@ -261,7 +260,7 @@ function Employes({ parametres, setParametres, chantiers, naviguer }) {
             {/* Titre période */}
             <div style={{ ...mono(11, V1.bleu, 600), textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 6 }}>
               <BarChart2 size={14} />
-              Performance équipe — {getPeriodeLabel(periodeGlobale || 'mois')}
+              Performance équipe — {periodeLabel(periodeGlobale || 'mois')}
             </div>
 
             {/* KPIs performance — cartes v1 sobres à liseré coloré */}

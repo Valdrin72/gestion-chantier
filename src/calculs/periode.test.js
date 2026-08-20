@@ -15,6 +15,7 @@ import { describe, it, expect } from 'vitest';
 import {
   bornesPeriode, estDansPeriode, periodeLabel,
   caFactureDansPeriode, caFactureParChantier, caSigneDevisDansPeriode,
+  caFactureHTDansPeriode, caFactureHTParChantier, indicateursMargeChantier,
   heuresDansPeriode, coutMODansPeriode, coutForfaitaireDansPeriode, coutChantierDansPeriode,
   chantierSansDate, forfaitNonDatable,
 } from './periode';
@@ -235,5 +236,94 @@ describe('coutChantierDansPeriode & heuresDansPeriode & chantierSansDate', () =>
   it('chantierSansDate identifie les chantiers sans dateDebut', () => {
     expect(chantierSansDate({ id: 'x' })).toBe(true);
     expect(chantierSansDate({ id: 'y', dateDebut: '2026-01-01' })).toBe(false);
+  });
+});
+
+// ── Lot 4a — CA facturé base HT (pages de marge) ─────────────────────────────
+// Factures avec montantHT explicite + une SANS montantHT (reconstitution ÷1.081).
+const FACT_HT = [
+  { id: 'H1', chantierId: 'C1', dateEmission: '2026-01-10', montantHT: 9000, montantTTC: 9729, statut: 'payee' },
+  { id: 'H2', chantierId: 'C1', dateEmission: '2026-03-31', montantHT: 4000, montantTTC: 4324, statut: 'envoyee' },
+  { id: 'H3', chantierId: 'C2', dateEmission: '2026-07-20', montantHT: 6000, montantTTC: 6486, statut: 'partielle' },
+  { id: 'H4', chantierId: 'C2', dateEmission: '2026-11-05', montantTTC: 1081, statut: 'payee' },        // sans HT → 1000
+  { id: 'H5', chantierId: 'C1', dateEmission: '2026-03-15', montantHT: 999, statut: 'brouillon' },      // EXCLU
+  { id: 'H6', chantierId: 'C2', dateEmission: '2026-06-01', montantHT: 999, statut: 'annulee' },        // EXCLU
+];
+const CA_HT_TOTAL = 9000 + 4000 + 6000 + 1000; // 20000, hors brouillon/annulée
+
+describe('caFactureHTDansPeriode — base HT, montantHT direct ou reconstitué ÷1.081', () => {
+  it('année = Σ HT des factures comptables (F4 reconstituée 1081÷1.081 = 1000)', () => {
+    expect(caFactureHTDansPeriode(FACT_HT, 'annee', refAnnee)).toBeCloseTo(CA_HT_TOTAL, 4);
+  });
+  it('exclut brouillon + annulée', () => {
+    // mars = H2 (4000) + H5 (brouillon 999) → seul H2
+    expect(caFactureHTDansPeriode(FACT_HT, 'mois', refMois(2))).toBeCloseTo(4000, 6);
+    // juin = H6 (annulée) → 0
+    expect(caFactureHTDansPeriode(FACT_HT, 'mois', refMois(5))).toBe(0);
+  });
+  it('INVARIANT d\'emboîtement : Σ(12 mois) == année', () => {
+    const sommeMois = Array.from({ length: 12 }, (_, m) => caFactureHTDansPeriode(FACT_HT, 'mois', refMois(m)))
+      .reduce((a, b) => a + b, 0);
+    expect(sommeMois).toBeCloseTo(caFactureHTDansPeriode(FACT_HT, 'annee', refAnnee), 4);
+    expect(sommeMois).toBeCloseTo(CA_HT_TOTAL, 4);
+  });
+  it('HT ≠ TTC (le même horizon donne des bases différentes)', () => {
+    expect(caFactureHTDansPeriode(FACT_HT, 'annee', refAnnee))
+      .not.toBe(caFactureDansPeriode(FACT_HT, 'annee', refAnnee));
+  });
+  it('par chantier : HT facturé C1 en année = H1 + H2', () => {
+    expect(caFactureHTParChantier(FACT_HT, 'C1', 'annee', refAnnee)).toBeCloseTo(13000, 6);
+  });
+});
+
+// ── Lot 4a — helper partagé indicateursMargeChantier ─────────────────────────
+describe('indicateursMargeChantier — CA facturé HT vs coûts, à-facturer, actif', () => {
+  const cfgHT = { coefficientMainOeuvre: 1 };
+  const empHT = { id: 1, tarifJour: 400, tarifDejaCharge: true }; // 1 jour = 400
+  // Chantier facturé + coûts : 2 jours MO = 800 de coûts, facturé 13000 HT → marge positive.
+  const chFacture = { id: 'C1' };
+  const ptsC1 = [
+    { date: '2026-01-12', employeId: 1, repartitions: [{ chantierId: 'C1', categorie: 'production', heures: 8 }] },
+    { date: '2026-03-16', employeId: 1, repartitions: [{ chantierId: 'C1', categorie: 'production', heures: 8 }] },
+  ];
+
+  it('chantier facturé : caHT>0 → marge et margePct calculées', () => {
+    const ind = indicateursMargeChantier(chFacture, [empHT], cfgHT, ptsC1, FACT_HT, 'annee', refAnnee);
+    expect(ind.caHT).toBeCloseTo(13000, 6);   // H1 + H2
+    expect(ind.couts).toBeCloseTo(800, 6);     // 2 jours × 400
+    expect(ind.marge).toBeCloseTo(12200, 6);
+    expect(ind.margePct).toBeCloseTo((12200 / 13000) * 100, 6);
+    expect(ind.aFacturer).toBe(0);             // facturé > coûts
+    expect(ind.actif).toBe(true);
+  });
+
+  it('chantier AVEC coûts mais SANS facture : CA=0, marge null (pas -100 %), à-facturer = coûts', () => {
+    // Chantier "Tech Park" : des heures pointées, aucune facture émise.
+    const chSansFacture = { id: 'CTP' };
+    const ptsTP = [
+      { date: '2026-05-18', employeId: 1, repartitions: [{ chantierId: 'CTP', categorie: 'production', heures: 8 }] },
+    ];
+    const ind = indicateursMargeChantier(chSansFacture, [empHT], cfgHT, ptsTP, FACT_HT, 'annee', refAnnee);
+    expect(ind.caHT).toBe(0);
+    expect(ind.marge).toBeNull();       // AUCUNE marge trompeuse
+    expect(ind.margePct).toBeNull();    // pas de -100 %
+    expect(ind.aFacturer).toBeCloseTo(400, 6); // 1 jour de coûts non facturé
+    expect(ind.actif).toBe(true);       // reste visible (coûts engagés)
+  });
+
+  it('chantier sans facture NI coût sur la période → actif=false (exclu du tableau)', () => {
+    const ind = indicateursMargeChantier({ id: 'VIDE' }, [empHT], cfgHT, [], [], 'annee', refAnnee);
+    expect(ind.caHT).toBe(0);
+    expect(ind.couts).toBe(0);
+    expect(ind.marge).toBeNull();
+    expect(ind.aFacturer).toBe(0);
+    expect(ind.actif).toBe(false);
+  });
+
+  it('INVARIANT : Σ(caHT des 12 mois) == caHT de l\'année (le helper hérite de l\'emboîtement)', () => {
+    const sommeMois = Array.from({ length: 12 }, (_, m) =>
+      indicateursMargeChantier(chFacture, [empHT], cfgHT, ptsC1, FACT_HT, 'mois', refMois(m)).caHT)
+      .reduce((a, b) => a + b, 0);
+    expect(sommeMois).toBeCloseTo(indicateursMargeChantier(chFacture, [empHT], cfgHT, ptsC1, FACT_HT, 'annee', refAnnee).caHT, 4);
   });
 });

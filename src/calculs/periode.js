@@ -35,7 +35,7 @@
 
 import { COEF_MO_DEFAUT } from './constants';
 import { CATEGORIES_AVEC_CHANTIER } from '../types/pointage';
-import { calculerDateFinOuvrables, sommeAvenants, sommeHeuresRegie } from '../donnees';
+import { calculerDateFinOuvrables, sommeAvenants, sommeHeuresRegie, TVA_DEFAUT } from '../donnees';
 
 // Re-export des 4 fonctions historiques (compat lot 0 — source physique = donnees.js, sens unique, aucun cycle).
 export { getIntervallesPeriode, getPeriodeLabel, chantiersInPeriode, facturesInPeriode } from '../donnees';
@@ -124,6 +124,29 @@ export const caFactureParChantier = (factures = [], chantierId, periode, ref = n
       && String(f.chantierId) === String(chantierId)
       && estDansPeriode(f.dateEmission || f.creeLe, periode, ref))
     .reduce((s, f) => s + (parseFloat(f.montantTTC) || 0), 0);
+
+// ── CA facturé base HT (pages de MARGE : marge = CA − coûts doit comparer HT à HT) ────────────
+// Le montantHT est stocké sur la facture ; à défaut on le reconstitue depuis le TTC (÷ 1.081, TVA BTP).
+const _factureHT = (f) => {
+  const ht = parseFloat(f?.montantHT);
+  if (!isNaN(ht)) return ht;
+  const ttc = parseFloat(f?.montantTTC);
+  return isNaN(ttc) ? 0 : ttc / (1 + TVA_DEFAUT / 100); // fallback : dé-TVA au taux BTP standard
+};
+
+/** CA facturé HT de la période = Σ montantHT des factures comptables dont dateEmission ∈ période. */
+export const caFactureHTDansPeriode = (factures = [], periode, ref = new Date()) =>
+  (factures || [])
+    .filter((f) => _factureComptable(f) && estDansPeriode(f.dateEmission || f.creeLe, periode, ref))
+    .reduce((s, f) => s + _factureHT(f), 0);
+
+/** CA facturé HT de la période pour UN chantier donné. */
+export const caFactureHTParChantier = (factures = [], chantierId, periode, ref = new Date()) =>
+  (factures || [])
+    .filter((f) => _factureComptable(f)
+      && String(f.chantierId) === String(chantierId)
+      && estDansPeriode(f.dateEmission || f.creeLe, periode, ref))
+    .reduce((s, f) => s + _factureHT(f), 0);
 
 // ── CA signé devis (date de signature, base HT) — DISTINCT du CA facturé ──────
 
@@ -275,3 +298,33 @@ export const coutChantierDansPeriode = (chantier, employes = [], cfg = {}, point
 
 /** Vrai si le chantier n'a pas de date de début planifiée (à signaler par un badge « sans date » côté écran). */
 export const chantierSansDate = (chantier) => !chantier?.dateDebut;
+
+// ── Indicateurs de MARGE par chantier / période (helper partagé des pages chantier — lot 4) ───
+
+/**
+ * Indicateurs de rentabilité d'UN chantier pour la période courante. Base de calcul money-critical
+ * des pages de marge (4a Marges pilote, réutilisable par 4b/4c/4d) :
+ *  - `caHT`     : CA FACTURÉ HT de la période (Σ montantHT des factures comptables, dateEmission ∈ période).
+ *                 PAS le CA devisé, PAS le TTC — la marge oppose du HT (vente) à du HT (coûts).
+ *  - `couts`    : coût réel de la période (MO datée exacte + forfaitaire au prorata), via coutChantierDansPeriode.
+ *  - `marge`    : caHT − couts, ou null si aucune facture (pas de marge % sur une base nulle → évite -100 %).
+ *  - `margePct` : marge / caHT × 100, ou null si caHT = 0.
+ *  - `aFacturer`: coûts engagés NON couverts par une facture = max(0, couts − caHT). Surface le travail
+ *                 réalisé mais pas encore facturé (ex. chantier avec coûts mais sans facture → CA 0 + à-facturer),
+ *                 au lieu d'afficher une marge trompeuse de −100 %.
+ *  - `actif`    : le chantier a une facture OU des coûts sur la période (a-t-il sa place dans le tableau).
+ */
+export const indicateursMargeChantier = (chantier, employes = [], cfg = {}, pointages = [], factures = [], periode, ref = new Date()) => {
+  const caHT = caFactureHTParChantier(factures, chantier?.id, periode, ref);
+  const couts = coutChantierDansPeriode(chantier, employes, cfg, pointages, factures, periode, ref);
+  const marge = caHT > 0 ? caHT - couts : null;
+  const margePct = caHT > 0 ? ((caHT - couts) / caHT) * 100 : null;
+  return {
+    caHT,
+    couts,
+    marge,
+    margePct,
+    aFacturer: Math.max(0, couts - caHT),
+    actif: caHT > 0 || couts > 0,
+  };
+};

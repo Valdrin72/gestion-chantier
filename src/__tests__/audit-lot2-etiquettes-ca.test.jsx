@@ -57,15 +57,6 @@ describe('Écrans du SIGNÉ : le label dit « CA signé », plus jamais « CA »
     expect(screen.queryByText('CA TOUS CHANTIERS')).toBeNull();
   });
 
-  it('Marges : le KPI dit « CA SIGNÉ TOTAL » (chiffre = montantTotal des devis)', () => {
-    renderWithApp(
-      <Marges chantiers={[CHANTIER]} clients={[CLIENT]} devis={[DEVIS]} parametres={PARAMS} periodeGlobale="annee" />,
-      CTX,
-    );
-    expect(screen.getByText('CA SIGNÉ TOTAL')).toBeInTheDocument();
-    expect(screen.queryByText('CA TOTAL')).toBeNull();
-  });
-
   it('Liste chantiers : « CA SIGNÉ CHANTIERS » (chiffre = Σ calculerCA)', () => {
     renderWithApp(
       <ChantiersListe chantiersFiltres={[CHANTIER]} joursParChantier={{ CH1: 5 }} filtre="" setFiltre={vi.fn()}
@@ -97,5 +88,18 @@ describe('Écrans du FACTURÉ : le label dit « CA facturé »', () => {
     // Plus de « % du CA » nu : chaque part dit de quel CA elle parle.
     expect(screen.getAllByText(/% du CA facturé/).length).toBeGreaterThan(0);
     expect(screen.queryByText(/% du CA$/)).toBeNull();
+  });
+
+  // Lot 4a périodes : la page Marges est désormais un écran du FACTURÉ (le CA = Σ montantHT des
+  // factures de la période, plus le devisé). L'ancien libellé « CA SIGNÉ TOTAL » a donc disparu.
+  it('Marges : le KPI dit « CA FACTURÉ TOTAL » (chiffre = Σ montantHT facturé de la période = 9\'250)', () => {
+    renderWithApp(
+      <Marges chantiers={[CHANTIER]} clients={[CLIENT]} devis={[DEVIS]} parametres={PARAMS} periodeGlobale="annee" />,
+      CTX,
+    );
+    expect(screen.getByText('CA FACTURÉ TOTAL')).toBeInTheDocument();
+    expect(screen.queryByText('CA SIGNÉ TOTAL')).toBeNull();
+    // FACTURE_PAYEE.montantHT = 9250 (dateEmission 2026-03-01 ∈ année) → CA facturé HT = 9'250.
+    expect(screen.getAllByText("CHF 9'250").length).toBeGreaterThanOrEqual(1);
   });
 });

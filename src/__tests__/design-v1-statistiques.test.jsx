@@ -39,10 +39,14 @@ const CHANTIERS = [{
   dateDebut: `${ANNEE}-02-01`, nombreJours: 10, surface: 100, typesTravaux: ['Faux-plafond'],
   journal: [], equipe: [],
 }];
+// Lot 4c : la page est passée au CA FACTURÉ HT → il faut une facture pour peupler les blocs.
+// montantHT 60'000 émis dans l'année → CA facturé HT = 60'000 (identique à l'ancien attendu chiffré).
+const FACTURES = [{ id: 'f1', numero: 'F-1', chantierId: 'c1', clientId: 'cl1', statut: 'envoyee',
+  montantHT: 60000, montantTTC: 64860, dateEmission: `${ANNEE}-03-15` }];
 
 function renderStats() {
   const ctx = {
-    chantiers: CHANTIERS, clients: CLIENTS, devis: DEVIS, factures: [],
+    chantiers: CHANTIERS, clients: CLIENTS, devis: DEVIS, factures: FACTURES,
     parametres: PARAMETRES, pointages: [],
     setChantiers: vi.fn(), setClients: vi.fn(), setDevis: vi.fn(), setFactures: vi.fn(),
     setParametres: vi.fn(), setPointages: vi.fn(), naviguer: vi.fn(), contexte: {},
@@ -59,11 +63,14 @@ function renderStats() {
 describe('KPIs + chiffres clés (vraies valeurs)', () => {
   it('affiche les 4 KPI globaux', () => {
     renderStats();
-    expect(screen.getByText('CA SIGNÉ ANNÉE')).toBeInTheDocument();
+    // Lot 4c : « CA SIGNÉ ANNÉE » → « CA FACTURÉ » (CA facturé HT de la période).
+    expect(screen.getByText('CA FACTURÉ')).toBeInTheDocument();
+    expect(screen.queryByText('CA SIGNÉ ANNÉE')).toBeNull();
     expect(screen.getByText('MARGE NETTE')).toBeInTheDocument();
     expect(screen.getByText('CHANTIERS')).toBeInTheDocument();
-    expect(screen.getByText('PRÉVISION 3 MOIS')).toBeInTheDocument();
-    // CA signé = devis 60 000 → "CHF 60'000" présent
+    // Prévision libellée « · ANNÉE » (annuelle, ne suit pas la période).
+    expect(screen.getByText(/PRÉVISION 3 MOIS/)).toBeInTheDocument();
+    // CA facturé = facture 60 000 HT → "CHF 60'000" présent
     expect(screen.getAllByText(/CHF 60'000/).length).toBeGreaterThan(0);
   });
 });
@@ -71,12 +78,13 @@ describe('KPIs + chiffres clés (vraies valeurs)', () => {
 describe('GRAPHIQUES — séries CA / Coûts / Marge + titres', () => {
   it('affiche les titres de graphiques et les libellés de séries (légendes)', () => {
     renderStats();
-    expect(screen.getByText(new RegExp(`CA signé mensuel ${ANNEE}`))).toBeInTheDocument();
-    expect(screen.getByText('Évolution de la marge (%)')).toBeInTheDocument();
+    // Graphe mensuel ANNUEL, libellé explicite « — Année {X} » (ne suit pas la période).
+    expect(screen.getByText(new RegExp(`CA facturé mensuel — Année ${ANNEE}`))).toBeInTheDocument();
+    expect(screen.getByText(new RegExp(`Évolution de la marge \\(%\\) — Année ${ANNEE}`))).toBeInTheDocument();
     expect(screen.getByText('Répartition par travaux')).toBeInTheDocument();
     expect(screen.getByText('Répartition par client')).toBeInTheDocument();
-    // Séries présentes (légendes recharts) : "CA signé", "Coûts", "Marge"
-    expect(screen.getAllByText('CA signé').length).toBeGreaterThan(0);
+    // Séries présentes (légendes recharts) : "CA facturé", "Coûts", "Marge"
+    expect(screen.getAllByText('CA facturé').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Coûts').length).toBeGreaterThan(0);
   });
 });

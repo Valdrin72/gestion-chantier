@@ -33,6 +33,11 @@ const CHANTIER = {
 };
 const DEVIS = { id: 'd1', numero: 'D-1', montantHT: 100_000, statut: 'Accepté', clientId: 'cl1' };
 const POINTAGES = migrerJournalVersPointages([CHANTIER], [EMP]);
+// Lot 4c : Statistiques compare désormais le CA FACTURÉ HT (période) aux coûts (période). On facture
+// 100'000 HT dans l'année et les coûts de la période == coûts de vie (5j MO = 2'000, pas de matériel)
+// → la marge nette de Statistiques doit toujours égaler celle du moteur (base 100'000, coûts 2'000).
+const FACTURE = { id: 'F1', numero: 'F-1', chantierId: 'CH1', clientId: 'cl1', statut: 'envoyee',
+  montantHT: 100_000, montantTTC: 108_100, dateEmission: '2026-03-20' };
 
 function render(fgPct) {
   const params = { employes: [EMP], localites: [], typesTravaux: [], zones: [], parametres: { coefficientMainOeuvre: 1.0, tauxFraisGeneraux: fgPct } };
@@ -40,7 +45,7 @@ function render(fgPct) {
   const oracle = calculerCoutsChantier(CHANTIER, [EMP], [], params.parametres, [DEVIS], POINTAGES).margeNettePct;
   renderWithApp(
     <Statistiques chantiers={[CHANTIER]} clients={[{ id: 'cl1', nom: 'Client' }]} devis={[DEVIS]} parametres={params} periodeGlobale="annee" />,
-    { chantiers: [CHANTIER], devis: [DEVIS], parametres: params, pointages: POINTAGES }
+    { chantiers: [CHANTIER], devis: [DEVIS], factures: [FACTURE], parametres: params, pointages: POINTAGES }
   );
   return oracle;
 }

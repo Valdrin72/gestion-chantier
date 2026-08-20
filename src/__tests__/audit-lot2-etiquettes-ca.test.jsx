@@ -57,23 +57,6 @@ describe('Écrans du SIGNÉ : le label dit « CA signé », plus jamais « CA »
     expect(screen.queryByText('CA TOUS CHANTIERS')).toBeNull();
   });
 
-  it('Liste chantiers : « CA SIGNÉ CHANTIERS » (chiffre = Σ calculerCA)', () => {
-    renderWithApp(
-      <ChantiersListe chantiersFiltres={[CHANTIER]} joursParChantier={{ CH1: 5 }} filtre="" setFiltre={vi.fn()}
-        onSelect={vi.fn()} onModifier={vi.fn()} onSupprimer={vi.fn()}
-        onArchiver={vi.fn()} onRestaurer={vi.fn()} formSlot={null} />,
-      {
-        ...CTX,
-        setChantiers: vi.fn(), naviguer: vi.fn(), afficherNotif: vi.fn(),
-        confirmer: vi.fn().mockResolvedValue(true), periodeGlobale: 'annee',
-        contexte: {},
-      },
-    );
-    // Design v1 : la tuile CA du hero Chantiers porte le label explicite « CA SIGNÉ »
-    // (règle 18 respectée — jamais « CA » nu).
-    expect(within(screen.getByTestId('kpi-ca-signé')).getByText('CA SIGNÉ')).toBeInTheDocument();
-    expect(screen.queryByText('CA CHANTIERS')).toBeNull();
-  });
 });
 
 describe('Écrans du FACTURÉ : le label dit « CA facturé »', () => {
@@ -101,5 +84,26 @@ describe('Écrans du FACTURÉ : le label dit « CA facturé »', () => {
     expect(screen.queryByText('CA SIGNÉ TOTAL')).toBeNull();
     // FACTURE_PAYEE.montantHT = 9250 (dateEmission 2026-03-01 ∈ année) → CA facturé HT = 9'250.
     expect(screen.getAllByText("CHF 9'250").length).toBeGreaterThanOrEqual(1);
+  });
+
+  // Lot 4b périodes : la liste Chantiers passe aussi au modèle FACTURÉ — la tuile « CA SIGNÉ » du
+  // hero devient « CA FACTURÉ » (Σ montantHT des factures de la période, via le même helper que Marges).
+  it('Liste chantiers : la tuile hero dit « CA FACTURÉ » (chiffre = Σ montantHT facturé = 9\'250)', () => {
+    renderWithApp(
+      <ChantiersListe chantiersFiltres={[CHANTIER]} joursParChantier={{ CH1: 5 }} filtre="" setFiltre={vi.fn()}
+        onSelect={vi.fn()} onModifier={vi.fn()} onSupprimer={vi.fn()}
+        onArchiver={vi.fn()} onRestaurer={vi.fn()} formSlot={null} />,
+      {
+        ...CTX,
+        setChantiers: vi.fn(), naviguer: vi.fn(), afficherNotif: vi.fn(),
+        confirmer: vi.fn().mockResolvedValue(true), periodeGlobale: 'annee',
+        contexte: {},
+      },
+    );
+    // Règle 18 respectée — jamais « CA » nu ; et l'ancien libellé « CA SIGNÉ » a disparu.
+    expect(within(screen.getByTestId('kpi-ca-facturé')).getByText('CA FACTURÉ')).toBeInTheDocument();
+    expect(screen.queryByTestId('kpi-ca-signé')).toBeNull();
+    // Même chantier CH1, même facture (9'250 HT) → même CA facturé que la page Marges.
+    expect(within(screen.getByTestId('kpi-ca-facturé')).getByText("CHF 9'250")).toBeInTheDocument();
   });
 });

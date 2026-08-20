@@ -1,10 +1,11 @@
-import React, { useState, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
   LineChart, Line, PieChart, Pie, Cell, ResponsiveContainer
 } from 'recharts';
 import { TrendingUp, DollarSign, HardHat, Calendar } from 'lucide-react';
-import { calculerCoutsChantier, calculerCA, fmtN, getIntervallesPeriode, getPeriodeLabel, chantiersInPeriode, calculerEcartChantier, calculerRentabiliteEquipe, couleurMarge } from './donnees';
+import { fmtN, calculerEcartChantier, calculerRentabiliteEquipe, couleurMarge } from './donnees';
+import { indicateursMargeChantier, caFactureHTDansPeriode, coutChantierDansPeriode, periodeLabel } from './calculs/periode';
 import { DS } from './ds';
 import { joursReelsChantier } from './calculs/pointagesHelper';
 import { useApp } from './context/AppContext';
@@ -20,72 +21,75 @@ const COL_CA    = V1.marine;    // #0E2A4F
 const COL_COUT  = V1.bleuMoyen; // #4C8FD1 — distinct du CA
 const COL_MARGE = V1.ok;        // #1E8A4C
 
-export default function Statistiques({ chantiers, clients, devis = [], parametres, periodeGlobale = 'annee' }) {
-  const { pointages = [] } = useApp();
-  const anneeActuelle = new Date().getFullYear();
-  const [periode, setPeriode] = useState(String(anneeActuelle));
+export default function Statistiques({ chantiers, clients, parametres, periodeGlobale = 'annee' }) {
+  const { pointages = [], factures = [] } = useApp();
+  const anneeRef = new Date().getFullYear();
 
-  // ===== CHANTIERS FILTRÉS PAR PÉRIODE GLOBALE =====
-  const chantiersFiltres = useMemo(() => {
-    const { debut, fin } = getIntervallesPeriode(periodeGlobale);
-    return chantiers.filter(c => chantiersInPeriode(c, debut, fin));
-  }, [chantiers, periodeGlobale]);
+  // ===== INDICATEURS DE PÉRIODE PAR CHANTIER (CA FACTURÉ HT + coûts prorata) =====
+  // Helper partagé unique (periode.js) → mêmes chiffres que Marges (4a) et Chantiers (4b) pour un
+  // même chantier/période. Fini le CA devisé rattaché au chevauchement dateDebut.
+  const indicsPeriode = useMemo(() => {
+    const cfg = parametres.parametres;
+    return chantiers.map(c => ({ c, ind: indicateursMargeChantier(c, parametres.employes, cfg, pointages, factures, periodeGlobale) }));
+  }, [chantiers, parametres, pointages, factures, periodeGlobale]);
 
-  // ===== CALCULS GLOBAUX (sur chantiers filtrés, uniquement ceux avec devis) =====
-  const { filtresAvecDevis, nbSansDevis, caTotal, rentabilite, margeNettePct } = useMemo(() => {
-    const filtresAvecDevis = chantiersFiltres.filter(c => calculerCA(c, devis) !== null);
-    const nbSansDevis = chantiersFiltres.length - filtresAvecDevis.length;
-    const caTotal = filtresAvecDevis.reduce((t, c) => t + calculerCA(c, devis), 0);
-    const coutsTotaux = filtresAvecDevis.reduce((t, c) => t + calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis, pointages).totalCoutsReel, 0);
+  const chantiersActifs = useMemo(() => indicsPeriode.filter(x => x.ind.actif).map(x => x.c), [indicsPeriode]);
+
+  // ===== KPI GLOBAUX (CA FACTURÉ HT de la période — suit periodeGlobale) =====
+  const { caTotal, rentabilite, margeNettePct, nbFactures, aFacturerTotal, nbAFacturer } = useMemo(() => {
+    const factures_ = indicsPeriode.filter(x => x.ind.caHT > 0);
+    const caTotal = factures_.reduce((t, x) => t + x.ind.caHT, 0);
+    const coutsTotaux = factures_.reduce((t, x) => t + x.ind.couts, 0);
     const rentabilite = caTotal - coutsTotaux;
-    // I1 — clé canonique tauxFraisGeneraux (identique au moteur donnees.js:363). L'ancienne clé
-    // `fraisGeneraux` n'existe pas → la marge nette utilisait toujours 12% en dur, divergeant
-    // du Dashboard/ChantierDetail dès que les FG configurés ≠ 12%.
+    // Clé canonique tauxFraisGeneraux (identique au moteur donnees.js). Marge NETTE = brute − FG.
     const tauxFG = parseFloat(parametres?.parametres?.tauxFraisGeneraux ?? parametres?.tauxFraisGeneraux) || 12;
     const margeNettePct = caTotal > 0 ? Math.round(((caTotal - coutsTotaux - caTotal * tauxFG / 100) / caTotal) * 1000) / 10 : 0;
-    return { filtresAvecDevis, nbSansDevis, caTotal, rentabilite, margeNettePct };
-  }, [chantiersFiltres, devis, parametres, pointages]);
+    const aFacturerTotal = indicsPeriode.reduce((t, x) => t + x.ind.aFacturer, 0);
+    const nbAFacturer = indicsPeriode.filter(x => x.ind.actif && x.ind.caHT === 0).length;
+    return { caTotal, rentabilite, margeNettePct, nbFactures: factures_.length, aFacturerTotal, nbAFacturer };
+  }, [indicsPeriode, parametres]);
 
-  // ===== DONNÉES MENSUELLES (sur TOUS les chantiers filtrés par l'année du picker) =====
-  // Le picker "année" contrôle le graphique mensuel indépendamment de periodeGlobale.
-  // Les KPI globaux en haut restent basés sur periodeGlobale (chantiersFiltres).
-  const donneesMensuelles = useMemo(() => MOIS_LABELS.map((m, i) => {
-    const tousMois = chantiers.filter(c => {
-      const d = new Date(c.dateDebut);
-      return d.getMonth() === i && d.getFullYear() === parseInt(periode);
+  // ===== DONNÉES MENSUELLES — ANNUELLES par nature (12 mois de l'année de référence) =====
+  // ⚠ Ne suivent PAS periodeGlobale : un histogramme 12 mois est une vue annuelle. CA FACTURÉ HT par
+  // mois (caFactureHTDansPeriode — variante HT, cohérente avec les KPI HT et l'emboîtement
+  // Σ12 mois == CA facturé année). Coûts = prorata par mois.
+  const donneesMensuelles = useMemo(() => {
+    const cfg = parametres.parametres;
+    return MOIS_LABELS.map((m, i) => {
+      const ref = new Date(anneeRef, i, 15);
+      const ca = caFactureHTDansPeriode(factures, 'mois', ref);
+      const couts = chantiers.reduce((t, c) => t + coutChantierDansPeriode(c, parametres.employes, cfg, pointages, factures, 'mois', ref), 0);
+      const marge = ca - couts;
+      const margePct = ca > 0 ? Math.round((marge / ca) * 1000) / 10 : 0;
+      return { mois: m, CA: ca, Coûts: couts, Marge: marge, 'Marge %': margePct };
     });
-    const avecDevisMois = tousMois.filter(c => calculerCA(c, devis) !== null);
-    const ca = avecDevisMois.reduce((t, c) => t + calculerCA(c, devis), 0);
-    const couts = avecDevisMois.reduce((t, c) => t + calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis, pointages).totalCoutsReel, 0);
-    const marge = ca - couts;
-    const margePct = ca > 0 ? Math.round((marge / ca) * 1000) / 10 : 0;
-    return { mois: m, CA: ca, Coûts: couts, Marge: marge, 'Marge %': margePct, chantiers: tousMois.length };
-  }), [chantiers, devis, parametres, periode, pointages]);
+  }, [chantiers, factures, parametres, pointages, anneeRef]);
 
-  // ===== DONNÉES PAR TYPE DE TRAVAUX (uniquement chantiers avec devis) =====
+  // ===== RÉPARTITION PAR TYPE DE TRAVAUX (CA facturé HT de la période) =====
   const donneesTravaux = useMemo(() => parametres.typesTravaux.map(t => {
-    const tous = chantiersFiltres.filter(c => (c.typesTravaux || []).includes(t.nom));
-    const avecDevis = tous.filter(c => calculerCA(c, devis) !== null);
-    const ca = avecDevis.reduce((s, c) => s + calculerCA(c, devis), 0);
-    const couts = avecDevis.reduce((s, c) => s + calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis, pointages).totalCoutsReel, 0);
-    const m2 = avecDevis.reduce((s, c) => s + (parseFloat(c.surface) || 0), 0);
-    return { nom: t.nom, CA: ca, Coûts: couts, Marge: ca - couts, m2, count: tous.length, nbAvecDevis: avecDevis.length, margePct: ca > 0 ? Math.round(((ca - couts) / ca) * 1000) / 10 : 0 };
-  }).filter(t => t.count > 0), [chantiersFiltres, devis, parametres, pointages]);
+    const membres = indicsPeriode.filter(x => (x.c.typesTravaux || []).includes(t.nom));
+    const factures_ = membres.filter(x => x.ind.caHT > 0);
+    const ca = factures_.reduce((s, x) => s + x.ind.caHT, 0);
+    const couts = factures_.reduce((s, x) => s + x.ind.couts, 0);
+    const m2 = factures_.reduce((s, x) => s + (parseFloat(x.c.surface) || 0), 0);
+    const count = membres.filter(x => x.ind.actif).length;
+    return { nom: t.nom, CA: ca, Coûts: couts, Marge: ca - couts, m2, count, margePct: ca > 0 ? Math.round(((ca - couts) / ca) * 1000) / 10 : 0 };
+  }).filter(t => t.count > 0), [indicsPeriode, parametres]);
 
-  // ===== DONNÉES CLIENTS (uniquement chantiers avec devis pour le CA) =====
+  // ===== RÉPARTITION PAR CLIENT (CA facturé HT de la période) =====
   const donneesClients = useMemo(() => clients.map(cl => {
-    const tous = chantiersFiltres.filter(c => String(c.clientId) === String(cl.id));
-    const avecDevis = tous.filter(c => calculerCA(c, devis) !== null);
-    const ca = avecDevis.reduce((s, c) => s + calculerCA(c, devis), 0);
-    const couts = avecDevis.reduce((s, c) => s + calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis, pointages).totalCoutsReel, 0);
-    return { nom: cl.entreprise || `${cl.prenom} ${cl.nom}`, CA: ca, Marge: ca - couts, chantiers: tous.length };
-  }).filter(c => c.CA > 0).sort((a, b) => b.CA - a.CA), [clients, chantiersFiltres, devis, parametres, pointages]);
+    const membres = indicsPeriode.filter(x => String(x.c.clientId) === String(cl.id));
+    const factures_ = membres.filter(x => x.ind.caHT > 0);
+    const ca = factures_.reduce((s, x) => s + x.ind.caHT, 0);
+    const couts = factures_.reduce((s, x) => s + x.ind.couts, 0);
+    return { nom: cl.entreprise || `${cl.prenom} ${cl.nom}`, CA: ca, Marge: ca - couts, chantiers: membres.filter(x => x.ind.actif).length };
+  }).filter(c => c.CA > 0).sort((a, b) => b.CA - a.CA), [clients, indicsPeriode]);
 
-  // ===== DONNÉES EMPLOYÉS (top utilisés + coût moyen) =====
+  // ===== DONNÉES EMPLOYÉS (coût MO sur les chantiers actifs de la période) =====
   const donneesEmployes = useMemo(() => (parametres.employes || [])
     .filter(emp => emp.actif !== false)
     .map(emp => {
-      const chantiersEmp = chantiersFiltres.filter(c =>
+      const chantiersEmp = chantiersActifs.filter(c =>
         (c.equipe || []).some(m => String(m.employeId) === String(emp.id))
       );
       let joursTotaux = 0;
@@ -109,18 +113,18 @@ export default function Statistiques({ chantiers, clients, devis = [], parametre
       };
     })
     .filter(e => e.nbChantiers > 0)
-    .sort((a, b) => b.coutTotal - a.coutTotal), [chantiersFiltres, parametres]);
+    .sort((a, b) => b.coutTotal - a.coutTotal), [chantiersActifs, parametres]);
 
-  // ===== PRÉVISIONS =====
+  // ===== PRÉVISIONS — ANNUELLES (dérivées des 12 mois de l'année de référence, pas de la période) =====
   const moisActuel = new Date().getMonth();
   const caRealise = donneesMensuelles.slice(0, moisActuel + 1).reduce((t, m) => t + m.CA, 0);
-  const moyenneMensuelle = moisActuel > 0 ? caRealise / (moisActuel + 1) : 0;
+  const moyenneMensuelle = moisActuel > 0 ? caRealise / (moisActuel + 1) : caRealise;
   const previsionAnnuelle = moyenneMensuelle * 12;
   const prevision3Mois = moyenneMensuelle * 3;
 
-  // ── Écarts prévu vs réel (uniquement chantiers avec jours réels dans le journal) ──
+  // ── Écarts prévu vs réel (chantiers actifs avec jours réels saisis) ──
   const { donneesEcarts, moyenneEcart } = useMemo(() => {
-    const donneesEcarts = chantiersFiltres
+    const donneesEcarts = chantiersActifs
       .filter(c => {
         const joursReels = joursReelsChantier(pointages, c.id);
         return joursReels > 0 && parseInt(c.nombreJours) > 0;
@@ -128,6 +132,7 @@ export default function Statistiques({ chantiers, clients, devis = [], parametre
       .map(c => {
         const ec = calculerEcartChantier(c, pointages);
         return {
+          id: c.id,
           nom: (c.nom || c.numero || '—').substring(0, 18),
           Prévus: ec.joursPrevu,
           Réalisés: ec.joursRealises,
@@ -143,29 +148,24 @@ export default function Statistiques({ chantiers, clients, devis = [], parametre
       : null;
 
     return { donneesEcarts, moyenneEcart };
-  }, [chantiersFiltres, pointages]);
+  }, [chantiersActifs, pointages]);
 
   return (
     <div>
       <div className="page-header-row">
         <div className="page-title-block">
           <div className="page-title-main">Statistiques & Pilotage</div>
-          <div className="page-title-sub">Analyse de performance — {getPeriodeLabel(periodeGlobale)}</div>
-        </div>
-        <div className="page-actions-group">
-          <select value={periode} onChange={e => setPeriode(e.target.value)} style={{ ...DS.input, width: 'auto' }}>
-            {[anneeActuelle - 2, anneeActuelle - 1, anneeActuelle, anneeActuelle + 1].map(a => <option key={a}>{a}</option>)}
-          </select>
+          <div className="page-title-sub">Analyse de performance — {periodeLabel(periodeGlobale)}</div>
         </div>
       </div>
 
       {/* KPIs GLOBAUX — cartes v1 sobres (liseré coloré par état) */}
       <div className="kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24 }}>
         {[
-          { label: 'CA SIGNÉ ANNÉE',   val: `CHF ${fmtN(caTotal)}`,     couleur: V1.bleu,  Icon: TrendingUp },
+          { label: 'CA FACTURÉ',       val: `CHF ${fmtN(caTotal)}`,     couleur: V1.bleu,  Icon: TrendingUp },
           { label: 'MARGE NETTE',      val: `${margeNettePct}%`,        couleur: margeNettePct >= 0 ? V1.ok : V1.danger, Icon: DollarSign, badge: `CHF ${fmtN(rentabilite)}` },
-          { label: 'CHANTIERS',        val: chantiersFiltres.length,    couleur: V1.warn,  Icon: HardHat, badge: nbSansDevis > 0 ? `${nbSansDevis} sans devis` : `${filtresAvecDevis.length} avec devis` },
-          { label: 'PRÉVISION 3 MOIS', val: `CHF ${fmtN(Math.round(prevision3Mois))}`, couleur: V1.bleuMoyen, Icon: Calendar },
+          { label: 'CHANTIERS',        val: chantiersActifs.length,     couleur: V1.warn,  Icon: HardHat, badge: nbAFacturer > 0 ? `${nbAFacturer} à facturer` : `${nbFactures} facturé${nbFactures !== 1 ? 's' : ''}` },
+          { label: 'PRÉVISION 3 MOIS · ANNÉE', val: `CHF ${fmtN(Math.round(prevision3Mois))}`, couleur: V1.bleuMoyen, Icon: Calendar },
         ].map(k => (
           <div key={k.label} style={{ ...carteV1, borderTop: `3px solid ${k.couleur}`, padding: '20px', minHeight: 110 }}>
             <div style={{ background: k.couleur + '18', borderRadius: 10, width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}><k.Icon size={17} color={k.couleur} /></div>
@@ -175,15 +175,15 @@ export default function Statistiques({ chantiers, clients, devis = [], parametre
           </div>
         ))}
       </div>
-      {nbSansDevis > 0 && (
+      {nbAFacturer > 0 && (
         <div style={{ background: 'rgba(232,145,43,0.08)', border: `1px solid ${V1.warn}40`, borderRadius: 10, padding: '10px 16px', marginBottom: 20, fontSize: 12, color: V1.warn, fontWeight: 600 }}>
-          {nbSansDevis} chantier{nbSansDevis > 1 ? 's' : ''} exclu{nbSansDevis > 1 ? 's' : ''} des totaux financiers — aucun devis lié.
+          {nbAFacturer} chantier{nbAFacturer > 1 ? 's' : ''} avec des coûts engagés non facturés — CHF {fmtN(Math.round(aFacturerTotal))} à facturer sur la période.
         </div>
       )}
 
-      {/* GRAPHIQUE CA MENSUEL */}
+      {/* GRAPHIQUE CA MENSUEL — vue ANNUELLE (ne suit pas la période sélectionnée) */}
       <div style={carteStyle}>
-        <div className="ds-card-title">CA signé mensuel {periode}</div>
+        <div className="ds-card-title">CA facturé mensuel — Année {anneeRef}</div>
         <ResponsiveContainer width="100%" height={300}>
           <BarChart data={donneesMensuelles} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="var(--border-glass)" />
@@ -191,7 +191,7 @@ export default function Statistiques({ chantiers, clients, devis = [], parametre
             <YAxis tickFormatter={v => `${(v/1000).toFixed(0)}k`} tick={{ fill: 'var(--text-muted)' }} />
             <Tooltip content={() => null} />
             <Legend wrapperStyle={{ color: 'var(--text-primary)' }} />
-            <Bar dataKey="CA"     fill={COL_CA}    name="CA signé"     radius={[4, 4, 0, 0]} />
+            <Bar dataKey="CA"     fill={COL_CA}    name="CA facturé"   radius={[4, 4, 0, 0]} />
             <Bar dataKey="Coûts" fill={COL_COUT}  name="Coûts"  radius={[4, 4, 0, 0]} />
             <Bar dataKey="Marge" fill={COL_MARGE} name="Marge"  radius={[4, 4, 0, 0]} />
           </BarChart>
@@ -200,7 +200,7 @@ export default function Statistiques({ chantiers, clients, devis = [], parametre
 
       {/* GRAPHIQUE ÉVOLUTION MARGE */}
       <div style={carteStyle}>
-        <div className="ds-card-title" style={{ marginBottom: 16 }}>Évolution de la marge (%)</div>
+        <div className="ds-card-title" style={{ marginBottom: 16 }}>Évolution de la marge (%) — Année {anneeRef}</div>
         <ResponsiveContainer width="100%" height={250}>
           <LineChart data={donneesMensuelles.filter(m => m.CA > 0)}>
             <CartesianGrid strokeDasharray="3 3" stroke="var(--border-glass)" />
@@ -281,12 +281,12 @@ export default function Statistiques({ chantiers, clients, devis = [], parametre
         </div>
       </div>
 
-      {/* PRÉVISIONS */}
+      {/* PRÉVISIONS — vue ANNUELLE (dérivée des 12 mois de l'année, ne suit pas la période) */}
       <div style={carteStyle}>
-        <div className="ds-card-title" style={{ marginBottom: 16 }}>Prévisions</div>
+        <div className="ds-card-title" style={{ marginBottom: 16 }}>Prévisions — Année {anneeRef}</div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '15px', marginBottom: '20px' }}>
           {[
-            { label: 'CA signé réalisé',        valeur: `CHF ${fmtN(Math.round(caRealise))}`,      couleur: COL_CA },
+            { label: 'CA facturé réalisé',        valeur: `CHF ${fmtN(Math.round(caRealise))}`,      couleur: COL_CA },
             { label: 'Moyenne mensuelle', valeur: `CHF ${fmtN(Math.round(moyenneMensuelle))}`, couleur: COL_CA },
             { label: 'Prévision 3 mois',  valeur: `CHF ${fmtN(Math.round(prevision3Mois))}`,  couleur: COL_CA },
             { label: 'Prévision annuelle', valeur: `CHF ${fmtN(Math.round(previsionAnnuelle))}`, couleur: COL_CA },
@@ -309,7 +309,7 @@ export default function Statistiques({ chantiers, clients, devis = [], parametre
             <YAxis tickFormatter={v => `${(v / 1000).toFixed(0)}k`} tick={{ fill: 'var(--text-muted)' }} />
             <Tooltip content={() => null} />
             <Legend wrapperStyle={{ color: 'var(--text-primary)' }} />
-            <Bar dataKey="CA" name="CA signé réalisé / prévu" radius={[4, 4, 0, 0]} fill={COL_CA} label={false} />
+            <Bar dataKey="CA" name="CA facturé réalisé / prévu" radius={[4, 4, 0, 0]} fill={COL_CA} label={false} />
           </BarChart>
         </ResponsiveContainer>
       </div>
@@ -320,7 +320,7 @@ export default function Statistiques({ chantiers, clients, devis = [], parametre
         {donneesTravaux.length === 0 ? <p style={{ color: 'var(--text-secondary)' }}>Aucune donnée</p> : (
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead><tr>
-              {['Type', 'Chantiers', 'm²', 'CA signé', 'Coûts', 'Marge %', 'Gain CHF', 'Statut'].map(h => (
+              {['Type', 'Chantiers', 'm²', 'CA facturé', 'Coûts', 'Marge %', 'Gain CHF', 'Statut'].map(h => (
                 <th key={h} style={DS.th}>{h}</th>
               ))}
             </tr></thead>
@@ -455,7 +455,7 @@ export default function Statistiques({ chantiers, clients, devis = [], parametre
         <div className="ds-card-title" style={{ marginBottom: 16 }}>Classement clients</div>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead><tr>
-            {['Rang', 'Client', 'Chantiers', 'CA signé total', 'Marge %', 'Gain CHF'].map(h => (
+            {['Rang', 'Client', 'Chantiers', 'CA facturé total', 'Marge %', 'Gain CHF'].map(h => (
               <th key={h} style={DS.th}>{h}</th>
             ))}
           </tr></thead>

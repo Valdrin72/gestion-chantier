@@ -6,8 +6,9 @@ import { exportCSV } from '../../utils/exportCSV';
 import KanbanChantiers from './KanbanChantiers';
 import {
   fmtN, calculerCoutsChantier, C, calculerEtatChantier,
-  assertEtatCoherent, calculerCA, isChantierActif, getIntervallesPeriode, chantiersInPeriode,
+  assertEtatCoherent, calculerCA, isChantierActif,
 } from '../../donnees';
+import { indicateursMargeChantier } from '../../calculs/periode';
 import { DS, badgeStatut } from '../../ds';
 import { V1, mono, carteV1, heroFond, heroMono, barreProgression, RYTHME } from '../../design/v1';
 import { useApp } from '../../context/AppContext';
@@ -62,26 +63,27 @@ function ChantiersListe({
     return map;
   }, [agentState]);
 
-  // KPIs — mémoïsés, filtrés par période (MÊME calcul qu'avant, valeurs brutes pour le hero)
+  // KPIs financiers — CA FACTURÉ HT de la période + coûts prorata + à-facturer, via le helper
+  // partagé indicateursMargeChantier (même source que la page Marges → chiffres identiques pour
+  // un même chantier/période). Fini le CA devisé rattaché au chevauchement dateDebut, qui comptait
+  // un chantier à 100 % dans CHAQUE mois qu'il traversait (double-comptage). nbEnCours / nbEnRetard
+  // restent des indicateurs de PORTEFEUILLE (état courant, pas « de la période ») — libellés en clair.
   const kpi = useMemo(() => {
-    const { debut, fin } = getIntervallesPeriode(periodeGlobale);
-    const chantiersPeriode = chantiersFiltres.filter(c => chantiersInPeriode(c, debut, fin));
+    const cfg = parametres.parametres;
+    const indics = chantiersFiltres.map(c => indicateursMargeChantier(c, parametres.employes, cfg, pointages, factures, periodeGlobale));
+    const factures_ = indics.filter(i => i.caHT > 0);              // chantiers facturés sur la période
+    const caTotal = factures_.reduce((t, i) => t + i.caHT, 0);     // CA FACTURÉ HT
+    const coutsFactures = factures_.reduce((t, i) => t + i.couts, 0);
+    const margeTotal = caTotal - coutsFactures;
+    const margePct = caTotal > 0 ? Math.round((margeTotal / caTotal) * 1000) / 10 : null;
+    const aFacturer = indics.reduce((t, i) => t + i.aFacturer, 0); // coûts engagés non facturés (toutes lignes)
+    const nbFactures = factures_.length;
+    // Portefeuille (globaux, pas filtrés par la période)
     const nbEnCours = chantiers.filter(c => c.archive !== true && (c.statut || '').toLowerCase() === 'en cours').length;
     const nbEnRetard = chantiersFiltres.filter(c => { const j = joursParChantier[c.id]; return j !== null && j < 0; }).length;
-    const caTotal = chantiersPeriode.reduce((t, c) => t + (calculerCA(c, devis) || 0), 0);
-    const joursPlanifies = chantiersPeriode.reduce((t, c) => t + (parseInt(c.nombreJours) || 0), 0);
-    const chantiersAvecData = chantiersPeriode.filter(c => { const ca = calculerCA(c, devis); return ca !== null && ca > 0; });
-    let margeMoyenne = null;
-    if (chantiersAvecData.length > 0) {
-      const sum = chantiersAvecData.reduce((s, c) => {
-        const couts = calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis, pointages);
-        return s + (couts.totalCoutsReel > 0 && couts.margeActuellePct !== null ? couts.margeActuellePct : 0);
-      }, 0);
-      margeMoyenne = Math.round(sum / chantiersAvecData.length);
-    }
-    const nbAvecDevis = chantiersPeriode.filter(c => calculerCA(c, devis) !== null).length;
-    return { nbEnCours, nbEnRetard, caTotal, joursPlanifies, margeMoyenne, nbAvecDevis, nbPeriode: chantiersPeriode.length };
-  }, [chantiersFiltres, chantiers, devis, parametres, joursParChantier, periodeGlobale, pointages]);
+    const joursPlanifies = chantiersFiltres.reduce((t, c) => t + (parseInt(c.nombreJours) || 0), 0);
+    return { nbEnCours, nbEnRetard, caTotal, margeTotal, margePct, aFacturer, nbFactures, joursPlanifies };
+  }, [chantiersFiltres, chantiers, parametres, joursParChantier, periodeGlobale, pointages, factures]);
 
   // Décisions/scoring chantiers
   const getDecisionChantier = (etatC) => {
@@ -172,11 +174,13 @@ function ChantiersListe({
   const couleurMargePct = (pct) => pct == null ? V1.texteMuted : pct >= 15 ? V1.ok : pct >= 0 ? V1.warn : V1.danger;
 
   // ── 4 chiffres du hero (valeurs brutes des memos) ──
+  // Couleur de la marge de période (vert ≥20 % / ambre 0–20 % / rouge <0), lisible sur le bleu nuit.
+  const couleurMargeHero = kpi.margePct == null ? '#fff' : kpi.margePct >= 20 ? '#7BE3A6' : kpi.margePct >= 0 ? '#FFD479' : '#FF9C9C';
   const tiles = [
-    { label: 'EN COURS', val: String(kpi.nbEnCours), sub: kpi.nbEnRetard > 0 ? `${kpi.nbEnRetard} EN RETARD` : null, couleur: '#fff' },
-    { label: 'CA SIGNÉ', val: `CHF ${fmtN(kpi.caTotal)}`, sub: `${kpi.nbAvecDevis} AVEC DEVIS`, couleur: '#fff' },
-    { label: 'MARGE MOYENNE', val: kpi.margeMoyenne !== null ? `${kpi.margeMoyenne}%` : '—', sub: null, couleur: '#7BE3A6' },
-    { label: 'JOURS PLANIFIÉS', val: `${fmtN(kpi.joursPlanifies)} j`, sub: null, couleur: '#fff' },
+    { label: 'EN COURS', val: String(kpi.nbEnCours), sub: kpi.nbEnRetard > 0 ? `${kpi.nbEnRetard} EN RETARD` : 'PORTEFEUILLE', couleur: '#fff' },
+    { label: 'CA FACTURÉ', val: `CHF ${fmtN(kpi.caTotal)}`, sub: `${kpi.nbFactures} FACTURÉ${kpi.nbFactures !== 1 ? 'S' : ''}`, couleur: '#fff' },
+    { label: 'MARGE', val: kpi.margePct !== null ? `${kpi.margePct}%` : '—', sub: null, couleur: couleurMargeHero },
+    { label: 'À FACTURER', val: `CHF ${fmtN(kpi.aFacturer)}`, sub: kpi.aFacturer > 0 ? 'NON FACTURÉ' : null, couleur: kpi.aFacturer > 0 ? '#FFD479' : '#fff' },
   ];
 
   const PERIODES = [{ id: 'semaine', label: 'Cette semaine' }, { id: 'mois', label: 'Ce mois' }, { id: 'annee', label: 'Cette année' }];

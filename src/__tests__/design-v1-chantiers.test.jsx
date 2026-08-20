@@ -56,15 +56,19 @@ function renderListe(over = {}) {
 }
 
 describe('HERO Chantiers — 4 chiffres réels + ☰', () => {
-  it('affiche le titre, la ligne mono et les 4 tuiles (EN COURS = 1, CA signé, marge, jours)', () => {
+  it('affiche le titre, la ligne mono et les 4 tuiles (EN COURS = 1, CA facturé, marge, à facturer)', () => {
     renderListe();
     expect(screen.getByTestId('hero-chantiers')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Chantiers' })).toBeInTheDocument();
     // EN COURS : un seul chantier « En cours » (CH1) — pas CH2 (Attente paiement)
     expect(within(screen.getByTestId('kpi-en-cours')).getByText('1')).toBeInTheDocument();
-    expect(screen.getByTestId('kpi-ca-signé')).toBeInTheDocument();
-    expect(screen.getByTestId('kpi-marge-moyenne')).toBeInTheDocument();
-    expect(screen.getByTestId('kpi-jours-planifiés')).toBeInTheDocument();
+    // Lot 4b périodes : le hero est passé au modèle FACTURÉ (CA facturé HT + marge période + à facturer).
+    expect(screen.getByTestId('kpi-ca-facturé')).toBeInTheDocument();
+    expect(screen.getByTestId('kpi-marge')).toBeInTheDocument();
+    expect(screen.getByTestId('kpi-à-facturer')).toBeInTheDocument();
+    // Les libellés du modèle devisé ont disparu.
+    expect(screen.queryByTestId('kpi-ca-signé')).toBeNull();
+    expect(screen.queryByTestId('kpi-jours-planifiés')).toBeNull();
   });
 
   it('le bouton ☰ ouvre le drawer (ouvrirMenu du contexte)', () => {

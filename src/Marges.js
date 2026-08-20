@@ -1,7 +1,8 @@
 import React, { useMemo } from 'react';
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { DS } from './ds';
-import { calculerCoutsChantier, fmtN, SEUILS, getIntervallesPeriode, chantiersInPeriode, getPeriodeLabel } from './donnees';
+import { fmtN, SEUILS } from './donnees';
+import { indicateursMargeChantier, periodeLabel } from './calculs/periode';
 import { useApp } from './context/AppContext';
 import { V1, BADGES_V1, mono, carteV1 } from './design/v1';
 
@@ -16,66 +17,54 @@ function statutMarge(pct) {
 }
 
 export default function Marges({ chantiers = [], clients = [], devis = [], parametres = {}, periodeGlobale = 'annee' }) {
-  const { pointages = [] } = useApp();
-  const chantiersFiltres = useMemo(() => {
-    const { debut, fin } = getIntervallesPeriode(periodeGlobale);
-    return chantiers.filter(c => chantiersInPeriode(c, debut, fin));
-  }, [chantiers, periodeGlobale]);
+  const { pointages = [], factures = [] } = useApp();
 
+  // CA = CA FACTURÉ HT de la période (Σ montantHT des factures, dateEmission ∈ période) ; coûts au prorata
+  // via coutChantierDansPeriode ; « à facturer » = coûts engagés non couverts par une facture. Tout passe
+  // par le helper partagé indicateursMargeChantier (source unique periode.js). Un chantier n'apparaît que
+  // s'il a une facture OU des coûts SUR la période (indicateur `actif`).
   const rows = useMemo(() => {
-    return chantiersFiltres
+    const cfg = parametres.parametres;
+    return chantiers
       .map(c => {
-        const couts = calculerCoutsChantier(
-          c,
-          parametres.employes,
-          parametres.localites,
-          parametres.parametres,
-          devis,
-          pointages
-        );
+        const ind = indicateursMargeChantier(c, parametres.employes, cfg, pointages, factures, periodeGlobale);
         const client = clients.find(cl => String(cl.id) === String(c.clientId));
-        const hasCa    = couts.montantTotal > 0;
-        const hasCouts = couts.totalCoutsReel > 0;
         return {
           id: c.id,
           nom: c.nom || c.numero,
           statut: c.statut || '—',
           client: client?.nom || '—',
-          ca: hasCa ? couts.montantTotal : null,
-          coutsReel: hasCouts ? couts.totalCoutsReel : null,
-          coutsPrevu: couts.totalCoutsPrevu > 0 ? couts.totalCoutsPrevu : null,
-          margeReel: hasCa && hasCouts ? couts.margeReel : null,
-          margeActuellePct: hasCa && hasCouts ? couts.margeActuellePct : null,
-          margePrevu: hasCa && couts.totalCoutsPrevu > 0 ? couts.margePrevu : null,
-          margePrevuPct: hasCa && couts.totalCoutsPrevu > 0 ? couts.margePrevuPct : null,
+          actif: ind.actif,
+          caHT: ind.caHT,
+          couts: ind.couts,
+          margeReel: ind.marge,          // null si aucune facture sur la période
+          margeActuellePct: ind.margePct, // null si aucune facture → pas de -100 % trompeur
+          aFacturer: ind.aFacturer,
         };
       })
+      .filter(r => r.actif)
       .sort((a, b) => {
-        // Trier : données dispo d'abord, puis par marge croissante (problèmes en haut)
+        // Trier : marges connues d'abord (problèmes en haut), puis les « à facturer » (sans marge %).
         if (a.margeActuellePct === null && b.margeActuellePct !== null) return 1;
         if (a.margeActuellePct !== null && b.margeActuellePct === null) return -1;
-        if (a.margeActuellePct === null && b.margeActuellePct === null) return 0;
+        if (a.margeActuellePct === null && b.margeActuellePct === null) return b.aFacturer - a.aFacturer;
         return a.margeActuellePct - b.margeActuellePct;
       });
-  }, [chantiersFiltres, clients, devis, parametres, pointages]);
+  }, [chantiers, clients, parametres, pointages, factures, periodeGlobale]);
 
   const kpi = useMemo(() => {
-    const avecDonnees = rows.filter(r => r.ca !== null && r.coutsReel !== null);
-    const caTotal = avecDonnees.reduce((s, r) => s + r.ca, 0);
-    const coutsTotal = avecDonnees.reduce((s, r) => s + r.coutsReel, 0);
+    const facturees = rows.filter(r => r.caHT > 0);            // chantiers ayant une facture sur la période
+    const caTotal = facturees.reduce((s, r) => s + r.caHT, 0);
+    const coutsTotal = facturees.reduce((s, r) => s + r.couts, 0);
     const margeTotal = caTotal - coutsTotal;
     const margePct = caTotal > 0 ? (margeTotal / caTotal) * 100 : null;
-    const nbRouge = avecDonnees.filter(r => r.margeActuellePct < seuils.ok).length;
-    const nbVert  = avecDonnees.filter(r => r.margeActuellePct >= seuils.bon).length;
-    return { caTotal, coutsTotal, margeTotal, margePct, nbRouge, nbVert, nbAvecDonnees: avecDonnees.length };
+    const aFacturerTotal = rows.reduce((s, r) => s + r.aFacturer, 0); // toutes lignes, y c. sans facture
+    const nbRouge = facturees.filter(r => r.margeActuellePct < seuils.ok).length;
+    const nbVert  = facturees.filter(r => r.margeActuellePct >= seuils.bon).length;
+    return { caTotal, coutsTotal, margeTotal, margePct, aFacturerTotal, nbRouge, nbVert, nbAvecDonnees: facturees.length };
   }, [rows]);
 
   const fmt = (v) => v !== null ? `CHF ${fmtN(Math.round(v))}` : '—';
-
-  const kpiColor = kpi.margePct === null ? V1.bleu
-    : kpi.margePct >= seuils.bon ? V1.ok
-    : kpi.margePct >= seuils.ok  ? V1.warn
-    : V1.danger;
 
   return (
     <div>
@@ -83,7 +72,7 @@ export default function Marges({ chantiers = [], clients = [], devis = [], param
         <div className="page-title-block">
           <div className="page-title-main">Marges par chantier</div>
           <div className="page-title-sub">
-            {getPeriodeLabel(periodeGlobale)} · {kpi.nbAvecDonnees} chantier{kpi.nbAvecDonnees !== 1 ? 's' : ''} analysé{kpi.nbAvecDonnees !== 1 ? 's' : ''}
+            {periodeLabel(periodeGlobale)} · {kpi.nbAvecDonnees} chantier{kpi.nbAvecDonnees !== 1 ? 's' : ''} facturé{kpi.nbAvecDonnees !== 1 ? 's' : ''}
             {kpi.nbRouge > 0 && ` · ${kpi.nbRouge} sous le seuil`}
           </div>
         </div>
@@ -92,11 +81,12 @@ export default function Marges({ chantiers = [], clients = [], devis = [], param
       {/* KPI — cartes v1 sobres (liseré coloré par état) */}
       <div className="kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24 }}>
         {[
-          { label: 'CA SIGNÉ TOTAL', val: fmt(kpi.caTotal), couleur: V1.bleu },
+          { label: 'CA FACTURÉ TOTAL', val: fmt(kpi.caTotal), couleur: V1.bleu },
           { label: 'COÛTS RÉELS', val: fmt(kpi.coutsTotal), couleur: V1.texteMuted },
-          { label: 'MARGE TOTALE', val: fmt(kpi.margeTotal), couleur: kpi.margeTotal >= 0 ? V1.ok : V1.danger },
-          { label: 'MARGE MOYENNE', val: kpi.margePct !== null ? `${Math.round(kpi.margePct * 10) / 10}%` : '—', couleur: kpiColor,
-            badge: kpi.nbRouge > 0 ? `${kpi.nbRouge} critique${kpi.nbRouge > 1 ? 's' : ''}` : kpi.nbVert > 0 ? `${kpi.nbVert} rentable${kpi.nbVert > 1 ? 's' : ''}` : null },
+          { label: 'MARGE TOTALE', val: fmt(kpi.margeTotal), couleur: kpi.margeTotal >= 0 ? V1.ok : V1.danger,
+            badge: kpi.margePct !== null ? `${Math.round(kpi.margePct * 10) / 10}%` : null },
+          { label: 'À FACTURER', val: fmt(kpi.aFacturerTotal), couleur: kpi.aFacturerTotal > 0 ? V1.warn : V1.texteMuted,
+            badge: kpi.aFacturerTotal > 0 ? 'coûts non facturés' : null },
         ].map(k => (
           <div key={k.label} style={{ ...carteV1, borderTop: `3px solid ${k.couleur}`, padding: '16px 18px' }}>
             <div style={{ fontSize: 10, fontWeight: 700, color: V1.texteMuted, textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: 6 }}>{k.label}</div>
@@ -133,15 +123,14 @@ export default function Marges({ chantiers = [], clients = [], devis = [], param
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr>
-                  {['CHANTIER', 'CLIENT', 'STATUT', 'CA DEVIS', 'COÛTS RÉELS', 'MARGE CHF', 'MARGE %', 'MARGE PRÉV.'].map(h => (
-                    <th key={h} style={{ ...DS.th, textAlign: ['CA DEVIS','COÛTS RÉELS','MARGE CHF'].includes(h) ? 'right' : 'left' }}>{h}</th>
+                  {['CHANTIER', 'CLIENT', 'STATUT', 'CA FACTURÉ', 'COÛTS RÉELS', 'MARGE CHF', 'MARGE %', 'À FACTURER'].map(h => (
+                    <th key={h} style={{ ...DS.th, textAlign: ['CA FACTURÉ','COÛTS RÉELS','MARGE CHF','À FACTURER'].includes(h) ? 'right' : 'left' }}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {rows.map(r => {
                   const sm = statutMarge(r.margeActuellePct);
-                  const sp = statutMarge(r.margePrevuPct);
                   const bs = DS.statuts[r.statut] || { bg: '#F1F5F9', color: '#475569' };
                   return (
                     <tr key={r.id} style={{ background: r.margeActuellePct !== null && r.margeActuellePct < seuils.ok ? `${sm.bg}44` : 'transparent' }}>
@@ -152,8 +141,8 @@ export default function Marges({ chantiers = [], clients = [], devis = [], param
                           {r.statut}
                         </span>
                       </td>
-                      <td style={{ ...DS.td, textAlign: 'right', ...mono(13, V1.texte, 600) }}>{fmt(r.ca)}</td>
-                      <td style={{ ...DS.td, textAlign: 'right', ...mono(13, V1.texte) }}>{fmt(r.coutsReel)}</td>
+                      <td style={{ ...DS.td, textAlign: 'right', ...mono(13, V1.texte, 600) }}>{fmt(r.caHT)}</td>
+                      <td style={{ ...DS.td, textAlign: 'right', ...mono(13, V1.texte) }}>{fmt(r.couts)}</td>
                       <td style={{ ...DS.td, textAlign: 'right', ...mono(13, r.margeReel === null ? V1.texteMuted : r.margeReel >= 0 ? V1.ok : V1.danger, 700) }}>
                         {r.margeReel !== null ? `CHF ${fmtN(Math.round(r.margeReel))}` : '—'}
                       </td>
@@ -165,10 +154,10 @@ export default function Marges({ chantiers = [], clients = [], devis = [], param
                           </span>
                         ) : <span style={{ color: V1.texteMuted, fontSize: 12 }}>—</span>}
                       </td>
-                      <td style={DS.td}>
-                        {r.margePrevuPct !== null ? (
-                          <span style={{ ...mono(11, sp.color, 600), background: sp.bg, borderRadius: 6, padding: '3px 10px' }}>
-                            {sp.label}
+                      <td style={{ ...DS.td, textAlign: 'right' }}>
+                        {r.aFacturer > 0 ? (
+                          <span style={{ ...mono(12, V1.warn, 700), background: V1.warn + '18', borderRadius: 6, padding: '3px 10px' }}>
+                            CHF {fmtN(Math.round(r.aFacturer))}
                           </span>
                         ) : <span style={{ color: V1.texteMuted, fontSize: 12 }}>—</span>}
                       </td>
@@ -177,10 +166,10 @@ export default function Marges({ chantiers = [], clients = [], devis = [], param
                 })}
               </tbody>
               {/* Ligne total */}
-              {kpi.nbAvecDonnees > 0 && (
+              {(kpi.nbAvecDonnees > 0 || kpi.aFacturerTotal > 0) && (
                 <tfoot>
                   <tr style={{ background: V1.page, borderTop: `2px solid ${V1.separation}` }}>
-                    <td colSpan={3} style={{ ...DS.td, fontWeight: 800, fontSize: 13, color: V1.texte }}>TOTAL ({kpi.nbAvecDonnees} chantiers)</td>
+                    <td colSpan={3} style={{ ...DS.td, fontWeight: 800, fontSize: 13, color: V1.texte }}>TOTAL ({kpi.nbAvecDonnees} facturé{kpi.nbAvecDonnees !== 1 ? 's' : ''})</td>
                     <td style={{ ...DS.td, textAlign: 'right', ...mono(13, V1.texte, 800) }}>{fmt(kpi.caTotal)}</td>
                     <td style={{ ...DS.td, textAlign: 'right', ...mono(13, V1.texte, 800) }}>{fmt(kpi.coutsTotal)}</td>
                     <td style={{ ...DS.td, textAlign: 'right', ...mono(13, kpi.margeTotal >= 0 ? V1.ok : V1.danger, 800) }}>
@@ -196,7 +185,9 @@ export default function Marges({ chantiers = [], clients = [], devis = [], param
                         );
                       })()}
                     </td>
-                    <td style={DS.td} />
+                    <td style={{ ...DS.td, textAlign: 'right', ...mono(13, kpi.aFacturerTotal > 0 ? V1.warn : V1.texteMuted, 800) }}>
+                      {kpi.aFacturerTotal > 0 ? `CHF ${fmtN(Math.round(kpi.aFacturerTotal))}` : '—'}
+                    </td>
                   </tr>
                 </tfoot>
               )}

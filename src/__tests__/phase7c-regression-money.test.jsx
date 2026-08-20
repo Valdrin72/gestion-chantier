@@ -110,16 +110,22 @@ describe('Phase 7c — ChantierDetail : cohérence interne (réalisés + restant
   });
 });
 
-describe('Phase 7c — Marges : marge affichée non nulle et correcte', () => {
-  it('la marge du chantier apparaît (= moteur), pas de 0/N-D silencieux', () => {
-    const margeAttendue = `${Math.round(ORACLE_COUTS.margeActuellePct * 10) / 10}%`;
+describe('Phase 7c — Marges : marge affichée non nulle et correcte (CA facturé HT, lot 4a périodes)', () => {
+  // Lot 4a : Marges compare le CA FACTURÉ HT de la période aux coûts de la période (MO datée + forfait).
+  // On facture 80'000 HT en mars → CA facturé HT = 80'000 ; coûts période = 5j × 400 = 2'000 de MO
+  // (lus depuis les VRAIS pointages). Marge = 78'000 → 78'000 / 80'000 = 97.5 %. Si le composant
+  // ne lisait pas les pointages, le coût MO retomberait à 0 et la marge passerait à 100 % (≠ 97.5 %).
+  const FACTURE = { id: 'FX', numero: 'F-1', chantierId: 'CH1', clientId: 'cl1',
+    statut: 'envoyee', montantHT: 80_000, montantTTC: 86_480, dateEmission: '2026-03-15' };
+  it('la marge de période du chantier apparaît (CA facturé − coûts pointages), pas de 0/N-D silencieux', () => {
     const { container } = renderWithApp(
       <Marges chantiers={[CHANTIER]} clients={CTX.clients} devis={[DEVIS]} parametres={PARAMS} periodeGlobale="annee" />,
-      CTX
+      { ...CTX, factures: [FACTURE] }
     );
-    expect(container.textContent).toContain(margeAttendue);
-    // Contrôle : la marge attendue est bien celle d'un coût MO réel non nul (≠ 100%).
-    expect(ORACLE_COUTS.margeActuellePct).toBeLessThan(100);
-    expect(ORACLE_COUTS.margeActuellePct).toBeGreaterThan(0);
+    // 97.5 % = (80'000 − 2'000) / 80'000 : dépend du coût MO réel (2'000) donc des pointages lus.
+    expect(container.textContent).toContain('97.5%');
+    // MORDANT : sans pointages, le coût MO serait 0 → marge 100 %. La preuve tient sur le fait
+    // que 97.5 % ≠ 100 % ; le coût MO réel (2'000) est bien pris en compte.
+    expect(container.textContent).not.toContain('100%');
   });
 });

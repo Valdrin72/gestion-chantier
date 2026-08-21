@@ -65,12 +65,13 @@ describe('HERO — 4 chiffres qui S\'ADAPTENT à l\'onglet actif', () => {
   it('Trésorerie/Factures : Total facturé / Total payé / En attente / En retard', () => {
     renderFinances();
     const chiffres = screen.getByTestId('hero-chiffres');
-    expect(within(chiffres).getByText('TOTAL FACTURÉ')).toBeInTheDocument();
-    expect(within(chiffres).getByText('TOTAL PAYÉ')).toBeInTheDocument();
-    expect(within(chiffres).getByText('EN ATTENTE')).toBeInTheDocument();
-    expect(within(chiffres).getByText('EN RETARD')).toBeInTheDocument();
-    // Valeur payé = 5'000 (une facture payée) — tolère le formatage locale (apostrophe / espace fine)
-    expect(screen.getByTestId('hero-kpi-total-payé').textContent).toMatch(/5\D?000/);
+    // Lot Finances : Facturé/Payé suivent la période (TTC), En attente/En retard restent instantanés « à ce jour ».
+    expect(within(chiffres).getByText('FACTURÉ TTC')).toBeInTheDocument();
+    expect(within(chiffres).getByText('PAYÉ TTC')).toBeInTheDocument();
+    expect(within(chiffres).getByText('EN ATTENTE · À CE JOUR')).toBeInTheDocument();
+    expect(within(chiffres).getByText('EN RETARD · À CE JOUR')).toBeInTheDocument();
+    // Période = année → payé = 5'000 (la facture payée, émise en 2026) — tolère le formatage locale
+    expect(screen.getByTestId('hero-kpi-payé-ttc').textContent).toMatch(/5\D?000/);
   });
 
   it('cliquer Relances → le hero bascule sur À relancer / Montant impayé / 1er rappel / Mise en demeure', () => {
@@ -82,7 +83,7 @@ describe('HERO — 4 chiffres qui S\'ADAPTENT à l\'onglet actif', () => {
     expect(within(chiffres).getByText('1ER RAPPEL')).toBeInTheDocument();
     expect(within(chiffres).getByText('MISE EN DEMEURE')).toBeInTheDocument();
     // Les libellés Trésorerie ont disparu
-    expect(within(chiffres).queryByText('TOTAL FACTURÉ')).toBeNull();
+    expect(within(chiffres).queryByText('FACTURÉ TTC')).toBeNull();
   });
 
   it('le bouton ☰ du hero appelle ouvrirMenu', () => {

@@ -120,12 +120,14 @@ describe('FinancesPage — structure de base', () => {
     expect(screen.queryByRole('button', { name: /Paiements chantiers/i })).toBeNull();
   });
 
-  it('affiche les 4 labels KPI en-tête', () => {
+  it('affiche les 4 labels KPI en-tête (Facturé/Payé TTC période + états instantanés « à ce jour »)', () => {
     renderFinances();
-    expect(screen.getAllByText(/Total facturé/i).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/Total payé/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Facturé TTC/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Payé TTC/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/En attente/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/En retard/i).length).toBeGreaterThan(0);
+    // Les états instantanés sont explicitement libellés « à ce jour ».
+    expect(screen.getAllByText(/à ce jour/i).length).toBeGreaterThanOrEqual(2);
   });
 
   it("démarre sur l'onglet Trésorerie — Aucune facture impayée visible", () => {
@@ -156,16 +158,14 @@ describe('FinancesPage — navigation onglets', () => {
 });
 
 describe('FinancesPage — KPIs résumé (calculs)', () => {
-  it('totalFacture = somme TTC des factures non-annulées non-brouillon', () => {
-    // FACTURE_RETARD (10000) + FACTURE_PAYEE (5000) = 15000 ; FACTURE_ANNULEE exclue
+  it('le hero affiche la carte « Facturé TTC » (valeur détaillée dans le test lot Finances)', () => {
     renderFinances({
       factures: [FACTURE_RETARD, FACTURE_PAYEE, FACTURE_ANNULEE],
       clients: [CLIENT_1],
       chantiers: [CHANTIER_1],
       devis: [DEVIS_1],
     });
-    // CHF 15'000 (ou 15,000 selon l'environnement jsdom)
-    const totalFacture = screen.getAllByText(/Total facturé/i)[0].closest('div[class*="kpi"], div[style]');
+    const totalFacture = screen.getAllByText(/Facturé TTC/i)[0].closest('div[class*="kpi"], div[style]');
     expect(totalFacture).not.toBeNull();
   });
 
@@ -601,7 +601,7 @@ describe('FinancesPage — Performance globale', () => {
       devis: [DEVIS_1],
     });
     expect(screen.getByText(/Performance globale/i)).toBeInTheDocument();
-    expect(screen.getByText(/CA facturé total/i)).toBeInTheDocument();
+    expect(screen.getByText(/CA facturé TTC total/i)).toBeInTheDocument();
     expect(screen.getAllByText(/Total payé/i).length).toBeGreaterThan(0);
   });
 

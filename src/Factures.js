@@ -12,7 +12,8 @@ import { DS } from './ds';
 import { mono, RYTHME } from './design/v1';
 import { useApp } from './context/AppContext';
 import { exportCSV } from './utils/exportCSV';
-import { fmtN, getIntervallesPeriode, facturesInPeriode, genererNumeroFacture, calculerStatutFacture, calculerCAForfait, tauxTVAParam, tauxDocumentFige } from './donnees';
+import { fmtN, genererNumeroFacture, calculerStatutFacture, calculerCAForfait, tauxTVAParam, tauxDocumentFige } from './donnees';
+import { estDansPeriode } from './calculs/periode';
 import { prochainRappel, niveauInfo, genererTexteRappel, marquerRappelEnvoye } from './relances';
 import { exportFicheChantier, exportFacture } from './ExportPDF';
 
@@ -209,12 +210,11 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
 
   // ── KPIs (filtrés par période, cohérents avec la liste) ──
   const kpis = useMemo(() => {
-    const { debut, fin } = getIntervallesPeriode(periodeGlobale);
     const today = new Date().toISOString().slice(0, 10);
-    // Base : factures de la période avec statut recalculé, hors annulées
+    // Base : factures de la période (bornes correctes via periode.js) avec statut recalculé, hors annulées
     const base = factures
       .map(f => ({ ...f, statut: calculerStatutFacture(f) }))
-      .filter(f => f.statut !== 'annulee' && facturesInPeriode(f, debut, fin));
+      .filter(f => f.statut !== 'annulee' && estDansPeriode(f.dateEmission || f.creeLe, periodeGlobale));
     const totalFacture  = base.reduce((s, f) => s + (parseFloat(f.montantTTC)  || 0), 0);
     // Plafonner montantPaye à montantTTC pour éviter encaissé > facturé
     const totalEncaisse = base.reduce((s, f) => s + Math.min(parseFloat(f.montantPaye)||0, parseFloat(f.montantTTC)||0), 0);
@@ -227,9 +227,8 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
 
   // ── Filtrage (statut, type, recherche, période) ──────────
   const facturesFiltrees = useMemo(() => {
-    const { debut, fin } = getIntervallesPeriode(periodeGlobale);
     return factures.map(f => ({ ...f, statut: calculerStatutFacture(f) })).filter(f => {
-      if (!facturesInPeriode(f, debut, fin)) return false;
+      if (!estDansPeriode(f.dateEmission || f.creeLe, periodeGlobale)) return false;
       if (filtreStatut && f.statut !== filtreStatut) return false;
       if (filtreType   && f.type   !== filtreType)   return false;
       if (recherche) {

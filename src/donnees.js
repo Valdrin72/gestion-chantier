@@ -725,61 +725,6 @@ export const statutRentabilite = (margeActuellePct) => {
   return                                 { label: 'Non rentable',    couleur: '#ef4444' };
 };
 
-// ===== CALCUL DEVIS =====
-export const calculerDevis = (form, parametres) => {
-  const surface = parseFloat(form.surface) || 0;
-  const typeT = parametres.typesTravaux.find(t => t.nom === form.typeTravaux);
-  const zone = parametres.zones.find(z => z.nom === form.zone);
-  
-  if (!typeT || !zone || surface === 0) return null;
-
-  const tarifBase = zone.tarifs[form.typeTravaux] || typeT.tarifBase;
-  
-  // Ajustements
-  let multiplicateur = 1;
-  if (form.complexite === 'Élevée') multiplicateur += 0.20;
-  if (form.complexite === 'Très élevée') multiplicateur += 0.35;
-  if (form.urgence === 'Oui') multiplicateur += 0.15;
-  if (form.acces === 'Difficile') multiplicateur += 0.10;
-  if (form.acces === 'Très difficile') multiplicateur += 0.20;
-
-  const prixPoseM2 = tarifBase * multiplicateur;
-  const coutPose = prixPoseM2 * surface;
-  const coutMateriel = parseFloat(form.coutMateriel) || 0;
-  const coutTransport = parseFloat(form.coutTransport) || 0;
-  const coutSousTraitance = parseFloat(form.coutSousTraitance) || 0;
-  const coutDirect = coutPose + coutMateriel + coutTransport + coutSousTraitance;
-  const totalRevient = coutDirect * (1 + (parseFloat(parametres.tauxFraisGeneraux) || 12) / 100);
-
-  const margeCible  = parseFloat(form.margeCible || parametres.margeCible) / 100;
-  const margeMin    = parseFloat(parametres.seuilRentabiliteMin) / 100;
-  const margeExtra  = parseFloat(parametres.plafondCredi) / 100;
-
-  // Règles métier — prix = coût / (1 - marge%) — mark-up sur vente (BTP suisse)
-  // prixMinRentable utilise toujours margeMin (jamais margeCible) — plancher absolu
-  const prixMinRentable = (margeMin >= 0 && margeMin < 1) ? totalRevient / (1 - margeMin) : totalRevient;
-  const prixConseille   = (margeCible >= 0 && margeCible < 1) ? totalRevient / (1 - margeCible) : totalRevient;
-  const prixPlafond     = totalRevient * (1 + margeCible + margeExtra);
-  const prixPropose = parseFloat(form.prixPropose) || prixConseille;
-  const margeEstimee = prixPropose - totalRevient;
-  const tauxMarge = prixPropose > 0 ? Math.round((margeEstimee / prixPropose) * 1000) / 10 : 0;
-
-  let positionnement = 'Marché';
-  let niveauRisque = 'Faible';
-  if (prixPropose < prixMinRentable) { positionnement = 'Dangereux'; niveauRisque = 'Critique'; }
-  else if (prixPropose < prixConseille * 0.95) { positionnement = 'Agressif'; niveauRisque = 'Élevé'; }
-  else if (prixPropose > prixPlafond) { positionnement = 'Excessif'; niveauRisque = 'Commercial'; }
-  else if (prixPropose > prixConseille * 1.15) { positionnement = 'Premium'; niveauRisque = 'Faible'; }
-
-  return {
-    surface, tarifBase, prixPoseM2, coutPose, coutMateriel,
-    coutTransport, coutSousTraitance, coutDirect,
-    totalRevient, prixMinRentable, prixConseille,
-    prixPlafond, prixPropose, margeEstimee,
-    tauxMarge, positionnement, niveauRisque,
-  };
-};
-
 /**
  * Calcul devis client (mode réel — devis signé).
  * coutMO : coût main d'œuvre (optionnel, passé par l'appelant depuis calculerCoutsChantier si disponible).

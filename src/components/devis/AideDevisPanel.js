@@ -3,11 +3,75 @@ import { Sparkles, ShieldCheck, TrendingUp } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { fmtN } from '../../donnees';
 import { conseilPrixM2ParType, MARGE_MIN_NEGO } from '../../calculs/conseilPrix';
+import { useClaudeAI } from '../../hooks/useClaudeAI';
 import { V1, mono } from '../../design/v1';
 
 const FIABLE = '#1E8A4C';         // vert « source fiable »
 const FIABLE_FOND = 'rgba(30,138,76,0.08)';
+const INDIC = '#E8912B';          // ambre « à vérifier » (estimation IA)
+const INDIC_FOND = 'rgba(232,145,43,0.08)';
 const clamp = (v) => Math.max(0, Math.min(100, v));
+
+// ── Source B — REPÈRE MARCHÉ (estimation IA, « à vérifier ») ─────────────────
+// Chargée À LA DEMANDE (bouton). Payload anonymisé (types + canton, aucune donnée nominative).
+// JAMAIS fondue dans l'historique (source A) : bloc séparé, ambre. N'écrit rien dans le devis.
+function RepereMarche({ types, iaActivee }) {
+  const { appeler } = useClaudeAI();
+  const [statut, setStatut] = React.useState('idle'); // idle | loading | done | error
+  const [texte, setTexte] = React.useState('');
+
+  const estimer = async () => {
+    setStatut('loading'); setTexte('');
+    const res = await appeler('conseil_prix_marche', { types, canton: 'Genève' });
+    if (res == null) { setStatut('error'); return; }
+    setTexte(res); setStatut('done');
+  };
+
+  const badge = <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', background: INDIC, color: '#3a2607', borderRadius: 20, padding: '3px 9px' }}>À vérifier</span>;
+
+  return (
+    <div data-testid="aide-marche" style={{ background: INDIC_FOND, border: `1px solid ${INDIC}44`, borderRadius: 12, padding: '14px 16px', marginTop: 4 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+        {badge}
+        <span style={{ ...mono(10, '#C9781A', 700), textTransform: 'uppercase', letterSpacing: '0.1em' }}>Repère marché · estimation IA</span>
+      </div>
+
+      {!iaActivee ? (
+        <div style={{ fontSize: 12, color: V1.texteMuted }}>
+          Assistant IA désactivé (<strong>Paramètres → Confidentialité</strong>). Active-le pour obtenir un repère marché.
+        </div>
+      ) : statut === 'loading' ? (
+        <div data-testid="aide-marche-loading" style={{ fontSize: 12.5, color: '#C9781A', fontWeight: 600 }}>Estimation du marché en cours…</div>
+      ) : statut === 'error' ? (
+        <div>
+          <div data-testid="aide-marche-erreur" style={{ fontSize: 12.5, color: V1.danger, marginBottom: 8 }}>
+            L'estimation n'a pas pu être obtenue (IA indisponible). Tu peux réessayer plus tard.
+          </div>
+          <button onClick={estimer} style={{ background: INDIC, color: '#3a2607', border: 'none', borderRadius: 8, padding: '6px 14px', fontWeight: 700, fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>Réessayer</button>
+        </div>
+      ) : statut === 'done' ? (
+        <div data-testid="aide-marche-resultat">
+          <div style={{ whiteSpace: 'pre-wrap', fontSize: 12.5, color: V1.texte, lineHeight: 1.55 }}>{texte}</div>
+          <div style={{ marginTop: 10, fontSize: 11.5, color: '#C9781A', fontWeight: 600 }}>
+            ⚠ Estimation IA — non vérifiée. À confronter au terrain, jamais un prix ferme. Ne remplace pas ton historique.
+          </div>
+          <button onClick={estimer} style={{ marginTop: 8, background: 'transparent', color: '#C9781A', border: `1px solid ${INDIC}66`, borderRadius: 8, padding: '5px 12px', fontWeight: 700, fontSize: 11.5, cursor: 'pointer', fontFamily: 'inherit' }}>Réestimer</button>
+        </div>
+      ) : (
+        <div>
+          <div style={{ fontSize: 12, color: V1.texteMuted, marginBottom: 8 }}>
+            Ordre de grandeur du prix/m² sur le marché genevois — généré à la demande, <strong>séparé de ton historique</strong>.
+          </div>
+          <button data-testid="aide-marche-bouton" onClick={estimer} disabled={types.length === 0}
+            style={{ background: types.length === 0 ? V1.separation : INDIC, color: types.length === 0 ? V1.texteMuted : '#3a2607', border: 'none', borderRadius: 8, padding: '7px 14px', fontWeight: 700, fontSize: 12, cursor: types.length === 0 ? 'not-allowed' : 'pointer', fontFamily: 'inherit' }}>
+            Estimer le prix marché (IA)
+          </button>
+          {types.length === 0 && <span style={{ marginLeft: 8, fontSize: 11, color: V1.texteMuted }}>— coche d'abord un type ci-dessous.</span>}
+        </div>
+      )}
+    </div>
+  );
+}
 
 // Un bloc « source A » (historique CYNA) pour UN type de travaux.
 function BlocType({ type, conseil, surface }) {
@@ -97,6 +161,7 @@ function BlocType({ type, conseil, surface }) {
 export default function AideDevisPanel({ typesSelectionnes = [], surface = 0 }) {
   const { chantiers = [], factures = [], devis = [], parametres = {}, pointages = [] } = useApp();
   const types = (typesSelectionnes || []).filter(Boolean);
+  const iaActivee = parametres?.parametres?.iaActivee !== false;
 
   return (
     <div data-testid="aide-devis-panel" style={{ marginBottom: 20, background: V1.bleuFond, border: `1px solid ${V1.bleu}2e`, borderRadius: 14, padding: '16px 18px' }}>
@@ -125,11 +190,8 @@ export default function AideDevisPanel({ typesSelectionnes = [], surface = 0 }) 
         ))
       )}
 
-      {/* Placeholder source B (repère marché IA) — lot suivant */}
-      <div style={{ fontSize: 11, color: V1.texteMuted, marginTop: 6, fontStyle: 'italic', display: 'flex', alignItems: 'center', gap: 6 }}>
-        <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#E8912B' }} />
-        Repère marché (estimation IA, à vérifier) — bientôt.
-      </div>
+      {/* Source B — repère marché (estimation IA, à vérifier), à la demande, séparée de l'historique */}
+      <RepereMarche types={types} iaActivee={iaActivee} />
     </div>
   );
 }

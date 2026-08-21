@@ -35,11 +35,15 @@ const CHANTIERS = [{
   id: 'c1', nom: 'Chantier Un', statut: 'En cours', clientId: 'cl1', devisId: 'dv1',
   dateDebut: `${ANNEE}-02-01`, nombreJours: 10, journal: [], equipe: [],
 }];
+// Lot 4d : la cascade est désormais en CA FACTURÉ HT → il faut une facture pour qu'elle affiche une
+// valeur. On facture 60'000 HT → CA facturé = 60'000 (même chiffre qu'avant, mais base facturé).
+const FACTURES = [{ id: 'f1', chantierId: 'c1', clientId: 'cl1', statut: 'envoyee',
+  montantHT: 60000, montantTTC: 64860, dateEmission: `${ANNEE}-02-15` }];
 
 function renderAnalyse(over = {}) {
   return renderWithApp(
     <Analyse chantiers={over.chantiers || CHANTIERS} clients={CLIENTS} devis={DEVIS}
-      parametres={PARAMETRES} setParametres={vi.fn()} factures={[]} periodeGlobale="annee" />,
+      parametres={PARAMETRES} setParametres={vi.fn()} factures={over.factures || FACTURES} periodeGlobale="annee" />,
     { pointages: [], ...over.ctx },
   );
 }
@@ -67,18 +71,18 @@ describe('VUE RENTABILITÉ — cascade + seuil + prévu/réel (vraies valeurs)',
   it('la cascade affiche le CA total et la marge nette', () => {
     renderAnalyse();
     // Lignes de la cascade
-    expect(screen.getByText("Chiffre d'affaires total")).toBeInTheDocument();
+    expect(screen.getByText("Chiffre d'affaires facturé")).toBeInTheDocument();
     expect(screen.getByText('= MARGE NETTE')).toBeInTheDocument();
-    // CA total = devis 60 000 → "CHF 60'000" (fmtN, apostrophe suisse)
+    // CA facturé = facture 60 000 HT → "CHF 60'000" (fmtN, apostrophe suisse)
     expect(screen.getAllByText(/CHF 60'000/).length).toBeGreaterThan(0);
   });
 
   it('affiche le seuil de rentabilité et le tableau prévu vs réel', () => {
     renderAnalyse();
     expect(screen.getAllByText('Seuil de rentabilité').length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByText('CA signé actuel')).toBeInTheDocument();
+    expect(screen.getByText('CA facturé actuel')).toBeInTheDocument();
     expect(screen.getByText('Écart au seuil')).toBeInTheDocument();
-    expect(screen.getByText('Comparaison Prévu vs Réel par chantier')).toBeInTheDocument();
+    expect(screen.getByText('Comparaison Devisé vs Réel par chantier')).toBeInTheDocument();
     // Le chantier apparaît dans le tableau prévu/réel
     expect(screen.getAllByText('Chantier Un').length).toBeGreaterThan(0);
   });
@@ -88,6 +92,6 @@ describe('VUE RENTABILITÉ — cascade + seuil + prévu/réel (vraies valeurs)',
     fireEvent.click(screen.getByRole('button', { name: 'Rentabilité' })); // rester sur la vue
     expect(screen.getByText('Masse salariale totale')).toBeInTheDocument();
     expect(screen.getByText('Coût total RH')).toBeInTheDocument();
-    expect(screen.getByText('% du CA signé')).toBeInTheDocument();
+    expect(screen.getByText('% du CA facturé')).toBeInTheDocument();
   });
 });

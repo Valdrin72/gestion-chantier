@@ -24,6 +24,14 @@ const DEVIS = [
 
 const CLIENTS = [{ id: 'cl-1', nom: 'Dupont', prenom: 'Jean', entreprise: 'Dupont SA' }];
 
+// Lot 4d : la cascade Analyse est en CA FACTURÉ HT → il faut des factures. On facture 60'000 + 40'000
+// = 100'000 (même total qu'avant, base facturé). La date d'émission (pas le chantier) porte le CA, donc
+// archiver un chantier ne retire pas sa facture → l'invariant « le CA ne baisse pas » tient toujours.
+const FACTURES = [
+  { id: 'fa-1', chantierId: 'c-1', clientId: 'cl-1', statut: 'envoyee', montantHT: 60000, montantTTC: 64860, dateEmission: `${ANNEE}-02-15` },
+  { id: 'fa-2', chantierId: 'c-2', clientId: 'cl-1', statut: 'envoyee', montantHT: 40000, montantTTC: 43240, dateEmission: `${ANNEE}-03-15` },
+];
+
 function makeChantiers({ archiverPremier = false } = {}) {
   return [
     {
@@ -49,7 +57,7 @@ function renderRapports(props = {}) {
       paiementsData={[]}
       periodeGlobale="annee"
       naviguer={() => {}}
-      factures={[]}
+      factures={props.factures ?? FACTURES}
     />,
     props.ctx ?? {}
   );
@@ -90,11 +98,11 @@ describe('RapportsPage — structure et onglets', () => {
 });
 
 describe('RapportsPage → Analyse — agrégats corrects', () => {
-  it('onglet Analyse : CA total = somme des devis des chantiers en période (100 000)', () => {
+  it('onglet Analyse : CA facturé total = somme des factures HT de la période (100 000)', () => {
     renderRapports({ chantiers: makeChantiers() });
     fireEvent.click(screen.getByRole('button', { name: /^Analyse$/i }));
 
-    // CA total = 60 000 + 40 000 = 100 000 → affiché "100'000" (fmtN)
+    // CA facturé = 60 000 + 40 000 = 100 000 → affiché "100'000" (fmtN)
     expect(screen.getAllByText(new RegExp(fmtN(100000).replace("'", "['']"))).length).toBeGreaterThan(0);
   });
 

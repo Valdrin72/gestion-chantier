@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { fmtN, calculerCoutsChantier, calculerCA, statutRentabilite, isChantierActif, heuresEmploye, getIntervallesPeriode, chantiersInPeriode, couleurMarge, SEUILS } from './donnees';
+import { indicateursMargeChantier, caFactureHTDansPeriode } from './calculs/periode';
 import { DS } from './ds';
 import { joursReelsChantier } from './calculs/pointagesHelper';
 import { useApp } from './context/AppContext';
@@ -65,19 +66,21 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
     return chantiers.filter(c => chantiersInPeriode(c, debut, fin));
   }, [chantiers, periodeGlobale]);
 
-  // ===== CALCULS GLOBAUX (uniquement chantiers avec devis pour CA et marges) =====
-  const chantiersAvecDevis = useMemo(
-    () => chantiersPeriode.filter(c => calculerCA(c, devis) !== null),
-    [chantiersPeriode, devis]
-  );
-  const caTotal = useMemo(
-    () => chantiersAvecDevis.reduce((t, c) => t + calculerCA(c, devis), 0),
-    [chantiersAvecDevis, devis]
-  );
-  const coutsTotal = useMemo(
-    () => chantiersAvecDevis.reduce((t, c) => t + calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis, pointages).totalCoutsReel, 0),
-    [chantiersAvecDevis, parametres.employes, parametres.localites, parametres.parametres, devis, pointages]
-  );
+  // ===== CALCULS GLOBAUX — CA FACTURÉ HT + coûts prorata (cascade, seuil, % masse salariale) =====
+  // Helper partagé unique (periode.js) → mêmes chiffres que Marges/Chantiers/Statistiques pour un même
+  // chantier/période (démo année = 171'500). On NE touche PAS `chantiersPeriode` (conservé tel quel pour
+  // les blocs restés sur le devisé et hors périmètre 4d : Prévu vs Réel, Dérive, Corps de métier,
+  // Clients, Analyse m² — migration facturé prévue au lot 4e).
+  const { caTotal, coutsTotal } = useMemo(() => {
+    const cfg = parametres.parametres;
+    const factures_ = chantiers
+      .map(c => indicateursMargeChantier(c, parametres.employes, cfg, pointages, factures, periodeGlobale))
+      .filter(ind => ind.caHT > 0);
+    return {
+      caTotal: factures_.reduce((t, ind) => t + ind.caHT, 0),
+      coutsTotal: factures_.reduce((t, ind) => t + ind.couts, 0),
+    };
+  }, [chantiers, parametres.employes, parametres.parametres, pointages, factures, periodeGlobale]);
   const margeAvantCharges = caTotal - coutsTotal;
   // Coûts MO calculés avec coefficientMainOeuvre (1.0 si tarifs tout compris).
   // chargesSociales ici = estimation des charges non-MO (impôts, FG hors MO) — indicatif seulement.
@@ -94,18 +97,17 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
   const tauxMargeContribution = caTotal > 0 ? ((caTotal - coutsTotal * 0.7) / caTotal) : 0;
   const seuilRentabilite = (caTotal > 0 && tauxMargeContribution > 0) ? chargesFixes / tauxMargeContribution : 0;
 
-  // PROJECTION CA
+  // PROJECTION CA — ANNUELLE par nature (Option A) : CA FACTURÉ HT cumulé des mois écoulés de l'année
+  // en cours. Ne suit PAS periodeGlobale (libellé « Année X » à l'écran).
   const { caRealise, moyenneMensuelle, projectionAnnuelle, moisRestants, caPrevisionnel, moisActuel } = useMemo(() => {
     const mois = new Date().getMonth();
     const annee = new Date().getFullYear();
-    const ca = chantiers.filter(c => {
-      const d = new Date(c.dateDebut);
-      return d.getFullYear() === annee && d.getMonth() <= mois && calculerCA(c, devis) !== null;
-    }).reduce((t, c) => t + calculerCA(c, devis), 0);
+    let ca = 0;
+    for (let m = 0; m <= mois; m++) ca += caFactureHTDansPeriode(factures, 'mois', new Date(annee, m, 15));
     const moy = mois > 0 ? ca / (mois + 1) : ca;
     const restants = 11 - mois;
     return { caRealise: ca, moyenneMensuelle: moy, projectionAnnuelle: moy * 12, moisRestants: restants, caPrevisionnel: ca + moy * restants, moisActuel: mois };
-  }, [chantiers, devis]);
+  }, [factures]);
 
   // ===== DONNÉES PAR CHANTIER (filtrés par période) =====
   const donneesChantiers = useMemo(() => chantiersPeriode.map(c => {
@@ -310,7 +312,7 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
             <div className="ds-card-title">Cascade de rentabilité</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               {[
-                { label: 'Chiffre d\'affaires total', val: caTotal, pct: 100, couleur: V1.ok, bg: 'rgba(30,138,76,0.08)', bold: false, big: false },
+                { label: 'Chiffre d\'affaires facturé', val: caTotal, pct: 100, couleur: V1.ok, bg: 'rgba(30,138,76,0.08)', bold: false, big: false },
                 { label: 'Coûts directs chantiers', val: -coutsTotal, pct: caTotal > 0 ? -(Math.round((coutsTotal / caTotal) * 1000) / 10) : 0, couleur: V1.danger, bg: 'rgba(192,57,43,0.08)', bold: false, big: false },
                 { label: '= Marge brute', val: margeAvantCharges, pct: caTotal > 0 ? Math.round((margeAvantCharges / caTotal) * 1000) / 10 : 0, couleur: margeAvantCharges >= 0 ? V1.ok : V1.danger, bg: 'var(--bg-hover)', bold: true, big: false },
                 { label: 'Charges sociales', val: -chargesSociales, pct: caTotal > 0 ? -(Math.round((chargesSociales / caTotal) * 1000) / 10) : 0, couleur: V1.warn, bg: 'rgba(232,145,43,0.08)', bold: false, big: false },
@@ -339,8 +341,8 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
             <div className="ds-card-title">Seuil de rentabilité</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '15px' }}>
               {[
-                { label: 'Seuil de rentabilité', val: `CHF ${fmtN(Math.round(seuilRentabilite))}`, couleur: V1.warn, desc: 'CA signé minimum à réaliser' },
-                { label: 'CA signé actuel', val: `CHF ${fmtN(Math.round(caTotal))}`, couleur: caTotal >= seuilRentabilite ? V1.ok : V1.danger, desc: caTotal >= seuilRentabilite ? 'Au-dessus du seuil' : 'En dessous du seuil' },
+                { label: 'Seuil de rentabilité', val: `CHF ${fmtN(Math.round(seuilRentabilite))}`, couleur: V1.warn, desc: 'CA facturé minimum à réaliser' },
+                { label: 'CA facturé actuel', val: `CHF ${fmtN(Math.round(caTotal))}`, couleur: caTotal >= seuilRentabilite ? V1.ok : V1.danger, desc: caTotal >= seuilRentabilite ? 'Au-dessus du seuil' : 'En dessous du seuil' },
                 { label: 'Écart au seuil', val: `CHF ${fmtN(Math.abs(Math.round(caTotal - seuilRentabilite)))}`, couleur: caTotal >= seuilRentabilite ? V1.ok : V1.danger, desc: caTotal >= seuilRentabilite ? 'Marge de sécurité' : 'Manque à combler' },
               ].map(s => (
                 <div key={s.label} style={{ ...carteV1, borderTop: `3px solid ${s.couleur}`, padding: '20px', textAlign: 'center' }}>
@@ -355,7 +357,7 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
       )}
 
       {/* ===== DÉRIVE DEVIS → RÉALITÉ ===== */}
-      {montre('derive') && <SectionAnalyse titre="Dérive devis" />}
+      {montre('derive') && <SectionAnalyse titre="Dérive du devisé" />}
       {montre('derive') && (
         <div>
           {/* Intro */}
@@ -481,11 +483,14 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
           )}
 
           <div style={{ ...carteV1, overflowX: 'auto' }}>
-            <div className="ds-card-title">Comparaison Prévu vs Réel par chantier</div>
+            <div className="ds-card-title">Comparaison Devisé vs Réel par chantier</div>
+            <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 14 }}>
+              La colonne « Devisé » est le montant du devis (chiffrage initial), à ne pas confondre avec le CA facturé des autres blocs. Mesure la précision d'estimation.
+            </div>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr>
-                  {['Chantier', 'Devis', 'Coût prévu', 'Coût réel', 'Écart budget', 'Marge réelle', 'Jours prévus', 'Jours réels', 'Écart jours'].map(h => (
+                  {['Chantier', 'Devisé', 'Coût prévu', 'Coût réel', 'Écart budget', 'Marge réelle', 'Jours prévus', 'Jours réels', 'Écart jours'].map(h => (
                     <th key={h} style={DS.th}>{h}</th>
                   ))}
                 </tr>
@@ -616,7 +621,7 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
                 { label: 'Salaires bruts', val: `CHF ${fmtN(donneesEmployes.reduce((t, e) => t + e.coutTotal, 0))}`, couleur: V1.ok },
                 { label: 'Charges sociales', val: `CHF ${fmtN(Math.round(donneesEmployes.reduce((t, e) => t + e.chargesSoc, 0)))}`, couleur: V1.warn },
                 { label: 'Coût total RH', val: `CHF ${fmtN(Math.round(donneesEmployes.reduce((t, e) => t + e.coutReel, 0)))}`, couleur: V1.danger },
-                { label: '% du CA signé', val: `${caTotal > 0 ? Math.round((donneesEmployes.reduce((t, e) => t + e.coutReel, 0) / caTotal) * 1000) / 10 : 0}%`, couleur: V1.bleu },
+                { label: '% du CA facturé', val: `${caTotal > 0 ? Math.round((donneesEmployes.reduce((t, e) => t + e.coutReel, 0) / caTotal) * 1000) / 10 : 0}%`, couleur: V1.bleu },
               ].map(s => (
                 <div key={s.label} style={{ ...carteV1, borderTop: `3px solid ${s.couleur}`, padding: '18px', textAlign: 'center' }}>
                   <div style={{ fontSize: '12px', color: V1.texteMuted }}>{s.label}</div>
@@ -694,13 +699,13 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
       {montre('projection') && (
         <div>
           <div style={carteV1}>
-            <div className="ds-card-title">Projections CA signé annuel {new Date().getFullYear()}</div>
+            <div className="ds-card-title">Projections CA facturé — Année {new Date().getFullYear()}</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '15px', marginBottom: '25px' }}>
               {[
-                { label: 'CA signé réalisé', val: `CHF ${fmtN(Math.round(caRealise))}`, couleur: V1.ok, desc: `${moisActuel + 1} mois` }, // eslint-disable-line no-undef
+                { label: 'CA facturé réalisé', val: `CHF ${fmtN(Math.round(caRealise))}`, couleur: V1.ok, desc: `${moisActuel + 1} mois` }, // eslint-disable-line no-undef
                 { label: 'Moyenne/mois', val: `CHF ${fmtN(Math.round(moyenneMensuelle))}`, couleur: V1.ok, desc: 'Tendance actuelle' },
                 { label: 'Projection annuelle', val: `CHF ${fmtN(Math.round(projectionAnnuelle))}`, couleur: V1.bleu, desc: 'Sur 12 mois' },
-                { label: 'CA signé prévisionnel', val: `CHF ${fmtN(Math.round(caPrevisionnel))}`, couleur: V1.warn, desc: `Réalisé + ${moisRestants} mois prévus` },
+                { label: 'CA facturé prévisionnel', val: `CHF ${fmtN(Math.round(caPrevisionnel))}`, couleur: V1.warn, desc: `Réalisé + ${moisRestants} mois prévus` },
               ].map(s => (
                 <div key={s.label} style={{ ...carteV1, borderTop: `3px solid ${s.couleur}`, padding: '18px', textAlign: 'center' }}>
                   <div style={{ fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px', color: V1.texteMuted, marginBottom: '6px' }}>{s.label}</div>
@@ -729,7 +734,7 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
                 return (
                   <div key={s.scenario} style={{ ...carteV1, borderTop: `3px solid ${couleurs[i]}`, padding: '20px', textAlign: 'center' }}>
                     <div style={{ fontWeight: 'bold', color: couleurs[i], marginBottom: '10px' }}>{s.scenario}</div>
-                    <div style={{ fontSize: '13px', color: V1.texteMuted }}>CA signé projeté</div>
+                    <div style={{ fontSize: '13px', color: V1.texteMuted }}>CA facturé projeté</div>
                     <div style={{ ...mono(18, couleurs[i], 700) }}>CHF {fmtN(Math.round(s.ca))}</div>
                     <div style={{ margin: '10px 0', borderTop: `1px solid ${V1.separation}`, paddingTop: '10px' }}>
                       <div style={{ fontSize: '13px', color: V1.texteMuted }}>Marge nette</div>
@@ -834,7 +839,7 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
             <div className="ds-card-title">Définir les objectifs annuels</div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px,1fr))', gap: 20 }}>
               {[
-                { label: 'CA signé annuel cible (CHF)', key: 'caAnnuel', type: 'number' },
+                { label: 'CA facturé annuel cible (CHF)', key: 'caAnnuel', type: 'number' },
                 { label: 'Marge nette cible (%)', key: 'margeCible', type: 'number' },
                 { label: 'Nb chantiers cible', key: 'nbChantiers', type: 'number' },
               ].map(f => (
@@ -851,9 +856,8 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px,1fr))', gap: 16, marginBottom: 24 }}>
             {(() => {
               const annee = new Date().getFullYear();
-              const caReel = chantiers
-                .filter(c => new Date(c.dateDebut).getFullYear() === annee && calculerCA(c, devis) !== null)
-                .reduce((t, c) => t + calculerCA(c, devis), 0);
+              // ANNUEL (Option A) : CA FACTURÉ HT de l'année en cours (== cascade en vue annuelle, == 171'500 démo).
+              const caReel = caFactureHTDansPeriode(factures, 'annee', new Date(annee, 5, 15));
               const pctCA = objectifs.caAnnuel > 0 ? Math.min((caReel / objectifs.caAnnuel) * 100, 100) : 0;
               const margeReelle = parseFloat(margeNettePct) || 0;
               const pctMarge = objectifs.margeCible > 0 ? Math.min((margeReelle / objectifs.margeCible) * 100, 100) : 0;
@@ -861,7 +865,7 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
               const pctNb = objectifs.nbChantiers > 0 ? Math.min((nbChantiersReel / objectifs.nbChantiers) * 100, 100) : 0;
 
               return [
-                { label: 'CA signé annuel', cible: `CHF ${fmtN(Math.round(objectifs.caAnnuel))}`, reel: `CHF ${fmtN(Math.round(caReel))}`, pct: pctCA, couleur: pctCA >= 80 ? V1.ok : pctCA >= 50 ? V1.warn : V1.danger },
+                { label: 'CA facturé annuel', cible: `CHF ${fmtN(Math.round(objectifs.caAnnuel))}`, reel: `CHF ${fmtN(Math.round(caReel))}`, pct: pctCA, couleur: pctCA >= 80 ? V1.ok : pctCA >= 50 ? V1.warn : V1.danger },
                 { label: 'Marge nette', cible: `${objectifs.margeCible}%`, reel: `${margeReelle}%`, pct: pctMarge, couleur: pctMarge >= 80 ? V1.ok : pctMarge >= 50 ? V1.warn : V1.danger },
                 { label: 'Chantiers', cible: `${objectifs.nbChantiers}`, reel: `${nbChantiersReel}`, pct: pctNb, couleur: pctNb >= 80 ? V1.ok : pctNb >= 50 ? V1.warn : V1.danger },
               ].map(item => (

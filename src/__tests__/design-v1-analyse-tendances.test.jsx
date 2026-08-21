@@ -38,10 +38,14 @@ const CHANTIERS = [{
   journal: [], equipe: [],
 }];
 
+// Lot 4d : projections/objectifs sont en CA FACTURÉ HT (annuel). Une facture 60'000 HT alimente les valeurs.
+const FACTURES = [{ id: 'f1', chantierId: 'c1', clientId: 'cl1', statut: 'envoyee',
+  montantHT: 60000, montantTTC: 64860, dateEmission: `${ANNEE}-02-15` }];
+
 function renderTendances() {
   const r = renderWithApp(
     <Analyse chantiers={CHANTIERS} clients={CLIENTS} devis={DEVIS}
-      parametres={PARAMETRES} setParametres={vi.fn()} factures={[]} periodeGlobale="annee" />,
+      parametres={PARAMETRES} setParametres={vi.fn()} factures={FACTURES} periodeGlobale="annee" />,
     { pointages: [] },
   );
   fireEvent.click(screen.getByRole('button', { name: 'Tendances & objectifs' }));
@@ -51,7 +55,7 @@ function renderTendances() {
 describe('PROJECTIONS — CA annuel + scénarios de marge', () => {
   it('affiche la projection annuelle et les 3 scénarios', () => {
     renderTendances();
-    expect(screen.getByText(new RegExp(`Projections CA signé annuel ${ANNEE}`))).toBeInTheDocument();
+    expect(screen.getByText(new RegExp(`Projections CA facturé — Année ${ANNEE}`))).toBeInTheDocument();
     expect(screen.getByText('Projection annuelle')).toBeInTheDocument();
     expect(screen.getByText('Projection marge nette annuelle')).toBeInTheDocument();
     expect(screen.getByText(/Pessimiste/)).toBeInTheDocument();

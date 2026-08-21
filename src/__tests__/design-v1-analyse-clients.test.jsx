@@ -37,11 +37,15 @@ const CHANTIERS = [{
   dateDebut: `${ANNEE}-02-01`, nombreJours: 10, surface: 100, typesTravaux: ['Faux-plafond'],
   journal: [{ date: `${ANNEE}-02-02`, employes: [{ heuresTravaillees: 8 }] }], equipe: [],
 }];
+// Lot 4e : « Top clients » est en CA FACTURÉ HT → il faut une facture (60'000). Le bloc « Dérive du
+// devisé » reste sur le devisé (non migré) → ses indicateurs s'affichent quelle que soit la facture.
+const FACTURES = [{ id: 'f1', chantierId: 'c1', clientId: 'cl1', statut: 'envoyee',
+  montantHT: 60000, montantTTC: 64860, dateEmission: `${ANNEE}-02-15` }];
 
 function renderClients() {
   const r = renderWithApp(
     <Analyse chantiers={CHANTIERS} clients={CLIENTS} devis={DEVIS}
-      parametres={PARAMETRES} setParametres={vi.fn()} factures={[]} periodeGlobale="annee" />,
+      parametres={PARAMETRES} setParametres={vi.fn()} factures={FACTURES} periodeGlobale="annee" />,
     { pointages: [] },
   );
   fireEvent.click(screen.getByRole('button', { name: 'Clients' }));
@@ -70,14 +74,14 @@ describe('DÉRIVE DEVIS — intro + indicateurs + types', () => {
 describe('TOP CLIENTS — podium + classement (vraies valeurs)', () => {
   it('affiche le podium et le tableau de classement avec le client réel', () => {
     renderClients();
-    expect(screen.getByText('Top clients par CA signé')).toBeInTheDocument();
+    expect(screen.getByText('Top clients par CA facturé')).toBeInTheDocument();
     expect(screen.getByText('1er')).toBeInTheDocument();
-    // Le client réel (cl.nom) + son CA (60 000)
+    // Le client réel (cl.nom) + son CA facturé (60 000)
     expect(screen.getAllByText('Dupont').length).toBeGreaterThan(0);
     expect(screen.getAllByText(/CHF 60'000/).length).toBeGreaterThan(0);
     // KPI clients (dont l'ex-violet « Marge moy. »)
     expect(screen.getByText('Marge moy.')).toBeInTheDocument();
-    expect(screen.getByText('Meilleur CA signé')).toBeInTheDocument();
+    expect(screen.getByText('Meilleur CA facturé')).toBeInTheDocument();
   });
 });
 

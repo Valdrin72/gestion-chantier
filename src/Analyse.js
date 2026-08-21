@@ -167,34 +167,40 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
     return { ...emp, joursTotal, heuresTotal, coutTotal, caGenere, coutHoraire, productivite, chargesSoc, coutReel };
   }).filter(e => e.joursTotal > 0), [chantiersPeriode, parametres.employes, parametres.parametres, devis]);
 
-  // ===== RENTABILITÉ PAR MÉTRÉ (uniquement chantiers avec devis, période filtrée) =====
+  // ===== SOCLE FACTURÉ (lot 4e) — indicateurs par chantier pour les répartitions Clients + Corps de
+  // métier. ISOLÉ : ne touche PAS `chantiersPeriode` (bloc Analyse m² + blocs 4d strictement intacts). =====
+  const indicsFacture = useMemo(() => {
+    const cfg = parametres.parametres;
+    return chantiers.map(c => ({ c, ind: indicateursMargeChantier(c, parametres.employes, cfg, pointages, factures, periodeGlobale) }));
+  }, [chantiers, parametres.employes, parametres.parametres, pointages, factures, periodeGlobale]);
+
+  // ===== RENTABILITÉ PAR TYPE DE TRAVAUX — CA FACTURÉ HT réparti (lot 4e) =====
   const donneesMetres = useMemo(() => parametres.typesTravaux.map(t => {
-    const tous = chantiersPeriode.filter(c => (c.typesTravaux || []).includes(t.nom));
-    const avecDevis = tous.filter(c => calculerCA(c, devis) !== null);
-    const surface = avecDevis.reduce((s, c) => s + (parseFloat(c.surface) || 0), 0);
-    const ca = avecDevis.reduce((s, c) => s + calculerCA(c, devis), 0);
-    const couts = avecDevis.reduce((s, c) => s + calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis, pointages).totalCoutsReel, 0);
+    const membres = indicsFacture.filter(x => (x.c.typesTravaux || []).includes(t.nom));
+    const factures_ = membres.filter(x => x.ind.caHT > 0);
+    const surface = factures_.reduce((s, x) => s + (parseFloat(x.c.surface) || 0), 0);
+    const ca = factures_.reduce((s, x) => s + x.ind.caHT, 0);
+    const couts = factures_.reduce((s, x) => s + x.ind.couts, 0);
     const marge = ca - couts;
     const caParM2 = surface > 0 ? Math.round(ca / surface) : 0;
     const coutParM2 = surface > 0 ? Math.round(couts / surface) : 0;
     const margeParM2 = surface > 0 ? Math.round(marge / surface) : 0;
     const margePct = ca > 0 ? Math.round((marge / ca) * 1000) / 10 : 0;
-    return { nom: t.nom, count: tous.length, nbAvecDevis: avecDevis.length, surface, ca, couts, marge, caParM2, coutParM2, margeParM2, margePct };
-  }).filter(t => t.count > 0), [chantiersPeriode, parametres.typesTravaux, parametres.employes, parametres.localites, parametres.parametres, devis, pointages]);
+    return { nom: t.nom, count: membres.filter(x => x.ind.actif).length, surface, ca, couts, marge, caParM2, coutParM2, margeParM2, margePct };
+  }).filter(t => t.count > 0), [indicsFacture, parametres.typesTravaux]);
 
-  // ===== DONNÉES PAR CLIENT (uniquement chantiers avec devis pour CA/marge, période filtrée) =====
+  // ===== RÉPARTITION PAR CLIENT — CA FACTURÉ HT réparti (lot 4e) =====
   const donneesClients = useMemo(() => clients.map(cl => {
-    const tous = chantiersPeriode.filter(c => String(c.clientId) === String(cl.id));
-    const avecDevis = tous.filter(c => calculerCA(c, devis) !== null);
-    const cs = avecDevis; // alias pour clarté
-    const ca = cs.reduce((t, c) => t + calculerCA(c, devis), 0);
-    const couts = cs.reduce((t, c) => t + calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis, pointages).totalCoutsReel, 0);
+    const membres = indicsFacture.filter(x => String(x.c.clientId) === String(cl.id));
+    const factures_ = membres.filter(x => x.ind.caHT > 0);
+    const ca = factures_.reduce((t, x) => t + x.ind.caHT, 0);
+    const couts = factures_.reduce((t, x) => t + x.ind.couts, 0);
     const marge = ca - couts;
     const margePct = ca > 0 ? Math.round((marge / ca) * 1000) / 10 : 0;
-    const enCours = tous.filter(isChantierActif).length;
-    const termines = tous.filter(c => c.statut?.trim().toLowerCase() === 'terminé').length;
-    return { ...cl, nbChantiers: tous.length, nbAvecDevis: avecDevis.length, ca, couts, marge, margePct, enCours, termines };
-  }).filter(cl => cl.nbChantiers > 0).sort((a, b) => b.ca - a.ca), [clients, chantiersPeriode, parametres, devis, pointages]);
+    const enCours = membres.filter(x => isChantierActif(x.c)).length;
+    const termines = membres.filter(x => x.c.statut?.trim().toLowerCase() === 'terminé').length;
+    return { ...cl, nbChantiers: membres.filter(x => x.ind.actif).length, ca, couts, marge, margePct, enCours, termines };
+  }).filter(cl => cl.ca > 0).sort((a, b) => b.ca - a.ca), [clients, indicsFacture]);
 
   // ===== OBJECTIFS =====
   const chargerObjectifs = () => {
@@ -645,7 +651,7 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
               <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '25px' }}>
                 <thead>
                   <tr>
-                    {['Type travaux', 'Chantiers', 'Surface', 'CA signé/m²', 'Coût/m²', 'Marge/m²', 'Marge %', 'Statut'].map(h => (
+                    {['Type travaux', 'Chantiers', 'Surface', 'CA facturé/m²', 'Coût/m²', 'Marge/m²', 'Marge %', 'Statut'].map(h => (
                       <th key={h} style={DS.th}>{h}</th>
                     ))}
                   </tr>
@@ -765,7 +771,7 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px,1fr))', gap: 14, marginBottom: 24 }}>
                 {[
                   { label: 'Clients actifs', val: donneesClients.length, couleur: V1.bleu },
-                  { label: 'Meilleur CA signé', val: `CHF ${fmtN(Math.round(donneesClients[0]?.ca || 0))}`, couleur: V1.ok },
+                  { label: 'Meilleur CA facturé', val: `CHF ${fmtN(Math.round(donneesClients[0]?.ca || 0))}`, couleur: V1.ok },
                   { label: 'Marge moy.', val: `${Math.round((donneesClients.reduce((t,c)=>t+parseFloat(c.margePct||0),0)/donneesClients.length) * 10) / 10}%`, couleur: V1.bleuMoyen },
                   { label: 'Chantiers total', val: donneesClients.reduce((t,c)=>t+c.nbChantiers,0), couleur: V1.warn },
                 ].map(s => (
@@ -778,7 +784,7 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
 
               {/* Podium top 3 */}
               <div style={carteV1}>
-                <div className="ds-card-title">Top clients par CA signé</div>
+                <div className="ds-card-title">Top clients par CA facturé</div>
                 <div style={{ display: 'flex', gap: 14, marginBottom: 20, flexWrap: 'wrap' }}>
                   {donneesClients.slice(0, 3).map((cl, i) => {
                     const rangCouleur = [V1.warn, V1.bleuMoyen, V1.bleuClair][i];
@@ -800,7 +806,7 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
                 {/* Tableau tous clients */}
                 <table className="table-cards" style={{ width: '100%' }}>
                   <thead><tr>
-                    {['Rang', 'Client', 'Chantiers', 'CA signé total', 'Coûts', 'Marge %', 'Gain CHF', 'Statut'].map(h => (
+                    {['Rang', 'Client', 'Chantiers', 'CA facturé total', 'Coûts', 'Marge %', 'Gain CHF', 'Statut'].map(h => (
                       <th key={h} style={DS.th}>{h}</th>
                     ))}
                   </tr></thead>

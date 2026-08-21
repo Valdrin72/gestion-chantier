@@ -1,12 +1,32 @@
 const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY') ?? '';
 const SUPABASE_URL       = Deno.env.get('SUPABASE_URL') ?? '';
 const SUPABASE_ANON_KEY  = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
-const ALLOWED_ORIGIN     = Deno.env.get('ALLOWED_ORIGIN') ?? 'https://gestion-chantier.vercel.app';
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': ALLOWED_ORIGIN,
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+// ── CORS : whitelist d'origines (projet-scopée, ADDITIVE, jamais '*') ──────────
+// L'app tourne sur plusieurs domaines Vercel du même projet (gestion-chantier,
+// gestion-chantier-nine, previews …). On autorise UNIQUEMENT ce projet + localhost
+// (dev) + une origine supplémentaire optionnelle via env. Le fallback historique
+// reste https://gestion-chantier.vercel.app (rien n'est retiré).
+const EXTRA_ORIGIN     = Deno.env.get('ALLOWED_ORIGIN');
+const FALLBACK_ORIGIN  = 'https://gestion-chantier.vercel.app';
+
+function isAllowedOrigin(origin: string): boolean {
+  if (!origin) return false;
+  if (EXTRA_ORIGIN && origin === EXTRA_ORIGIN) return true;
+  if (/^http:\/\/localhost:\d+$/.test(origin)) return true;
+  if (/^https:\/\/gestion-chantier[a-z0-9-]*\.vercel\.app$/.test(origin)) return true;
+  return false;
+}
+
+function corsFor(req: Request) {
+  const origin = req.headers.get('Origin') ?? '';
+  const allow = isAllowedOrigin(origin) ? origin : FALLBACK_ORIGIN;
+  return {
+    'Access-Control-Allow-Origin': allow,
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Vary': 'Origin',
+  };
+}
 
 // ── Prompts métier CYNA ────────────────────────────────────────
 
@@ -293,6 +313,7 @@ Contraintes de réponse :
 const SONNET_ACTIONS = new Set(['anticiper', 'generer_email', 'comparer_devis', 'analyser_pdf_texte', 'analyse_portefeuille']);
 
 Deno.serve(async (req) => {
+  const corsHeaders = corsFor(req); // par-requête : reflète l'origine autorisée
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }

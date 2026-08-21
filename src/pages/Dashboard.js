@@ -6,11 +6,12 @@ import {
 import { PieChart, Pie, Cell, Tooltip } from 'recharts';
 import {
   fmtN, calculerDateFinOuvrables, estRetardJustifie,
-  calculerCoutsChantier, statutRentabilite, C, getIntervallesPeriode, getPeriodeLabel,
-  facturesInPeriode, calculerRentabiliteReelle, calculerEtatChantier,
+  calculerCoutsChantier, statutRentabilite, C,
+  calculerRentabiliteReelle, calculerEtatChantier,
   calculerCA, isChantierActif, isChantierComptable, SEUILS, margePortefeuille,
   couleurScoreSante,
 } from '../donnees';
+import { bornesPeriode, caFactureHTDansPeriode, coutChantierDansPeriode, periodeLabel } from '../calculs/periode';
 import { STATUTS_CLOS } from '../constants/statuts';
 import { CYNA_PARAMS } from '../calculs/constants';
 import { useApp } from '../context/AppContext';
@@ -49,12 +50,6 @@ function Dashboard() {
     return map;
   }, [chantiers, parametres.employes, parametres.localites, parametres.parametres, devis, pointages]);
 
-  // ── Factures filtrées par période ────────────────────────────
-  const facturesPeriode = useMemo(() => {
-    const { debut, fin } = getIntervallesPeriode(periodeGlobale);
-    return (factures || []).filter(f => facturesInPeriode(f, debut, fin));
-  }, [factures, periodeGlobale]);
-
   const joursParChantier = useMemo(() => {
     const map = {};
     chantiers.forEach(c => {
@@ -73,9 +68,10 @@ function Dashboard() {
     const nbChantiersActifs = actifs.length;
     const nbActifsSansDevis = comptables.length - actifsAvecDevis.length;
 
-    // 2. CASH EN ATTENTE — factures non encaissées
-    const cashEnAttente = facturesPeriode
-      .filter(f => ['envoyee', 'partielle', 'retard'].includes((f.statut || '').toLowerCase()))
+    // 2. ON ME DOIT — état INSTANTANÉ « à ce jour » : TOUT l'impayé, pas seulement les factures
+    // émises dans la période (ce que les clients me doivent aujourd'hui ne dépend pas du sélecteur).
+    const impayees = facturesSafe.filter(f => ['envoyee', 'partielle', 'retard'].includes((f.statut || '').toLowerCase()));
+    const cashEnAttente = impayees
       .reduce((t, f) => t + Math.max(0, (parseFloat(f.montantTTC) || 0) - (parseFloat(f.montantPaye) || 0)), 0);
 
     // 3. RENTABILITÉ MOYENNE — SOURCE UNIQUE partagée avec Finances (helper margePortefeuille).
@@ -84,18 +80,17 @@ function Dashboard() {
     const rentaMoyenne = marge.pct;
     const nbChantiersRenta = marge.nbAnalyses;
 
-    // 4. HEURES ENGAGÉES — depuis journal, filtrées par periodeGlobale
-    const { debut: hDebut, fin: hFin } = getIntervallesPeriode(periodeGlobale);
-    const hDebutStr = `${hDebut.getFullYear()}-${String(hDebut.getMonth()+1).padStart(2,'0')}-${String(hDebut.getDate()).padStart(2,'0')}`;
-    const hFinStr   = `${hFin.getFullYear()}-${String(hFin.getMonth()+1).padStart(2,'0')}-${String(hFin.getDate()).padStart(2,'0')}`;
+    // 4. HEURES ENGAGÉES — depuis journal, période via periode.js (bornes locales correctes)
+    const { debutStr: hDebutStr, finStr: hFinStr } = bornesPeriode(periodeGlobale);
     const heuresEngagees = actifs.reduce((t, c) =>
       t + (c.journal || []).filter(entry => { const d = entry.date || ''; return d >= hDebutStr && d <= hFinStr; }).reduce((s, entry) =>
         s + (entry.employes || []).reduce((es, e) => es + (parseFloat(e.heuresTravaillees) || 0), 0)
       , 0)
     , 0);
 
-    const nbFacturesEnAttente = facturesPeriode.filter(f => ['envoyee', 'partielle', 'retard'].includes((f.statut || '').toLowerCase())).length;
-    const nbFacturesRetard    = facturesPeriode.filter(f => {
+    // Compteurs impayés — instantanés (« à ce jour »), cohérents avec ON ME DOIT.
+    const nbFacturesEnAttente = impayees.length;
+    const nbFacturesRetard    = impayees.filter(f => {
       const s = (f.statut || '').toLowerCase();
       return s === 'retard' || (s === 'envoyee' && f.dateEcheance && new Date(f.dateEcheance) < new Date());
     }).length;
@@ -106,7 +101,7 @@ function Dashboard() {
 
     return { caEnCours, cashEnAttente, rentaMoyenne, nbChantiersRenta, heuresEngagees, nbFacturesEnAttente, nbFacturesRetard, nbEmployes, nbChantiersActifs, nbActifsSansDevis };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [actifs, facturesPeriode, devis, chantiers, parametres.employes, parametres.localites, coutsMap, periodeGlobale]);
+  }, [actifs, facturesSafe, devis, chantiers, parametres.employes, parametres.localites, coutsMap, periodeGlobale]);
 
   // ── Prévision trésorerie 30 jours ───────────────────────────
   const previsionTreso30j = useMemo(() => {
@@ -383,53 +378,43 @@ function Dashboard() {
     });
   }, [factures, actifs, parametres.employes, parametres.parametres]);
 
-  // ── Aperçu financier — SUIT LE SÉLECTEUR DE PÉRIODE (fix). ─────────────────
-  // « Résultat de trésorerie » de la période = encaissé (paiements reçus, datable)
-  // − dépenses réelles engagées via l'ENGINE (calculerCoutsChantier.totalCoutsReel :
-  // MO + matériel + sous-traitance + imprévus ; déplacement EXCLU — règle F2, imputé
-  // aux frais généraux). Aucune formule parallèle : le coût MO reste celui de l'engine.
+  // ── Aperçu financier — RÉSULTAT DE PÉRIODE (fix MOYEN 8 : numérateur ET dénominateur sur la MÊME
+  // base de période). CA FACTURÉ HT de la période − COÛTS de la période au prorata (coutChantierDansPeriode :
+  // MO datée + forfait prorata, déplacement exclu F2). Fini le mélange « encaissé période − coûts vie-entière ».
+  // Cohérent avec Marges / Finances (mêmes factures, base HT → 171'500 sur l'année démo).
   const apercuFinancier = useMemo(() => {
-    const { debut, fin } = getIntervallesPeriode(periodeGlobale);
-    const ymd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-    const debutStr = ymd(debut), finStr = ymd(fin);
-    const dans = (dateStr) => dateStr && dateStr >= debutStr && dateStr <= finStr;
-    const facturesReelles = (facturesSafe || []).filter(f => !['annulee', 'brouillon'].includes((f.statut || '').toLowerCase()));
+    const cfg = parametres.parametres;
+    const compt = (facturesSafe || []).filter(f => !['annulee', 'brouillon'].includes((f.statut || '').toLowerCase()));
+    const _ht = (f) => { const h = parseFloat(f.montantHT); if (!isNaN(h)) return h; const t = parseFloat(f.montantTTC); return isNaN(t) ? 0 : t / 1.081; };
 
-    // CA encaissé = paiements REÇUS dans la période (source unique factures)
-    const caEncaisse = facturesReelles
-      .flatMap(f => f.paiementsHistorique || [])
-      .filter(p => dans((p.date || '').slice(0, 10)))
-      .reduce((s, p) => s + (parseFloat(p.montant) || 0), 0);
+    const caFacture = caFactureHTDansPeriode(facturesSafe, periodeGlobale);          // CA facturé HT de la période
+    const depenses  = (chantiers || []).reduce((s, c) => s + coutChantierDansPeriode(c, parametres.employes || [], cfg, pointages, facturesSafe, periodeGlobale), 0);
+    const activite  = caFacture > 0 || depenses > 0;
 
-    // Chantiers ayant une activité RÉELLE dans la période (pointage OU facture émise)
-    const aPointage = (id) => (pointages || []).some(pt => dans(pt.date) && (pt.repartitions || []).some(r => String(r.chantierId) === String(id)));
-    const aFacture = (id) => facturesReelles.some(f => String(f.chantierId) === String(id) && dans((f.dateEmission || '').slice(0, 10)));
-    const chantiersPeriode = (chantiers || []).filter(c => aPointage(c.id) || aFacture(c.id));
-
-    // Dépenses réelles engagées (engine — MO identique partout, hors déplacement F2)
-    const depenses = chantiersPeriode.reduce((s, c) => s + ((coutsMap.get(c.id) || {}).totalCoutsReel || 0), 0);
-    const activite = caEncaisse > 0 || chantiersPeriode.length > 0;
-
-    // Série encaissé pour le graphique (trend sur la période, découpée en tranches)
+    // Série : CA facturé HT par sous-tranche de la période (même base que le total).
+    const { debutStr, finStr } = bornesPeriode(periodeGlobale);
+    const [y0, m0, d0] = debutStr.split('-').map(Number);
+    const [y1, m1, d1] = finStr.split('-').map(Number);
+    const deb = new Date(y0, m0 - 1, d0), fin = new Date(y1, m1 - 1, d1 + 1); // fin exclusive
+    const spanMs = Math.max(1, fin.getTime() - deb.getTime());
+    const ymd = (dt) => `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
     const nB = periodeGlobale === 'annee' ? 12 : periodeGlobale === 'mois' ? 5 : 6;
-    const spanMs = Math.max(1, fin.getTime() - debut.getTime());
     const serie = Array.from({ length: nB }, (_, i) => {
-      const bDeb = new Date(debut.getTime() + (spanMs * i) / nB);
-      const bFin = new Date(debut.getTime() + (spanMs * (i + 1)) / nB);
+      const bDeb = new Date(deb.getTime() + (spanMs * i) / nB);
+      const bFin = new Date(deb.getTime() + (spanMs * (i + 1)) / nB);
       const a = ymd(bDeb), b = ymd(bFin);
-      const enc = facturesReelles.flatMap(f => f.paiementsHistorique || [])
-        .filter(p => { const d = (p.date || '').slice(0, 10); return d && d >= a && d < b; })
-        .reduce((s, p) => s + (parseFloat(p.montant) || 0), 0);
-      return { label: bDeb.toLocaleDateString('fr-CH', { day: '2-digit', month: '2-digit' }), CA: Math.round(enc) };
+      const v = compt.filter(f => { const d = (f.dateEmission || '').slice(0, 10); return d && d >= a && d < b; })
+        .reduce((s, f) => s + _ht(f), 0);
+      return { label: bDeb.toLocaleDateString('fr-CH', { day: '2-digit', month: '2-digit' }), CA: Math.round(v) };
     });
 
     return {
-      caEncaisse: Math.round(caEncaisse),
+      caFacture: Math.round(caFacture),
       depenses: Math.round(depenses),
-      resultat: Math.round(caEncaisse - depenses),
-      activite, serie, periodeLabel: getPeriodeLabel(periodeGlobale),
+      resultat: Math.round(caFacture - depenses),
+      activite, serie, periodeLabel: periodeLabel(periodeGlobale),
     };
-  }, [facturesSafe, pointages, chantiers, coutsMap, periodeGlobale]);
+  }, [facturesSafe, pointages, chantiers, parametres.employes, parametres.parametres, periodeGlobale]);
 
   // ── Timeline « Activité récente » v1 — dérivée des VRAIES sources (lecture pure) ──
   const evenementsRecents = useMemo(() => {
@@ -924,7 +909,7 @@ function Dashboard() {
             vide={!apercuFinancier.activite}
             resultatNet={apercuFinancier.resultat}
             lignes={[
-              { label: 'CA ENCAISSÉ', valeur: apercuFinancier.caEncaisse, delta: null, couleur: V1.bleu },
+              { label: 'CA FACTURÉ', valeur: apercuFinancier.caFacture, delta: null, couleur: V1.bleu },
               { label: 'DÉPENSES', valeur: apercuFinancier.depenses, delta: null, couleur: V1.texte },
               { label: 'RÉSULTAT', valeur: apercuFinancier.resultat, delta: null, couleur: apercuFinancier.resultat >= 0 ? V1.ok : V1.danger },
             ]}

@@ -104,11 +104,13 @@ describe('MES CHANTIERS — vrais chantiers, état C8 visible', () => {
 });
 
 describe('APERÇU FINANCIER + TIMELINE — vraies sources', () => {
-  it('l\'aperçu financier affiche RÉSULTAT NET et les 3 lignes de chiffres', () => {
+  it('l\'aperçu financier (résultat de PÉRIODE) affiche CA facturé + dépenses de la période', () => {
     renderWithApp(<Dashboard />, CTX);
     expect(screen.getByTestId('apercu-financier')).toBeInTheDocument();
-    expect(screen.getByText('RÉSULTAT DE TRÉSORERIE')).toBeInTheDocument();
-    expect(screen.getByText('CA ENCAISSÉ')).toBeInTheDocument();
+    // Lot Dashboard : le bloc est désormais un résultat de PÉRIODE (CA facturé − coûts prorata),
+    // numérateur et dénominateur sur la même base (fix MOYEN 8), plus « encaissé − coûts vie-entière ».
+    expect(screen.getByText('RÉSULTAT DE PÉRIODE')).toBeInTheDocument();
+    expect(screen.getByText('CA FACTURÉ')).toBeInTheDocument();
     expect(screen.getByText('DÉPENSES')).toBeInTheDocument();
   });
 

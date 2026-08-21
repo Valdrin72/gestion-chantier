@@ -11,6 +11,7 @@ import { V1, mono, carteV1, heroFond, heroMono, RYTHME } from '../design/v1';
 import { useApp } from '../context/AppContext';
 import { exportDevis } from '../ExportPDF';
 import AssistantDevisIA from '../AssistantDevisIA';
+import AideDevisPanel from '../components/devis/AideDevisPanel';
 import { devisEstReferencé } from '../utils/referenceGuard';
 import { archiver, restaurer, filtrerActifs, filtrerArchives } from '../utils/archiveHelpers';
 import ArchiveToggle from '../components/shared/ArchiveToggle';
@@ -558,6 +559,9 @@ function Devis() {
 
           {/* ── Calculateur MO (ratios productivite-cyna) ── */}
           {(parseFloat(form.surface) || 0) > 0 && <CalculateurMO surface={parseFloat(form.surface) || 0} onApply={({ duree, personnes }) => setForm(f => ({ ...f, dureeEstimee: duree, nombrePersonnes: personnes }))} />}
+
+          {/* ── Aide au devis : prix conseillé au m² (historique CYNA, lecture seule — n'écrit rien) ── */}
+          <AideDevisPanel typesSelectionnes={form.typesTravaux} surface={form.surface} />
 
           {/* ── Avenants ── */}
           <div style={{ background: V1.bleuFond, border: `1px solid ${V1.bleuClair}`, borderRadius: 12, padding: '20px', marginBottom: 20 }}>

@@ -36,11 +36,16 @@ const CHANTIERS = [{
   dateDebut: `${ANNEE}-02-01`, nombreJours: 10, surface: 100, typesTravaux: ['Faux-plafond'],
   journal: [], equipe: [],
 }];
+// Lot 4e : « Corps de métier » est en CA FACTURÉ HT → il faut une facture pour qu'il se peuple.
+// Le bloc « Analyse m² » reste sur le DEVISÉ (non migré) → il continue d'afficher « CA signé moyen / m² »
+// avec la valeur du devis, quelle que soit la facture : c'est la PREUVE d'isolation.
+const FACTURES = [{ id: 'f1', chantierId: 'c1', clientId: 'cl1', statut: 'envoyee',
+  montantHT: 60000, montantTTC: 64860, dateEmission: `${ANNEE}-02-15` }];
 
 function renderAnalyse() {
   const r = renderWithApp(
     <Analyse chantiers={CHANTIERS} clients={CLIENTS} devis={DEVIS}
-      parametres={PARAMETRES} setParametres={vi.fn()} factures={[]} periodeGlobale="annee" />,
+      parametres={PARAMETRES} setParametres={vi.fn()} factures={FACTURES} periodeGlobale="annee" />,
     { pointages: [] },
   );
   fireEvent.click(screen.getByRole('button', { name: 'Par type & surface' }));

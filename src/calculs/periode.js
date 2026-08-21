@@ -117,6 +117,17 @@ export const caFactureDansPeriode = (factures = [], periode, ref = new Date()) =
     .filter((f) => _factureComptable(f) && estDansPeriode(f.dateEmission || f.creeLe, periode, ref))
     .reduce((s, f) => s + (parseFloat(f.montantTTC) || 0), 0);
 
+/**
+ * Montant PAYÉ (encaissé) des factures dont dateEmission ∈ période = Σ min(montantPaye, montantTTC).
+ * Base TTC (on encaisse du TTC). Plafonné au TTC (jamais encaissé > facturé). Rattaché à la période
+ * d'ÉMISSION de la facture (cohérent avec caFactureDansPeriode → le taux d'encaissement d'une période
+ * = payé/facturé sur les MÊMES factures). Exclut brouillon + annulée.
+ */
+export const caPayeDansPeriode = (factures = [], periode, ref = new Date()) =>
+  (factures || [])
+    .filter((f) => _factureComptable(f) && estDansPeriode(f.dateEmission || f.creeLe, periode, ref))
+    .reduce((s, f) => s + Math.min(parseFloat(f.montantPaye) || 0, parseFloat(f.montantTTC) || 0), 0);
+
 /** CA facturé de la période pour UN chantier donné. */
 export const caFactureParChantier = (factures = [], chantierId, periode, ref = new Date()) =>
   (factures || [])

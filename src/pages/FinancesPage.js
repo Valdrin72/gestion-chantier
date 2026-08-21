@@ -5,7 +5,8 @@ import React, { useState, useMemo, useCallback, useLayoutEffect } from 'react';
 import { DollarSign, FileText, Clock, AlertTriangle, CreditCard, TrendingUp, Calendar, Zap, CheckCircle, Menu, Plus } from 'lucide-react';
 import Factures from '../Factures';
 import RelancesTab from '../RelancesTab';
-import { getIntervallesPeriode, getPeriodeLabel, facturesInPeriode, calculerCA, calculerCAForfait, calculerStatutFacture, calculerEtatChantier, tauxTVAParam, margePortefeuille } from '../donnees';
+import { calculerCA, calculerCAForfait, calculerStatutFacture, calculerEtatChantier, tauxTVAParam, margePortefeuille } from '../donnees';
+import { estDansPeriode, caFactureDansPeriode, caPayeDansPeriode, periodeLabel } from '../calculs/periode';
 import { useApp } from '../context/AppContext';
 import { prochainRappel } from '../relances';
 import { V1, mono, carteV1, heroFond, heroMono, RYTHME } from '../design/v1';
@@ -200,6 +201,10 @@ function Tresorerie({ factures = [], chantiers = [], clients = [], devis = [], p
         <span style={{ fontSize: 13, fontWeight: 700, color: signal.couleur }}>{signal.texte}</span>
       </div>
 
+      {/* ── Sous-titre : la trésorerie est un instantané, pas un cumul de période ── */}
+      <div style={{ fontSize: 11, color: V1.texteMuted, fontWeight: 600, marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+        Situation instantanée — ne suit pas la période sélectionnée
+      </div>
       {/* ── KPIs Trésorerie — une seule ligne v1 (liseré coloré) : À encaisser / Cette semaine / Facturable / Marge ── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: RYTHME.entreCartes, marginBottom: RYTHME.entreSections }}>
         {[
@@ -381,7 +386,7 @@ function Tresorerie({ factures = [], chantiers = [], clients = [], devis = [], p
           {/* KPIs cumulés */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 14, marginBottom: 20 }}>
             {[
-              { label: 'CA facturé total',    val: `CHF ${fmt(data.caTotalFacture)}`,  couleur: '#0d3d6e', Icon: FileText,   sub: `${data.nbFactures} facture${data.nbFactures !== 1 ? 's' : ''}`, desc: 'Σ montantTTC de toutes les factures émises' },
+              { label: 'CA facturé TTC total', val: `CHF ${fmt(data.caTotalFacture)}`,  couleur: '#0d3d6e', Icon: FileText,   sub: `${data.nbFactures} facture${data.nbFactures !== 1 ? 's' : ''}`, desc: 'Σ montantTTC de toutes les factures émises (tout l\'historique)' },
               { label: 'Total payé',          val: `CHF ${fmt(data.encaisseTotal)}`,    couleur: '#10b981', Icon: DollarSign, sub: `Taux ${data.tauxEncaissement}%`, desc: 'Σ paiements reçus / CA facturé × 100' },
               { label: 'Montant moyen par facture', val: `CHF ${fmt(data.ticketMoyen)}`,      couleur: V1.bleu, Icon: TrendingUp, sub: 'par facture', desc: 'CA total ÷ nombre de factures émises' },
               { label: 'Temps moyen avant paiement', val: data.delaiMoyen !== null ? `${data.delaiMoyen} j` : '—', couleur: '#f59e0b', Icon: Clock, sub: data.delaiMoyen !== null ? 'sur factures payées' : 'pas encore de données', desc: 'Moy. jours entre émission et encaissement' },
@@ -572,29 +577,32 @@ export default function Finances({
     onSave([...orphelines, ...nouvellesValides]);
   }, [factures, facturesOrphelines, onSave]);
 
-  // ── Factures filtrées par période ────────────────────────────
-  const facturesPeriode = useMemo(() => {
-    const { debut, fin } = getIntervallesPeriode(periodeGlobale);
-    return facturesValides.filter(f => facturesInPeriode(f, debut, fin));
-  }, [facturesValides, periodeGlobale]);
+  // ── Factures filtrées par période (bornes correctes via periode.js — dimanche inclus, local) ──
+  const facturesPeriode = useMemo(
+    () => facturesValides.filter(f => estDansPeriode(f.dateEmission || f.creeLe, periodeGlobale)),
+    [facturesValides, periodeGlobale]
+  );
 
-  // ── KPIs synthèse globale (toutes périodes — cohérent avec onglet Trésorerie) ─
+  // ── KPIs du hero — DEUX temporalités distinctes (source unique periode.js) ──────────────────
+  //  • Facturé / Payé : cumuls qui SUIVENT la période (dateEmission ∈ période) — base TTC.
+  //  • En attente / En retard : ÉTATS INSTANTANÉS « à ce jour » (dateEcheance vs today) — ne suivent
+  //    PAS la période (une facture est en retard aujourd'hui, pas « en mars »).
   const kpis = useMemo(() => {
     const today = new Date().toISOString().slice(0, 10);
-    // Exclure brouillons (non envoyés) et annulées — seules les factures réelles comptent
+    const totalFacture = caFactureDansPeriode(facturesValides, periodeGlobale); // TTC, période
+    const totalPaye    = caPayeDansPeriode(facturesValides, periodeGlobale);     // TTC encaissé, période
+    // États instantanés : sur TOUTES les factures actives, indépendamment de la période.
     const actives = facturesValides
       .filter(f => f.statut !== 'annulee' && f.statut !== 'brouillon')
       .map(f => ({ ...f, statutCalc: calculerStatutFacture(f) }));
-    const totalFacture  = actives.reduce((s, f) => s + (parseFloat(f.montantTTC) || 0), 0);
-    const totalPaye     = actives.reduce((s, f) => s + Math.min(parseFloat(f.montantPaye)||0, parseFloat(f.montantTTC)||0), 0);
-    const enAttente     = actives
+    const enAttente = actives
       .filter(f => f.statutCalc !== 'payee' && !(f.dateEcheance && f.dateEcheance < today))
       .reduce((s, f) => s + Math.max(0, (parseFloat(f.montantTTC) || 0) - (parseFloat(f.montantPaye) || 0)), 0);
     const enRetard = actives
       .filter(f => f.statutCalc !== 'payee' && f.dateEcheance && f.dateEcheance < today)
       .reduce((s, f) => s + Math.max(0, (parseFloat(f.montantTTC) || 0) - (parseFloat(f.montantPaye) || 0)), 0);
     return { totalFacture, totalPaye, enAttente, enRetard };
-  }, [facturesValides]);
+  }, [facturesValides, periodeGlobale]);
 
   // Nombre de factures nécessitant une relance (badge rouge onglet Relances)
   const nbRelances = useMemo(() =>
@@ -628,10 +636,10 @@ export default function Finances({
         { label: 'MISE EN DEMEURE', val: String(relancesKpis.nbMiseEnDemeure),       couleur: '#C88BF0' },
       ]
     : [
-        { label: 'TOTAL FACTURÉ', val: `CHF ${fmt(kpis.totalFacture)}`, couleur: '#8FBCE6' },
-        { label: 'TOTAL PAYÉ',    val: `CHF ${fmt(kpis.totalPaye)}`,    couleur: '#4ADE80' },
-        { label: 'EN ATTENTE',    val: `CHF ${fmt(kpis.enAttente)}`,    couleur: '#F5B14A' },
-        { label: 'EN RETARD',     val: `CHF ${fmt(kpis.enRetard)}`,     couleur: '#FF7A6B' },
+        { label: 'FACTURÉ TTC',   val: `CHF ${fmt(kpis.totalFacture)}`, couleur: '#8FBCE6' },
+        { label: 'PAYÉ TTC',      val: `CHF ${fmt(kpis.totalPaye)}`,    couleur: '#4ADE80' },
+        { label: 'EN ATTENTE · À CE JOUR', val: `CHF ${fmt(kpis.enAttente)}`, couleur: '#F5B14A' },
+        { label: 'EN RETARD · À CE JOUR',  val: `CHF ${fmt(kpis.enRetard)}`,  couleur: '#FF7A6B' },
       ];
 
   const PERIODES = [{ id: 'semaine', label: 'Cette semaine' }, { id: 'mois', label: 'Ce mois' }, { id: 'annee', label: 'Cette année' }];
@@ -653,7 +661,7 @@ export default function Finances({
             <button onClick={ouvrirMenu} aria-label="Menu" style={{ ...heroBtn, padding: 7 }}><Menu size={16} /></button>
           )}
           <span style={{ fontFamily: "'Inter', sans-serif", fontWeight: 800, fontSize: 15, letterSpacing: '0.06em', color: '#fff' }}>CYNA</span>
-          <span style={heroMono(10, 0.55)}>· FINANCES / 03 · {getPeriodeLabel(periodeGlobale).toUpperCase()}</span>
+          <span style={heroMono(10, 0.55)}>· FINANCES / 03 · {periodeLabel(periodeGlobale).toUpperCase()}</span>
           <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
             <select value={periodeGlobale} onChange={e => setPeriodeGlobale(e.target.value)} aria-label="Période"
               style={{ ...heroBtn, padding: '6px 8px' }}>

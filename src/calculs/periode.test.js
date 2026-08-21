@@ -14,7 +14,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   bornesPeriode, estDansPeriode, periodeLabel,
-  caFactureDansPeriode, caFactureParChantier, caSigneDevisDansPeriode,
+  caFactureDansPeriode, caPayeDansPeriode, caFactureParChantier, caSigneDevisDansPeriode,
   caFactureHTDansPeriode, caFactureHTParChantier, indicateursMargeChantier,
   heuresDansPeriode, coutMODansPeriode, coutForfaitaireDansPeriode, coutChantierDansPeriode,
   chantierSansDate, forfaitNonDatable,
@@ -107,6 +107,38 @@ describe('caFactureDansPeriode — base TTC, exclut brouillon/annulée', () => {
   });
   it('par chantier : facturé C1 en année = F1 + F2', () => {
     expect(caFactureParChantier(FACTURES, 'C1', 'annee', refAnnee)).toBe(15000);
+  });
+});
+
+// ── Payé (encaissé) par période (Finances) — base TTC, rattaché à dateEmission ────────────────
+const FACT_PAYE = [
+  { id: 'P1', dateEmission: '2026-01-10', montantTTC: 10000, montantPaye: 10000, statut: 'payee' },   // janvier : payé plein
+  { id: 'P2', dateEmission: '2026-03-31', montantTTC: 5000,  montantPaye: 2000,  statut: 'partielle' }, // mars : payé partiel
+  { id: 'P3', dateEmission: '2026-07-20', montantTTC: 8000,  montantPaye: 0,     statut: 'envoyee' },   // juillet : rien payé
+  { id: 'P4', dateEmission: '2026-11-05', montantTTC: 3000,  montantPaye: 9999,  statut: 'payee' },     // novembre : payé > TTC → plafonné à 3000
+  { id: 'P5', dateEmission: '2026-03-15', montantTTC: 999,   montantPaye: 999,   statut: 'brouillon' }, // EXCLU
+];
+const PAYE_TOTAL_2026 = 10000 + 2000 + 0 + 3000; // 15000 (P4 plafonné, brouillon exclu)
+
+describe('caPayeDansPeriode — encaissé TTC plafonné, rattaché à dateEmission, emboîté', () => {
+  it('année = Σ min(payé, TTC) des factures comptables', () => {
+    expect(caPayeDansPeriode(FACT_PAYE, 'annee', refAnnee)).toBe(PAYE_TOTAL_2026);
+  });
+  it('plafonne le payé au TTC (P4 : payé 9999 sur TTC 3000 → 3000) et exclut le brouillon', () => {
+    expect(caPayeDansPeriode(FACT_PAYE, 'mois', refMois(10))).toBe(3000); // novembre P4 plafonné
+    expect(caPayeDansPeriode(FACT_PAYE, 'mois', refMois(2))).toBe(2000);  // mars P2 partiel (P5 brouillon exclu)
+  });
+  it('INVARIANT : Σ(12 mois) == année', () => {
+    const sommeMois = Array.from({ length: 12 }, (_, m) => caPayeDansPeriode(FACT_PAYE, 'mois', refMois(m)))
+      .reduce((a, b) => a + b, 0);
+    expect(sommeMois).toBe(caPayeDansPeriode(FACT_PAYE, 'annee', refAnnee));
+    expect(sommeMois).toBe(PAYE_TOTAL_2026);
+  });
+  it('le payé ne dépasse jamais le facturé sur la même période', () => {
+    for (let m = 0; m < 12; m++) {
+      expect(caPayeDansPeriode(FACT_PAYE, 'mois', refMois(m)))
+        .toBeLessThanOrEqual(caFactureDansPeriode(FACT_PAYE, 'mois', refMois(m)));
+    }
   });
 });
 

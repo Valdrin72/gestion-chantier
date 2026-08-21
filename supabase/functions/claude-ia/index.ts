@@ -271,6 +271,23 @@ Vérification rapide : TVA correcte (8.1%) ? Délais de paiement conformes (30 j
 Liste 2-4 points à éclaircir avec le co-contractant avant signature / exécution.`;
 }
 
+// ── Repère marché : ordre de grandeur du prix/m² (aide au devis, source B « à vérifier ») ──
+// Estimation APPROXIMATIVE — aucune donnée nominative (seulement types de travaux + canton).
+function promptConseilPrixMarche(d: any): string {
+  const types = Array.isArray(d.types) ? d.types.filter(Boolean) : (d.type ? [d.type] : []);
+  const canton = d.canton ?? 'Genève';
+  const liste = types.length ? types.map((t: string) => `- ${t}`).join('\n') : '- (type non précisé)';
+  return `Tu es un expert en chiffrage BTP second œuvre à ${canton}, Suisse.
+Donne un ORDRE DE GRANDEUR indicatif du prix de vente au m² (CHF/m², HT) pratiqué sur le marché ${canton}
+pour chacun de ces types de travaux :
+${liste}
+
+Contraintes de réponse :
+- Une ligne par type au format : « Type : ≈ BAS–HAUT CHF/m² » puis une remarque très courte (ce qui fait varier : matériaux, finition, accès).
+- Termine par UNE phrase de mise en garde : c'est une estimation d'ordre de grandeur, à vérifier localement, jamais un prix ferme.
+- Reste bref (max ~120 mots). Aucune donnée nominative, aucun nom d'entreprise ou de client.`;
+}
+
 // ── Handler principal ──────────────────────────────────────────
 
 const SONNET_ACTIONS = new Set(['anticiper', 'generer_email', 'comparer_devis', 'analyser_pdf_texte', 'analyse_portefeuille']);
@@ -455,6 +472,7 @@ Réponds toujours en français, de façon claire et structurée. Si l'utilisateu
       case 'generer_email':        prompt = promptGenererEmail(data);         break;
       case 'comparer_devis':       prompt = promptComparerDevis(data);        break;
       case 'analyser_pdf_texte':   prompt = promptAnalyserPdfTexte(data);     break;
+      case 'conseil_prix_marche':  prompt = promptConseilPrixMarche(data);    break;
       default:
         return new Response(JSON.stringify({ error: `Action inconnue: ${action}` }), {
           status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },

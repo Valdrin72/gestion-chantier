@@ -20,10 +20,12 @@
  *   fonctions de donnees.js restent la source de vérité et sont re-exportées ici pour la
  *   compatibilité (les pages basculeront leur import lot par lot ensuite).
  *
- * ⚠ Limite documentée (décision différée) : coutChantierDansPeriode n'inclut PAS encore les
- *   MAJORATIONS CCT (samedi/dimanche/férié/>45h). Les majorations hebdomadaires (>45h) exigent la
- *   semaine ISO complète tous chantiers ; les intégrer proprement à une tranche de période est un
- *   lot ultérieur. Le coût rendu ici = MO de base (exacte, datée) + forfaitaire (prorata).
+ * ✅ MAJORATIONS CCT INCLUSES (audit C1) : coutChantierDansPeriode = MO de base (exacte, datée)
+ *   + majorations CCT (coutMajorationsDansPeriode) + forfaitaire (prorata). Les majorations (samedi
+ *   ×1.25, dim/férié ×1.5, >45h ×1.25) réutilisent la source unique surchargeMajorationPointage
+ *   (majorations.js), identique au moteur vie-entière calculerCoutsChantier. Le split >45h lit la
+ *   semaine ISO complète (tous pointages) même quand on ne somme qu'une tranche de période ; la
+ *   surcharge étant par-date, l'emboîtement Σ mois == année est conservé.
  *
  * ⚠ Bug PRÉ-EXISTANT hérité (hors périmètre lot 0) : le prorata forfaitaire s'appuie sur
  *   calculerDateFinOuvrables (donnees.js) qui sérialise sa date de fin en UTC (toISOString) — sur une
@@ -35,6 +37,7 @@
 
 import { COEF_MO_DEFAUT } from './constants';
 import { CATEGORIES_AVEC_CHANTIER } from '../types/pointage';
+import { surchargeMajorationPointage } from './majorations';
 import { calculerDateFinOuvrables, sommeAvenants, sommeHeuresRegie, TVA_DEFAUT } from '../donnees';
 
 // Re-export des 4 fonctions historiques (compat lot 0 — source physique = donnees.js, sens unique, aucun cycle).
@@ -225,6 +228,30 @@ export const coutMODansPeriode = (chantier, employes = [], cfg = {}, pointages =
 };
 
 /**
+ * Coût des MAJORATIONS CCT d'un chantier tombant dans la période (samedi ×1.25, dim/férié ×1.5,
+ * >45h/semaine ×1.25 ; facteur MAX sans cumul). Réutilise la SOURCE UNIQUE surchargeMajorationPointage
+ * (majorations.js), identique au moteur vie-entière _surcoutMajorations (donnees.js) — aucune
+ * duplication de taux/split.
+ *
+ * ⚠ On ne SOMME que les pointages de la période, mais on passe TOUS les pointages au helper (le split
+ *   >45h lit la semaine ISO complète). Comme la surcharge est par-date, l'emboîtement Σ mois == année
+ *   est conservé (chaque date comptée une seule fois).
+ */
+export const coutMajorationsDansPeriode = (chantier, employes = [], cfg = {}, pointages = [], periode, ref = new Date()) => {
+  const coefficient = parseFloat(cfg?.coefficientMainOeuvre) || COEF_MO_DEFAUT;
+  const cid = String(chantier?.id);
+  const canton = chantier?.canton ?? 'GE';
+  let cout = 0;
+  for (const p of (pointages || [])) {
+    if (!estDansPeriode(p?.date, periode, ref)) continue;
+    const emp = (employes || []).find((e) => parseInt(e.id) === parseInt(p.employeId));
+    const tarifH = _tarifJour(emp, coefficient) / 8;
+    cout += surchargeMajorationPointage(p, cid, tarifH, pointages, canton).surcharge;
+  }
+  return cout;
+};
+
+/**
  * Somme des coûts forfaitaires RÉELS non datés d'un chantier (matériel, sous-traitance, imprévus, autres).
  * Fallback champ-neuf → champ-legacy STRICTEMENT comme le vrai moteur (donnees.js:558) : on PARSE
  * chaque champ d'abord (`_num(a) ?? _num(b)`), sinon un champ neuf vidé ('') masquerait le legacy.
@@ -299,12 +326,15 @@ export const forfaitNonDatable = (chantier, factures = []) => {
 };
 
 /**
- * Coût total d'un chantier tombant dans la période = MO datée (exacte) + forfaitaire (prorata).
- * ⚠ Hors majorations CCT (voir en-tête). Le déplacement est exclu (imputé aux frais généraux, comme
- *   dans calculerCoutsChantier).
+ * Coût total d'un chantier tombant dans la période = MO datée (exacte) + majorations CCT + forfaitaire (prorata).
+ * ✅ INCLUT les majorations CCT (samedi/dimanche/férié/>45h) via coutMajorationsDansPeriode, avec la MÊME
+ *    définition que le moteur vie-entière calculerCoutsChantier (source unique surchargeMajorationPointage)
+ *    → cohérence Dashboard / Marges / Statistiques ↔ Finances (détail chantier). Le déplacement reste exclu
+ *    (imputé aux frais généraux, comme dans calculerCoutsChantier).
  */
 export const coutChantierDansPeriode = (chantier, employes = [], cfg = {}, pointages = [], factures = [], periode, ref = new Date()) =>
   coutMODansPeriode(chantier, employes, cfg, pointages, periode, ref)
+  + coutMajorationsDansPeriode(chantier, employes, cfg, pointages, periode, ref)
   + coutForfaitaireDansPeriode(chantier, factures, periode, ref);
 
 /** Vrai si le chantier n'a pas de date de début planifiée (à signaler par un badge « sans date » côté écran). */

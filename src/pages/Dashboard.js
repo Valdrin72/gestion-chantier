@@ -11,7 +11,7 @@ import {
   calculerCA, isChantierActif, isChantierComptable, SEUILS, margePortefeuille,
   couleurScoreSante,
 } from '../donnees';
-import { bornesPeriode, caFactureHTDansPeriode, coutChantierDansPeriode, periodeLabel } from '../calculs/periode';
+import { bornesPeriode, caFactureHTDansPeriode, caPayeDansPeriode, coutChantierDansPeriode, periodeLabel } from '../calculs/periode';
 import { STATUTS_CLOS } from '../constants/statuts';
 import { CYNA_PARAMS } from '../calculs/constants';
 import { useApp } from '../context/AppContext';
@@ -37,6 +37,13 @@ function Dashboard() {
   const agentAlertes = agentState?.alertes || [];
   const facturesSafe = useMemo(() => factures || [], [factures]);
   const [insightsFerme, setInsightsFerme] = useState(false);
+
+  // ── ENCAISSÉ de la période (TTC réel) — source unique caPayeDansPeriode, identique à
+  //    Finances « Payé TTC ». Suit le sélecteur de période comme le CA/marge du Dashboard. ─
+  const encaissePeriode = useMemo(
+    () => caPayeDansPeriode(facturesSafe, periodeGlobale),
+    [facturesSafe, periodeGlobale],
+  );
 
   // ── Actifs = tous les chantiers "En cours", sans filtre de période ─
   const actifs = useMemo(() => chantiers.filter(isChantierActif), [chantiers]);
@@ -514,9 +521,8 @@ function Dashboard() {
             etat: kpi.rentaMoyenne === null ? null : kpi.rentaMoyenne >= 15 ? 'ok' : kpi.rentaMoyenne >= 0 ? 'warn' : 'danger',
             sousLigne: `${kpi.nbChantiersRenta} ANALYSÉS`,
             action: { label: 'Voir →', onClick: () => naviguer('rapport', { onglet: 'analyse' }) } },
-          { label: 'TRÉSORERIE', valeur: fmtCH(previsionTreso30j.total),
-            etat: previsionTreso30j.interpretation && previsionTreso30j.interpretation.label !== 'Trésorerie sécurisée' ? 'warn' : 'ok',
-            sousLigne: 'PRÉVISION 30 J',
+          { label: 'ENCAISSÉ', valeur: fmtCH(encaissePeriode), etat: 'ok',
+            sousLigne: `TTC · ${periodeLabel(periodeGlobale).toUpperCase()}`,
             action: { label: 'Voir →', onClick: () => naviguer('finances') } },
           { label: 'ON ME DOIT', valeur: fmtCH(kpi.cashEnAttente),
             couleurValeur: kpi.cashEnAttente > 0 ? V1.danger : V1.texte,
@@ -771,8 +777,6 @@ function Dashboard() {
           return a > 0 ? Math.round(((b - a) / a) * 1000) / 10 : null;
         };
         const dCA = deltaPct(serieCA);
-        const treso = previsionTreso30j;
-        const tresoWarn = treso.interpretation && treso.interpretation.label !== 'Trésorerie sécurisée';
         return (
           <KpiStripV1 items={[
             { label: 'CA SIGNÉ', valeur: fmtCH(kpi.caEnCours), sparkline: serieCA,
@@ -783,9 +787,8 @@ function Dashboard() {
               etat: kpi.rentaMoyenne === null ? null : kpi.rentaMoyenne >= 15 ? 'ok' : kpi.rentaMoyenne >= 0 ? 'warn' : 'danger',
               sousLigne: `${kpi.nbChantiersRenta} ANALYSÉS`,
               action: { label: 'Voir →', onClick: () => naviguer('rapport', { onglet: 'analyse' }) } },
-            { label: 'TRÉSORERIE', valeur: fmtCH(treso.total),
-              etat: tresoWarn ? 'warn' : 'ok',
-              sousLigne: treso.dateLimite ? `COUVERT AU ${treso.dateLimite.toUpperCase()}` : 'PRÉVISION 30 J',
+            { label: 'ENCAISSÉ', valeur: fmtCH(encaissePeriode), etat: 'ok',
+              sousLigne: `TTC · ${periodeLabel(periodeGlobale).toUpperCase()}`,
               action: { label: 'Voir →', onClick: () => naviguer('finances') } },
             { label: 'ON ME DOIT', valeur: fmtCH(kpi.cashEnAttente),
               couleurValeur: kpi.cashEnAttente > 0 ? V1.danger : V1.texte,

@@ -318,7 +318,7 @@ function Devis() {
           { label: 'CA SIGNÉ',            val: `CHF ${fmtN(caSigné)}`,                       couleur: '#4ADE80' },
           { label: "TAUX D'ACCEPTATION",  val: `${tauxAcceptation}%`,                        couleur: '#8FBCE6' },
           { label: 'EN ATTENTE · EN COURS', val: String(enAttente.length),                     couleur: '#F5B14A' },
-          { label: 'DÉLAI MOYEN · EN COURS', val: delaisMoyen !== null ? `${delaisMoyen}j` : '—', couleur: '#C88BF0' },
+          { label: 'DÉLAI MOYEN · EN COURS', val: delaisMoyen !== null ? `${delaisMoyen}j` : '—', couleur: '#8FBCE6' },
         ];
         const suffixePeriode = periodeGlobale === 'semaine' ? 'CETTE SEMAINE' : periodeGlobale === 'mois' ? 'CE MOIS' : 'CETTE ANNÉE';
         return (

@@ -179,3 +179,48 @@ describe('Invariant F2 — déplacement hors totalCoutsReel', () => {
     expect(equivPct(r1.totalCoutsReel, r2.coutTotalReel)).toBe(true);
   });
 });
+
+// ── Invariant C2 : un coût réel à ZÉRO (avoir) est respecté par les 2 moteurs ──
+// Régression corrigée : calculerEtatChantier utilisait `|| ... || 0`, donc un 0 réel
+// (falsy) retombait à tort sur le champ legacy → divergence avec calculerCoutsChantier
+// (qui utilise `??`, respectant le 0). Le fix aligne les 2 moteurs sur la sémantique `??`.
+
+describe('Invariant C2 — coût réel à 0 (avoir) : équivalence des 2 moteurs', () => {
+  const empC2 = [{ id: 1, nom: 'Test', tarifJour: 400, tarifDejaCharge: true }];
+  // 3 jours ouvrés (mar–jeu, aucune majoration) → coût MO = 3 × 400 = 1200 dans les 2 moteurs.
+  const journalC2 = [
+    { date: '2026-05-05', employes: [{ employeId: 1, heuresTravaillees: 8 }] },
+    { date: '2026-05-06', employes: [{ employeId: 1, heuresTravaillees: 8 }] },
+    { date: '2026-05-07', employes: [{ employeId: 1, heuresTravaillees: 8 }] },
+  ];
+  const chantierAvoir = {
+    id: 'TEST_C2', nom: 'Chantier avec avoir matériel', statut: 'en cours', nombreJours: 20,
+    materielReel: 0,          // ← 0 RÉEL (un avoir a annulé le coût matériel)
+    coutMaterielReel: 5000,   // ← champ legacy non nul : NE doit PAS être utilisé
+    equipe: [{ employeId: 1, joursPlannifies: 20 }],
+    journal: journalC2,
+  };
+
+  it('materielReel=0 est respecté par les DEUX moteurs (0, jamais le legacy 5000)', () => {
+    const ptg = pointagesDepuisChantier(chantierAvoir, empC2);
+    const r1 = calculerCoutsChantier(chantierAvoir, empC2, [], {}, [], ptg);
+    const r2 = calculerEtatChantier(chantierAvoir, empC2, [], {}, ptg);
+    // Moteur 1 (référence, `??`) : le 0 réel est conservé.
+    expect(r1.coutMaterielReel).toBe(0);
+    // Moteur 2 : APRÈS le fix ||→?? , identique (AVANT : 5000 via fallback legacy → divergence).
+    expect(r2.coutMateriel).toBe(0);
+    // Invariant des 2 moteurs restauré sur ce cas précis.
+    expect(r2.coutMateriel).toBe(r1.coutMaterielReel);
+    expect(equivPct(r1.totalCoutsReel, r2.coutTotalReel)).toBe(true);
+  });
+
+  it('champ réel ABSENT → le legacy sert bien de fallback dans les 2 moteurs (comportement conservé)', () => {
+    const chantierLegacy = { ...chantierAvoir, materielReel: undefined, coutMaterielReel: 5000 };
+    const ptg = pointagesDepuisChantier(chantierLegacy, empC2);
+    const r1 = calculerCoutsChantier(chantierLegacy, empC2, [], {}, [], ptg);
+    const r2 = calculerEtatChantier(chantierLegacy, empC2, [], {}, ptg);
+    // Absence réelle (NaN→null) → fallback legacy 5000, inchangé dans les DEUX moteurs.
+    expect(r1.coutMaterielReel).toBe(5000);
+    expect(r2.coutMateriel).toBe(5000);
+  });
+});

@@ -633,7 +633,7 @@ export default function Finances({
         { label: 'À RELANCER',      val: String(relancesKpis.nbARelancer),           couleur: '#F5B14A' },
         { label: 'MONTANT IMPAYÉ',  val: `CHF ${fmt(relancesKpis.montantImpaye)}`,    couleur: '#FF7A6B' },
         { label: '1ER RAPPEL',      val: String(relancesKpis.nb1erRappel),           couleur: '#8FBCE6' },
-        { label: 'MISE EN DEMEURE', val: String(relancesKpis.nbMiseEnDemeure),       couleur: '#C88BF0' },
+        { label: 'MISE EN DEMEURE', val: String(relancesKpis.nbMiseEnDemeure),       couleur: '#FF7A6B' },
       ]
     : [
         { label: 'FACTURÉ TTC',   val: `CHF ${fmt(kpis.totalFacture)}`, couleur: '#8FBCE6' },

@@ -1262,9 +1262,13 @@ export const calculerEtatChantier = (chantier, employes = [], devisList = [], pa
 
   // ── F. Coût total réel ────────────────────────────────────────────────
   // Fallback sur les anciens noms de champs pour rétrocompatibilité
-  const coutMateriel      = parseFloat(chantier.materielReel)          || parseFloat(chantier.coutMaterielReel)      || 0;
-  const coutSousTraitance = parseFloat(chantier.sousTraitanceReelle)   || parseFloat(chantier.coutSousTraitanceReel) || 0;
-  const coutAutres        = parseFloat(chantier.autresCoutsReels)      || parseFloat(chantier.autresCoutsReel)       || 0;
+  // Même sémantique que calculerCoutsChantier (invariant des 2 moteurs) : un 0 réel
+  // (ex. avoir qui annule un coût) DOIT être conservé — `??` et non `||`, sinon 0
+  // (falsy) retomberait à tort sur le champ legacy et les deux moteurs divergeraient.
+  const _reel = v => { const n = parseFloat(v); return isNaN(n) ? null : n; };
+  const coutMateriel      = _reel(chantier.materielReel)        ?? _reel(chantier.coutMaterielReel)      ?? 0;
+  const coutSousTraitance = _reel(chantier.sousTraitanceReelle) ?? _reel(chantier.coutSousTraitanceReel) ?? 0;
+  const coutAutres        = _reel(chantier.autresCoutsReels)    ?? _reel(chantier.autresCoutsReel)       ?? 0;
   const coutImprevus     = imprevus.reduce(
     (s, imp) => s + (parseFloat(imp.montant) || 0), 0
   );

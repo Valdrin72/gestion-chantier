@@ -10,7 +10,6 @@ import { DS } from '../ds';
 import { V1, mono, carteV1, heroFond, heroMono, RYTHME } from '../design/v1';
 import { useApp } from '../context/AppContext';
 import { exportDevis } from '../ExportPDF';
-import AssistantDevisIA from '../AssistantDevisIA';
 import AideDevisPanel from '../components/devis/AideDevisPanel';
 import { devisEstReferencé } from '../utils/referenceGuard';
 import { archiver, restaurer, filtrerActifs, filtrerArchives } from '../utils/archiveHelpers';
@@ -392,15 +391,6 @@ function Devis() {
               <span style={{ ...mono(10, st.color, 600), textTransform: 'uppercase', letterSpacing: '0.04em', background: st.bg, borderRadius: 20, padding: '3px 10px' }}>{form.statut}</span>
             ); })()}
           </div>
-          {!form.id && (
-            <AssistantDevisIA
-              chantiers={chantiers}
-              devis={devis}
-              parametres={parametres}
-              form={form}
-              onApply={patch => setForm(prev => ({ ...prev, ...patch }))}
-            />
-          )}
           <div style={{ display: 'grid', gridTemplateColumns: 'var(--g-devis)', gap: '14px', marginBottom: 20 }}>
             <div><label style={labelStyle}>Numéro</label><input value={form.numero} onChange={e => setForm({ ...form, numero: e.target.value })} style={inputStyle} /></div>
             <div>
@@ -560,9 +550,6 @@ function Devis() {
           {/* ── Calculateur MO (ratios productivite-cyna) ── */}
           {(parseFloat(form.surface) || 0) > 0 && <CalculateurMO surface={parseFloat(form.surface) || 0} onApply={({ duree, personnes }) => setForm(f => ({ ...f, dureeEstimee: duree, nombrePersonnes: personnes }))} />}
 
-          {/* ── Aide au devis : prix conseillé au m² (historique CYNA, lecture seule — n'écrit rien) ── */}
-          <AideDevisPanel typesSelectionnes={form.typesTravaux} surface={form.surface} />
-
           {/* ── Avenants ── */}
           <div style={{ background: V1.bleuFond, border: `1px solid ${V1.bleuClair}`, borderRadius: 12, padding: '20px', marginBottom: 20 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
@@ -664,6 +651,9 @@ function Devis() {
               );
             })()}
           </div>
+
+          {/* ── Aide au devis : estimation prix/m² (après Avenants + Régie, conseil-only — n'écrit rien) ── */}
+          <AideDevisPanel typesSelectionnes={form.typesTravaux} surface={form.surface} />
 
           <div style={{ marginBottom: 20 }}>
             <label style={labelStyle}>Notes</label>

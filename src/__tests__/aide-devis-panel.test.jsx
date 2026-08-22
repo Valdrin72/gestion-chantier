@@ -15,7 +15,6 @@ import { renderWithApp } from '../test-utils/renderWithApp';
 import AideDevisPanel from '../components/devis/AideDevisPanel';
 import DevisPage from '../pages/DevisPage';
 
-vi.mock('../AssistantDevisIA', () => ({ default: () => null }));
 vi.mock('../ExportPDF', () => ({ exportDevis: vi.fn() }));
 vi.mock('../utils/exportCSV', () => ({ exportCSV: vi.fn() }));
 vi.mock('../lib/supabase', () => ({

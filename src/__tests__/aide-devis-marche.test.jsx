@@ -19,7 +19,6 @@ import DevisPage from '../pages/DevisPage';
 
 const mockAppeler = vi.fn();
 vi.mock('../hooks/useClaudeAI', () => ({ useClaudeAI: () => ({ appeler: mockAppeler, loading: false, error: null }) }));
-vi.mock('../AssistantDevisIA', () => ({ default: () => null }));
 vi.mock('../ExportPDF', () => ({ exportDevis: vi.fn() }));
 vi.mock('../utils/exportCSV', () => ({ exportCSV: vi.fn() }));
 vi.mock('../lib/supabase', () => ({

@@ -16,7 +16,6 @@ import { renderWithApp } from '../../test-utils/renderWithApp.jsx';
 import DevisPage from '../DevisPage.js';
 import { caSigneDevisDansPeriode } from '../../calculs/periode';
 
-vi.mock('../../AssistantDevisIA', () => ({ default: () => null }));
 vi.mock('../../ExportPDF', () => ({ exportDevis: vi.fn() }));
 vi.mock('../../utils/exportCSV', () => ({ exportCSV: vi.fn() }));
 vi.mock('../../lib/supabase', () => ({

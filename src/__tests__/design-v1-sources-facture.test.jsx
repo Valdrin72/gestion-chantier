@@ -18,7 +18,6 @@ import { badgeStatut } from '../ds';
 import ChantiersListe from '../components/chantiers/ChantiersListe';
 import DevisPage from '../pages/DevisPage';
 
-vi.mock('../AssistantDevisIA', () => ({ default: () => null }));
 vi.mock('../ExportPDF', () => ({ exportDevis: vi.fn() }));
 vi.mock('../utils/exportCSV', () => ({ exportCSV: vi.fn() }));
 vi.mock('../lib/supabase', () => ({

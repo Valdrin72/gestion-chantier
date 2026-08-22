@@ -16,7 +16,6 @@ import { renderWithApp } from '../test-utils/renderWithApp';
 import DevisPage from '../pages/DevisPage';
 import Finances from '../pages/FinancesPage';
 
-vi.mock('../AssistantDevisIA', () => ({ default: () => null }));
 vi.mock('../ExportPDF', () => ({ exportDevis: vi.fn(), exportFacture: vi.fn(), exportFicheChantier: vi.fn() }));
 vi.mock('../utils/exportCSV', () => ({ exportCSV: vi.fn() }));
 vi.mock('../lib/supabase', () => ({

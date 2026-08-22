@@ -6,8 +6,6 @@ import { renderWithApp } from '../../test-utils/renderWithApp';
 
 // ── Mocks ────────────────────────────────────────────────────────────────────
 
-// AssistantDevisIA : IA non testée ici
-vi.mock('../../AssistantDevisIA', () => ({ default: () => null }));
 
 // exportDevis : side-effect PDF (jsPDF non dispo jsdom)
 vi.mock('../../ExportPDF', () => ({ exportDevis: vi.fn() }));

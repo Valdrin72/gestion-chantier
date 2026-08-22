@@ -1,5 +1,5 @@
 import React from 'react';
-import { Sparkles, ShieldCheck, TrendingUp } from 'lucide-react';
+import { Sparkles, ShieldCheck, TrendingUp, ChevronUp, ChevronDown } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { fmtN } from '../../donnees';
 import { conseilPrixM2ParType, MARGE_MIN_NEGO } from '../../calculs/conseilPrix';
@@ -158,40 +158,83 @@ function BlocType({ type, conseil, surface }) {
  * CONSEILLE seulement : n'écrit JAMAIS form.montantHT ni aucun total. Lit le(s) type(s) + la surface
  * du formulaire et se met à jour quand ils changent.
  */
+// Libellé de section (petit chapô coloré au-dessus d'un groupe de sources).
+function SectionLabel({ couleur, children }) {
+  return (
+    <div style={{ ...mono(10, couleur, 700), textTransform: 'uppercase', letterSpacing: '0.1em', margin: '4px 0 10px' }}>
+      {children}
+    </div>
+  );
+}
+
+/**
+ * Panneau « Aide au devis » — LOT C+D : design bleu soigné repris de l'ancien AssistantDevisIA
+ * (en-tête à pastille + pill + réduction), MAIS strictement conseil-only.
+ *
+ * ⚠ INVARIANT : n'écrit JAMAIS form.montantHT ni aucun total. Aucun bouton « Appliquer » sur le prix,
+ * aucun setForm : il ne reçoit même pas de callback d'écriture. Lit le(s) type(s) + la surface du
+ * formulaire (props en lecture) et se met à jour quand ils changent.
+ */
 export default function AideDevisPanel({ typesSelectionnes = [], surface = 0 }) {
   const { chantiers = [], factures = [], devis = [], parametres = {}, pointages = [] } = useApp();
+  const [ouvert, setOuvert] = React.useState(true);
   const types = (typesSelectionnes || []).filter(Boolean);
   const iaActivee = parametres?.parametres?.iaActivee !== false;
 
+  // Conseils source A calculés une fois — sert aussi au compteur d'en-tête (types fiables).
+  const conseils = types.map(type => ({ type, conseil: conseilPrixM2ParType({ chantiers, factures, devis, parametres, pointages, type }) }));
+  const nbFiables = conseils.filter(c => c.conseil.suffisant).length;
+
   return (
-    <div data-testid="aide-devis-panel" style={{ marginBottom: 20, background: V1.bleuFond, border: `1px solid ${V1.bleu}2e`, borderRadius: 14, padding: '16px 18px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
-        <Sparkles size={16} color={V1.bleu} />
-        <span style={{ fontWeight: 800, fontSize: 14, color: V1.marine }}>Aide au devis — prix conseillé au m²</span>
-      </div>
-
-      {/* Bandeau permanent : l'outil conseille, il n'écrit jamais le prix */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: V1.carte, border: `1px solid ${V1.bleu}33`, borderLeft: `4px solid ${V1.bleu}`, borderRadius: 10, padding: '9px 12px', marginBottom: 14 }}>
-        <ShieldCheck size={15} color={V1.bleu} style={{ flexShrink: 0 }} />
-        <span style={{ fontSize: 12, color: V1.texteMuted }}>
-          <strong style={{ color: V1.marine }}>Cet outil ne remplit jamais le prix.</strong> Il t'éclaire — tu tapes ton montant toi-même. Aucun chiffre ici n'entre dans les totaux.
-        </span>
-      </div>
-
-      {types.length === 0 ? (
-        <div style={{ fontSize: 12.5, color: V1.texteMuted, textAlign: 'center', padding: '12px 0' }}>
-          Coche un ou plusieurs <strong>travaux</strong> ci-dessous pour voir le prix/m² conseillé issu de ton historique.
+    <div data-testid="aide-devis-panel" style={{ marginBottom: 20, background: V1.bleuFond, border: `1px solid ${V1.bleu}2e`, borderRadius: 14, padding: 0, overflow: 'hidden' }}>
+      {/* ── En-tête soigné (pastille + titre + sous-titre + pill), repris de l'ancien assistant ── */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '14px 18px', borderBottom: ouvert ? `1px solid ${V1.bleu}22` : 'none', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <span style={{ display: 'inline-flex', width: 30, height: 30, borderRadius: 9, background: `${V1.bleu}18`, alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <Sparkles size={16} color={V1.bleu} />
+          </span>
+          <div>
+            <div style={{ fontWeight: 800, fontSize: 14, color: V1.marine }}>Aide au devis — prix conseillé au m²</div>
+            <div style={{ fontSize: 11, color: V1.texteMuted, marginTop: 1 }}>Éclaire ton chiffrage — tu gardes la main sur le montant</div>
+          </div>
+          {nbFiables > 0 && (
+            <span style={{ fontSize: 11, background: V1.carte, color: FIABLE, border: `1px solid ${FIABLE}44`, borderRadius: 20, padding: '2px 9px', fontWeight: 700 }}>
+              {nbFiables} type{nbFiables > 1 ? 's' : ''} avec historique fiable
+            </span>
+          )}
         </div>
-      ) : (
-        types.map(type => (
-          <BlocType key={type} type={type}
-            conseil={conseilPrixM2ParType({ chantiers, factures, devis, parametres, pointages, type })}
-            surface={surface} />
-        ))
-      )}
+        <button onClick={() => setOuvert(o => !o)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: V1.texteMuted, display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, fontFamily: 'inherit' }}>
+          {ouvert ? <><ChevronUp size={14} /> Réduire</> : <><ChevronDown size={14} /> Développer</>}
+        </button>
+      </div>
 
-      {/* Source B — repère marché (estimation IA, à vérifier), à la demande, séparée de l'historique */}
-      <RepereMarche types={types} iaActivee={iaActivee} />
+      {ouvert && (
+        <div style={{ padding: '16px 18px' }}>
+          {/* Bandeau permanent : l'outil conseille, il n'écrit jamais le prix */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: V1.carte, border: `1px solid ${V1.bleu}33`, borderLeft: `4px solid ${V1.bleu}`, borderRadius: 10, padding: '9px 12px', marginBottom: 16 }}>
+            <ShieldCheck size={15} color={V1.bleu} style={{ flexShrink: 0 }} />
+            <span style={{ fontSize: 12, color: V1.texteMuted }}>
+              <strong style={{ color: V1.marine }}>Cet outil ne remplit jamais le prix.</strong> Il t'éclaire — tu tapes ton montant toi-même. Aucun chiffre ici n'entre dans les totaux.
+            </span>
+          </div>
+
+          {/* ── Source A — historique CYNA (fiable) ── */}
+          <SectionLabel couleur={FIABLE}>Source A · Historique CYNA (fiable)</SectionLabel>
+          {types.length === 0 ? (
+            <div style={{ fontSize: 12.5, color: V1.texteMuted, textAlign: 'center', padding: '12px 0' }}>
+              Coche un ou plusieurs <strong>travaux</strong> ci-dessous pour voir le prix/m² conseillé issu de ton historique.
+            </div>
+          ) : (
+            conseils.map(({ type, conseil }) => (
+              <BlocType key={type} type={type} conseil={conseil} surface={surface} />
+            ))
+          )}
+
+          {/* ── Source B — repère marché (estimation IA, à vérifier), à la demande, séparée de l'historique ── */}
+          <SectionLabel couleur={INDIC}>Source B · Repère marché (à vérifier)</SectionLabel>
+          <RepereMarche types={types} iaActivee={iaActivee} />
+        </div>
+      )}
     </div>
   );
 }

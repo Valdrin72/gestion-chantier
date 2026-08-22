@@ -11,12 +11,10 @@
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.7",
     "lucide-react": "^0.577.0",
-    "pdfjs-dist": "^4.10.38",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
     "react-scripts": "5.0.1",
     "recharts": "^3.8.1",
-    "web-vitals": "^2.1.4",
     "zustand": "^5.0.13"
   },
   "scripts": {

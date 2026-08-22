@@ -17,7 +17,6 @@ import { screen, fireEvent } from '@testing-library/react';
 import { renderWithApp } from '../test-utils/renderWithApp';
 import { migrerJournalVersPointages } from '../migration/migrerJournalVersPointages';
 import ChantierDetail from '../components/chantiers/ChantierDetail';
-import Photos from '../Photos';
 
 beforeAll(() => {
   if (!window.matchMedia) {
@@ -97,14 +96,6 @@ describe('ONGLET ANALYSE — tuile « Coût/j équipe » (DetailRentabilite, ex-
   });
 });
 
-describe('PHOTOS — catégorie « Autre » (ex-C.violet) se rend sans violet', () => {
-  it('affiche la catégorie « Autre » et ne contient aucun violet résiduel', () => {
-    const { container } = renderWithApp(
-      <Photos chantiers={[CH]} photosData={{}} setPhotosData={vi.fn()} />, baseCtx());
-    // La vue d'ensemble liste les catégories par chantier — « Autre » présent.
-    expect(screen.getAllByText(/Autre/).length).toBeGreaterThanOrEqual(1);
-    const html = container.innerHTML.toLowerCase();
-    ['#6366f1', '#8b5cf6', '139,92,246', '139, 92, 246'].forEach(v =>
-      expect(html).not.toContain(v));
-  });
-});
+// NOTE (ménage code mort) : le bloc PHOTOS a été retiré avec la suppression de
+// src/Photos.js (page orpheline, 0 route / 0 conso prod). La couverture ChantierDetail
+// (badges ex-violet → bleu moyen) ci-dessus est conservée.

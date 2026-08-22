@@ -16,7 +16,6 @@ import { describe, it, expect, vi, beforeAll } from 'vitest';
 import { screen } from '@testing-library/react';
 import { renderWithApp } from '../test-utils/renderWithApp';
 import EmployeeAvatar from '../components/ui/EmployeeAvatar';
-import Documents from '../Documents';
 import Heures from '../Heures';
 
 vi.mock('../lib/supabase', () => ({
@@ -33,7 +32,6 @@ beforeAll(() => {
 
 const BLEU_MOYEN = 'rgb(76, 143, 209)';  // #4C8FD1 (index 4)
 const MARINE     = 'rgb(14, 42, 79)';    // #0E2A4F (index 8)
-const BLEU       = 'rgb(30, 95, 175)';   // #1E5FAF (V1.bleu)
 const VIOLET_1   = 'rgb(139, 92, 246)';  // #8b5cf6
 const VIOLET_2   = 'rgb(99, 102, 241)';  // #6366f1
 
@@ -52,16 +50,9 @@ describe('EMPLOYEEAVATAR — palette de hash dé-violetée', () => {
   });
 });
 
-describe('DOCUMENTS — onglet actif en V1.bleu', () => {
-  it('l\'onglet actif (Devis) est rendu en bleu, plus en indigo', () => {
-    renderWithApp(
-      <Documents chantiers={[]} devis={[{ id: 'd1', numero: 'D-1', clientId: '1', statut: 'accepté' }]}
-        factures={[]} clients={[{ id: '1', nom: 'Dupont' }]} naviguer={vi.fn()} />, {});
-    const actif = screen.getByRole('button', { name: /Devis \(/ });
-    expect(actif.style.color).toBe(BLEU);
-    expect(actif.style.color).not.toBe(VIOLET_1);
-  });
-});
+// NOTE (ménage code mort) : le bloc DOCUMENTS a été retiré avec la suppression de
+// src/Documents.js (onglet orphelin, 0 route / 0 conso prod). Les couvertures
+// EmployeeAvatar et Heures (ci-dessus/ci-dessous) sont conservées.
 
 describe('HEURES — se rend (surlignage week-end → V1.bleuFond)', () => {
   it('le composant Heures se rend sans régression', () => {

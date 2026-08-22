@@ -2,7 +2,7 @@
 // CYNA SÀRL — DONNÉES & CALCULS MÉTIER
 // =============================================
 import { donneesDemo } from './donnees-demo';
-import { calculerMajorationDate, calculerPartSemaine } from './calculs/majorations';
+import { surchargeMajorationPointage } from './calculs/majorations';
 import { estFerie } from './calculs/feries';
 import { COEF_MO_DEFAUT } from './calculs/constants';
 // Phase 7b bis — bascule : les deux moteurs lisent les pointages via ces helpers.
@@ -380,38 +380,17 @@ function _surcoutMajorations(chantier, employes, pointages, coefficient) {
       : 0;
     const tarifH = tarifJourCharge / 8;
 
-    // Heures productives de ce pointage sur ce chantier
-    const heuresCeChantier = p.repartitions
-      .filter(r => String(r.chantierId) === chantierId && ['production', 'atelier'].includes(r.categorie))
-      .reduce((s, r) => s + r.heures, 0);
+    // Surcharge de majoration de ce pointage — SOURCE UNIQUE partagée (majorations.js), même
+    // logique que coutMajorationsDansPeriode (periode.js). `pointages` complet passé pour le hebdo.
+    const m = surchargeMajorationPointage(p, chantierId, tarifH, pointages, canton);
+    if (m.heuresCeChantier <= 0) continue;
 
-    if (heuresCeChantier <= 0) continue;
-
-    // Facteur DATE (samedi/dimanche/férié) — s'applique à toutes les heures du jour.
-    const dateFactor = calculerMajorationDate(p.date, canton)?.facteur ?? 1.0;
-    // Split heures sup du JOUR (tous chantiers) via l'attribution chronologique hebdo.
-    const majSem = calculerPartSemaine(p.date, p.employeId, pointages);
-    const heuresJourTotal = majSem ? (majSem.heuresNormales + majSem.heuresMaj) : heuresCeChantier;
-    const heuresSupJour = majSem ? majSem.heuresMaj : 0;
-    // PRORATA : la part d'heures sup du jour portée par CE chantier.
-    const chantierSup = heuresJourTotal > 0 ? heuresSupJour * (heuresCeChantier / heuresJourTotal) : 0;
-    const chantierNormal = heuresCeChantier - chantierSup;
-
-    // Facteur des heures sup = MAX(date, 1.25) — pas de cumul.
-    const overtimeFactor = Math.max(dateFactor, 1.25);
-    const majNormal = chantierNormal * tarifH * (dateFactor - 1.0);       // portion normale : facteur date
-    const majSup    = chantierSup    * tarifH * (overtimeFactor - 1.0);   // portion sup : max(date, 1.25)
-
-    const coutBase = heuresCeChantier * tarifH;
-    coutMOSansMajoration += coutBase;
-    coutMajorations      += majNormal + majSup;
-    // Heures majorées : normales seulement si jour majoré (samedi/dim/férié) + toutes les heures sup.
-    if (dateFactor > 1.0) heuresMajorees += chantierNormal;
-    heuresMajorees += chantierSup;
+    coutMOSansMajoration += m.coutBase;
+    coutMajorations      += m.surcharge;
+    heuresMajorees       += m.heuresMajorees;
 
     // Répartition par catégorie — facteur effectif moyen du chantier-jour (cohérent avec le total).
-    const coutTotalChantierJour = coutBase + majNormal + majSup;
-    const effFactor = coutBase > 0 ? coutTotalChantierJour / coutBase : 1;
+    const effFactor = m.effFactor;
     for (const r of p.repartitions.filter(r => String(r.chantierId) === chantierId)) {
       if (repartitionCategories[r.categorie]) {
         repartitionCategories[r.categorie].heures += r.heures;

@@ -76,7 +76,8 @@ describe('KPI — les 4 cartes affichent les VRAIES valeurs calculées', () => {
     expect(screen.getByText('ON ME DOIT')).toBeInTheDocument();
     expect(screen.getByText(fmtCH(50000 - 18900))).toBeInTheDocument(); // 31'100
     expect(screen.getByText('MARGE MOYENNE')).toBeInTheDocument();
-    expect(screen.getByText('TRÉSORERIE')).toBeInTheDocument();
+    // KPI trésorerie relabellé : « ENCAISSÉ » (encaissé réel de la période) au lieu de la projection 30j.
+    expect(screen.getByText('ENCAISSÉ')).toBeInTheDocument();
   });
 
   it('montants au format suisse avec apostrophe (fmtCH)', () => {

@@ -224,3 +224,31 @@ describe('Invariant C2 — coût réel à 0 (avoir) : équivalence des 2 moteurs
     expect(r2.coutMateriel).toBe(5000);
   });
 });
+
+// ── Ménage Réglages : la section « Localités » retirée → localites vide/absente ──
+// La donnée localites n'existe plus dans les réglages. calculerCoutsChantier reçoit désormais
+// [] (ou undefined → défaut []) : il NE DOIT PAS planter, le déplacement tombe à 0, et comme le
+// déplacement est imputé aux FG (hors totalCoutsReel), la marge reste INCHANGÉE.
+describe('Ménage Réglages — localites absente ne casse aucun calcul', () => {
+  const emp = [{ id: 1, nom: 'Test', tarifJour: 400, tarifDejaCharge: true }];
+  const chantierVille = {
+    id: 'C_LOC', nom: 'Chantier avec ville', ville: 'Genève', statut: 'en cours', nombreJours: 10,
+    equipe: [{ employeId: 1 }],
+    journal: [
+      { date: '2026-05-18', employes: [{ employeId: 1, heuresTravaillees: 8 }] },
+      { date: '2026-05-19', employes: [{ employeId: 1, heuresTravaillees: 8 }] },
+    ],
+  };
+  const ptg = pointagesDepuisChantier(chantierVille, emp);
+
+  it('localites=[] → aucun throw, déplacement 0, totalCoutsReel = coût MO seul', () => {
+    let r;
+    expect(() => { r = calculerCoutsChantier(chantierVille, emp, [], {}, [], ptg); }).not.toThrow();
+    expect(r.coutDeplacementReel).toBe(0);
+    expect(r.totalCoutsReel).toBeCloseTo(r.coutEquipeReel, 6); // déplacement hors total → marge intacte
+  });
+
+  it('localites OMISE (undefined → défaut []) → aucun throw', () => {
+    expect(() => calculerCoutsChantier(chantierVille, emp, undefined, {}, [], ptg)).not.toThrow();
+  });
+});

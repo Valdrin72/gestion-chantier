@@ -54,13 +54,18 @@ describe('HERO — titre + boutons backup + ☰', () => {
   });
 });
 
-describe('MENU latéral — 10 catégories + navigation', () => {
-  it('liste les 10 catégories et cliquer « Devis » puis « Travaux » change le contenu', () => {
+describe('MENU latéral — 8 catégories + navigation', () => {
+  it('liste les 8 catégories et cliquer « Devis » puis « Travaux » change le contenu', () => {
     renderParams();
-    ['Réglages tableau de bord', 'Légende des statuts', 'Devis', 'Localités', 'Travaux',
-     'Zones géo.', 'Société', 'Paiements', 'Rapport', 'Agents IA'].forEach(cat => {
+    // Localités + Zones géo. retirées (ménage Réglages) : la ville chantier est en saisie libre,
+    // aucun tarif de zone/déplacement n'était consommé par l'app.
+    ['Réglages tableau de bord', 'Légende des statuts', 'Devis', 'Travaux',
+     'Société', 'Paiements', 'Rapport', 'Agents IA'].forEach(cat => {
       expect(screen.getByText(cat)).toBeInTheDocument();
     });
+    // Onglets retirés → plus affichés.
+    expect(screen.queryByText('Localités')).toBeNull();
+    expect(screen.queryByText('Zones géo.')).toBeNull();
     // Défaut = Dashboard
     expect(screen.getByText('Paramètres du Dashboard')).toBeInTheDocument();
     // → Devis

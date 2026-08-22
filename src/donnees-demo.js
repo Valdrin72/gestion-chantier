@@ -121,67 +121,18 @@ export const donneesDemo = {
   },
 
   // ══════════════════════════════════════════════════════════════════════════
-  // ZONES GÉOGRAPHIQUES (reprises de donneesInitiales)
-  // ══════════════════════════════════════════════════════════════════════════
-  zones: [
-    {
-      id: 1, nom: 'Genève',
-      tarifs: {
-        'Cloisons vitrées': 135,
-        'Cloisons amovibles': 95,
-        'Faux plancher': 85,
-        'Plafonds suspendus': 90,
-        'Portes standards': 650,
-        'Portes coupe-feu': 950,
-        'Panneaux sandwich': 110,
-      },
-      tarifDeplacement: 60,
-    },
-    {
-      id: 2, nom: 'Lausanne',
-      tarifs: {
-        'Cloisons vitrées': 120,
-        'Cloisons amovibles': 85,
-        'Faux plancher': 75,
-        'Plafonds suspendus': 80,
-        'Portes standards': 580,
-        'Portes coupe-feu': 850,
-        'Panneaux sandwich': 95,
-      },
-      tarifDeplacement: 50,
-    },
-    { id: 3, nom: 'Berne', tarifs: {}, tarifDeplacement: 45 },
-    { id: 4, nom: 'Zurich', tarifs: {}, tarifDeplacement: 65 },
-    { id: 5, nom: 'Fribourg', tarifs: {}, tarifDeplacement: 40 },
-    { id: 6, nom: 'Neuchâtel', tarifs: {}, tarifDeplacement: 40 },
-    { id: 7, nom: 'Vaud (autre)', tarifs: {}, tarifDeplacement: 45 },
-  ],
-
-  // ══════════════════════════════════════════════════════════════════════════
-  // TYPES DE TRAVAUX (repris de donneesInitiales)
+  // TYPES DE TRAVAUX — LISTE seule (nom + unité). Aucun prix figé : le prix/m²
+  // est un RÉSULTAT du devis réel (surface + prix saisis), jamais imposé ici.
   // ══════════════════════════════════════════════════════════════════════════
   typesTravaux: [
-    { id: 1, nom: 'Cloisons vitrées',    unite: 'm²',    tarifBase: 125 },
-    { id: 2, nom: 'Cloisons amovibles',  unite: 'm²',    tarifBase: 90  },
-    { id: 3, nom: 'Faux plancher',       unite: 'm²',    tarifBase: 80  },
-    { id: 4, nom: 'Plafonds suspendus',  unite: 'm²',    tarifBase: 85  },
-    { id: 5, nom: 'Portes standards',    unite: 'unité', tarifBase: 620 },
-    { id: 6, nom: 'Portes coupe-feu',    unite: 'unité', tarifBase: 900 },
-    { id: 7, nom: 'Panneaux sandwich',   unite: 'm²',    tarifBase: 100 },
-    { id: 8, nom: 'Autre',               unite: 'forfait', tarifBase: 0 },
-  ],
-
-  // ══════════════════════════════════════════════════════════════════════════
-  // LOCALITÉS — déplacements (reprises de donneesInitiales)
-  // ══════════════════════════════════════════════════════════════════════════
-  localites: [
-    { id: 1, nom: 'Genève',      tarifJour: 60 },
-    { id: 2, nom: 'Lausanne',    tarifJour: 50 },
-    { id: 3, nom: 'Berne',       tarifJour: 45 },
-    { id: 4, nom: 'Zurich',      tarifJour: 65 },
-    { id: 5, nom: 'Fribourg',    tarifJour: 40 },
-    { id: 6, nom: 'Neuchâtel',   tarifJour: 40 },
-    { id: 7, nom: 'Vaud (autre)', tarifJour: 45 },
+    { id: 1, nom: 'Cloisons vitrées',    unite: 'm²' },
+    { id: 2, nom: 'Cloisons amovibles',  unite: 'm²' },
+    { id: 3, nom: 'Faux plancher',       unite: 'm²' },
+    { id: 4, nom: 'Plafonds suspendus',  unite: 'm²' },
+    { id: 5, nom: 'Portes standards',    unite: 'unité' },
+    { id: 6, nom: 'Portes coupe-feu',    unite: 'unité' },
+    { id: 7, nom: 'Panneaux sandwich',   unite: 'm²' },
+    { id: 8, nom: 'Autre',               unite: 'forfait' },
   ],
 
   // ══════════════════════════════════════════════════════════════════════════

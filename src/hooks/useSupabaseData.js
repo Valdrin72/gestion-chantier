@@ -33,7 +33,7 @@ const LEGACY_STATUTS = { 'Validé': 'accepté', 'Signé': 'accepté', 'Envoyé':
 // donnée de démo indésirable se corrige à la source (donnees-demo.js), jamais au runtime.
 
 // Paramètres par défaut pour un nouveau compte réel : config BTP GE sans données démo.
-// On conserve typesTravaux/localites/zones (config standard GE utile dès le 1er jour)
+// On conserve typesTravaux (config standard GE utile dès le 1er jour)
 // mais employes = [] (l'utilisateur saisit ses propres employés).
 const { chantiers: _dc, devis: _dd, clients: _dcl, factures: _df, employes: _de, ...PARAMETRES_DEFAUT_BASE } = donneesInitiales;
 export const PARAMETRES_DEFAUT = { ...PARAMETRES_DEFAUT_BASE, employes: [], demoVersion: DEMO_VERSION };
@@ -102,8 +102,6 @@ export function resolveDataFromBlob(rawBlob, isDemo) {
           demoVersion:  DEMO_VERSION,
           employes:     storedParams.employes?.length     > 0 ? storedParams.employes     : donneesInitiales.employes,
           typesTravaux: storedParams.typesTravaux?.length  > 0 ? storedParams.typesTravaux : donneesInitiales.typesTravaux,
-          localites:    storedParams.localites?.length    > 0 ? storedParams.localites    : donneesInitiales.localites,
-          zones:        storedParams.zones?.length        > 0 ? storedParams.zones        : donneesInitiales.zones,
         };
   } else {
     // Vrai compte : JAMAIS de données démo, quelles que soient les conditions
@@ -117,8 +115,6 @@ export function resolveDataFromBlob(rawBlob, isDemo) {
       demoVersion:  DEMO_VERSION,
       employes:     storedParams.employes?.length     > 0 ? storedParams.employes     : [],
       typesTravaux: storedParams.typesTravaux?.length  > 0 ? storedParams.typesTravaux : PARAMETRES_DEFAUT.typesTravaux,
-      localites:    storedParams.localites?.length    > 0 ? storedParams.localites    : PARAMETRES_DEFAUT.localites,
-      zones:        storedParams.zones?.length        > 0 ? storedParams.zones        : PARAMETRES_DEFAUT.zones,
     };
   }
 

@@ -76,11 +76,10 @@ function ChantierForm({ form, setForm, erreurs, setErreurs, modeCompleter, onSau
           </select></div>
         <div>
           <label style={labelStyle}>Localité <span style={{ color: C.danger }}>*</span></label>
-          <select value={form.ville || ''} onChange={e => { setForm({ ...form, ville: e.target.value }); if (erreurs.ville) setErreurs(prev => ({ ...prev, ville: null })); }}
-            style={{ ...inputStyle, ...(erreurs.ville ? { borderColor: '#ef4444', boxShadow: '0 0 0 1px #ef444440' } : {}) }}>
-            <option value="">Sélectionner...</option>
-            {(parametres.localites || []).map(l => <option key={l.id} value={l.nom}>{l.nom} (CHF {l.tarifJour}.-/j)</option>)}
-          </select>
+          {/* Saisie libre : la ville ne dépend plus d'une liste de réglages (Localités retirée). */}
+          <input type="text" placeholder="Ex : Genève" value={form.ville || ''}
+            onChange={e => { setForm({ ...form, ville: e.target.value }); if (erreurs.ville) setErreurs(prev => ({ ...prev, ville: null })); }}
+            style={{ ...inputStyle, ...(erreurs.ville ? { borderColor: '#ef4444', boxShadow: '0 0 0 1px #ef444440' } : {}) }} />
           {erreurs.ville && <div style={{ color: '#ef4444', fontSize: 12, marginTop: 5, fontWeight: 600 }}>La localité est obligatoire</div>}
         </div>
         <div><label style={labelStyle}>Statut</label>

@@ -1,6 +1,6 @@
 import React, { useState, useLayoutEffect } from 'react';
 import { ChevronRight, Menu } from 'lucide-react';
-import { fmtN, C } from '../donnees';
+import { C } from '../donnees';
 import { DS } from '../ds';
 import { V1, mono, carteV1, heroFond, heroMono } from '../design/v1';
 import { useApp } from '../context/AppContext';
@@ -67,8 +67,7 @@ function Parametres({ parametres, setParametres, clients = [], setClients = () =
     return () => document.body.classList.remove('hero-fullscreen');
   }, []);
   const [onglet, setOnglet] = useState('dashboard');
-  const [nouvelleLocalite, setNouvelleLocalite] = useState({ nom: '', tarifJour: '' });
-  const [nouveauTravail, setNouveauTravail] = useState({ nom: '', unite: 'm²', tarifBase: '' });
+  const [nouveauTravail, setNouveauTravail] = useState({ nom: '', unite: 'm²' });
   const [saved, setSaved] = useState(false);
   const timerSaved = React.useRef(null);
   const importRef = React.useRef(null);
@@ -171,9 +170,7 @@ function Parametres({ parametres, setParametres, clients = [], setClients = () =
     { id: 'dashboard', label: 'Réglages tableau de bord', desc: 'Alertes et affichage' },
     { id: 'chantiers', label: 'Légende des statuts', desc: 'Statuts et priorités (lecture seule)' },
     { id: 'devis', label: 'Devis', desc: 'Marges et tarifs' },
-    { id: 'localites', label: 'Localités', desc: 'Frais déplacement' },
-    { id: 'travaux', label: 'Travaux', desc: 'Types et tarifs' },
-    { id: 'zones', label: 'Zones géo.', desc: 'Tarifs par région' },
+    { id: 'travaux', label: 'Travaux', desc: 'Types de travaux' },
     { id: 'societe', label: 'Société', desc: 'N° TVA · Coordonnées' },
     { id: 'paiements', label: 'Paiements', desc: 'Délais et rappels' },
     { id: 'rapport', label: 'Rapport', desc: 'Alertes hebdo' },
@@ -357,50 +354,21 @@ function Parametres({ parametres, setParametres, clients = [], setClients = () =
         </div>
       )}
 
-      {onglet === 'localites' && (
-        <div style={carteStyle}>
-          <div className="ds-card-title" style={{ marginBottom: '20px' }}>Localités & Déplacements</div>
-          <table className="table-cards" style={{ width: '100%', marginBottom: '20px' }}>
-            <thead><tr>
-              {['Ville', 'CHF/jour déplacement', 'Action'].map(h => <th key={h} style={thStyle}>{h}</th>)}
-            </tr></thead>
-            <tbody>
-              {(parametres.localites || []).map(l => (
-                <tr key={l.id}>
-                  <td style={tdStyle}><input value={l.nom} onChange={e => { const u = (parametres.localites || []).map(loc => loc.id === l.id ? { ...loc, nom: e.target.value } : loc); sauv({ ...parametres, localites: u }); }} style={{ ...inputStyle, padding: '5px 8px' }} /></td>
-                  <td style={tdStyle}><input type="text" inputMode="numeric" value={l.tarifJour ? fmtN(l.tarifJour) : ''} onChange={e => { const raw = e.target.value.replace(/'/g, '').replace(/[^0-9.]/g, ''); const u = (parametres.localites || []).map(loc => loc.id === l.id ? { ...loc, tarifJour: parseFloat(raw) || 0 } : loc); sauv({ ...parametres, localites: u }); }} style={{ ...inputStyle, padding: '5px 8px', width: 100, color: C.primaire, fontWeight: 700 }} /></td>
-                  <td style={tdStyle}><button onClick={() => { if (window.confirm(`Supprimer ${l.nom} ?`)) sauv({ ...parametres, localites: (parametres.localites || []).filter(loc => loc.id !== l.id) }); }} style={btnDanger}>Suppr</button></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <div style={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', color: 'var(--text-muted)', marginBottom: '12px', marginTop: '24px' }}>Ajouter une localité</div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'var(--g-2a)', gap: '10px', alignItems: 'end' }}>
-            <div><label style={labelStyle}>Ville</label><input placeholder="Fribourg" value={nouvelleLocalite.nom} onChange={e => setNouvelleLocalite({ ...nouvelleLocalite, nom: e.target.value })} style={inputStyle} /></div>
-            <div><label style={labelStyle}>CHF/jour</label><input type="text" inputMode="numeric" placeholder="45" value={nouvelleLocalite.tarifJour ? fmtN(nouvelleLocalite.tarifJour) : ''} onChange={e => { const raw = e.target.value.replace(/'/g, '').replace(/[^0-9.]/g, ''); setNouvelleLocalite({ ...nouvelleLocalite, tarifJour: raw }); }} style={inputStyle} /></div>
-            <button onClick={() => {
-              if (nouvelleLocalite.nom && nouvelleLocalite.tarifJour) {
-                sauv({ ...parametres, localites: [...(parametres.localites || []), { ...nouvelleLocalite, id: Date.now(), tarifJour: parseFloat(nouvelleLocalite.tarifJour) }] });
-                setNouvelleLocalite({ nom: '', tarifJour: '' });
-              }
-            }} style={btnPrimaire}>+ Ajouter</button>
-          </div>
-        </div>
-      )}
 
       {onglet === 'travaux' && (
         <div style={carteStyle}>
           <div className="ds-card-title" style={{ marginBottom: '20px' }}>Types de travaux</div>
+          {/* Le prix/m² n'est PAS figé ici : il est un RÉSULTAT du devis réel (surface + prix saisis).
+              La liste des types (nom + unité) reste la colonne vertébrale Devis/Chantiers/analyses. */}
           <table className="table-cards" style={{ width: '100%', marginBottom: '20px' }}>
             <thead><tr>
-              {['Type de travaux', 'Unité', 'Tarif de base', 'Action'].map(h => <th key={h} style={thStyle}>{h}</th>)}
+              {['Type de travaux', 'Unité', 'Action'].map(h => <th key={h} style={thStyle}>{h}</th>)}
             </tr></thead>
             <tbody>
               {parametres.typesTravaux.map(t => (
                 <tr key={t.id}>
                   <td style={tdStyle}><input value={t.nom} onChange={e => { const u = parametres.typesTravaux.map(tr => tr.id === t.id ? { ...tr, nom: e.target.value } : tr); sauv({ ...parametres, typesTravaux: u }); }} style={{ ...inputStyle, width: '200px' }} /></td>
                   <td style={tdStyle}><select value={t.unite} onChange={e => { const u = parametres.typesTravaux.map(tr => tr.id === t.id ? { ...tr, unite: e.target.value } : tr); sauv({ ...parametres, typesTravaux: u }); }} style={{ ...inputStyle, width: '100px' }}>{['m²', 'ml', 'unité', 'forfait'].map(u => <option key={u}>{u}</option>)}</select></td>
-                  <td style={tdStyle}><input type="text" inputMode="numeric" value={t.tarifBase ? fmtN(t.tarifBase) : ''} onChange={e => { const raw = e.target.value.replace(/'/g, '').replace(/[^0-9.]/g, ''); const u = parametres.typesTravaux.map(tr => tr.id === t.id ? { ...tr, tarifBase: parseFloat(raw) || 0 } : tr); sauv({ ...parametres, typesTravaux: u }); }} style={{ ...inputStyle, width: '100px' }} /></td>
                   <td style={tdStyle}><button onClick={() => { if (window.confirm('Supprimer ce type de travaux ?')) sauv({ ...parametres, typesTravaux: parametres.typesTravaux.filter(tr => tr.id !== t.id) }); }} style={btnDanger}>Suppr</button></td>
                 </tr>
               ))}
@@ -413,44 +381,16 @@ function Parametres({ parametres, setParametres, clients = [], setClients = () =
               <select value={nouveauTravail.unite} onChange={e => setNouveauTravail({ ...nouveauTravail, unite: e.target.value })} style={inputStyle}>
                 {['m²', 'ml', 'unité', 'forfait'].map(u => <option key={u}>{u}</option>)}
               </select></div>
-            <div><label style={labelStyle}>Tarif base (CHF)</label><input type="text" inputMode="numeric" placeholder="100" value={nouveauTravail.tarifBase ? fmtN(nouveauTravail.tarifBase) : ''} onChange={e => { const raw = e.target.value.replace(/'/g, '').replace(/[^0-9.]/g, ''); setNouveauTravail({ ...nouveauTravail, tarifBase: raw }); }} style={inputStyle} /></div>
             <button onClick={() => {
               if (nouveauTravail.nom) {
-                sauv({ ...parametres, typesTravaux: [...parametres.typesTravaux, { ...nouveauTravail, id: Date.now(), tarifBase: parseFloat(nouveauTravail.tarifBase) || 0 }] });
-                setNouveauTravail({ nom: '', unite: 'm²', tarifBase: '' });
+                sauv({ ...parametres, typesTravaux: [...parametres.typesTravaux, { ...nouveauTravail, id: Date.now() }] });
+                setNouveauTravail({ nom: '', unite: 'm²' });
               }
             }} style={btnPrimaire}>+ Ajouter</button>
           </div>
         </div>
       )}
 
-      {onglet === 'zones' && (
-        <div style={carteStyle}>
-          <div className="ds-card-title" style={{ marginBottom: '20px' }}>Tarifs par zone géographique</div>
-          <table className="table-cards" style={{ width: '100%' }}>
-            <thead><tr>
-              <th style={thStyle}>Type de travaux</th>
-              {parametres.zones.slice(0, 4).map(z => <th key={z.id} style={thStyle}>{z.nom}</th>)}
-            </tr></thead>
-            <tbody>
-              {parametres.typesTravaux.map(t => (
-                <tr key={t.id}>
-                  <td style={tdStyle}><strong>{t.nom}</strong></td>
-                  {parametres.zones.slice(0, 4).map(z => (
-                    <td key={z.id} style={tdStyle}>
-                      <input type="text" inputMode="numeric"
-                        value={z.tarifs?.[t.nom] ? fmtN(z.tarifs[t.nom]) : ''}
-                        placeholder={t.tarifBase}
-                        onChange={e => { const raw = e.target.value.replace(/'/g, '').replace(/[^0-9.]/g, ''); const nz = parametres.zones.map(zone => zone.id === z.id ? { ...zone, tarifs: { ...zone.tarifs, [t.nom]: parseFloat(raw) } } : zone); sauv({ ...parametres, zones: nz }); }}
-                        style={{ ...inputStyle, width: '80px', padding: '4px 8px' }} />
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
 
       {onglet === 'societe' && (
         <div style={carteStyle}>

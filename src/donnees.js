@@ -192,43 +192,7 @@ export const getAlerte = (jours) => {
   return { texte: `${jours} jours restants`, couleur: '#2e7d32', niveau: 'ok', banniere: null };
 };
 
-export const getAlerteChantier = (chantier) => {
-  const { dateDebut, nombreJours, inclusSamedi = false } = chantier;
-  const canton = chantier.canton ?? 'GE';
-  const base = parseInt(nombreJours) || 0;
-  const jours = joursOuvrableRestants(dateDebut, base, inclusSamedi, canton);
-  if (jours === null) return null;
-  if (jours >= 0) return getAlerte(jours);
-  const abs = Math.abs(jours);
-  return { texte: `Retard ${abs} jour${abs > 1 ? 's' : ''}`, couleur: '#b71c1c', niveau: 'critique', banniere: 'danger' };
-};
-
 export const estRetardJustifie = (chantier) => false;
-
-/**
- * Retourne le statut planning d'un chantier pour affichage sur les cartes.
- * @param {object} chantier
- * @returns {{ status: 'ok'|'warning'|'danger', label: string, delay: number, couleur: string }}
- *   - status  : 'ok' = à l'heure, 'warning' = retard justifié, 'danger' = retard réel
- *   - label   : texte du badge
- *   - delay   : jours de retard (0 si à l'heure)
- *   - couleur : couleur hex du badge
- *
- * Exemple :
- *   const ts = getChantierStatus(chantier);
- *   // → { status: 'warning', label: 'Retard justifié (+3j)', delay: 2, couleur: '#f59e0b' }
- *   <Badge texte={ts.label} couleur={ts.couleur} />
- */
-export const getChantierStatus = (chantier) => {
-  const { dateDebut, nombreJours, inclusSamedi = false } = chantier;
-  const base = parseInt(nombreJours) || 0;
-  if (!dateDebut || !base) return { status: 'ok', label: '–', delay: 0, couleur: '#6b7280' };
-  const jours = joursOuvrableRestants(dateDebut, base, inclusSamedi);
-  if (jours === null) return { status: 'ok', label: '–', delay: 0, couleur: '#6b7280' };
-  if (jours >= 0) return { status: 'ok', label: 'À l\'heure', delay: 0, couleur: '#22c55e' };
-  const abs = Math.abs(jours);
-  return { status: 'danger', label: `Retard de ${abs}j`, delay: abs, couleur: '#ef4444' };
-};
 
 // ===== CALCULS FINANCIERS =====
 /**
@@ -730,18 +694,6 @@ export const statutRentabilite = (margeActuellePct) => {
  * coutMO : coût main d'œuvre (optionnel, passé par l'appelant depuis calculerCoutsChantier si disponible).
  * Formules : coûtTotal = coutMO + mat + transp + ST, marge = CA − coûtTotal, marge% = marge / CA × 100
  */
-export const calculerDevisClient = (devis, coutMO = 0) => {
-  const chiffreAffaires   = parseFloat(devis.montantHT || devis.prixPropose) || 0;
-  const coutMainOeuvre    = parseFloat(coutMO)                  || 0;
-  const coutMateriel      = parseFloat(devis.coutMateriel)      || 0;
-  const coutTransport     = parseFloat(devis.coutTransport)     || 0;
-  const coutSousTraitance = parseFloat(devis.coutSousTraitance) || 0;
-  const coutTotal         = coutMainOeuvre + coutMateriel + coutTransport + coutSousTraitance;
-  const marge             = chiffreAffaires - coutTotal;
-  const margePct          = chiffreAffaires > 0 ? Math.round((marge / chiffreAffaires) * 1000) / 10 : 0;
-  return { chiffreAffaires, coutMainOeuvre, coutMateriel, coutTransport, coutSousTraitance, coutTotal, marge, margePct };
-};
-
 // ===== C =====
 export const C = {
   primaire:   '#0d3d6e',  // CYNA brand blue
@@ -763,12 +715,6 @@ export const C = {
  * sans utiliser les dates calendaires.
  * Positif = chantier en avance, Négatif = chantier en dépassement.
  */
-export const calculerJoursRestants = (chantier) => {
-  const joursPrevu    = parseInt(chantier.nombreJours) || 0;
-  const joursRealises = new Set((chantier.journal || []).map(e => e.date).filter(Boolean)).size;
-  return joursPrevu - joursRealises;
-};
-
 /**
  * Calcule le coût réel par membre d'équipe (tarifJour × joursRealises du membre)
  * et retourne la répartition en % du coût équipe total.

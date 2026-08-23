@@ -72,7 +72,7 @@ describe('VUE RENTABILITÉ — cascade + seuil + prévu/réel (vraies valeurs)',
     renderAnalyse();
     // Lignes de la cascade
     expect(screen.getByText("Chiffre d'affaires facturé")).toBeInTheDocument();
-    expect(screen.getByText('= MARGE NETTE')).toBeInTheDocument();
+    expect(screen.getByText('= RÉSULTAT NET')).toBeInTheDocument(); // relabel conformité (CA − coûts − FG − charges − impôts)
     // CA facturé = facture 60 000 HT → "CHF 60'000" (fmtN, apostrophe suisse)
     expect(screen.getAllByText(/CHF 60'000/).length).toBeGreaterThan(0);
   });

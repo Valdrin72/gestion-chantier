@@ -9,9 +9,10 @@ import {
   calculerCoutsChantier, statutRentabilite, C,
   calculerRentabiliteReelle, calculerEtatChantier,
   calculerCA, isChantierActif, isChantierComptable, SEUILS, margePortefeuille,
-  couleurScoreSante,
+  couleurScoreSante, TVA_DEFAUT,
 } from '../donnees';
 import { bornesPeriode, caFactureHTDansPeriode, caPayeDansPeriode, coutChantierDansPeriode, periodeLabel } from '../calculs/periode';
+import { surchargeMajorationPointage } from '../calculs/majorations';
 import { STATUTS_CLOS } from '../constants/statuts';
 import { CYNA_PARAMS } from '../calculs/constants';
 import { useApp } from '../context/AppContext';
@@ -365,25 +366,25 @@ function Dashboard() {
       const enc = (factures || []).flatMap(f => f.paiementsHistorique || [])
         .filter(p => { const d = p.date ? new Date(p.date) : null; return d && d >= deb && d < fin; })
         .reduce((s, p) => s + (parseFloat(p.montant) || 0), 0);
+      // Coût MO de la semaine = base + majorations CCT, via la SOURCE UNIQUE surchargeMajorationPointage
+      // (cohérent avec l'Aperçu financier du même écran, qui inclut les majorations). On somme sur les
+      // pointages tombant dans la fenêtre [deb, fin) ; TOUS les pointages sont passés au helper pour que
+      // le split hebdo >45h reste correct.
+      const coeff = parseFloat(parametres.parametres?.coefficientMainOeuvre) || 1.0;
       let couts = 0;
-      actifs.forEach(c => {
-        (c.journal || []).forEach(entry => {
-          if (!entry.date) return;
-          const d = new Date(entry.date);
-          if (d >= deb && d < fin) {
-            (entry.employes || []).forEach(e => {
-              const emp = employes.find(em => String(em.id) === String(e.employeId));
-              const tarifBrut = emp ? (parseFloat(emp.tarifJour) || 0) : 0;
-              const coeff = emp?.tarifDejaCharge ? 1 : (parseFloat(parametres.parametres?.coefficientMainOeuvre) || 1.0);
-              const heures = parseFloat(e.heuresTravaillees) || 0;
-              couts += (heures / 8) * tarifBrut * coeff;
-            });
-          }
+      (pointages || []).forEach(p => {
+        const pd = p?.date ? new Date(p.date) : null;
+        if (!pd || pd < deb || pd >= fin) return;
+        const emp = employes.find(em => String(em.id) === String(p.employeId));
+        const tarifH = (emp ? (parseFloat(emp.tarifJour) || 0) * (emp.tarifDejaCharge ? 1 : coeff) : 0) / 8;
+        actifs.forEach(c => {
+          const m = surchargeMajorationPointage(p, c.id, tarifH, pointages, c.canton ?? 'GE');
+          couts += m.coutBase + m.surcharge;
         });
       });
       return { semaine: deb.toLocaleDateString('fr-CH', { day: '2-digit', month: '2-digit' }), CA: Math.round(ca), Couts: Math.round(couts), Encaissements: Math.round(enc) };
     });
-  }, [factures, actifs, parametres.employes, parametres.parametres]);
+  }, [factures, actifs, pointages, parametres.employes, parametres.parametres]);
 
   // ── Aperçu financier — RÉSULTAT DE PÉRIODE (fix MOYEN 8 : numérateur ET dénominateur sur la MÊME
   // base de période). CA FACTURÉ HT de la période − COÛTS de la période au prorata (coutChantierDansPeriode :
@@ -392,7 +393,7 @@ function Dashboard() {
   const apercuFinancier = useMemo(() => {
     const cfg = parametres.parametres;
     const compt = (facturesSafe || []).filter(f => !['annulee', 'brouillon'].includes((f.statut || '').toLowerCase()));
-    const _ht = (f) => { const h = parseFloat(f.montantHT); if (!isNaN(h)) return h; const t = parseFloat(f.montantTTC); return isNaN(t) ? 0 : t / 1.081; };
+    const _ht = (f) => { const h = parseFloat(f.montantHT); if (!isNaN(h)) return h; const t = parseFloat(f.montantTTC); return isNaN(t) ? 0 : t / (1 + TVA_DEFAUT / 100); };
 
     const caFacture = caFactureHTDansPeriode(facturesSafe, periodeGlobale);          // CA facturé HT de la période
     const depenses  = (chantiers || []).reduce((s, c) => s + coutChantierDansPeriode(c, parametres.employes || [], cfg, pointages, facturesSafe, periodeGlobale), 0);

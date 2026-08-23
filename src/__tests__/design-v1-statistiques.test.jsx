@@ -66,7 +66,7 @@ describe('KPIs + chiffres clés (vraies valeurs)', () => {
     // Lot 4c : « CA SIGNÉ ANNÉE » → « CA FACTURÉ » (CA facturé HT de la période).
     expect(screen.getByText('CA FACTURÉ')).toBeInTheDocument();
     expect(screen.queryByText('CA SIGNÉ ANNÉE')).toBeNull();
-    expect(screen.getByText('MARGE NETTE')).toBeInTheDocument();
+    expect(screen.getByText('MARGE D\'EXPLOITATION')).toBeInTheDocument(); // relabel conformité (CA − coûts − FG, avant impôts)
     expect(screen.getByText('CHANTIERS')).toBeInTheDocument();
     // Prévision libellée « · ANNÉE » (annuelle, ne suit pas la période).
     expect(screen.getByText(/PRÉVISION 3 MOIS/)).toBeInTheDocument();

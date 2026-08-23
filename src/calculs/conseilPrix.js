@@ -4,7 +4,7 @@
 // LECTURE SEULE. Ces fonctions ne CONSEILLENT qu'un prix — elles n'écrivent JAMAIS
 // dans un devis, un total ou l'état d'un chantier. Le m² n'est PAS un socle de calcul
 // du CA/marge (il vient des factures) : ici il ne sert qu'à un ratio d'aide au chiffrage.
-import { calculerCoutsChantier } from '../donnees';
+import { calculerCoutsChantier, TVA_DEFAUT } from '../donnees';
 
 // Décision patron : le plancher de négociation garde une marge minimale de 20 %.
 export const MARGE_MIN_NEGO = 0.20;
@@ -21,14 +21,14 @@ export function quantile(sortedAsc, q) {
 }
 export const mediane = (sortedAsc) => quantile(sortedAsc, 0.5);
 
-// CA facturé HT TOTAL (vie entière) d'un chantier — exclut brouillon/annulée, fallback TTC ÷ 1.081.
+// CA facturé HT TOTAL (vie entière) d'un chantier — exclut brouillon/annulée, fallback TTC ÷ (1 + TVA_DEFAUT/100).
 // (Convention identique à periode.js ; ici on veut le total historique, pas une tranche de période.)
 const _htComptableTotal = (factures, chantierId) => (factures || [])
   .filter(f => String(f.chantierId) === String(chantierId)
     && !['brouillon', 'annulee'].includes((f.statut || '').trim().toLowerCase()))
   .reduce((s, f) => {
     const h = parseFloat(f.montantHT);
-    return s + (Number.isNaN(h) ? (parseFloat(f.montantTTC) || 0) / 1.081 : h);
+    return s + (Number.isNaN(h) ? (parseFloat(f.montantTTC) || 0) / (1 + TVA_DEFAUT / 100) : h);
   }, 0);
 
 /**

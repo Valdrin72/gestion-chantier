@@ -83,11 +83,12 @@ describe('ONGLET ÉQUIPE — cartes employés', () => {
 });
 
 describe('BASCULE Équipe / Performance', () => {
-  it('cliquer Performance affiche le tableau avec le coût main-d\'œuvre', () => {
+  it('cliquer Performance affiche le tableau avec le coût MO (base)', () => {
     renderEquipe();
     fireEvent.click(screen.getByRole('button', { name: 'Performance' }));
-    // « Coût main-d'œuvre » apparaît en KPI ET en-tête de colonne → getAll
-    expect(screen.getAllByText(/Coût main-d'œuvre/i).length).toBeGreaterThanOrEqual(2);
+    // Relabel conformité : « Coût MO (base) » (coût par employé, hors majorations CCT = agrégat chantier).
+    // Apparaît en KPI ET en-tête de colonne → getAll.
+    expect(screen.getAllByText(/Coût MO \(base\)/i).length).toBeGreaterThanOrEqual(2);
     expect(within(screen.getByTestId('perf-kpis')).getByText('HEURES ÉQUIPE')).toBeInTheDocument();
     // La ligne de l'employé porte des heures (8h aujourd'hui, période année)
     expect(screen.getAllByText(/8h/).length).toBeGreaterThan(0);

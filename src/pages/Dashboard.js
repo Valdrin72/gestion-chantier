@@ -538,24 +538,7 @@ function Dashboard() {
         {/* ── LES 3 RENDEZ-VOUS DU DIRECTEUR ── */}
         <DirecteurBloc naviguer={naviguer} />
 
-        {/* IA BANDEAU compact */}
-        {(() => {
-          const scoreDirecteur = agentState?.scoreGlobal ?? null;
-          const alertesCritiques = agentAlertes.filter(a => a.niveau === 'CRITIQUE').length;
-          const alertesAttention = agentAlertes.filter(a => a.niveau === 'ATTENTION').length;
-          if (scoreDirecteur === null && agentAlertes.length === 0) return null;
-          const scoreColor = scoreDirecteur === null ? '#94a3b8' : couleurScoreSante(scoreDirecteur);
-          return (
-            <div onClick={() => naviguer('agents')} style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 10, padding: '10px 14px', marginBottom: 12, borderRadius: 10, background: 'var(--bg-glass-2)', border: '1px solid var(--border)', cursor: 'pointer' }}>
-              <Bot size={13} color={V1.bleu} />
-              <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Intelligence IA</span>
-              {scoreDirecteur !== null && <span style={{ fontSize: 11, fontWeight: 800, color: scoreColor, background: scoreColor + '18', border: `1px solid ${scoreColor}30`, borderRadius: 20, padding: '2px 8px' }}>Score {scoreDirecteur}/100</span>}
-              {alertesCritiques > 0 && <span style={{ fontSize: 11, fontWeight: 700, color: '#ef4444', background: '#ef444418', border: '1px solid #ef444430', borderRadius: 20, padding: '2px 8px' }}>{alertesCritiques} crit.</span>}
-              {alertesAttention > 0 && <span style={{ fontSize: 11, fontWeight: 700, color: '#f59e0b', background: '#f59e0b18', border: '1px solid #f59e0b30', borderRadius: 20, padding: '2px 8px' }}>{alertesAttention} att.</span>}
-              <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--text-muted)' }}>→</span>
-            </div>
-          );
-        })()}
+        {/* (Doublon retiré — le bandeau IA séparé est fusionné dans le bloc « Alertes » plus bas) */}
 
         {/* MES CHANTIERS */}
         <div style={{ ...CARD, marginBottom: 12 }}>
@@ -612,50 +595,8 @@ function Dashboard() {
           }
         </div>
 
-        {/* Cartes Trésorerie + Alertes + Avancement + Coûts — pleine largeur empilée (aéré) */}
+        {/* Cartes Avancement + Coûts — pleine largeur empilée (Tréso 30j et Alertes IA retirées : doublons) */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 12, marginBottom: 12 }}>
-
-          {/* Trésorerie 30j */}
-          <div style={{ ...CARD, cursor: 'pointer' }} onClick={() => naviguer('finances')}>
-            <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 8 }}>Tréso. 30j</div>
-            <div style={{ fontSize: 20, fontWeight: 900, color: previsionTreso30j.interpretation?.couleur || '#0d3d6e', letterSpacing: '-0.5px', marginBottom: 6, lineHeight: 1 }}>
-              CHF {fmtN(previsionTreso30j.total)}
-            </div>
-            {previsionTreso30j.interpretation && (
-              <div style={{ fontSize: 12, color: previsionTreso30j.interpretation.couleur, background: previsionTreso30j.interpretation.couleur + '15', border: `1px solid ${previsionTreso30j.interpretation.couleur}30`, borderRadius: 6, padding: '2px 6px', display: 'inline-block', marginBottom: 4 }}>
-                {previsionTreso30j.interpretation.label.split('—')[0].trim()}
-              </div>
-            )}
-            {kpi.cashEnAttente > 0 && (
-              <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
-                <span style={{ fontWeight: 700, color: '#f59e0b' }}>CHF {fmtN(kpi.cashEnAttente)}</span> att.
-              </div>
-            )}
-          </div>
-
-          {/* Alertes IA */}
-          <div style={{ ...CARD, cursor: 'pointer' }} onClick={() => naviguer('agents')}>
-            <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 4 }}>
-              <Bot size={10} color={V1.bleu} /> Alertes IA
-            </div>
-            {agentAlertes.length === 0 ? (
-              <>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-                  <ShieldCheck size={18} strokeWidth={1.5} style={{ color: '#10b981' }} />
-                  <div style={{ fontWeight: 700, fontSize: 14, color: '#10b981' }}>Tout OK</div>
-                </div>
-                <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Aucune alerte</div>
-              </>
-            ) : (
-              <>
-                <div style={{ fontSize: 28, fontWeight: 900, color: agentAlertes.some(a => a.niveau === 'CRITIQUE') ? '#ef4444' : '#f59e0b', marginBottom: 4, lineHeight: 1 }}>{agentAlertes.length}</div>
-                <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-                  {agentAlertes.filter(a => a.niveau === 'CRITIQUE').length > 0 && <span style={{ color: '#ef4444', fontWeight: 700 }}>{agentAlertes.filter(a => a.niveau === 'CRITIQUE').length} crit. · </span>}
-                  {agentAlertes.filter(a => a.niveau === 'ATTENTION').length > 0 && <span style={{ color: '#f59e0b' }}>{agentAlertes.filter(a => a.niveau === 'ATTENTION').length} att.</span>}
-                </div>
-              </>
-            )}
-          </div>
 
           {/* Avancement global */}
           <div style={{ ...CARD, cursor: 'pointer' }} onClick={() => naviguer('chantiers')}>
@@ -702,28 +643,47 @@ function Dashboard() {
           </div>
         </div>
 
-        {/* ALERTES SYSTEME */}
-        {alertes.length > 0 && (
-          <div style={{ ...CARD, marginBottom: 12 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-              <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 6 }}>
-                <AlertTriangle size={14} strokeWidth={2} style={{ color: '#f59e0b' }} /> Alertes chantiers
+        {/* ── BLOC ALERTES FUSIONNÉ : score de santé (haut) + alertes chantiers (bas). Regroupe
+             l'ancien bandeau « Intelligence IA » + la mini-carte « Alertes IA » + « Alertes chantiers ». ── */}
+        {(() => {
+          const scoreDirecteur = agentState?.scoreGlobal ?? null;
+          const alertesCritiques = agentAlertes.filter(a => a.niveau === 'CRITIQUE').length;
+          const alertesAttention = agentAlertes.filter(a => a.niveau === 'ATTENTION').length;
+          if (scoreDirecteur === null && agentAlertes.length === 0 && alertes.length === 0) return null;
+          const scoreColor = scoreDirecteur === null ? '#94a3b8' : couleurScoreSante(scoreDirecteur);
+          return (
+            <div style={{ ...CARD, marginBottom: 12 }}>
+              {/* En-tête : Intelligence IA + score + compteurs — cliquable → écran IA/agents */}
+              <div onClick={() => naviguer('agents')} style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 8, cursor: 'pointer' }}>
+                <Bot size={13} color={V1.bleu} />
+                <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)' }}>Intelligence IA</span>
+                {scoreDirecteur !== null && <span style={{ fontSize: 11, fontWeight: 800, color: scoreColor, background: scoreColor + '18', border: `1px solid ${scoreColor}30`, borderRadius: 20, padding: '2px 8px' }}>Score {scoreDirecteur}/100</span>}
+                {alertesCritiques > 0 && <span style={{ fontSize: 11, fontWeight: 700, color: '#ef4444', background: '#ef444418', border: '1px solid #ef444430', borderRadius: 20, padding: '2px 8px' }}>{alertesCritiques} crit.</span>}
+                {alertesAttention > 0 && <span style={{ fontSize: 11, fontWeight: 700, color: '#f59e0b', background: '#f59e0b18', border: '1px solid #f59e0b30', borderRadius: 20, padding: '2px 8px' }}>{alertesAttention} att.</span>}
+                <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--text-muted)' }}>→</span>
               </div>
-              <span style={{ fontSize: 11, fontWeight: 700, background: 'rgba(239,68,68,0.1)', color: '#ef4444', borderRadius: 20, padding: '2px 8px' }}>{alertes.length}</span>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
-              {alertes.slice(0, 4).map(a => (
-                <div key={a.id} onClick={() => naviguer(a.page, a.ctx)}
-                  style={{ display: 'flex', alignItems: 'flex-start', gap: 8, padding: '8px 10px', borderRadius: 8, background: a.critique ? 'rgba(239,68,68,0.06)' : 'var(--bg-glass-2)', border: `1px solid ${a.critique ? 'rgba(239,68,68,0.2)' : 'var(--border)'}`, cursor: 'pointer' }}
-                >
-                  <div style={{ width: 6, height: 6, borderRadius: '50%', background: a.critique ? '#ef4444' : '#f59e0b', marginTop: 4, flexShrink: 0 }} />
-                  <span style={{ fontSize: 12, color: 'var(--text-primary)', flex: 1, lineHeight: 1.4 }}>{safeStr(a.message)}</span>
-                  <ChevronRight size={11} style={{ color: 'var(--text-muted)', flexShrink: 0, marginTop: 2 }} />
+              {/* Liste des alertes chantiers (cliquables), ou état « Tout OK » si aucune */}
+              {alertes.length === 0 ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 10 }}>
+                  <ShieldCheck size={16} strokeWidth={1.5} style={{ color: '#10b981' }} />
+                  <span style={{ fontWeight: 700, fontSize: 13, color: '#10b981' }}>Tout OK — aucune alerte chantier</span>
                 </div>
-              ))}
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 7, marginTop: 10 }}>
+                  {alertes.slice(0, 4).map(a => (
+                    <div key={a.id} onClick={() => naviguer(a.page, a.ctx)}
+                      style={{ display: 'flex', alignItems: 'flex-start', gap: 8, padding: '8px 10px', borderRadius: 8, background: a.critique ? 'rgba(239,68,68,0.06)' : 'var(--bg-glass-2)', border: `1px solid ${a.critique ? 'rgba(239,68,68,0.2)' : 'var(--border)'}`, cursor: 'pointer' }}
+                    >
+                      <div style={{ width: 6, height: 6, borderRadius: '50%', background: a.critique ? '#ef4444' : '#f59e0b', marginTop: 4, flexShrink: 0 }} />
+                      <span style={{ fontSize: 12, color: 'var(--text-primary)', flex: 1, lineHeight: 1.4 }}>{safeStr(a.message)}</span>
+                      <ChevronRight size={11} style={{ color: 'var(--text-muted)', flexShrink: 0, marginTop: 2 }} />
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* IA INSIGHTS BAR */}
         {!insightsFerme && previsionTreso30j.interpretation && (

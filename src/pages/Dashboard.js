@@ -492,6 +492,9 @@ function Dashboard() {
   };
 
   const CARD = { background: 'var(--dash-card)', border: '1px solid var(--dash-border)', borderRadius: 16, padding: isMobile ? '12px' : '20px', boxShadow: 'var(--ds-card-shadow)' };
+  // Carte mobile UNIQUE (Geste 3) : un seul style pour tous les blocs mobiles — même arrondi (14),
+  // même ombre légère, même fond, même bordure (carteV1), padding 12 compact. Réutilisé partout.
+  const cardM = { ...carteV1, padding: 12 };
 
   // ── MOBILE LAYOUT ────────────────────────────────────────────
   if (isMobile) {
@@ -541,7 +544,7 @@ function Dashboard() {
         {/* (Doublon retiré — le bandeau IA séparé est fusionné dans le bloc « Alertes » plus bas) */}
 
         {/* MES CHANTIERS */}
-        <div style={{ ...CARD, marginBottom: 12 }}>
+        <div style={{ ...cardM, marginBottom: 12 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
             <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-primary)' }}>Mes chantiers</div>
             <button onClick={() => naviguer('chantiers')} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: '#0d3d6e', fontWeight: 600, fontFamily: 'inherit', padding: 0 }}>Voir tous →</button>
@@ -561,7 +564,7 @@ function Dashboard() {
                   const couleurBarre = !mPct ? '#CBD5E1' : mPct >= SEUILS.margeRentable ? '#10B981' : mPct >= SEUILS.margeLimite ? '#F59E0B' : '#EF4444';
                   return (
                     <div key={c.id} onClick={() => naviguer('chantiers', { chantierActif: c.id })}
-                      style={{ display: 'flex', flexDirection: 'column', gap: 6, borderRadius: 12, border: '1px solid var(--dash-border)', padding: '10px 12px', cursor: 'pointer', background: 'var(--ds-card-bg)' }}
+                      style={{ display: 'flex', flexDirection: 'column', gap: 6, borderRadius: 10, border: '1px solid var(--dash-border)', padding: '10px 12px', cursor: 'pointer', background: 'var(--ds-card-bg)' }}
                     >
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
                         <span style={{ fontWeight: 700, fontSize: 13, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{c.nom || c.numero}</span>
@@ -599,10 +602,10 @@ function Dashboard() {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 12, marginBottom: 12 }}>
 
           {/* Avancement global */}
-          <div style={{ ...CARD, cursor: 'pointer' }} onClick={() => naviguer('chantiers')}>
+          <div style={{ ...cardM, cursor: 'pointer' }} onClick={() => naviguer('chantiers')}>
             <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 8 }}>Avancement</div>
             <div style={{ display: 'flex', alignItems: 'flex-end', gap: 4, marginBottom: 8 }}>
-              <div style={{ fontSize: 28, fontWeight: 900, color: '#0d3d6e', letterSpacing: '-1px', lineHeight: 1 }}>{Math.round(avancementMoyen)}%</div>
+              <div style={{ fontSize: 20, fontWeight: 900, color: '#0d3d6e', letterSpacing: '-1px', lineHeight: 1 }}>{Math.round(avancementMoyen)}%</div>
               <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 2 }}>moy.</div>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -622,7 +625,7 @@ function Dashboard() {
           </div>
 
           {/* Répartition coûts */}
-          <div style={{ ...CARD, cursor: 'pointer' }} onClick={() => naviguer('rapport', { onglet: 'analyse' })}>
+          <div style={{ ...cardM, cursor: 'pointer' }} onClick={() => naviguer('rapport', { onglet: 'analyse' })}>
             <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 8 }}>Coûts réels</div>
             {repartitionCouts.total > 0 ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -652,7 +655,7 @@ function Dashboard() {
           if (scoreDirecteur === null && agentAlertes.length === 0 && alertes.length === 0) return null;
           const scoreColor = scoreDirecteur === null ? '#94a3b8' : couleurScoreSante(scoreDirecteur);
           return (
-            <div style={{ ...CARD, marginBottom: 12 }}>
+            <div style={{ ...cardM, marginBottom: 12 }}>
               {/* En-tête : Intelligence IA + score + compteurs — cliquable → écran IA/agents */}
               <div onClick={() => naviguer('agents')} style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 8, cursor: 'pointer' }}>
                 <Bot size={13} color={V1.bleu} />
@@ -672,7 +675,7 @@ function Dashboard() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 7, marginTop: 10 }}>
                   {alertes.slice(0, 4).map(a => (
                     <div key={a.id} onClick={() => naviguer(a.page, a.ctx)}
-                      style={{ display: 'flex', alignItems: 'flex-start', gap: 8, padding: '8px 10px', borderRadius: 8, background: a.critique ? 'rgba(239,68,68,0.06)' : 'var(--bg-glass-2)', border: `1px solid ${a.critique ? 'rgba(239,68,68,0.2)' : 'var(--border)'}`, cursor: 'pointer' }}
+                      style={{ display: 'flex', alignItems: 'flex-start', gap: 8, padding: '8px 10px', borderRadius: 10, background: a.critique ? 'rgba(239,68,68,0.06)' : 'var(--bg-glass-2)', border: `1px solid ${a.critique ? 'rgba(239,68,68,0.2)' : 'var(--border)'}`, cursor: 'pointer' }}
                     >
                       <div style={{ width: 6, height: 6, borderRadius: '50%', background: a.critique ? '#ef4444' : '#f59e0b', marginTop: 4, flexShrink: 0 }} />
                       <span style={{ fontSize: 12, color: 'var(--text-primary)', flex: 1, lineHeight: 1.4 }}>{safeStr(a.message)}</span>
@@ -687,7 +690,7 @@ function Dashboard() {
 
         {/* IA INSIGHTS BAR */}
         {!insightsFerme && previsionTreso30j.interpretation && (
-          <div style={{ background: previsionTreso30j.interpretation.couleur + '10', border: `1px solid ${previsionTreso30j.interpretation.couleur}22`, borderRadius: 12, padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ background: previsionTreso30j.interpretation.couleur + '10', border: `1px solid ${previsionTreso30j.interpretation.couleur}22`, borderRadius: 14, padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 10 }}>
             <TrendingUp size={14} strokeWidth={2} style={{ color: previsionTreso30j.interpretation.couleur, flexShrink: 0 }} />
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontWeight: 700, fontSize: 12, color: 'var(--text-primary)' }}>IA Insights</div>

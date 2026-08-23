@@ -325,7 +325,7 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
                 { label: 'Frais généraux', val: -fraisGeneraux, pct: caTotal > 0 ? -(Math.round((fraisGeneraux / caTotal) * 1000) / 10) : 0, couleur: V1.warn, bg: 'rgba(232,145,43,0.08)', bold: false, big: false },
                 { label: '= Résultat avant impôts', val: margeAvantImpots, pct: caTotal > 0 ? Math.round((margeAvantImpots / caTotal) * 1000) / 10 : 0, couleur: margeAvantImpots >= 0 ? V1.ok : V1.danger, bg: 'var(--bg-hover)', bold: true, big: false },
                 { label: 'Impôts estimés', val: -impots, pct: caTotal > 0 ? -(Math.round((impots / caTotal) * 1000) / 10) : 0, couleur: V1.danger, bg: 'rgba(192,57,43,0.08)', bold: false, big: false },
-                { label: '= MARGE NETTE', val: margeNette, pct: margeNettePct, couleur: margeNette >= 0 ? V1.ok : V1.danger, bg: margeNette >= 0 ? 'rgba(30,138,76,0.12)' : 'rgba(192,57,43,0.10)', bold: true, big: true },
+                { label: '= RÉSULTAT NET', val: margeNette, pct: margeNettePct, couleur: margeNette >= 0 ? V1.ok : V1.danger, bg: margeNette >= 0 ? 'rgba(30,138,76,0.12)' : 'rgba(192,57,43,0.10)', bold: true, big: true },
               ].map((s) => (
                 <div key={s.label} style={{ background: s.bg, borderRadius: '10px', padding: s.big ? '18px 20px' : '12px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: s.bold ? `2px solid ${s.couleur}` : `1px solid ${V1.separation}` }}>
                   <div style={{ fontWeight: s.bold ? 'bold' : 'normal', fontSize: s.big ? '16px' : '14px', color: s.bold ? s.couleur : V1.texte }}>{s.label}</div>
@@ -722,7 +722,7 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
             </div>
 
             {/* PROJECTION MARGE NETTE */}
-            <div className="ds-section-label" style={{ marginTop: 20 }}>Projection marge nette annuelle</div>
+            <div className="ds-section-label" style={{ marginTop: 20 }}>Projection résultat net annuel</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '15px' }}>
               {[
                 { scenario: 'Pessimiste (-20%)', ca: projectionAnnuelle * 0.8 },
@@ -743,7 +743,7 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
                     <div style={{ fontSize: '13px', color: V1.texteMuted }}>CA facturé projeté</div>
                     <div style={{ ...mono(18, couleurs[i], 700) }}>CHF {fmtN(Math.round(s.ca))}</div>
                     <div style={{ margin: '10px 0', borderTop: `1px solid ${V1.separation}`, paddingTop: '10px' }}>
-                      <div style={{ fontSize: '13px', color: V1.texteMuted }}>Marge nette</div>
+                      <div style={{ fontSize: '13px', color: V1.texteMuted }}>Résultat net</div>
                       <div style={{ ...mono(22, nette >= 0 ? V1.ok : V1.danger, 700) }}>CHF {fmtN(Math.round(nette))}</div>
                       <div style={{ ...mono(14, nette >= 0 ? V1.ok : V1.danger) }}>({pct}%)</div>
                     </div>

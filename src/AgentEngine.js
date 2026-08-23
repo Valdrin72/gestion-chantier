@@ -12,7 +12,7 @@
  *   - memoire  : données à persister pour les prochains runs
  */
 
-import { calculerCA, calculerCoutsChantier, isChantierActif, fmtN, heuresEmploye, SEUILS, resteDuChantier } from './donnees';
+import { calculerCA, calculerCoutsChantier, isChantierActif, fmtN, heuresEmploye, SEUILS, resteDuChantier, TVA_DEFAUT } from './donnees';
 import { CYNA_PARAMS } from './calculs/constants';
 import { projeterTresorerie30j, penaliteScoreTresorerie, penaliteScoreCreancesAnciennes, sortiesMensuellesEstimees } from './calculs/tresorerie';
 
@@ -102,7 +102,7 @@ export function runAlerteChantier({ chantiers, devis, factures = [], parametres,
         : null;
       if (ca > 0 && avancement !== null && avancement < 100) {
         const facturesChantier = factures.filter(f => String(f.chantierId) === String(c.id) && f.statut !== 'annulee');
-        const totalFactureHT = facturesChantier.reduce((s, f) => s + (parseFloat(f.montantHT) || (parseFloat(f.montantTTC) || 0) / (1 + (parseFloat(f.tva) || 8.1) / 100) || 0), 0);
+        const totalFactureHT = facturesChantier.reduce((s, f) => s + (parseFloat(f.montantHT) || (parseFloat(f.montantTTC) || 0) / (1 + (parseFloat(f.tva) || TVA_DEFAUT) / 100) || 0), 0);
         if (totalFactureHT > ca * (avancement / 100) * 1.1) {
           alertes.push({ id: uid('ac-surfact'), agent: 'AlerteChantier', type: 'surfacturation', niveau: 'ATTENTION',
             message: `${c.nom || c.numero} — sur-facturation détectée`,

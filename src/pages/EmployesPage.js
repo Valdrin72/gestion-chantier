@@ -248,7 +248,7 @@ function Employes({ parametres, setParametres, chantiers, naviguer }) {
 
         const kpiPerf = [
           { label: 'HEURES ÉQUIPE', val: `${fmtN(Math.round(totalHeures))}h`, couleur: V1.bleu },
-          ...(voirSalaires ? [{ label: 'COÛT MAIN-D\'ŒUVRE', val: `CHF ${fmtN(Math.round(totalCout))}`, couleur: V1.warn }] : []),
+          ...(voirSalaires ? [{ label: 'COÛT MO (BASE)', val: `CHF ${fmtN(Math.round(totalCout))}`, couleur: V1.warn }] : []),
           { label: 'PLUS ACTIF', val: plusActif ? plusActif.e.nom : '—', couleur: V1.ok },
         ];
 
@@ -292,7 +292,7 @@ function Employes({ parametres, setParametres, chantiers, naviguer }) {
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead>
                     <tr>
-                      {['Employé', 'Poste', 'Heures', 'Jours', ...(voirSalaires ? ['Coût main-d\'œuvre'] : []), 'Chantiers', 'Moy. h/jour'].map(h => (
+                      {['Employé', 'Poste', 'Heures', 'Jours', ...(voirSalaires ? ['Coût MO (base)'] : []), 'Chantiers', 'Moy. h/jour'].map(h => (
                         <th key={h} style={{ ...mono(10, V1.texteMuted), textAlign: 'left', textTransform: 'uppercase', letterSpacing: '0.06em', padding: '12px 14px', borderBottom: `1px solid ${V1.separation}`, background: '#FAFBFC', whiteSpace: 'nowrap' }}>{h}</th>
                       ))}
                     </tr>

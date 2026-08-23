@@ -163,7 +163,7 @@ export default function Statistiques({ chantiers, clients, parametres, periodeGl
       <div className="kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24 }}>
         {[
           { label: 'CA FACTURÉ',       val: `CHF ${fmtN(caTotal)}`,     couleur: V1.bleu,  Icon: TrendingUp },
-          { label: 'MARGE NETTE',      val: `${margeNettePct}%`,        couleur: margeNettePct >= 0 ? V1.ok : V1.danger, Icon: DollarSign, badge: `CHF ${fmtN(rentabilite)}` },
+          { label: 'MARGE D\'EXPLOITATION', val: `${margeNettePct}%`,     couleur: margeNettePct >= 0 ? V1.ok : V1.danger, Icon: DollarSign, badge: `CHF ${fmtN(rentabilite)}` },
           { label: 'CHANTIERS',        val: chantiersActifs.length,     couleur: V1.warn,  Icon: HardHat, badge: nbAFacturer > 0 ? `${nbAFacturer} à facturer` : `${nbFactures} facturé${nbFactures !== 1 ? 's' : ''}` },
           { label: 'PRÉVISION 3 MOIS · ANNÉE', val: `CHF ${fmtN(Math.round(prevision3Mois))}`, couleur: V1.bleuMoyen, Icon: Calendar },
         ].map(k => (

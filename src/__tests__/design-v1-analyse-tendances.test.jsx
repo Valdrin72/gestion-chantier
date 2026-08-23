@@ -57,7 +57,7 @@ describe('PROJECTIONS — CA annuel + scénarios de marge', () => {
     renderTendances();
     expect(screen.getByText(new RegExp(`Projections CA facturé — Année ${ANNEE}`))).toBeInTheDocument();
     expect(screen.getByText('Projection annuelle')).toBeInTheDocument();
-    expect(screen.getByText('Projection marge nette annuelle')).toBeInTheDocument();
+    expect(screen.getByText('Projection résultat net annuel')).toBeInTheDocument(); // relabel conformité
     expect(screen.getByText(/Pessimiste/)).toBeInTheDocument();
     expect(screen.getByText('Réaliste')).toBeInTheDocument();
     expect(screen.getByText(/Optimiste/)).toBeInTheDocument();

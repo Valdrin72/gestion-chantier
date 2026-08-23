@@ -612,8 +612,8 @@ function Dashboard() {
           }
         </div>
 
-        {/* 2x2 GRID : Trésorerie + Alertes + Avancement + Coûts */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 }}>
+        {/* Cartes Trésorerie + Alertes + Avancement + Coûts — pleine largeur empilée (aéré) */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 12, marginBottom: 12 }}>
 
           {/* Trésorerie 30j */}
           <div style={{ ...CARD, cursor: 'pointer' }} onClick={() => naviguer('finances')}>

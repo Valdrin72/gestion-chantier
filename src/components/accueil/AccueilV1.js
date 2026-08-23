@@ -135,7 +135,7 @@ export function HeroDirection({ prenom = 'Valdrin', dateLabel, periodeGlobale, s
 export function KpiStripV1({ items = [], compact = false }) {
   return (
     <div style={{
-      display: 'grid', gridTemplateColumns: compact ? '1fr 1fr' : `repeat(${items.length}, 1fr)`,
+      display: 'grid', gridTemplateColumns: compact ? '1fr' : `repeat(${items.length}, 1fr)`,
       gap: RYTHME.entreCartes, padding: compact ? '0 18px' : '0 32px',
       margin: compact ? '-72px 0 24px' : '-84px 0 24px',
       position: 'relative', zIndex: 2, boxSizing: 'border-box',

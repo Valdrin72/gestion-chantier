@@ -143,7 +143,7 @@ export function KpiStripV1({ items = [], compact = false }) {
       {items.map(k => (
         <div key={k.label} style={{ ...carteV1, display: 'flex', flexDirection: 'column', minHeight: 134 }}>
           <div style={{ ...mono(10, V1.texteMuted), textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 8 }}>{k.label}</div>
-          <div style={{ ...mono(compact ? 20 : 30, k.couleurValeur || V1.texte, 500), lineHeight: 1 }}>{k.valeur}</div>
+          <div style={{ ...mono(compact ? 28 : 30, k.couleurValeur || V1.texte, 500), lineHeight: 1 }}>{k.valeur}</div>
           <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, marginTop: 'auto', paddingTop: 10 }}>
             {k.sparkline && <Sparkline points={k.sparkline} couleur={k.couleurValeur || V1.bleu} />}
             {k.badge && <span style={badgeV1(k.etat || 'marque')}>{k.badge}</span>}

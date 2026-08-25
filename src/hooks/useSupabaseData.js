@@ -22,6 +22,8 @@ import { donneesInitiales, migrerJournal, migrerStatutsC8, normaliserTarifsEmplo
 
 const STORAGE_MARKER = '__cyna_storage__';
 const STORAGE_TABLE  = 'devis';
+// Lot 4 — coffre partagé au niveau organisation (clé = org_id, une ligne par org).
+const ORG_TABLE      = 'org_storage';
 // Incrémenter quand les données démo changent — force le rechargement depuis donneesInitiales
 const DEMO_VERSION   = 5;
 
@@ -69,6 +71,68 @@ async function ecrireRowUser(userId, rowId, payload) {
     if (error) throw error;
     return data.id;
   }
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// LOT 4a — Bascule vers le coffre organisation (org_storage). LECTURE SEULE.
+// Défaut 'user' → comportement historique STRICTEMENT inchangé. Aucune écriture
+// n'est émise en mode 'org' à ce stade (l'écriture arrive au Lot 4b).
+// ════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Mode de stockage effectif. Fonction PURE (exportée pour tests).
+ *   - démo → toujours 'user' (pas d'org, pas de vrai JWT).
+ *   - sinon : override localStorage['cyna_storage_mode'] prime sur l'env, défaut 'user'.
+ * @returns {'user'|'org'}
+ */
+export function resolveMode(isDemo) {
+  if (isDemo) return 'user';
+  try {
+    const override = localStorage.getItem('cyna_storage_mode');
+    if (override === 'user' || override === 'org') return override;
+  } catch { /* localStorage indisponible → on retombe sur l'env/défaut */ }
+  return process.env.REACT_APP_STORAGE_MODE === 'org' ? 'org' : 'user';
+}
+
+/**
+ * Décide quoi faire d'une ligne org_storage lue. Fonction PURE (exportée pour tests).
+ * NE renvoie JAMAIS « creer » : la création du blob vient du seed (Lot 3), pas du client.
+ *   - 'utiliser'           : la ligne existe et son data n'est pas vide → charger tel quel.
+ *   - 'vide-sans-ecriture' : ligne absente ou data vide → état vide sûr, AUCUNE écriture.
+ * @returns {'utiliser'|'vide-sans-ecriture'}
+ */
+export function deciderChargementOrg(rowOrg) {
+  const d = rowOrg && rowOrg.data;
+  if (d && typeof d === 'object' && Object.keys(d).length > 0) return 'utiliser';
+  return 'vide-sans-ecriture';
+}
+
+/**
+ * org_id du user courant (CYNA = 1 org → première ligne). Ne throw jamais : renvoie null
+ * en cas d'erreur/absence (→ le boot appliquera un état vide sûr, sans écriture).
+ */
+async function getMonOrgId(userId) {
+  try {
+    const { data, error } = await supabase
+      .from('membres')
+      .select('org_id')
+      .eq('user_id', userId)
+      .limit(1);
+    if (error || !data || data.length === 0) return null;
+    return data[0].org_id ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/** Lit la ligne de coffre d'une org (SELECT data FROM org_storage WHERE org_id). */
+async function lireRowOrg(orgId) {
+  const { data } = await supabase
+    .from(ORG_TABLE)
+    .select('data')
+    .eq('org_id', orgId)
+    .maybeSingle();
+  return data ?? null;
 }
 
 /**
@@ -153,6 +217,10 @@ export default function useSupabaseData(userId, isDemo = false) {
   const rowIdRef    = useRef(null);
   const syncTimer   = useRef(null);
   const pendingRef  = useRef(null);
+  // Lot 4a — mode figé au montage (AppInner remonte via key={userId} si le user change).
+  const modeRef     = useRef(resolveMode(isDemo));
+  const orgIdRef    = useRef(null);   // org_id du user courant en mode 'org' (sinon null)
+  const orgChargeeRef = useRef(false); // true seulement si une ligne org non vide a été chargée
   const dataRef     = useRef({
     chantiers:  isDemo ? _initChantiers : [],
     devis:      isDemo ? _initDevis : [],
@@ -194,6 +262,34 @@ export default function useSupabaseData(userId, isDemo = false) {
     async function charger() {
       setLoading(true);
       try {
+        // ── Lot 4a — MODE ORG : lecture seule du coffre org_storage, AUCUNE écriture ──
+        if (modeRef.current === 'org') {
+          const orgId = await getMonOrgId(userId);
+          if (cancelled) return;
+          orgIdRef.current = orgId;
+          if (!orgId) {
+            // D2 : user sans org → état vide sûr, lecture seule, aucune création.
+            appliquerData({});
+            orgChargeeRef.current = false;
+            if (process.env.NODE_ENV !== 'production') console.warn('[Sync org] Aucune org pour ce user — état vide, aucune écriture.');
+            return;
+          }
+          const rowOrg = await lireRowOrg(orgId);
+          if (cancelled) return;
+          const decision = deciderChargementOrg(rowOrg);
+          if (decision === 'utiliser') {
+            appliquerData(rowOrg.data);
+            orgChargeeRef.current = true;
+          } else {
+            // 'vide-sans-ecriture' : le blob doit venir du seed (Lot 3). On n'écrit RIEN.
+            appliquerData({});
+            orgChargeeRef.current = false;
+            if (process.env.NODE_ENV !== 'production') console.warn('[Sync org] org_storage vide — état vide, aucune écriture (seed attendu au Lot 3).');
+          }
+          return;
+        }
+
+        // ── MODE USER (défaut) — comportement historique strictement inchangé ──
         const row = await lireRowUser(userId);
         if (cancelled) return;
 
@@ -243,6 +339,8 @@ export default function useSupabaseData(userId, isDemo = false) {
 
     // Re-sync quand l'app revient au premier plan (retour sur l'onglet / déverrouillage téléphone)
     async function resyncSiVisible() {
+      // Lot 4a — en mode 'org', le re-sync (et le temps réel) arriveront au Lot 4c.
+      if (modeRef.current === 'org') return;
       if (document.visibilityState !== 'visible') return;
       if (cancelled) return;
       // Si des données locales sont en attente de sync, ne pas écraser
@@ -258,10 +356,11 @@ export default function useSupabaseData(userId, isDemo = false) {
     }
     document.addEventListener('visibilitychange', resyncSiVisible);
 
-    // Real-time : écoute changements depuis d'autres appareils
+    // Real-time : écoute changements depuis d'autres appareils.
+    // Lot 4a — actif uniquement en mode 'user' ; le canal org (filtre org_id) = Lot 4c.
     let channel = null;
     try {
-      channel = supabase
+      if (modeRef.current === 'user') channel = supabase
         .channel(`cyna_${userId}`)
         .on('postgres_changes', {
           event: '*', schema: 'public', table: STORAGE_TABLE,
@@ -291,6 +390,10 @@ export default function useSupabaseData(userId, isDemo = false) {
 
   // ── Sauvegarde Supabase avec debounce 800ms ──────────────────────────────
   function scheduleSync(updates) {
+    // Lot 4a — MODE ORG : AUCUNE écriture émise à ce stade (l'écriture arrive au Lot 4b).
+    // L'état React et le cache localStorage restent mis à jour côté setters ; seule la
+    // persistance Supabase est court-circuitée → le coffre org n'est jamais touché.
+    if (modeRef.current === 'org') return;
     pendingRef.current = { ...(pendingRef.current || dataRef.current), ...updates };
     dataRef.current   = { ...dataRef.current, ...updates };
     if (syncTimer.current) clearTimeout(syncTimer.current);

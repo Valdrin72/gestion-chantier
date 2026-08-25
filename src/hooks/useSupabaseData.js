@@ -136,6 +136,32 @@ async function lireRowOrg(orgId) {
 }
 
 /**
+ * VERROU 2 (anti-effacement) — fonction PURE (exportée pour tests).
+ * TRUE si le blob à écrire est « vide » : les 5 listes métier (chantiers, devis,
+ * factures, pointages, clients) sont toutes absentes ou de longueur 0.
+ * (parametres, objet toujours présent, n'entre pas dans le test.)
+ */
+export function estPayloadVide(payload) {
+  if (!payload || typeof payload !== 'object') return true;
+  return ['chantiers', 'devis', 'factures', 'pointages', 'clients']
+    .every(k => !Array.isArray(payload[k]) || payload[k].length === 0);
+}
+
+/**
+ * VERROU 3 — Écriture dans le coffre org : UPSERT par org_id (jamais un insert
+ * aveugle qui doublerait). Met à jour data + updated_at + updated_by (le user courant).
+ */
+async function ecrireRowOrg(orgId, payload, userId) {
+  const { error } = await supabase
+    .from(ORG_TABLE)
+    .upsert(
+      { org_id: orgId, data: payload, updated_at: new Date().toISOString(), updated_by: userId ?? null },
+      { onConflict: 'org_id' }
+    );
+  if (error) throw error;
+}
+
+/**
  * Résout les données à afficher depuis un blob Supabase.
  * Exportée pour les tests — fonction pure, aucun effet de bord.
  *
@@ -390,10 +416,41 @@ export default function useSupabaseData(userId, isDemo = false) {
 
   // ── Sauvegarde Supabase avec debounce 800ms ──────────────────────────────
   function scheduleSync(updates) {
-    // Lot 4a — MODE ORG : AUCUNE écriture émise à ce stade (l'écriture arrive au Lot 4b).
-    // L'état React et le cache localStorage restent mis à jour côté setters ; seule la
-    // persistance Supabase est court-circuitée → le coffre org n'est jamais touché.
-    if (modeRef.current === 'org') return;
+    // ── Lot 4b — MODE ORG : écriture SÛRE dans org_storage, protégée par 3 verrous ──
+    if (modeRef.current === 'org') {
+      // VERROU 1 — jamais d'écriture tant qu'on n'a pas chargé une ligne org NON vide
+      // (orgChargee=false = pas d'org, ou coffre vide au boot → on n'amorce/n'écrase JAMAIS côté client).
+      if (!orgIdRef.current || !orgChargeeRef.current) {
+        if (process.env.NODE_ENV !== 'production') console.warn('[Sync org] écriture ignorée — coffre org non chargé (verrou 1).');
+        return;
+      }
+      const payloadOrg = { ...(pendingRef.current || dataRef.current), ...updates };
+      // VERROU 2 — jamais un blob « vide » sur un coffre qui contenait des données (anti-effacement).
+      if (estPayloadVide(payloadOrg)) {
+        if (process.env.NODE_ENV !== 'production') console.warn('[Sync org] écriture ignorée — payload vide sur coffre non vide (verrou 2, anti-effacement).');
+        return;
+      }
+      pendingRef.current = payloadOrg;
+      dataRef.current    = payloadOrg;
+      if (syncTimer.current) clearTimeout(syncTimer.current);
+      syncTimer.current = setTimeout(async () => {
+        if (!mountedRef.current) return;
+        const p = pendingRef.current;
+        pendingRef.current = null;
+        setSyncing(true);
+        try {
+          // VERROU 3 — UPSERT by org_id (jamais un insert aveugle).
+          await ecrireRowOrg(orgIdRef.current, p, userId);
+        } catch (e) {
+          if (process.env.NODE_ENV !== 'production') console.warn('[Sync org]', e.message);
+        } finally {
+          if (mountedRef.current) setSyncing(false);
+        }
+      }, 800);
+      return;
+    }
+
+    // ── MODE USER (défaut) — comportement historique strictement inchangé ──
     pendingRef.current = { ...(pendingRef.current || dataRef.current), ...updates };
     dataRef.current   = { ...dataRef.current, ...updates };
     if (syncTimer.current) clearTimeout(syncTimer.current);

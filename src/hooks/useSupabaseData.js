@@ -312,6 +312,34 @@ export default function useSupabaseData(userId, isDemo = false) {
             orgChargeeRef.current = false;
             if (process.env.NODE_ENV !== 'production') console.warn('[Sync org] org_storage vide — état vide, aucune écriture (seed attendu au Lot 3).');
           }
+          // ── Lot 4c — TEMPS RÉEL ORG : les membres voient les changements des autres ──
+          // Abonné une fois l'orgId connu (même si le coffre est encore vide : on recevra le seed).
+          // L'event applique la data à l'état (LECTURE-ONLY) → jamais de ré-écriture, aucune boucle.
+          if (!cancelled) {
+            try {
+              channel = supabase
+                .channel(`cyna_org_${orgId}`)
+                .on('postgres_changes', {
+                  event: '*', schema: 'public', table: ORG_TABLE,
+                  filter: `org_id=eq.${orgId}`,
+                }, (payload) => {
+                  const rowRT = payload.new || payload.record;
+                  if (!rowRT || !rowRT.data) return;
+                  // ANTI-ECHO : ignorer ma propre écriture (updated_by = moi) et ne pas écraser
+                  // une édition locale en attente de sync.
+                  if (rowRT.updated_by === userId) return;
+                  if (pendingRef.current) return;
+                  appliquerData(rowRT.data);
+                  orgChargeeRef.current = true; // une ligne org non vide distante est arrivée
+                })
+                .subscribe((status) => {
+                  if (status === 'CHANNEL_ERROR' && channel) {
+                    supabase.removeChannel(channel);
+                    channel = null;
+                  }
+                });
+            } catch { /* temps réel indisponible → l'app reste fonctionnelle (resync à la visibilité) */ }
+          }
           return;
         }
 
@@ -361,16 +389,31 @@ export default function useSupabaseData(userId, isDemo = false) {
       }
     }
 
+    // Canal temps réel (mode user OU org selon la branche empruntée par charger()).
+    let channel = null;
     charger();
 
     // Re-sync quand l'app revient au premier plan (retour sur l'onglet / déverrouillage téléphone)
     async function resyncSiVisible() {
-      // Lot 4a — en mode 'org', le re-sync (et le temps réel) arriveront au Lot 4c.
-      if (modeRef.current === 'org') return;
       if (document.visibilityState !== 'visible') return;
       if (cancelled) return;
       // Si des données locales sont en attente de sync, ne pas écraser
       if (pendingRef.current) return;
+      // ── Lot 4c — MODE ORG : relire la ligne org (lecture-only), aucune écriture ──
+      if (modeRef.current === 'org') {
+        const orgId = orgIdRef.current;
+        if (!orgId) return;
+        try {
+          const rowOrg = await lireRowOrg(orgId);
+          if (cancelled) return;
+          if (deciderChargementOrg(rowOrg) === 'utiliser') {
+            appliquerData(rowOrg.data);
+            orgChargeeRef.current = true;
+          }
+        } catch {}
+        return;
+      }
+      // ── MODE USER (défaut) — inchangé ──
       try {
         const row = await lireRowUser(userId);
         if (cancelled) return;
@@ -382,9 +425,8 @@ export default function useSupabaseData(userId, isDemo = false) {
     }
     document.addEventListener('visibilitychange', resyncSiVisible);
 
-    // Real-time : écoute changements depuis d'autres appareils.
-    // Lot 4a — actif uniquement en mode 'user' ; le canal org (filtre org_id) = Lot 4c.
-    let channel = null;
+    // Real-time MODE USER : écoute changements depuis d'autres appareils (le canal ORG,
+    // filtre org_id, est monté dans charger() une fois l'orgId connu — Lot 4c).
     try {
       if (modeRef.current === 'user') channel = supabase
         .channel(`cyna_${userId}`)

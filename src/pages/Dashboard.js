@@ -535,8 +535,8 @@ function Dashboard() {
             action: kpi.nbFacturesRetard > 0 ? { label: 'Relancer', onClick: () => naviguer('finances', { onglet: 'relances' }) } : null },
         ]} />
 
-        {/* ── CONTENU MOBILE : padding latéral (bottom-nav en bas inchangée) ── */}
-        <div style={{ padding: '0 12px 80px' }}>
+        {/* ── CONTENU MOBILE : padding latéral + bas élargi pour la barre flottante (safe-area iOS) ── */}
+        <div style={{ padding: '0 12px', paddingBottom: 'calc(86px + env(safe-area-inset-bottom, 0px))' }}>
 
         {/* ── ALLÉGEMENT MOBILE : ne garder que l'essentiel terrain ──
              Retirés du rendu mobile (restent INTACTS côté desktop) :

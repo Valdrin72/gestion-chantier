@@ -486,9 +486,46 @@ export function MobileNav({ maisons = [], raccourcis = null, page, naviguer, mob
   // Planning), sinon repli sur les 4 premières maisons. Le bouton « Plus » ouvre TOUJOURS le
   // tiroir complet (toutes les pages via `maisons`) — Finances/Analyse y restent accessibles.
   const barre = (raccourcis && raccourcis.length) ? raccourcis : maisons.slice(0, 4);
+
+  // ── Barre FLOTTANTE animée : se cache au défilement vers le bas, revient vers le haut ──
+  const [cachee, setCachee] = useState(false);
+  const reduceMotion = typeof window !== 'undefined' && !!window.matchMedia
+    && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  useEffect(() => {
+    if (reduceMotion) return; // animations désactivées → la barre reste simplement visible
+    const scroller = document.querySelector('.app-main') || window;
+    const lireY = () => (scroller === window
+      ? (window.scrollY || window.pageYOffset || 0)
+      : scroller.scrollTop);
+    let lastY = lireY();
+    const SEUIL = 10; // anti-tremblement : on ignore les micro-défilements < 10px
+    const onScroll = () => {
+      const y = lireY();
+      if (y <= 0) { setCachee(false); lastY = y; return; } // tout en haut → toujours visible
+      const delta = y - lastY;
+      if (delta > SEUIL) setCachee(true);        // vers le BAS → cacher
+      else if (delta < -SEUIL) setCachee(false); // vers le HAUT → montrer
+      lastY = y;
+    };
+    scroller.addEventListener('scroll', onScroll, { passive: true });
+    return () => scroller.removeEventListener('scroll', onScroll);
+  }, [reduceMotion]);
+
+  // Géométrie flottante + animation en inline (testable ; respecte la zone sûre iOS).
+  const styleFlottant = {
+    left: 12, right: 12,
+    '--cyna-nav-bottom': 'calc(12px + env(safe-area-inset-bottom, 0px))',
+    bottom: 'var(--cyna-nav-bottom)',
+    borderRadius: 18,
+    boxShadow: '0 6px 24px rgba(13,27,46,0.16)',
+    transition: reduceMotion ? 'none' : 'transform 0.22s ease',
+    transform: cachee ? 'translateY(120px)' : 'translateY(0)', // 120px : cache la barre sous le bord
+  };
+
   return (
     <>
-      <nav className="bottom-nav">
+      <nav className={`bottom-nav${cachee ? ' bottom-nav--cachee' : ''}`} style={styleFlottant}>
         {barre.map(m => (
           <button key={m.id} className={`bottom-nav-item${maisonActive(m) ? ' active' : ''}`} onClick={() => naviguer(m.page)}>
             <span className="bottom-nav-icon"><m.Icon size={22} strokeWidth={maisonActive(m) ? 2.2 : 1.8} /></span>

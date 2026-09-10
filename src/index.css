@@ -823,14 +823,14 @@ tr:last-child td { border-bottom: none; }
 .bottom-nav {
   display: none;
   position: fixed;
-  bottom: 0; left: 0; right: 0;
+  /* Barre FLOTTANTE : left/right/bottom (marges), border-radius (pilule), ombre et
+     transform (animation cacher/montrer) sont posés en INLINE par MobileNav — testables,
+     respectant env(safe-area-inset-bottom) et prefers-reduced-motion. */
   height: 62px;
   background: var(--bottom-nav-bg);
-  border-top: 1px solid var(--bottom-nav-border);
   z-index: 200;
   padding: 0 4px;
   align-items: stretch;
-  box-shadow: 0 -2px 16px rgba(13,27,46,0.08);
 }
 
 .bottom-nav-item {
@@ -974,7 +974,9 @@ tr:last-child td { border-bottom: none; }
   .app-content, .main-area { margin-left: 0; }
   .topbar { max-width: 100vw; }
   .app-main    { padding: 0; }
-  .page-pad    { padding: 12px 12px 80px; max-width: none; }
+  /* Padding bas élargi : la barre flottante (62px) + ses marges (12+12) + la zone sûre iOS
+     ne doivent jamais masquer le dernier élément du contenu. */
+  .page-pad    { padding: 12px 12px calc(86px + env(safe-area-inset-bottom, 0px)); max-width: none; }
 
   .bottom-nav { display: flex; }
 

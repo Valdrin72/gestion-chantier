@@ -118,6 +118,8 @@ async function getMonOrgId(userId) {
       .select('org_id')
       .eq('user_id', userId)
       .limit(1);
+    // DIAGNOSTIC (mode org) — confirmer que l'org est bien trouvée + surfacer une erreur.
+    console.log('[Diag getMonOrgId] userId=', userId, 'org trouvée=', data?.[0]?.org_id, 'error=', error);
     if (error || !data || data.length === 0) return null;
     return data[0].org_id ?? null;
   } catch {
@@ -127,12 +129,21 @@ async function getMonOrgId(userId) {
 
 /** Lit la ligne de coffre d'une org (SELECT data FROM org_storage WHERE org_id). */
 async function lireRowOrg(orgId) {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from(ORG_TABLE)
     .select('data')
     .eq('org_id', orgId)
     .maybeSingle();
-  return data ?? null;
+  // DIAGNOSTIC (mode org) — rendre visible une erreur REST aujourd'hui masquée.
+  // On ne logue PAS le contenu (données clients) : seulement orgId, présence, et
+  // les CLÉS de 1er niveau du blob (chantiers/devis/…) + le message d'erreur éventuel.
+  if (error) {
+    console.error('[Diag lireRowOrg] échec lecture org_storage', { orgId, error });
+  } else {
+    console.log('[Diag lireRowOrg] orgId=', orgId, 'data présente ?', !!data,
+      'clés=', data ? Object.keys(data.data || data || {}) : null);
+  }
+  return data ?? null;  // comportement INCHANGÉ
 }
 
 /**

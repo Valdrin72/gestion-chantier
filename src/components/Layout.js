@@ -480,10 +480,12 @@ export function Topbar({ setSidebarOuvert, canGoBack, page, revenirArriere, dark
   );
 }
 
-export function MobileNav({ maisons = [], page, naviguer, mobileMenuOuvert, setMobileMenuOuvert }) {
+export function MobileNav({ maisons = [], raccourcis = null, page, naviguer, mobileMenuOuvert, setMobileMenuOuvert }) {
   const maisonActive = (m) => m.page === page || (m.enfants || []).some(e => e.id === page);
-  // Barre du bas : les 4 premières maisons + « Plus » (qui ouvre le tiroir complet).
-  const barre = maisons.slice(0, 4);
+  // Barre du bas : raccourcis « terrain » explicites si fournis (Accueil · Chantiers · Heures ·
+  // Planning), sinon repli sur les 4 premières maisons. Le bouton « Plus » ouvre TOUJOURS le
+  // tiroir complet (toutes les pages via `maisons`) — Finances/Analyse y restent accessibles.
+  const barre = (raccourcis && raccourcis.length) ? raccourcis : maisons.slice(0, 4);
   return (
     <>
       <nav className="bottom-nav">

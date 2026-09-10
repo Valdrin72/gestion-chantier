@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { HardHat, FileText, Users, ChevronRight, Sparkles } from 'lucide-react';
 import { Sidebar, Topbar, MobileNav } from './components/Layout';
-import { construireMaisons, filtrerMaisons } from './nav/maisons';
+import { construireMaisons, filtrerMaisons, raccourcisMobileTerrain } from './nav/maisons';
 import { migrerDevisId, donneesInitiales, migrerJournal } from './donnees';
 import { migrerJournalVersPointages } from './migration/migrerJournalVersPointages';
 import { completerPointagesDepuisJournal, aChantierLegacy } from './migration/completerPointagesDepuisJournal';
@@ -429,7 +429,8 @@ function AppInner({ profil, deconnecter, userId, isDemo = false }) {
           );
         })()}
         <MobileNav
-          maisons={maisonsAutorisees} page={page} naviguer={naviguer}
+          maisons={maisonsAutorisees} raccourcis={raccourcisMobileTerrain(maisonsAutorisees)}
+          page={page} naviguer={naviguer}
           mobileMenuOuvert={mobileMenuOuvert} setMobileMenuOuvert={setMobileMenuOuvert}
         />
       </div>

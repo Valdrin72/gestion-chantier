@@ -52,3 +52,27 @@ export function filtrerMaisons(maisons, pagesAutorisees = []) {
 export function ecransAtteignables(maisons) {
   return maisons.flatMap(m => [m.page, ...(m.enfants || []).map(e => e.id)]);
 }
+
+/**
+ * Raccourcis de la BARRE MOBILE (bottom-nav), pensés « terrain » : les écrans du
+ * quotidien depuis le chantier. Ordre voulu : Accueil · Chantiers · Heures · Planning.
+ * (Finances/Analyse restent accessibles via le bouton « Plus » — tiroir complet.)
+ *
+ * Dérivé de l'arbre `maisons` (source unique : mêmes libellés/icônes/permissions) SANS
+ * modifier sa structure ni son ordre → le menu latéral PC reste strictement inchangé.
+ * Un raccourci n'apparaît que si sa page est autorisée (présente dans `maisons` filtré).
+ */
+const RACCOURCIS_MOBILE = ['dashboard', 'chantiers', 'heures', 'planning'];
+
+export function raccourcisMobileTerrain(maisons) {
+  const parPage = new Map();
+  for (const m of maisons) {
+    // page principale de la maison
+    parPage.set(m.page, { id: m.id, page: m.page, labelCourt: m.labelCourt, Icon: m.Icon });
+    // enfants : la « page » de navigation est leur id
+    for (const e of (m.enfants || [])) {
+      parPage.set(e.id, { id: e.id, page: e.id, labelCourt: e.label, Icon: e.Icon });
+    }
+  }
+  return RACCOURCIS_MOBILE.map(p => parPage.get(p)).filter(Boolean);
+}

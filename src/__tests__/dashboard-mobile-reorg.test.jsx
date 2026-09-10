@@ -52,9 +52,10 @@ describe('Dashboard mobile — ordre + grilles déserrées (1 colonne)', () => {
     expect(kpi.compareDocumentPosition(chantiers) & FOLLOWING).toBeTruthy();  // le reste après les chiffres
   });
 
-  it('bloc 2 (4 chiffres) : 1 colonne pleine largeur (plus 2×2)', () => {
+  it('bloc 2 (4 chiffres) : grille 2×2 compacte (Dashboard mobile v2)', () => {
     renderMobile();
-    expect(screen.getByTestId('kpi-strip').style.gridTemplateColumns).toBe('1fr');
+    // v2 (GO patron) : les 4 KPI repassent en grille 2 colonnes compacte (au lieu d'1 colonne).
+    expect(screen.getByTestId('kpi-strip').style.gridTemplateColumns).toBe('repeat(2, 1fr)');
   });
 
   // (Le test « bloc mini-cartes Avancement/Coûts : 1 colonne » a été RETIRÉ : ces mini-cartes

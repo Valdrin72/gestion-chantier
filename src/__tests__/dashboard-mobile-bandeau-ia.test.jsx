@@ -55,7 +55,8 @@ describe('Dashboard mobile — bandeau « Intelligence IA » wrap (plus de rogna
     expect(within(bandeau).getByText('Score 60/100')).toBeInTheDocument();
     expect(within(bandeau).getByText('1 crit.')).toBeInTheDocument();
     expect(within(bandeau).getByText('1 att.')).toBeInTheDocument();
-    expect(within(bandeau).getByText('→')).toBeInTheDocument();
+    // Dashboard mobile v2 : la flèche texte « → » est remplacée par une icône chevron (SVG) à droite.
+    expect(bandeau.querySelector('svg')).not.toBeNull();
 
     // 2. Le conteneur enroule (flex-wrap) → les pastilles passent à la ligne au lieu d'être coupées.
     expect(bandeau.style.display).toBe('flex');

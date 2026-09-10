@@ -57,24 +57,17 @@ describe('Dashboard mobile — ordre + grilles déserrées (1 colonne)', () => {
     expect(screen.getByTestId('kpi-strip').style.gridTemplateColumns).toBe('1fr');
   });
 
-  it('bloc mini-cartes (Avancement/Coûts) : 1 colonne pleine largeur (plus 2×2)', () => {
-    renderMobile();
-    // (Tréso 30j retiré au Geste 1 « doublons » — on cible « Avancement », carte conservée.)
-    const grid6 = screen.getByText('Avancement').parentElement.parentElement; // label → carte → grille
-    expect(grid6.style.display).toBe('grid');
-    expect(grid6.style.gridTemplateColumns).toBe('1fr');
-  });
+  // (Le test « bloc mini-cartes Avancement/Coûts : 1 colonne » a été RETIRÉ : ces mini-cartes
+  //  ne sont plus rendues sur mobile depuis l'allègement mobile — GO patron.)
 
-  it('tous les blocs sont toujours présents (aucun disparu) + libellés inchangés', () => {
+  it('tous les blocs conservés sont présents (aucun disparu) + libellés inchangés', () => {
     renderMobile();
-    // Bloc 1 (bleu), bloc 2 (les 4 chiffres, libellés inchangés), bloc IA, chantiers, mini-cartes.
+    // Bloc 1 (bleu), bloc 2 (les 4 chiffres, libellés inchangés), bloc IA, chantiers.
     expect(screen.getByText(/Bonjour/)).toBeInTheDocument();
     ['CA SIGNÉ', 'MARGE MOY.', 'ENCAISSÉ', 'ON ME DOIT'].forEach(l =>
       expect(screen.getByText(l)).toBeInTheDocument());
     expect(screen.getByText('Intelligence IA')).toBeInTheDocument();
     expect(screen.getByText('Mes chantiers')).toBeInTheDocument();
-    // Tréso 30j retiré (Geste 1) ; Avancement + Coûts conservés.
-    ['Avancement', 'Coûts réels'].forEach(l =>
-      expect(screen.getByText(l)).toBeInTheDocument());
+    // Allègement mobile : « Avancement » et « Coûts réels » retirés du rendu mobile (restent desktop).
   });
 });

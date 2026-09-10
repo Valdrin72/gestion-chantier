@@ -68,13 +68,13 @@ describe('Dashboard mobile — Geste 1 : doublons retirés', () => {
     expect(naviguer).toHaveBeenCalledWith('agents');
   });
 
-  it('les blocs conservés sont toujours là (hero, KPI argent, Mes chantiers, Avancement, Coûts)', () => {
+  it('les blocs conservés sont toujours là (hero, KPI argent, Mes chantiers)', () => {
     renderMobile();
     expect(screen.getByText(/Bonjour/)).toBeInTheDocument();
     ['CA SIGNÉ', 'MARGE MOY.', 'ENCAISSÉ', 'ON ME DOIT'].forEach(l =>
       expect(screen.getByText(l)).toBeInTheDocument());
     expect(screen.getByText('Mes chantiers')).toBeInTheDocument();
-    expect(screen.getByText('Avancement')).toBeInTheDocument();
-    expect(screen.getByText('Coûts réels')).toBeInTheDocument();
+    // Allègement mobile (GO patron) : les mini-cartes « Avancement » et « Coûts réels »
+    // ont été RETIRÉES du rendu mobile (restent en desktop) → ne plus les asserter ici.
   });
 });

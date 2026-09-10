@@ -43,13 +43,12 @@ function renderMobile() {
 const px = (v) => parseInt(String(v || '0'), 10);
 
 describe('Dashboard mobile — Geste 2 : hiérarchie « argent en gros »', () => {
-  it('les montants d\'argent (KPI) sont en gros (28px)', () => {
+  it('les montants d\'argent (KPI) restent bien lisibles (20px en grille 2×2)', () => {
     renderMobile();
-    // Carte KPI : label (mono 10) puis la valeur (mono 28) en frère direct.
+    // Dashboard mobile v2 (GO patron) : KPI en grille 2×2 compacte, montants ~20px (au lieu de 28
+    //  en 1 colonne). La valeur mono est le frère direct du label.
     const valeurArgent = screen.getByText('CA SIGNÉ').nextElementSibling;
-    expect(px(valeurArgent.style.fontSize)).toBe(28);          // argent = gros
-    // (La comparaison avec « Avancement % » a été retirée : la mini-carte Avancement n'est
-    //  plus rendue sur mobile depuis l'allègement mobile — GO patron. Elle reste en desktop.)
+    expect(px(valeurArgent.style.fontSize)).toBe(20);
   });
 });
 
@@ -63,12 +62,12 @@ describe('Dashboard mobile — Geste 3 : cartes uniformes (même arrondi)', () =
     expect(carteKpi.style.borderRadius).toBe(carteChantiers.style.borderRadius);
   });
 
-  it('le bloc « Alertes fusionné » utilise aussi le même arrondi (14px)', () => {
+  it('le bloc « Intelligence IA » (compact) utilise aussi le même arrondi (14px)', () => {
     renderMobile();
-    // (Le bloc « Coûts réels » a été retiré du mobile — allègement mobile. On vérifie l'uniformité
-    //  sur un autre bloc cardM conservé : le bloc Alertes fusionné, en-tête « Intelligence IA ».)
-    const carteAlertes = screen.getByText('Intelligence IA').parentElement.parentElement; // libellé → en-tête → carte cardM
-    expect(carteAlertes.style.borderRadius).toBe('14px');
+    // Dashboard mobile v2 : le bloc IA est désormais une ligne compacte (cardM) → le libellé
+    //  « Intelligence IA » est enfant DIRECT de la carte cardM (1 niveau).
+    const carteIA = screen.getByText('Intelligence IA').parentElement; // libellé → carte cardM
+    expect(carteIA.style.borderRadius).toBe('14px');
   });
 });
 

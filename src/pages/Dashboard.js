@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import {
   HardHat, TrendingUp, AlertTriangle, XCircle,
-  ChevronRight, ShieldCheck, Bot,
+  ChevronRight, ShieldCheck, Bot, Clock, Plus, Calendar,
 } from 'lucide-react';
 import { PieChart, Pie, Cell, Tooltip } from 'recharts';
 import {
@@ -11,7 +11,7 @@ import {
   calculerCA, isChantierActif, isChantierComptable, SEUILS, margePortefeuille,
   couleurScoreSante, TVA_DEFAUT,
 } from '../donnees';
-import { bornesPeriode, caFactureHTDansPeriode, caPayeDansPeriode, coutChantierDansPeriode, periodeLabel } from '../calculs/periode';
+import { bornesPeriode, caFactureHTDansPeriode, caPayeDansPeriode, coutChantierDansPeriode, periodeLabel, heuresDansPeriode } from '../calculs/periode';
 import { surchargeMajorationPointage } from '../calculs/majorations';
 import { STATUTS_CLOS } from '../constants/statuts';
 import { CYNA_PARAMS } from '../calculs/constants';
@@ -484,13 +484,6 @@ function Dashboard() {
     return sum / actifs.length;
   }, [actifs, parametres, devis, pointages]);
 
-  const BADGE_STATUT_DASH = {
-    ok:        { label: 'En cours',  bg: '#D1FAE5', color: '#065F46' },
-    attention: { label: 'Attention', bg: '#FEF3C7', color: '#92400E' },
-    critique:  { label: 'Danger',    bg: '#FEE2E2', color: '#991B1B' },
-    neutre:    { label: 'Planifié',  bg: 'var(--bg-glass-2)', color: 'var(--text-muted)' },
-  };
-
   const CARD = { background: 'var(--dash-card)', border: '1px solid var(--dash-border)', borderRadius: 16, padding: isMobile ? '12px' : '20px', boxShadow: 'var(--ds-card-shadow)' };
   // Carte mobile UNIQUE (Geste 3) : un seul style pour tous les blocs mobiles — même arrondi (14),
   // même ombre légère, même fond, même bordure (carteV1), padding 12 compact. Réutilisé partout.
@@ -498,6 +491,17 @@ function Dashboard() {
 
   // ── MOBILE LAYOUT ────────────────────────────────────────────
   if (isMobile) {
+    // Données RÉELLES pour les blocs Heures + Planning (aucune donnée inventée) :
+    // • total d'heures productives/atelier de la semaine (fonction existante) ;
+    // • « planning du jour » = chantiers datés actifs aujourd'hui (pas de rendez-vous horodatés dans le modèle).
+    const heuresSemaine = heuresDansPeriode(pointages, 'semaine');
+    const _ajd = new Date();
+    const todayStr = `${_ajd.getFullYear()}-${String(_ajd.getMonth() + 1).padStart(2, '0')}-${String(_ajd.getDate()).padStart(2, '0')}`;
+    const chantiersDuJour = (chantiers || []).filter(c => {
+      if (!c.dateDebut) return false;
+      const fin = calculerDateFinOuvrables(c.dateDebut, parseInt(c.nombreJours) || 0, c.inclusSamedi, c.canton ?? 'GE');
+      return c.dateDebut <= todayStr && todayStr <= fin;
+    });
     return (
       <div>
         {/* ── HERO compact (design v1) : score en haut à droite du Bonjour ── */}
@@ -538,54 +542,67 @@ function Dashboard() {
         {/* ── CONTENU MOBILE : padding latéral + bas élargi pour la barre flottante (safe-area iOS) ── */}
         <div style={{ padding: '0 12px', paddingBottom: 'calc(86px + env(safe-area-inset-bottom, 0px))' }}>
 
-        {/* ── ALLÉGEMENT MOBILE : ne garder que l'essentiel terrain ──
-             Retirés du rendu mobile (restent INTACTS côté desktop) :
-             DirecteurBloc, mini-cartes Avancement/Coûts, barre IA Insights.
-             Ordre conservé : hero → 4 chiffres → Alertes fusionné → Mes chantiers. ── */}
+        {/* ── DASHBOARD MOBILE v2 — ordre terrain : Heures → Planning (aujourd'hui + alertes) →
+             Mes chantiers (compact) → Intelligence IA (compact). 0 donnée inventée. ── */}
 
-        {/* ── BLOC ALERTES FUSIONNÉ : score de santé (haut) + alertes chantiers (bas). Regroupe
-             l'ancien bandeau « Intelligence IA » + la mini-carte « Alertes IA » + « Alertes chantiers ». ── */}
-        {(() => {
-          const scoreDirecteur = agentState?.scoreGlobal ?? null;
-          const alertesCritiques = agentAlertes.filter(a => a.niveau === 'CRITIQUE').length;
-          const alertesAttention = agentAlertes.filter(a => a.niveau === 'ATTENTION').length;
-          if (scoreDirecteur === null && agentAlertes.length === 0 && alertes.length === 0) return null;
-          const scoreColor = scoreDirecteur === null ? '#94a3b8' : couleurScoreSante(scoreDirecteur);
-          return (
-            <div style={{ ...cardM, marginBottom: 12 }}>
-              {/* En-tête : Intelligence IA + score + compteurs — cliquable → écran IA/agents */}
-              <div onClick={() => naviguer('agents')} style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 8, cursor: 'pointer' }}>
-                <Bot size={13} color={V1.bleu} />
-                <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)' }}>Intelligence IA</span>
-                {scoreDirecteur !== null && <span style={{ fontSize: 11, fontWeight: 800, color: scoreColor, background: scoreColor + '18', border: `1px solid ${scoreColor}30`, borderRadius: 20, padding: '2px 8px' }}>Score {scoreDirecteur}/100</span>}
-                {alertesCritiques > 0 && <span style={{ fontSize: 11, fontWeight: 700, color: '#ef4444', background: '#ef444418', border: '1px solid #ef444430', borderRadius: 20, padding: '2px 8px' }}>{alertesCritiques} crit.</span>}
-                {alertesAttention > 0 && <span style={{ fontSize: 11, fontWeight: 700, color: '#f59e0b', background: '#f59e0b18', border: '1px solid #f59e0b30', borderRadius: 20, padding: '2px 8px' }}>{alertesAttention} att.</span>}
-                <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--text-muted)' }}>→</span>
-              </div>
-              {/* Liste des alertes chantiers (cliquables), ou état « Tout OK » si aucune */}
-              {alertes.length === 0 ? (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 10 }}>
-                  <ShieldCheck size={16} strokeWidth={1.5} style={{ color: '#10b981' }} />
-                  <span style={{ fontWeight: 700, fontSize: 13, color: '#10b981' }}>Tout OK — aucune alerte chantier</span>
-                </div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 7, marginTop: 10 }}>
-                  {alertes.slice(0, 4).map(a => (
-                    <div key={a.id} onClick={() => naviguer(a.page, a.ctx)}
-                      style={{ display: 'flex', alignItems: 'flex-start', gap: 8, padding: '8px 10px', borderRadius: 10, background: a.critique ? 'rgba(239,68,68,0.06)' : 'var(--bg-glass-2)', border: `1px solid ${a.critique ? 'rgba(239,68,68,0.2)' : 'var(--border)'}`, cursor: 'pointer' }}
-                    >
-                      <div style={{ width: 6, height: 6, borderRadius: '50%', background: a.critique ? '#ef4444' : '#f59e0b', marginTop: 4, flexShrink: 0 }} />
-                      <span style={{ fontSize: 12, color: 'var(--text-primary)', flex: 1, lineHeight: 1.4 }}>{safeStr(a.message)}</span>
-                      <ChevronRight size={11} style={{ color: 'var(--text-muted)', flexShrink: 0, marginTop: 2 }} />
-                    </div>
-                  ))}
-                </div>
-              )}
+        {/* 3. HEURES — total semaine (réel) + bouton + vers la saisie des heures/pointage */}
+        <div style={{ ...cardM, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 12 }}>
+          <Clock size={18} color={V1.bleu} style={{ flexShrink: 0 }} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>Heures</div>
+            <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{fmtN(heuresSemaine)}h cette semaine</div>
+          </div>
+          <button onClick={() => naviguer('pointages')} aria-label="Saisir les heures"
+            style={{ width: 44, height: 44, borderRadius: 12, background: V1.bleu, color: '#fff', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <Plus size={22} strokeWidth={2.4} />
+          </button>
+        </div>
+
+        {/* 4. PLANNING — « aujourd'hui » = chantiers datés actifs ce jour (réel) ; alertes chantiers en bas */}
+        <div style={{ ...cardM, marginBottom: 12 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Calendar size={16} color={V1.bleu} />
+              <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>Aujourd'hui</span>
             </div>
-          );
-        })()}
+            <button onClick={() => naviguer('planning')} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: '#0d3d6e', fontWeight: 600, fontFamily: 'inherit', padding: 0 }}>Voir →</button>
+          </div>
+          {chantiersDuJour.length === 0 ? (
+            <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Aucun chantier planifié aujourd'hui</div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {chantiersDuJour.slice(0, 4).map(c => (
+                <div key={c.id} onClick={() => naviguer('chantiers', { chantierActif: c.id })}
+                  style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: V1.bleu, flexShrink: 0 }} />
+                  <span style={{ fontSize: 13, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.nom || c.numero}</span>
+                </div>
+              ))}
+            </div>
+          )}
+          {/* Alertes chantiers en bas du bloc Planning (ou « Tout OK » si aucune) */}
+          <div style={{ marginTop: 10, borderTop: '1px solid var(--dash-border)', paddingTop: 10 }}>
+            {alertes.length === 0 ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <ShieldCheck size={16} strokeWidth={1.5} style={{ color: '#10b981' }} />
+                <span style={{ fontWeight: 700, fontSize: 13, color: '#10b981' }}>Tout OK — aucune alerte chantier</span>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+                {alertes.slice(0, 3).map(a => (
+                  <div key={a.id} onClick={() => naviguer(a.page, a.ctx)}
+                    style={{ display: 'flex', alignItems: 'flex-start', gap: 8, cursor: 'pointer' }}>
+                    <div style={{ width: 6, height: 6, borderRadius: '50%', background: a.critique ? '#ef4444' : '#f59e0b', marginTop: 4, flexShrink: 0 }} />
+                    <span style={{ fontSize: 12, color: 'var(--text-primary)', flex: 1, lineHeight: 1.4 }}>{safeStr(a.message)}</span>
+                    <ChevronRight size={11} style={{ color: 'var(--text-muted)', flexShrink: 0, marginTop: 2 }} />
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
 
-        {/* MES CHANTIERS */}
+        {/* 5. MES CHANTIERS — version COMPACTE : une ligne (nom + mini-barre + %) par chantier */}
         <div style={{ ...cardM, marginBottom: 12 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
             <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-primary)' }}>Mes chantiers</div>
@@ -593,52 +610,47 @@ function Dashboard() {
           </div>
           {actifs.length === 0
             ? <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: 0, textAlign: 'center', padding: '16px 0' }}>Aucun chantier actif</p>
-            : <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {[...actifs].sort((a, b) => (prioriteMap.get(b.id) || { score: 0 }).score - (prioriteMap.get(a.id) || { score: 0 }).score).slice(0, 4).map(c => {
-                  const priorite = prioriteMap.get(c.id) || { niveau: 'ok', score: 0 };
-                  const montantCA = calculerCA(c, devis);
+            : <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {[...actifs].sort((a, b) => (prioriteMap.get(b.id) || { score: 0 }).score - (prioriteMap.get(a.id) || { score: 0 }).score).slice(0, 5).map(c => {
                   const couts = coutsMap.get(c.id) || {};
                   const joursTotal = c.nombreJours || 0;
                   const joursRealises = joursReelsChantier(pointages, c.id);
                   const avancementVal = joursTotal === 0 ? 0 : Math.min(Math.round((joursRealises / joursTotal) * 100), 100);
                   const mPct = couts.montantTotal > 0 && couts.totalCoutsReel > 0 && couts.margeActuellePct !== null ? Math.round(couts.margeActuellePct) : null;
-                  const statBadge = joursRealises === 0 ? BADGE_STATUT_DASH.neutre : BADGE_STATUT_DASH[priorite.niveau];
                   const couleurBarre = !mPct ? '#CBD5E1' : mPct >= SEUILS.margeRentable ? '#10B981' : mPct >= SEUILS.margeLimite ? '#F59E0B' : '#EF4444';
                   return (
                     <div key={c.id} onClick={() => naviguer('chantiers', { chantierActif: c.id })}
-                      style={{ display: 'flex', flexDirection: 'column', gap: 6, borderRadius: 10, border: '1px solid var(--dash-border)', padding: '10px 12px', cursor: 'pointer', background: 'var(--ds-card-bg)' }}
-                    >
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
-                        <span style={{ fontWeight: 700, fontSize: 13, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{c.nom || c.numero}</span>
-                        <span style={{ background: statBadge.bg, color: statBadge.color, borderRadius: 20, padding: '2px 8px', fontSize: 12, fontWeight: 700, flexShrink: 0, whiteSpace: 'nowrap' }}>{statBadge.label}</span>
+                      style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
+                      <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.nom || c.numero}</span>
+                      <div style={{ width: 80, height: 6, background: 'var(--dash-border)', borderRadius: 3, flexShrink: 0 }}>
+                        <div style={{ height: '100%', width: `${avancementVal}%`, background: couleurBarre, borderRadius: 3, transition: 'width 0.3s' }} />
                       </div>
-                      <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-                        <div>
-                          <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>CA signé</div>
-                          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)' }}>{montantCA ? `CHF ${fmtN(montantCA)}` : '—'}</div>
-                        </div>
-                        {mPct !== null && (
-                          <div>
-                            <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Marge</div>
-                            <div style={{ fontSize: 12, fontWeight: 700, color: mPct >= 15 ? '#10b981' : mPct >= 0 ? '#f59e0b' : '#ef4444' }}>{mPct}%</div>
-                          </div>
-                        )}
-                        {joursTotal > 0 && (
-                          <div style={{ marginLeft: 'auto', textAlign: 'right' }}>
-                            <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Jours</div>
-                            <div style={{ fontSize: 12, fontWeight: 700, color: joursRealises > joursTotal ? '#ef4444' : joursTotal - joursRealises <= 3 ? '#f59e0b' : 'var(--text-primary)' }}>{joursRealises}/{joursTotal}</div>
-                          </div>
-                        )}
-                      </div>
-                      <div style={{ height: 4, background: 'var(--dash-border)', borderRadius: 2 }}>
-                        <div style={{ height: '100%', width: `${avancementVal}%`, background: couleurBarre, borderRadius: 2, transition: 'width 0.3s' }} />
-                      </div>
+                      <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)', width: 36, textAlign: 'right', flexShrink: 0 }}>{avancementVal}%</span>
                     </div>
                   );
                 })}
               </div>
           }
         </div>
+
+        {/* 6. INTELLIGENCE IA — version compacte (une ligne cliquable → écran agents) */}
+        {(() => {
+          const scoreDirecteur = agentState?.scoreGlobal ?? null;
+          const alertesCritiques = agentAlertes.filter(a => a.niveau === 'CRITIQUE').length;
+          const alertesAttention = agentAlertes.filter(a => a.niveau === 'ATTENTION').length;
+          if (scoreDirecteur === null && agentAlertes.length === 0) return null;
+          const scoreColor = scoreDirecteur === null ? '#94a3b8' : couleurScoreSante(scoreDirecteur);
+          return (
+            <div onClick={() => naviguer('agents')} style={{ ...cardM, marginBottom: 12, display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 8, cursor: 'pointer' }}>
+              <Bot size={14} color={V1.bleu} />
+              <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)' }}>Intelligence IA</span>
+              {scoreDirecteur !== null && <span style={{ fontSize: 11, fontWeight: 800, color: scoreColor, background: scoreColor + '18', border: `1px solid ${scoreColor}30`, borderRadius: 20, padding: '2px 8px' }}>Score {scoreDirecteur}/100</span>}
+              {alertesCritiques > 0 && <span style={{ fontSize: 11, fontWeight: 700, color: '#ef4444', background: '#ef444418', border: '1px solid #ef444430', borderRadius: 20, padding: '2px 8px' }}>{alertesCritiques} crit.</span>}
+              {alertesAttention > 0 && <span style={{ fontSize: 11, fontWeight: 700, color: '#f59e0b', background: '#f59e0b18', border: '1px solid #f59e0b30', borderRadius: 20, padding: '2px 8px' }}>{alertesAttention} att.</span>}
+              <ChevronRight size={14} style={{ marginLeft: 'auto', color: 'var(--text-muted)', flexShrink: 0 }} />
+            </div>
+          );
+        })()}
         </div>{/* /contenu mobile paddé */}
       </div>
     );

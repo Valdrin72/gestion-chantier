@@ -67,7 +67,7 @@ export function HeroDirection({ prenom = 'Valdrin', dateLabel, periodeGlobale, s
   return (
     <div style={{ ...heroFond, borderRadius: 0, padding: compact ? '18px 18px 96px' : '30px 32px 128px', position: 'relative' }} data-testid="hero-direction">
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: compact ? 18 : 34, flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: compact ? 14 : 34, flexWrap: 'wrap' }}>
         {onMenu && (
           <button onClick={onMenu} aria-label="Menu" style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.18)', borderRadius: 8, padding: 7, cursor: 'pointer', color: '#fff', display: 'inline-flex' }}>
             <Menu size={16} />
@@ -90,7 +90,7 @@ export function HeroDirection({ prenom = 'Valdrin', dateLabel, periodeGlobale, s
         {/* Gauche : salutation */}
         <div style={{ flex: '1 1 320px', minWidth: 240 }}>
           <div style={heroMono(11, 0.6)}>ACCUEIL / 00</div>
-          <h1 style={{ fontFamily: FONT_UI, fontWeight: 700, fontSize: compact ? 30 : 47, margin: '12px 0 10px', letterSpacing: '-0.02em', color: '#fff' }}>
+          <h1 style={{ fontFamily: FONT_UI, fontWeight: 700, fontSize: compact ? 26 : 47, margin: compact ? '8px 0 8px' : '12px 0 10px', letterSpacing: '-0.02em', color: '#fff' }}>
             Bonjour {prenom}
           </h1>
           <div style={{ fontFamily: FONT_UI, fontSize: 14, color: 'rgba(255,255,255,0.78)' }}>
@@ -103,7 +103,7 @@ export function HeroDirection({ prenom = 'Valdrin', dateLabel, periodeGlobale, s
 
         {/* Centre-droit : anneau score */}
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-          <AnneauScore score={score} taille={compact ? 104 : 168} />
+          <AnneauScore score={score} taille={compact ? 88 : 168} />
           <div style={heroMono(9, 0.65)}>SANTÉ ENTREPRISE · {scoreLibelle(score)}</div>
         </div>
 
@@ -135,15 +135,15 @@ export function HeroDirection({ prenom = 'Valdrin', dateLabel, periodeGlobale, s
 export function KpiStripV1({ items = [], compact = false }) {
   return (
     <div style={{
-      display: 'grid', gridTemplateColumns: compact ? '1fr' : `repeat(${items.length}, 1fr)`,
-      gap: RYTHME.entreCartes, padding: compact ? '0 18px' : '0 32px',
-      margin: compact ? '-72px 0 24px' : '-84px 0 24px',
+      display: 'grid', gridTemplateColumns: compact ? 'repeat(2, 1fr)' : `repeat(${items.length}, 1fr)`,
+      gap: compact ? 10 : RYTHME.entreCartes, padding: compact ? '0 12px' : '0 32px',
+      margin: compact ? '-72px 0 20px' : '-84px 0 24px',
       position: 'relative', zIndex: 2, boxSizing: 'border-box',
     }} data-testid="kpi-strip">
       {items.map(k => (
-        <div key={k.label} style={{ ...carteV1, display: 'flex', flexDirection: 'column', minHeight: 134 }}>
+        <div key={k.label} style={{ ...carteV1, display: 'flex', flexDirection: 'column', minHeight: compact ? 92 : 134, padding: compact ? 12 : RYTHME.padCarte }}>
           <div style={{ ...mono(10, V1.texteMuted), textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 8 }}>{k.label}</div>
-          <div style={{ ...mono(compact ? 28 : 30, k.couleurValeur || V1.texte, 500), lineHeight: 1 }}>{k.valeur}</div>
+          <div style={{ ...mono(compact ? 20 : 30, k.couleurValeur || V1.texte, 500), lineHeight: 1 }}>{k.valeur}</div>
           <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, marginTop: 'auto', paddingTop: 10 }}>
             {k.sparkline && <Sparkline points={k.sparkline} couleur={k.couleurValeur || V1.bleu} />}
             {k.badge && <span style={badgeV1(k.etat || 'marque')}>{k.badge}</span>}

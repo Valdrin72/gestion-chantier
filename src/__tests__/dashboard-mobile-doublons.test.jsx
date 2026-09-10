@@ -51,14 +51,16 @@ describe('Dashboard mobile — Geste 1 : doublons retirés', () => {
     expect(screen.getAllByText('Intelligence IA')).toHaveLength(1);
   });
 
-  it('le bloc fusionné : score de santé EN HAUT, contenu (Tout OK / liste) EN DESSOUS', () => {
+  it('v2 : score dans le bloc IA compact ; « Tout OK » dans le bloc Planning (au-dessus)', () => {
     renderMobile();
+    // Dashboard mobile v2 (GO patron) : le bloc fusionné est SCINDÉ. Le score reste avec le libellé
+    //  « Intelligence IA » (bloc IA compact) ; les alertes chantiers (ou « Tout OK ») vivent
+    //  désormais dans le bloc Planning, qui est AU-DESSUS du bloc IA.
     const header = screen.getByText('Intelligence IA');
     const score = screen.getByText('Score 60/100');
     const toutOk = screen.getByText(/Tout OK — aucune alerte chantier/);
-    // Score dans l'en-tête, « Tout OK » en dessous → ordre vertical correct.
-    expect(header.compareDocumentPosition(score) & FOLLOWING).toBeTruthy();
-    expect(score.compareDocumentPosition(toutOk) & FOLLOWING).toBeTruthy();
+    expect(header.compareDocumentPosition(score) & FOLLOWING).toBeTruthy(); // score après le libellé, même bloc
+    expect(toutOk.compareDocumentPosition(header) & FOLLOWING).toBeTruthy(); // Tout OK (Planning) AVANT le bloc IA
   });
 
   it('l\'en-tête du bloc alertes reste cliquable → écran IA/agents', () => {

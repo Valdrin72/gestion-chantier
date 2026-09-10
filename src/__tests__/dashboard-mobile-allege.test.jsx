@@ -67,12 +67,13 @@ describe('Dashboard mobile allégé — 4 blocs essentiels', () => {
     expect(screen.queryByText('IA Insights')).toBeNull();
   });
 
-  it('ordre conservé : Alertes fusionné (Intelligence IA) AVANT Mes chantiers', () => {
+  it('ordre v2 : Mes chantiers AVANT le bloc Intelligence IA (compact, en dernier)', () => {
     setLargeur(375);
     renderWithApp(<Dashboard />, ctx());
-    const alertes = screen.getByText('Intelligence IA');
+    // Dashboard mobile v2 (GO patron) : Mes chantiers (5) précède désormais le bloc IA compact (6).
     const chantiers = screen.getByText('Mes chantiers');
-    expect(alertes.compareDocumentPosition(chantiers) & FOLLOWING).toBeTruthy();
+    const ia = screen.getByText('Intelligence IA');
+    expect(chantiers.compareDocumentPosition(ia) & FOLLOWING).toBeTruthy();
   });
 
   it('libellés des blocs conservés inchangés (4 chiffres)', () => {

@@ -43,15 +43,13 @@ function renderMobile() {
 const px = (v) => parseInt(String(v || '0'), 10);
 
 describe('Dashboard mobile — Geste 2 : hiérarchie « argent en gros »', () => {
-  it('un montant d\'argent (KPI) est >= un chiffre secondaire (Avancement %)', () => {
+  it('les montants d\'argent (KPI) sont en gros (28px)', () => {
     renderMobile();
     // Carte KPI : label (mono 10) puis la valeur (mono 28) en frère direct.
     const valeurArgent = screen.getByText('CA SIGNÉ').nextElementSibling;
-    // Bloc Avancement : label puis ligne [valeur %, « moy. »] ; la valeur % est le 1er enfant de la ligne.
-    const valeurAvancement = screen.getByText('Avancement').nextElementSibling.firstElementChild;
     expect(px(valeurArgent.style.fontSize)).toBe(28);          // argent = gros
-    expect(px(valeurAvancement.style.fontSize)).toBe(20);      // secondaire = réduit
-    expect(px(valeurArgent.style.fontSize)).toBeGreaterThanOrEqual(px(valeurAvancement.style.fontSize));
+    // (La comparaison avec « Avancement % » a été retirée : la mini-carte Avancement n'est
+    //  plus rendue sur mobile depuis l'allègement mobile — GO patron. Elle reste en desktop.)
   });
 });
 
@@ -65,10 +63,12 @@ describe('Dashboard mobile — Geste 3 : cartes uniformes (même arrondi)', () =
     expect(carteKpi.style.borderRadius).toBe(carteChantiers.style.borderRadius);
   });
 
-  it('le bloc « Coûts réels » utilise aussi le même arrondi (14px)', () => {
+  it('le bloc « Alertes fusionné » utilise aussi le même arrondi (14px)', () => {
     renderMobile();
-    const carteCouts = screen.getByText('Coûts réels').parentElement;                 // cardM
-    expect(carteCouts.style.borderRadius).toBe('14px');
+    // (Le bloc « Coûts réels » a été retiré du mobile — allègement mobile. On vérifie l'uniformité
+    //  sur un autre bloc cardM conservé : le bloc Alertes fusionné, en-tête « Intelligence IA ».)
+    const carteAlertes = screen.getByText('Intelligence IA').parentElement.parentElement; // libellé → en-tête → carte cardM
+    expect(carteAlertes.style.borderRadius).toBe('14px');
   });
 });
 
@@ -79,8 +79,7 @@ describe('Dashboard mobile — Gestes 2+3 : contenu/libellés inchangés', () =>
     ['CA SIGNÉ', 'MARGE MOY.', 'ENCAISSÉ', 'ON ME DOIT'].forEach(l =>
       expect(screen.getByText(l)).toBeInTheDocument());
     expect(screen.getByText('Mes chantiers')).toBeInTheDocument();
-    expect(screen.getByText('Avancement')).toBeInTheDocument();
-    expect(screen.getByText('Coûts réels')).toBeInTheDocument();
     expect(screen.getByText('Intelligence IA')).toBeInTheDocument();
+    // Allègement mobile : « Avancement » et « Coûts réels » retirés du rendu mobile (restent desktop).
   });
 });

@@ -9,6 +9,7 @@ import { exportCSV } from '../utils/exportCSV';
 import { DS } from '../ds';
 import { V1, mono, carteV1, heroFond, heroMono, RYTHME } from '../design/v1';
 import { useApp } from '../context/AppContext';
+import useIsMobile from '../hooks/useIsMobile';
 import { exportDevis } from '../ExportPDF';
 import AideDevisPanel from '../components/devis/AideDevisPanel';
 import { devisEstReferencé } from '../utils/referenceGuard';
@@ -142,6 +143,7 @@ const PERIODES = [{ id: 'semaine', label: 'Cette semaine' }, { id: 'mois', label
 
 function Devis() {
   const { devis, setDevis, clients, parametres, naviguer, setChantiers, chantiers, factures, setFactures, contexte = {}, afficherNotif, confirmer, periodeGlobale = 'mois', setPeriodeGlobale = () => {}, ouvrirMenu } = useApp();
+  const isMobile = useIsMobile();
   const [ajout, setAjout] = useState(false);
   // La page passe en « hero plein écran » (Topbar blanc masqué) comme les autres pages v1.
   useLayoutEffect(() => {
@@ -347,7 +349,7 @@ function Devis() {
             <div style={heroMono(11, 0.7)}>{devisActifs.length} DEVIS · {devisAcceptes.length} ACCEPTÉS {suffixePeriode}</div>
 
             {/* Ligne 3 — les 4 chiffres clés */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginTop: 20, paddingBottom: 24 }} data-testid="hero-chiffres">
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(4, 1fr)', gap: 12, marginTop: 20, paddingBottom: 24 }} data-testid="hero-chiffres">
               {heroChiffres.map(t => (
                 <div key={t.label} data-testid={`hero-kpi-${t.label.toLowerCase().replace(/[^a-zà-ÿ]+/g, '-').replace(/^-|-$/g, '')}`}
                   style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 12, padding: '12px 14px' }}>

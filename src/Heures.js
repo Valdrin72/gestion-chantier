@@ -4,6 +4,7 @@ import { fmtN, getHeuresParEmployeParDate } from './donnees';
 import { bornesPeriode } from './calculs/periode';
 import { V1, mono, carteV1, heroFond, heroMono } from './design/v1';
 import { useApp } from './context/AppContext';
+import useIsMobile from './hooks/useIsMobile';
 import ModalPointageFormulaire from './components/pointages/ModalPointageFormulaire';
 
 // Bouton translucide du hero bleu nuit (mêmes tokens que les autres pages v1).
@@ -38,6 +39,7 @@ const DAY_LABELS_SHORT = ['LUN', 'MAR', 'MER', 'JEU', 'VEN', 'SAM', 'DIM'];
 export default function Heures({ chantiers = [], parametres = {}, setChantiers }) {
   const employes = useMemo(() => parametres.employes || [], [parametres.employes]); // eslint-disable-line react-hooks/exhaustive-deps
   const { periodeGlobale, setPeriodeGlobale = () => {}, ouvrirMenu } = useApp();
+  const isMobile = useIsMobile();
   // La page passe en « hero plein écran » (Topbar blanc masqué) comme les autres pages v1.
   useLayoutEffect(() => {
     document.body.classList.add('hero-fullscreen');
@@ -168,7 +170,7 @@ export default function Heures({ chantiers = [], parametres = {}, setChantiers }
         <div style={heroMono(11, 0.7)}>{weekLabelMono} · {actifs.length} COLLABORATEUR{actifs.length > 1 ? 'S' : ''}</div>
 
         {/* Ligne 3 — les 4 chiffres clés */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginTop: 20, paddingBottom: 24 }} data-testid="hero-chiffres">
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(4, 1fr)', gap: 12, marginTop: 20, paddingBottom: 24 }} data-testid="hero-chiffres">
           {heroChiffres.map(t => (
             <div key={t.label} data-testid={`hero-kpi-${t.label.toLowerCase().replace(/[^a-zà-ÿ]+/g, '-').replace(/^-|-$/g, '')}`}
               style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 12, padding: '12px 14px' }}>

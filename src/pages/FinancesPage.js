@@ -8,6 +8,7 @@ import RelancesTab from '../RelancesTab';
 import { calculerCA, calculerCAForfait, calculerStatutFacture, calculerEtatChantier, tauxTVAParam, margePortefeuille } from '../donnees';
 import { estDansPeriode, caFactureDansPeriode, caPayeDansPeriode, periodeLabel } from '../calculs/periode';
 import { useApp } from '../context/AppContext';
+import useIsMobile from '../hooks/useIsMobile';
 import { prochainRappel } from '../relances';
 import { V1, mono, carteV1, heroFond, heroMono, RYTHME } from '../design/v1';
 
@@ -25,6 +26,7 @@ const soldeRestantFacture = (f) => {
 
 // ── Composant Trésorerie prévisionnelle ──────────────────────────────────────
 function Tresorerie({ factures = [], chantiers = [], clients = [], devis = [], parametres = null, onEmettreFacture = null, onEmettreExtra = null, pointages = [] }) {
+  const isMobile = useIsMobile();
   const today = new Date(); today.setHours(0,0,0,0);
 
   const data = useMemo(() => {
@@ -251,7 +253,7 @@ function Tresorerie({ factures = [], chantiers = [], clients = [], devis = [], p
         )}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 20 }}>
         {/* ── Factures à encaisser ── */}
         <div style={{ background: 'var(--surface-glass)', border: '1px solid var(--border-glass)', borderRadius: 16, padding: '20px 22px' }}>
           <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -406,7 +408,7 @@ function Tresorerie({ factures = [], chantiers = [], clients = [], devis = [], p
           </div>
 
           {/* Top clients + Top chantiers */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 20 }}>
             <div style={{ background: 'var(--surface-glass)', border: '1px solid var(--border-glass)', borderRadius: 16, padding: '20px 22px' }}>
               <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
                 <DollarSign size={14} style={{ color: '#0d3d6e' }} />
@@ -491,6 +493,7 @@ export default function Finances({
   pointages = [],
 }) {
   const { confirmer, afficherNotif, ouvrirMenu, setPeriodeGlobale = () => {} } = useApp();
+  const isMobile = useIsMobile();
   const [onglet, setOnglet] = useState('tresorerie');
   const [preRemplirFacture, setPreRemplirFacture] = useState(null);
   // Signal incrémental → demande d'ouverture du formulaire « Nouvelle facture » (bouton du hero).
@@ -680,7 +683,7 @@ export default function Finances({
         <div style={heroMono(11, 0.7)}>FACTURES · PAIEMENTS · SUIVI FINANCIER</div>
 
         {/* Ligne 3 — les 4 chiffres clés (adaptés à l'onglet) */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginTop: 20 }} data-testid="hero-chiffres">
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(4, 1fr)', gap: 12, marginTop: 20 }} data-testid="hero-chiffres">
           {heroChiffres.map(t => (
             <div key={t.label} data-testid={`hero-kpi-${t.label.toLowerCase().replace(/\s+/g, '-')}`}
               style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 12, padding: '12px 14px' }}>

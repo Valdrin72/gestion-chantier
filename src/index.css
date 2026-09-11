@@ -974,6 +974,19 @@ tr:last-child td { border-bottom: none; }
   .app-content, .main-area { margin-left: 0; }
   .topbar { max-width: 100vw; }
   .app-main    { padding: 0; }
+
+  /* ANTI-DÉBORDEMENT GLOBAL (LOT 1) — mobile uniquement, PC strictement inchangé.
+     Cause mesurée : la colonne principale (.main-area, flex:1) gardait min-width:auto
+     → elle s'élargissait au contenu le plus large (mesuré jusqu'à 963px à 375px de large),
+     et overflow-x:hidden n'était posé que sur body (inefficace sur iOS). Résultat : glissement
+     latéral sur 9 pages / 10. Ici on BORNE la largeur à l'écran :
+       • min-width:0 → la colonne flex a le droit de rétrécir à la largeur du viewport ;
+       • overflow-x:hidden sur html (pas seulement body) + .app-main → plus de fuite iOS.
+     Les gros tableaux (Heures, Devis, Employés) conservent leur défilement interne
+     (leur propre <div overflowX:auto>), qui se met enfin à fonctionner une fois la coquille bornée. */
+  html { overflow-x: hidden; }
+  .app-content, .main-area { min-width: 0; }
+  .app-main { overflow-x: hidden; }
   /* Padding bas élargi : la barre flottante (62px) + ses marges (12+12) + la zone sûre iOS
      ne doivent jamais masquer le dernier élément du contenu. */
   .page-pad    { padding: 12px 12px calc(86px + env(safe-area-inset-bottom, 0px)); max-width: none; }

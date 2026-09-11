@@ -119,7 +119,7 @@ function Clients({ clients, setClients, chantiers, devis = [], factures = [], na
             <div style={heroMono(11, 0.7)}>{clientsActifs.length} CLIENT{clientsActifs.length !== 1 ? 'S' : ''} ENREGISTRÉ{clientsActifs.length !== 1 ? 'S' : ''} · {nbActifs} ACTIF{nbActifs !== 1 ? 'S' : ''}</div>
 
             {/* Ligne 3 — les 4 chiffres clés */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginTop: 20, paddingBottom: 24 }} data-testid="hero-chiffres">
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(4, 1fr)', gap: 12, marginTop: 20, paddingBottom: 24 }} data-testid="hero-chiffres">
               {heroChiffres.map(t => (
                 <div key={t.label} data-testid={`hero-kpi-${t.label.toLowerCase().replace(/[^a-zà-ÿ]+/g, '-').replace(/^-|-$/g, '')}`}
                   style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 12, padding: '12px 14px' }}>

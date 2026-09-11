@@ -995,29 +995,52 @@ tr:last-child td { border-bottom: none; }
   /* KPI grid — 2 colonnes sur mobile */
   .kpi-grid { grid-template-columns: 1fr 1fr !important; gap: 10px; }
 
-  /* Grilles responsive */
-  --g4     : 1fr 1fr;
-  --g3     : 1fr 1fr;
-  --g2     : 1fr;
-  --g-form3: 1fr;
-  --g-form2: 1fr;
-  --g-devis: 1fr 1fr;
-  --g-emp  : 1fr 1fr;
-  --g-dash : 1fr;
-  --g-params: 1fr;
-  --g-3a   : 1fr;
-  --g-2a   : 1fr 1fr auto;
-  --g-line : 1fr 1fr auto;
-
-  /* ⚠ Les custom properties doivent être DANS une règle (ex. :root) pour être
-     appliquées — les déclarations nues ci-dessus sont ignorées par les navigateurs
-     (correctif global à traiter dans un patch séparé, impact toutes pages). */
+  /* Grilles responsive (custom properties).
+     ⚠ CORRECTIF : ces overrides étaient déclarés NUS dans la media query (hors sélecteur)
+     → IGNORÉS par les navigateurs, donc les grilles restaient multi-colonnes et débordaient
+     sur mobile. Ils sont désormais DANS :root pour s'appliquer réellement. Mobile only. */
   :root {
-    --g-ia : 1fr; /* Centre IA : menu déroulant pleine largeur au-dessus du panneau */
+    --g4     : 1fr 1fr;
+    --g3     : 1fr 1fr;
+    --g2     : 1fr;
+    --g6     : 1fr;        /* 6 colonnes (PC) → 1 colonne sur mobile (anti-débordement) */
+    --g-form3: 1fr;
+    --g-form2: 1fr;
+    --g-devis: 1fr 1fr;
+    --g-emp  : 1fr 1fr;
+    --g-dash : 1fr;
+    --g-params: 1fr;
+    --g-3a   : 1fr;
+    --g-2a   : 1fr 1fr auto;
+    --g-line : 1fr 1fr auto;
+    --g-ia   : 1fr; /* Centre IA : menu déroulant pleine largeur au-dessus du panneau */
   }
 
   /* Tables avec scroll horizontal */
   .table-responsive { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+  /* Tables .table-cards → CARTES EMPILÉES sur mobile (anti-débordement « tout est zoomé »).
+     Chaque ligne devient une carte pleine largeur, chaque cellule passe en bloc. En-têtes
+     masqués (aucun data-label dans le JSX → pas de libellé ::before ; les cellules restent
+     auto-parlantes). Carte transparente + bordure = pas de conflit de thème. Rendu PC
+     STRICTEMENT inchangé (règles dans la media query mobile uniquement). */
+  .table-cards,
+  .table-cards tbody,
+  .table-cards tr,
+  .table-cards td { display: block; width: 100%; box-sizing: border-box; }
+  .table-cards thead { display: none; }
+  .table-cards tr {
+    border: 1px solid var(--border, #e2e8f0);
+    border-radius: 10px;
+    padding: 10px 12px;
+    margin-bottom: 10px;
+  }
+  .table-cards td {
+    border: none !important;
+    padding: 4px 0 !important;
+    text-align: left !important;
+    white-space: normal !important;
+  }
 
   /* Modal plein écran */
   .modal-box { border-radius: 18px 18px 0 0; max-width: 100%; margin: 0; }

@@ -561,7 +561,7 @@ export default function Planning({
       <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '2fr 1fr', gap: 20, alignItems: 'start' }}>
 
         {/* ── COLONNE GAUCHE : liste chantiers ── */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, minWidth: 0 }}>
 
           {/* Chantiers sans date */}
           {chantiersNonPlanifies.length > 0 && (
@@ -596,7 +596,7 @@ export default function Planning({
               const client = clients.find(cl => String(cl.id) === String(c.clientId));
               const alerte = getAlerte(jours);
               return (
-                <div key={c.id} style={{ ...carteV1, borderLeft: `4px solid ${chantierColors[c.id] || V1.bleu}`, transition: 'box-shadow 0.15s' }}
+                <div key={c.id} style={{ ...carteV1, borderLeft: `4px solid ${chantierColors[c.id] || V1.bleu}`, transition: 'box-shadow 0.15s', minWidth: 0 }}
                   onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 4px 16px rgba(16,38,73,0.12)'; }}
                   onMouseLeave={e => { e.currentTarget.style.boxShadow = carteV1.boxShadow; }}
                 >
@@ -617,7 +617,7 @@ export default function Planning({
                   </div>
 
                   {/* Ligne 2 : dates + jours restants (mono) */}
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: 12, marginBottom: 14 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : '1fr 1fr 1fr auto', gap: 12, marginBottom: 14 }}>
                     {[
                       { lbl: 'Début', val: c.dateDebut ? new Date(c.dateDebut).toLocaleDateString('fr-CH') : '—' },
                       { lbl: 'Fin prévue', val: dateFin ? new Date(dateFin).toLocaleDateString('fr-CH') : '—' },
@@ -658,7 +658,7 @@ export default function Planning({
         </div>
 
         {/* ── COLONNE DROITE : mini calendrier + jalons ── */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16, minWidth: 0 }}>
 
           {/* Mini calendrier */}
           <div style={carteV1}>

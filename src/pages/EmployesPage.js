@@ -7,6 +7,7 @@ import { estDansPeriode, periodeLabel } from '../calculs/periode';
 import { DS } from '../ds';
 import { V1, mono, carteV1, heroFond, heroMono } from '../design/v1';
 import { useApp } from '../context/AppContext';
+import useIsMobile from '../hooks/useIsMobile';
 
 const inputStyle = DS.input;
 const labelStyle = DS.label;
@@ -24,6 +25,7 @@ const couleurPosteV1 = (poste) => ROLES_DIRECTION.includes((poste || '').trim().
 
 function Employes({ parametres, setParametres, chantiers, naviguer }) {
   const { profil, afficherNotif, periodeGlobale, ouvrirMenu } = useApp();
+  const isMobile = useIsMobile();
   const voirSalaires = ['cyna', 'cynatech'].includes(profil?.id);
   // La page passe en « hero plein écran » (Topbar blanc masqué) comme les autres pages v1.
   useLayoutEffect(() => {
@@ -91,7 +93,7 @@ function Employes({ parametres, setParametres, chantiers, naviguer }) {
             <div style={heroMono(11, 0.7)}>{employesAll.length} EMPLOYÉ{employesAll.length !== 1 ? 'S' : ''} · {nbActifs} ACTIF{nbActifs !== 1 ? 'S' : ''} SUR LE TERRAIN</div>
 
             {/* Ligne 3 — les 4 chiffres clés */}
-            <div style={{ display: 'grid', gridTemplateColumns: `repeat(${heroChiffres.length}, 1fr)`, gap: 12, marginTop: 20 }} data-testid="hero-chiffres">
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : `repeat(${heroChiffres.length}, 1fr)`, gap: 12, marginTop: 20 }} data-testid="hero-chiffres">
               {heroChiffres.map(t => (
                 <div key={t.label} data-testid={`hero-kpi-${t.label.toLowerCase().replace(/[^a-zà-ÿ]+/g, '-').replace(/^-|-$/g, '')}`}
                   style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 12, padding: '12px 14px' }}>
@@ -156,7 +158,7 @@ function Employes({ parametres, setParametres, chantiers, naviguer }) {
           </div>
         </div>
       )}
-      <div style={{ display: 'grid', gridTemplateColumns: 'var(--g3)', gap: '15px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'var(--g3)', gap: '15px' }}>
         {(parametres.employes || []).map(e => {
           const chantiersEmp = chantiers.filter(c => c.equipe?.some(m => String(m.employeId) === String(e.id)));
           const joursTotal = chantiers.reduce((t, c) => {
@@ -264,7 +266,7 @@ function Employes({ parametres, setParametres, chantiers, naviguer }) {
             </div>
 
             {/* KPIs performance — cartes v1 sobres à liseré coloré */}
-            <div style={{ display: 'grid', gridTemplateColumns: `repeat(${kpiPerf.length}, 1fr)`, gap: 16, marginBottom: 20 }} data-testid="perf-kpis">
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : `repeat(${kpiPerf.length}, 1fr)`, gap: 16, marginBottom: 20 }} data-testid="perf-kpis">
               {kpiPerf.map(k => (
                 <div key={k.label} style={{ ...carteV1, borderTop: `3px solid ${k.couleur}` }}>
                   <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: V1.texteMuted, marginBottom: 8 }}>{k.label}</div>

@@ -88,8 +88,10 @@ describe('Dashboard DESKTOP — non-régression : les blocs retirés du mobile r
   it('desktop garde DirecteurBloc, Avancement global et Répartition des coûts', () => {
     setLargeur(1200);
     renderWithApp(<Dashboard />, ctx());
-    // DirecteurBloc toujours rendu en desktop (marqueur inconditionnel)
-    expect(screen.getByText(/Heures pointées aujourd'hui/)).toBeInTheDocument();
+    // DirecteurBloc toujours rendu en desktop — marqueur INDÉPENDANT DE L'HEURE : sa barre
+    // d'onglets Matin/Soir/Hebdo est rendue quelle que soit l'heure (l'ancien marqueur
+    // « Heures pointées aujourd'hui » ne s'affiche qu'avant 14h → fragile/flaky).
+    expect(screen.getByText('Hebdo')).toBeInTheDocument();
     // Blocs Avancement + Coûts (libellés desktop) toujours là
     expect(screen.getByText('Avancement global')).toBeInTheDocument();
     expect(screen.getByText('Répartition des coûts')).toBeInTheDocument();

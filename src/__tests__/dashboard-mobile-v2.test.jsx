@@ -113,7 +113,9 @@ describe('Dashboard mobile v2 — non-régression DESKTOP', () => {
   it('le desktop garde ses blocs (DirecteurBloc, Avancement global, Répartition des coûts) et pas de bloc Heures mobile', () => {
     setLargeur(1200);
     renderWithApp(<Dashboard />, ctx());
-    expect(screen.getByText(/Heures pointées aujourd'hui/)).toBeInTheDocument(); // DirecteurBloc (desktop)
+    // DirecteurBloc (desktop) — marqueur indépendant de l'heure : onglet « Hebdo » toujours rendu
+    // (l'ancien « Heures pointées aujourd'hui » n'apparaît qu'avant 14h → flaky selon l'heure).
+    expect(screen.getByText('Hebdo')).toBeInTheDocument();
     expect(screen.getByText('Avancement global')).toBeInTheDocument();
     expect(screen.getByText('Répartition des coûts')).toBeInTheDocument();
     // Le bouton + « Saisir les heures » est propre au bloc Heures MOBILE → absent en desktop.

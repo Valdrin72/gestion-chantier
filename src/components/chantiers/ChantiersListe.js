@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect, useLayoutEffect } from 'react';
 import {
-  X, Pencil, Trash2, Archive, AlertTriangle, ChevronRight, Eye, Download, LayoutList, LayoutGrid, Menu, Bell,
+  X, Pencil, Trash2, Archive, AlertTriangle, ChevronRight, Eye, Download, LayoutList, LayoutGrid, Menu, Bell, MapPin, Building2,
 } from 'lucide-react';
 import { exportCSV } from '../../utils/exportCSV';
 import KanbanChantiers from './KanbanChantiers';
@@ -210,10 +210,23 @@ function ChantiersListe({
     </>
   );
 
+  // ── Soin visuel MOBILE only (paquet a) — variantes locales, sans toucher aux tokens partagés ──
+  // Dégradé hero enrichi (3 tons bleus CYNA : brand #0d3d6e + variantes) + trame fine + halo discret.
+  const heroFondMobile = {
+    background: `
+      radial-gradient(220px 220px at 100% -50px, rgba(255,255,255,0.10), transparent 70%),
+      repeating-linear-gradient(0deg, rgba(255,255,255,0.035) 0 1px, transparent 1px 44px),
+      repeating-linear-gradient(90deg, rgba(255,255,255,0.035) 0 1px, transparent 1px 44px),
+      linear-gradient(168deg, #0B2E55 0%, #0d3d6e 46%, #15528F 100%)`,
+    color: '#fff',
+  };
+  // Carte chantier mobile : rayon 16 + ombre douce 2 niveaux (carteV1 partagé = rayon 14, non touché).
+  const carteMobile = { ...carteV1, borderRadius: 16, boxShadow: '0 1px 2px rgba(13,27,46,0.04), 0 2px 6px rgba(13,27,46,0.05)' };
+
   return (
     <div>
       {/* ── HERO BLEU NUIT (design v1, bord à bord) ── */}
-      <div className="page-hero-bleed" style={{ ...heroFond, padding: isMobile ? '16px 16px 20px' : '22px 32px 26px', position: 'relative' }} data-testid="hero-chantiers">
+      <div className="page-hero-bleed" style={{ ...(isMobile ? heroFondMobile : heroFond), padding: isMobile ? '16px 16px 20px' : '22px 32px 26px', position: 'relative', overflow: isMobile ? 'hidden' : undefined }} data-testid="hero-chantiers">
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20, flexWrap: 'wrap' }}>
           {ouvrirMenu && (
             <button onClick={ouvrirMenu} aria-label="Menu" style={{ ...heroBtn, padding: 7 }}><Menu size={16} /></button>
@@ -224,7 +237,7 @@ function ChantiersListe({
         </div>
 
         <div style={heroMono(11, 0.6)}>CHANTIERS / 05</div>
-        <h1 style={{ fontFamily: "'Inter', sans-serif", fontWeight: 700, fontSize: isMobile ? 28 : 38, margin: '8px 0 8px', letterSpacing: '-0.02em', color: '#fff' }}>Chantiers</h1>
+        <h1 style={{ fontFamily: "'Inter', sans-serif", fontWeight: isMobile ? 800 : 700, fontSize: isMobile ? 30 : 38, margin: '8px 0 8px', letterSpacing: isMobile ? '-0.9px' : '-0.02em', color: '#fff' }}>Chantiers</h1>
         <div style={heroMono(11, 0.7)}>
           — {chantiers.filter(c => c.archive !== true).length} CHANTIERS · {kpi.nbEnCours} EN COURS · {fmtN(kpi.joursPlanifies)} JOURS PLANIFIÉS
         </div>
@@ -232,17 +245,20 @@ function ChantiersListe({
         {/* Bandeau des 4 chiffres */}
         <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(4, 1fr)', gap: 12, marginTop: 20 }}>
           {tiles.map(t => (
-            <div key={t.label} data-testid={`kpi-${t.label.toLowerCase().replace(/\s+/g, '-')}`} style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 12, padding: '12px 14px' }}>
+            <div key={t.label} data-testid={`kpi-${t.label.toLowerCase().replace(/\s+/g, '-')}`} style={{ background: isMobile ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.06)', border: isMobile ? '1px solid rgba(255,255,255,0.16)' : '1px solid rgba(255,255,255,0.12)', borderRadius: isMobile ? 14 : 12, padding: '12px 14px' }}>
               <div style={heroMono(9, 0.6)}>{t.label}</div>
-              <div style={{ ...mono(isMobile ? 18 : 22, t.couleur, 500), lineHeight: 1.1, marginTop: 4 }}>{t.val}</div>
+              <div style={{ ...mono(isMobile ? 22 : 22, t.couleur, 500), lineHeight: 1.1, marginTop: 4 }}>{t.val}</div>
               {t.sub && <div style={heroMono(9, 0.5)}>{t.sub}</div>}
             </div>
           ))}
         </div>
       </div>
 
-      {/* ── Filtres d'état en pastilles ── */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: RYTHME.entreCartes, overflowX: 'auto', WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none', paddingBottom: 2 }}>
+      {/* ── Filtres d'état en pastilles (collants au défilement sur mobile) ── */}
+      <div style={{
+        display: 'flex', gap: 8, marginBottom: RYTHME.entreCartes, overflowX: 'auto', WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none', paddingBottom: 2,
+        ...(isMobile ? { position: 'sticky', top: 0, zIndex: 20, background: 'rgba(238,243,248,0.94)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)', borderBottom: `1px solid ${V1.separation}`, paddingTop: 10, marginLeft: -12, marginRight: -12, paddingLeft: 12, paddingRight: 12 } : {}),
+      }}>
         {STATUTS.map(s => {
           const actif = filtre === s;
           return (
@@ -252,6 +268,8 @@ function ChantiersListe({
               border: actif ? `1px solid ${V1.bleu}` : `1px solid ${V1.separation}`,
               padding: '7px 14px', borderRadius: 20, cursor: 'pointer', fontFamily: 'inherit',
               fontSize: 13, fontWeight: actif ? 700 : 500, whiteSpace: 'nowrap', flexShrink: 0, transition: 'all 0.15s',
+              boxShadow: actif ? '0 2px 8px rgba(13,61,110,0.28)' : 'none',
+              ...(isMobile ? { minHeight: 44, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' } : {}),
             }}>{s}</button>
           );
         })}
@@ -292,9 +310,24 @@ function ChantiersListe({
 
       {vueMode === 'liste' && (
         scored.length === 0 ? (
+          isMobile ? (
+            /* État vide soigné (mobile) : icône + titre + phrase d'aide */
+            <div style={{ ...carteMobile, padding: '38px 24px', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: 12 }}>
+              <div style={{ width: 52, height: 52, borderRadius: 16, background: V1.bleuFond, border: `1px solid ${V1.separation}`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: V1.texteMuted }}>
+                <Building2 size={24} strokeWidth={1.8} />
+              </div>
+              <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 15, fontWeight: 700, color: V1.texte }}>
+                {contexte?.clientActif || contexte?.employeActif ? 'Aucun chantier ne correspond à ce filtre.' : 'Aucun chantier à afficher.'}
+              </div>
+              <div style={{ fontSize: 12.5, color: V1.texteMuted, maxWidth: 240, lineHeight: 1.5 }}>
+                Change de filtre ou crée un nouveau chantier pour le voir apparaître ici.
+              </div>
+            </div>
+          ) : (
           <div style={{ ...carteV1, padding: '40px 24px', textAlign: 'center', color: V1.texteMuted, fontSize: 14 }}>
             {contexte?.clientActif || contexte?.employeActif ? 'Aucun chantier ne correspond à ce filtre.' : 'Aucun chantier à afficher.'}
           </div>
+          )
         ) : isMobile ? (
           /* ── MOBILE : cartes empilées ── */
           <div style={{ display: 'flex', flexDirection: 'column', gap: RYTHME.entreCartes }}>
@@ -305,15 +338,21 @@ function ChantiersListe({
               const barre = barreProgression(avancePct, decision.couleur);
               return (
                 <div key={c.id} onClick={() => onSelect(c)} role="button" tabIndex={0}
-                  style={{ ...carteV1, cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
-                    <div style={{ minWidth: 0 }}>
-                      <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 15, fontWeight: 700, color: V1.texte, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.nom}</div>
-                      <div style={{ ...mono(10, V1.texteMuted), marginTop: 2 }}>{c.numero} · {(c.ville || '—').toUpperCase()}</div>
+                  style={{ ...carteMobile, cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 11 }}>
+                    <div style={{ width: 44, height: 44, flexShrink: 0, borderRadius: 12, background: 'linear-gradient(140deg, #1E3A5C, #0B2136)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.82)' }}>
+                      <Building2 size={20} strokeWidth={1.9} />
                     </div>
-                    <span style={{ ...mono(10, bs.color, 500), background: bs.bg, borderRadius: 6, padding: '3px 8px', whiteSpace: 'nowrap', flexShrink: 0 }}>{(c.statut || '').toUpperCase()}</span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 15, fontWeight: 700, color: V1.texte, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.nom}</div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 3, ...mono(10, V1.texteMuted), overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        <MapPin size={11} strokeWidth={2} style={{ flexShrink: 0 }} />
+                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.numero} · {(c.ville || '—').toUpperCase()}</span>
+                      </div>
+                    </div>
+                    <span style={{ ...mono(10, bs.color, 500), background: bs.bg, borderRadius: 999, padding: '4px 9px', whiteSpace: 'nowrap', flexShrink: 0, boxShadow: `inset 0 0 0 1px ${bs.color}22` }}>{(c.statut || '').toUpperCase()}</span>
                   </div>
-                  <div style={barre.piste}><div style={barre.remplissage} /></div>
+                  <div style={{ ...barre.piste, borderRadius: 999 }}><div style={{ ...barre.remplissage, borderRadius: 999 }} /></div>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <span style={{ fontSize: 12, color: V1.texteMuted }}>{client?.entreprise || '—'}</span>
                     <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>

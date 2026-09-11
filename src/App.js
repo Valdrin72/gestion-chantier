@@ -472,6 +472,9 @@ function AppInner({ profil, deconnecter, userId, isDemo = false }) {
           padding: '40px 36px',
           maxWidth: 560,
           width: '100%',
+          boxSizing: 'border-box',
+          maxHeight: '90vh',
+          overflowY: 'auto',
           boxShadow: '0 24px 64px rgba(0,0,0,0.3)',
           border: '1px solid var(--border)',
         }}>

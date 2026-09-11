@@ -276,9 +276,9 @@ export default function Calendrier({
 
       {/* Modal nouvel événement */}
       {modal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(4px)' }}
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(4px)', padding: '20px 16px' }}
           onClick={() => setModal(null)}>
-          <div style={{ background: 'var(--bg-card)', border: '1px solid var(--ds-card-border)', borderRadius: 18, overflow: 'hidden', width: '100%', maxWidth: 420, boxShadow: '0 20px 60px rgba(0,0,0,0.4)' }}
+          <div style={{ background: 'var(--bg-card)', border: '1px solid var(--ds-card-border)', borderRadius: 18, overflowX: 'hidden', overflowY: 'auto', maxHeight: '90vh', width: '100%', maxWidth: 420, boxSizing: 'border-box', boxShadow: '0 20px 60px rgba(0,0,0,0.4)' }}
             onClick={e => e.stopPropagation()}>
 
             {/* En-tête bleu nuit (grille technique) */}

@@ -1,6 +1,8 @@
 import React, { useEffect } from 'react';
 
 export default function ConfirmModal({ message, labelOui = 'Confirmer', labelNon = 'Annuler', danger = true, onOui, onNon }) {
+  // Cible tactile ≥44px sur mobile (la modale est transitoire → lecture directe suffit ; PC inchangé).
+  const isMobile = typeof window !== 'undefined' && window.innerWidth <= 767;
   useEffect(() => {
     const onKey = (e) => { if (e.key === 'Escape') onNon(); if (e.key === 'Enter') onOui(); };
     document.addEventListener('keydown', onKey);
@@ -35,6 +37,7 @@ export default function ConfirmModal({ message, labelOui = 'Confirmer', labelNon
               padding: '8px 18px', borderRadius: 8, border: '1px solid var(--border, #e5e7eb)',
               background: 'var(--bg-secondary, #f3f4f6)', color: 'var(--text-main, #111)',
               cursor: 'pointer', fontSize: 14, fontWeight: 500,
+              minHeight: isMobile ? 44 : undefined,
             }}
           >
             {labelNon}
@@ -46,6 +49,7 @@ export default function ConfirmModal({ message, labelOui = 'Confirmer', labelNon
               padding: '8px 18px', borderRadius: 8, border: 'none',
               background: danger ? '#ef4444' : 'var(--brand, #0d3d6e)',
               color: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 600,
+              minHeight: isMobile ? 44 : undefined,
             }}
           >
             {labelOui}

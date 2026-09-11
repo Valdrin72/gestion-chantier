@@ -661,9 +661,9 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
 
       {/* ── Modal paiement ── */}
       {paiementModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px 16px' }}
           onClick={e => { if (e.target === e.currentTarget) setPaiementModal(null); }}>
-          <div style={{ background: 'linear-gradient(145deg, rgba(255,255,255,0.07) 0%, rgba(255,255,255,0.03) 100%)', backdropFilter: 'blur(20px) saturate(1.8)', WebkitBackdropFilter: 'blur(20px) saturate(1.8)', borderRadius: 18, padding: 28, width: 420, boxShadow: '0 24px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.1), inset 0 1px 0 rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.1)' }}>
+          <div style={{ background: 'linear-gradient(145deg, rgba(255,255,255,0.07) 0%, rgba(255,255,255,0.03) 100%)', backdropFilter: 'blur(20px) saturate(1.8)', WebkitBackdropFilter: 'blur(20px) saturate(1.8)', borderRadius: 18, padding: 28, width: '100%', maxWidth: 420, boxSizing: 'border-box', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 24px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.1), inset 0 1px 0 rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.1)' }}>
             <div className="ds-card-title" style={{ marginBottom: 6 }}>Enregistrer un paiement</div>
             <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 20 }}>
               {paiementModal.numero} — Solde restant : <strong style={{ color: '#f59e0b' }}>{fmt((paiementModal.montantTTC ?? 0) - (paiementModal.montantPaye ?? 0))} CHF</strong>
@@ -1016,9 +1016,9 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
 
         {/* ── Modal paiement (vue détail) ── */}
         {paiementModal && (
-          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px 16px' }}
             onClick={e => { if (e.target === e.currentTarget) setPaiementModal(null); }}>
-            <div style={{ background: 'linear-gradient(145deg, rgba(255,255,255,0.07) 0%, rgba(255,255,255,0.03) 100%)', backdropFilter: 'blur(20px) saturate(1.8)', WebkitBackdropFilter: 'blur(20px) saturate(1.8)', borderRadius: 18, padding: 28, width: 420, boxShadow: '0 24px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.1), inset 0 1px 0 rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.1)' }}>
+            <div style={{ background: 'linear-gradient(145deg, rgba(255,255,255,0.07) 0%, rgba(255,255,255,0.03) 100%)', backdropFilter: 'blur(20px) saturate(1.8)', WebkitBackdropFilter: 'blur(20px) saturate(1.8)', borderRadius: 18, padding: 28, width: '100%', maxWidth: 420, boxSizing: 'border-box', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 24px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.1), inset 0 1px 0 rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.1)' }}>
               <div className="ds-card-title" style={{ marginBottom: 6 }}>Enregistrer un paiement</div>
               <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 20 }}>
                 {paiementModal.numero} — Solde restant : <strong style={{ color: '#f59e0b' }}>{fmt((paiementModal.montantTTC ?? 0) - (paiementModal.montantPaye ?? 0))} CHF</strong>

@@ -4,7 +4,7 @@
  * par le Dashboard (mêmes memos, mêmes moteurs) — zéro logique métier ici.
  */
 import React from 'react';
-import { Bell, Menu } from 'lucide-react';
+import { Bell, Menu, ChevronDown } from 'lucide-react';
 import { AreaChart, Area, ResponsiveContainer, XAxis, Tooltip } from 'recharts';
 import {
   V1, FONT_UI, carteV1, fmtCH, mono, badgeV1, pastille, barreProgression,
@@ -91,6 +91,9 @@ export function AnneauScore({ score, taille = 132, degrade = false }) {
 export function HeroDirection({ prenom = 'Valdrin', dateLabel, periodeGlobale, setPeriodeGlobale = () => {},
   nbActifs = 0, nbCollaborateurs = 0, score = null, actions = [], ongletsRdv = null, onCloche = () => {}, onMenu = null, compact = false }) {
   const PERIODES = [{ id: 'semaine', label: 'Cette semaine' }, { id: 'mois', label: 'Ce mois' }, { id: 'annee', label: 'Cette année' }];
+  // Libellés COURTS pour l'affichage discret mobile (la liste native garde les libellés complets).
+  const PERIODE_COURT = { semaine: 'Semaine', mois: 'Mois', annee: 'Année' };
+  const periodeCourte = PERIODE_COURT[periodeGlobale] || (PERIODES.find(p => p.id === periodeGlobale)?.label) || 'Période';
   // Mobile : la barre d'outils devient FIXE et se rétracte au défilement — MÊME mécanisme
   // que la bottom-nav (useMasquageAuDefilement partagé) pour un comportement cohérent.
   const { cachee, reduceMotion } = useMasquageAuDefilement();
@@ -112,12 +115,21 @@ export function HeroDirection({ prenom = 'Valdrin', dateLabel, periodeGlobale, s
             <button onClick={onMenu} aria-label="Menu" style={btnHero}><Menu size={18} /></button>
           )}
           <span style={{ fontFamily: FONT_UI, fontWeight: 800, fontSize: 15, letterSpacing: '0.06em', color: '#fff', flexShrink: 0 }}>CYNA</span>
-          <select value={periodeGlobale} onChange={e => setPeriodeGlobale(e.target.value)} aria-label="Période"
-            style={{ flex: 1, minWidth: 0, height: 44, background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.18)', borderRadius: 10, padding: '0 10px', color: '#fff', fontFamily: FONT_UI, fontSize: 13, cursor: 'pointer' }}>
-            {PERIODES.map(p => <option key={p.id} value={p.id} style={{ color: '#16233A' }}>{p.label}</option>)}
-          </select>
-          <span style={{ ...heroMono(10, 0.75), flexShrink: 0, whiteSpace: 'nowrap' }}>{dateLabel}</span>
-          <button onClick={onCloche} aria-label="Notifications" style={btnHero}><Bell size={16} /></button>
+          {/* Cluster droit : date · sélecteur de période DISCRET · cloche */}
+          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+            <span style={{ ...heroMono(10, 0.7), flexShrink: 0, whiteSpace: 'nowrap' }}>{dateLabel}</span>
+            {/* Sélecteur période DISCRET (mobile) : petit texte + chevron, sans fond ni bordure.
+                Le <select> natif invisible couvre la zone (≥44px) → tap facile, comportement identique. */}
+            <div data-testid="periode-discrete" style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', gap: 3, minHeight: 44, padding: '0 2px 0 6px', flexShrink: 0 }}>
+              <span style={{ fontFamily: FONT_UI, fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.72)', whiteSpace: 'nowrap' }}>{periodeCourte}</span>
+              <ChevronDown size={12} style={{ color: 'rgba(255,255,255,0.6)', flexShrink: 0 }} />
+              <select value={periodeGlobale} onChange={e => setPeriodeGlobale(e.target.value)} aria-label="Période"
+                style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', minHeight: 44, opacity: 0, cursor: 'pointer', border: 'none', background: 'transparent', color: '#fff', appearance: 'none', WebkitAppearance: 'none' }}>
+                {PERIODES.map(p => <option key={p.id} value={p.id} style={{ color: '#16233A' }}>{p.label}</option>)}
+              </select>
+            </div>
+            <button onClick={onCloche} aria-label="Notifications" style={btnHero}><Bell size={16} /></button>
+          </div>
         </div>
       ) : (
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 34, flexWrap: 'wrap' }}>

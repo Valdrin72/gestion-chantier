@@ -503,7 +503,8 @@ function Dashboard() {
       return c.dateDebut <= todayStr && todayStr <= fin;
     });
     return (
-      <div>
+      // Fond gris clair (mobile) : fait ressortir les cartes blanches — cohérent maquette.
+      <div style={{ background: '#EEF3F8', minHeight: '100vh' }}>
         {/* ── HERO compact (design v1) : score en haut à droite du Bonjour ── */}
         <div>
           <HeroDirection

@@ -3,6 +3,7 @@ import { Plus, Sun, Moon, Menu, X, ChevronRight, LogOut, Bell, CheckCircle, Aler
 import { useApp } from '../context/AppContext';
 import { calculerAlertes } from '../alertes';
 import GlobalSearch from './GlobalSearch';
+import useMasquageAuDefilement from '../hooks/useMasquageAuDefilement';
 
 // Petit badge rouge réutilisable (compteur d'alertes / factures en retard)
 function BadgeCompteur({ valeur }) {
@@ -488,29 +489,8 @@ export function MobileNav({ maisons = [], raccourcis = null, page, naviguer, mob
   const barre = (raccourcis && raccourcis.length) ? raccourcis : maisons.slice(0, 4);
 
   // ── Barre FLOTTANTE animée : se cache au défilement vers le bas, revient vers le haut ──
-  const [cachee, setCachee] = useState(false);
-  const reduceMotion = typeof window !== 'undefined' && !!window.matchMedia
-    && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-  useEffect(() => {
-    if (reduceMotion) return; // animations désactivées → la barre reste simplement visible
-    const scroller = document.querySelector('.app-main') || window;
-    const lireY = () => (scroller === window
-      ? (window.scrollY || window.pageYOffset || 0)
-      : scroller.scrollTop);
-    let lastY = lireY();
-    const SEUIL = 10; // anti-tremblement : on ignore les micro-défilements < 10px
-    const onScroll = () => {
-      const y = lireY();
-      if (y <= 0) { setCachee(false); lastY = y; return; } // tout en haut → toujours visible
-      const delta = y - lastY;
-      if (delta > SEUIL) setCachee(true);        // vers le BAS → cacher
-      else if (delta < -SEUIL) setCachee(false); // vers le HAUT → montrer
-      lastY = y;
-    };
-    scroller.addEventListener('scroll', onScroll, { passive: true });
-    return () => scroller.removeEventListener('scroll', onScroll);
-  }, [reduceMotion]);
+  // Mécanisme PARTAGÉ avec la topbar mobile (useMasquageAuDefilement) → comportement identique.
+  const { cachee, reduceMotion } = useMasquageAuDefilement();
 
   // Géométrie flottante + animation en inline (testable ; respecte la zone sûre iOS).
   const styleFlottant = {

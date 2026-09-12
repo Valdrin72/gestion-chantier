@@ -1,4 +1,4 @@
-import React, { useState, useLayoutEffect } from 'react';
+import React, { useState, useLayoutEffect, useEffect } from 'react';
 import { Zap, Plus, Menu } from 'lucide-react';
 import Planning from '../Planning';
 import Calendrier from '../Calendrier';
@@ -25,6 +25,14 @@ function PlanningPage({ chantiers, setChantiers, clients, devis, factures, param
   const { ouvrirMenu } = useApp();
   const isMobile = useIsMobile();
   const [onglet, setOnglet] = useState('calendrier');
+  // Le Gantt n'a pas d'intérêt sur téléphone (planification large, illisible en petit) :
+  // son onglet est retiré du mobile. Si l'utilisateur y était (ex. passage PC→mobile),
+  // on bascule proprement sur Calendrier — jamais d'écran vide.
+  useEffect(() => {
+    if (isMobile && onglet === 'gantt') setOnglet('calendrier');
+  }, [isMobile, onglet]);
+  // Onglet effectivement rendu : garde anti-écran-vide même avant que l'effet ci-dessus ne s'applique.
+  const ongletActif = (isMobile && onglet === 'gantt') ? 'calendrier' : onglet;
   // La page passe en « hero plein écran » (Topbar blanc masqué) comme les autres pages v1.
   useLayoutEffect(() => {
     document.body.classList.add('hero-fullscreen');
@@ -54,16 +62,17 @@ function PlanningPage({ chantiers, setChantiers, clients, devis, factures, param
   // Libellés contextuels (affichage pur)
   const moisLabel = new Date(anneeActuelle, moisActuel, 1).toLocaleDateString('fr-CH', { month: 'long', year: 'numeric' });
   const evenementsLabel = viewDate.toLocaleDateString('fr-CH', { month: 'long', year: 'numeric' });
-  const contexteLabel = onglet === 'gantt' ? 'TIMELINE 12 SEMAINES'
-    : onglet === 'evenements' ? evenementsLabel.toUpperCase()
+  const contexteLabel = ongletActif === 'gantt' ? 'TIMELINE 12 SEMAINES'
+    : ongletActif === 'evenements' ? evenementsLabel.toUpperCase()
     : moisLabel.toUpperCase();
-  const monoLigne = onglet === 'gantt' ? 'TIMELINE 12 SEMAINES · CHANTIERS PLANIFIÉS'
-    : onglet === 'evenements' ? `${evenementsLabel.toUpperCase()} · ÉVÉNEMENTS & ÉCHÉANCES`
+  const monoLigne = ongletActif === 'gantt' ? 'TIMELINE 12 SEMAINES · CHANTIERS PLANIFIÉS'
+    : ongletActif === 'evenements' ? `${evenementsLabel.toUpperCase()} · ÉVÉNEMENTS & ÉCHÉANCES`
     : `${moisLabel.toUpperCase()} · PLANIFICATION CHANTIERS`;
 
+  // Gantt : présent sur PC, RETIRÉ du mobile (illisible sur petit écran, décision patron).
   const onglets = [
     { id: 'calendrier', label: 'Calendrier' },
-    { id: 'gantt',      label: 'Gantt' },
+    ...(isMobile ? [] : [{ id: 'gantt', label: 'Gantt' }]),
     { id: 'evenements', label: 'Événements' },
   ];
 
@@ -84,28 +93,28 @@ function PlanningPage({ chantiers, setChantiers, clients, devis, factures, param
             </div>
             {/* Mobile — barre d'outils 44px : nav contextuelle + action */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-              {onglet === 'calendrier' && (<>
+              {ongletActif === 'calendrier' && (<>
                 <button onClick={moisPrecedent} style={{ ...heroBtnM, width: 44, padding: 0 }} aria-label="Mois précédent">←</button>
                 <button onClick={aujourdhuiCalendrier} style={{ ...heroBtnM, flex: 1, minWidth: 0 }}>Aujourd'hui</button>
                 <button onClick={moisSuivant} style={{ ...heroBtnM, width: 44, padding: 0 }} aria-label="Mois suivant">→</button>
               </>)}
-              {onglet === 'gantt' && (<>
+              {ongletActif === 'gantt' && (<>
                 <button onClick={() => setGanttOffset(v => v - 4)} style={{ ...heroBtnM, width: 44, padding: 0 }} aria-label="−4 semaines">←</button>
                 <button onClick={() => setGanttOffset(0)} style={{ ...heroBtnM, flex: 1, minWidth: 0 }}>Aujourd'hui</button>
                 <button onClick={() => setGanttOffset(v => v + 4)} style={{ ...heroBtnM, width: 44, padding: 0 }} aria-label="+4 semaines">→</button>
               </>)}
-              {onglet === 'evenements' && (<>
+              {ongletActif === 'evenements' && (<>
                 <button onClick={() => setViewDate(new Date(viewDate.getFullYear(), viewDate.getMonth() - 1, 1))} style={{ ...heroBtnM, width: 44, padding: 0 }} aria-label="Mois précédent">←</button>
                 <button onClick={aujourdhuiEvenements} style={{ ...heroBtnM, flex: 1, minWidth: 0 }}>Aujourd'hui</button>
                 <button onClick={() => setViewDate(new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 1))} style={{ ...heroBtnM, width: 44, padding: 0 }} aria-label="Mois suivant">→</button>
               </>)}
-              {(onglet === 'calendrier' || onglet === 'gantt') && (
+              {(ongletActif === 'calendrier' || ongletActif === 'gantt') && (
                 <button onClick={() => setShowOptimiseur(v => !v)}
                   style={{ ...heroBtnM, background: '#fff', border: '1px solid #fff', color: '#0d3d6e', fontWeight: 700, boxShadow: '0 3px 10px rgba(5,20,40,0.22)' }}>
                   <Zap size={15} /> Optimiser l'équipe
                 </button>
               )}
-              {onglet === 'evenements' && (
+              {ongletActif === 'evenements' && (
                 <button onClick={() => setNouvelEvenementSignal(n => n + 1)}
                   style={{ ...heroBtnM, background: 'rgba(255,255,255,0.16)', border: '1px solid rgba(255,255,255,0.3)', fontWeight: 700 }}>
                   <Plus size={15} /> Nouvel événement
@@ -122,34 +131,34 @@ function PlanningPage({ chantiers, setChantiers, clients, devis, factures, param
             <span style={{ fontFamily: "'Inter', sans-serif", fontWeight: 800, fontSize: 15, letterSpacing: '0.06em', color: '#fff' }}>CYNA</span>
             <span style={heroMono(10, 0.55)}>· PLANNING / 07 · {contexteLabel}</span>
             <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-              {onglet === 'calendrier' && (
+              {ongletActif === 'calendrier' && (
                 <>
                   <button onClick={moisPrecedent} style={heroBtn} title="Mois précédent">←</button>
                   <button onClick={aujourdhuiCalendrier} style={heroBtn}>Aujourd'hui</button>
                   <button onClick={moisSuivant} style={heroBtn} title="Mois suivant">→</button>
                 </>
               )}
-              {onglet === 'gantt' && (
+              {ongletActif === 'gantt' && (
                 <>
                   <button onClick={() => setGanttOffset(v => v - 4)} style={heroBtn} title="−4 semaines">←</button>
                   <button onClick={() => setGanttOffset(0)} style={heroBtn}>Aujourd'hui</button>
                   <button onClick={() => setGanttOffset(v => v + 4)} style={heroBtn} title="+4 semaines">→</button>
                 </>
               )}
-              {onglet === 'evenements' && (
+              {ongletActif === 'evenements' && (
                 <>
                   <button onClick={() => setViewDate(new Date(viewDate.getFullYear(), viewDate.getMonth() - 1, 1))} style={heroBtn} title="Mois précédent">←</button>
                   <button onClick={aujourdhuiEvenements} style={heroBtn}>Aujourd'hui</button>
                   <button onClick={() => setViewDate(new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 1))} style={heroBtn} title="Mois suivant">→</button>
                 </>
               )}
-              {(onglet === 'calendrier' || onglet === 'gantt') && (
+              {(ongletActif === 'calendrier' || ongletActif === 'gantt') && (
                 <button onClick={() => setShowOptimiseur(v => !v)}
                   style={{ ...heroBtn, background: showOptimiseur ? 'rgba(255,255,255,0.22)' : 'rgba(255,255,255,0.16)', border: '1px solid rgba(255,255,255,0.3)', fontWeight: 700 }}>
                   <Zap size={14} /> Optimiser l'équipe
                 </button>
               )}
-              {onglet === 'evenements' && (
+              {ongletActif === 'evenements' && (
                 <button onClick={() => setNouvelEvenementSignal(n => n + 1)}
                   style={{ ...heroBtn, background: 'rgba(255,255,255,0.16)', border: '1px solid rgba(255,255,255,0.3)', fontWeight: 700 }}>
                   <Plus size={14} /> Nouvel événement
@@ -167,7 +176,7 @@ function PlanningPage({ chantiers, setChantiers, clients, devis, factures, param
         {/* Ligne 3 — onglets collés au bas du hero */}
         <div style={{ display: 'flex', gap: 2, marginTop: 22, overflowX: 'auto', scrollbarWidth: 'none' }}>
           {onglets.map(o => {
-            const actif = onglet === o.id;
+            const actif = ongletActif === o.id;
             return (
               <button key={o.id} onClick={() => setOnglet(o.id)} style={{
                 background: 'transparent', border: 'none',
@@ -182,17 +191,17 @@ function PlanningPage({ chantiers, setChantiers, clients, devis, factures, param
       </div>
 
       {/* ── Contenu — Planning porte les vues Calendrier et Gantt (logique inchangée) ── */}
-      {(onglet === 'calendrier' || onglet === 'gantt') && (
+      {(ongletActif === 'calendrier' || ongletActif === 'gantt') && (
         <Planning
           chantiers={chantiers} setChantiers={setChantiers} clients={clients} parametres={parametres} naviguer={naviguer}
-          vue={onglet}
+          vue={ongletActif}
           moisActuel={moisActuel} anneeActuelle={anneeActuelle}
           onMoisPrecedent={moisPrecedent} onMoisSuivant={moisSuivant}
           ganttOffset={ganttOffset}
           showOptimiseur={showOptimiseur} setShowOptimiseur={setShowOptimiseur}
         />
       )}
-      {onglet === 'evenements' && (
+      {ongletActif === 'evenements' && (
         <Calendrier
           chantiers={chantiers} clients={clients} devis={devis} factures={factures}
           viewDate={viewDate} setViewDate={setViewDate}

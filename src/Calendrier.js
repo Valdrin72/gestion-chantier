@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { Clock, Calendar, X } from 'lucide-react';
 import { DS } from './ds';
 import { V1, mono, carteV1, heroFond, heroMono } from './design/v1';
+import useIsMobile from './hooks/useIsMobile';
 
 // Catégories — palette v1 : Réunion bleu, Livraison vert, RDV Client ambre, Autre gris.
 const CATEGORIES = [
@@ -19,6 +20,7 @@ export default function Calendrier({
   // sans elles le composant garde son état interne (rendu standalone inchangé).
   viewDate: viewDateProp, nouvelEvenementSignal = 0,
 }) {
+  const isMobile = useIsMobile();
   const today = new Date();
   // Le mois affiché est piloté par le hero de PlanningPage ; fallback interne : mois courant.
   const [viewDateInterne] = useState(() => new Date(today.getFullYear(), today.getMonth(), 1));
@@ -155,7 +157,7 @@ export default function Calendrier({
   return (
     <div>
       {/* La navigation mensuelle et « Nouvel événement » vivent dans le hero de PlanningPage. */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 3fr) minmax(240px, 1fr)', gap: 20, alignItems: 'start' }}>
+      <div data-testid="calendrier-layout" style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'minmax(0, 3fr) minmax(240px, 1fr)', gap: isMobile ? 12 : 20, alignItems: 'start' }}>
 
         {/* Calendar grid */}
         <div style={{ ...carteV1, padding: 0, overflow: 'hidden' }}>

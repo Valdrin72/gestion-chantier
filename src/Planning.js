@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback } from 'react';
-import { Zap, Calendar } from 'lucide-react';
+import { Zap, Calendar, Flag } from 'lucide-react';
 import { calculerDateFinOuvrables, getAlerte } from './donnees';
 import { joursReelsChantier } from './calculs/pointagesHelper';
 import { useApp } from './context/AppContext';
@@ -218,6 +218,10 @@ export default function Planning({
 }) {
   const { pointages = [] } = useApp();
   const isMobile = useIsMobile();
+  // Tuile-icône d'état vide (mobile) — même gabarit que Chantiers/Dashboard.
+  const tuileVide = { width: 44, height: 44, borderRadius: 13, background: '#F1F5F9', border: '1px solid #E2E8F0', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94A3B8', flexShrink: 0 };
+  // Petite tuile-icône d'en-tête de carte (mobile) — 26px, comme les cartes du Dashboard.
+  const tuileEntete = { width: 26, height: 26, borderRadius: 8, background: '#E8F0F9', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#1557A0', flexShrink: 0 };
   const [moisInterne, setMoisInterne] = useState(new Date().getMonth());
   const [anneeInterne, setAnneeInterne] = useState(new Date().getFullYear());
   const [modal, setModal] = useState(null); // null ou { chantier, form }
@@ -580,11 +584,19 @@ export default function Planning({
 
           {/* Chantiers du mois */}
           {chantiersDuMois.length === 0 ? (
+            isMobile ? (
+              <div style={{ ...carteV1, borderRadius: 16, display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: 10, padding: '26px 24px 28px' }}>
+                <div style={tuileVide}><Calendar size={21} /></div>
+                <div style={{ fontWeight: 700, fontSize: 15, color: '#0D1B2E' }}>Aucun chantier ce mois</div>
+                <div style={{ fontSize: 12.5, color: V1.texteMuted, maxWidth: 236 }}>Changez de mois ou planifiez un chantier</div>
+              </div>
+            ) : (
             <div style={{ ...carteV1, textAlign: 'center', padding: '48px 24px', color: V1.texteMuted }}>
               <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 12 }}><Calendar size={32} color={V1.texteMuted} /></div>
               <div style={{ fontWeight: 600, fontSize: 15 }}>Aucun chantier ce mois</div>
               <div style={{ fontSize: 13, marginTop: 6 }}>Changez de mois ou planifiez un chantier</div>
             </div>
+            )
           ) : (
             chantiersDuMois.map(c => {
               const joursRealises_ = joursReelsChantier(pointages, c.id);
@@ -680,15 +692,17 @@ export default function Planning({
               {cellules.map((jour, i) => {
                 const busyChantiers = jour ? (chantiersParJour[jour] || []) : [];
                 const isToday = estAujourdhui(jour);
+                const col = i % 7;                                   // 0=L … 5=S, 6=D
+                const isWeekend = jour && (col === 5 || col === 6);  // week-ends grisés (mobile)
                 return (
                   <div key={i} style={{
                     aspectRatio: '1', display: 'flex', flexDirection: 'column', alignItems: 'center',
-                    justifyContent: 'center', gap: 2, borderRadius: 6, padding: '2px 1px',
+                    justifyContent: 'center', gap: 2, borderRadius: isMobile ? 11 : 6, padding: '2px 1px',
                     background: isToday ? V1.marine : 'transparent',
                   }}>
                     <span style={{
                       fontSize: 11, fontWeight: isToday ? 700 : 400, lineHeight: 1,
-                      color: isToday ? '#fff' : jour ? 'var(--text-primary)' : 'transparent',
+                      color: isToday ? '#fff' : jour ? (isMobile && isWeekend ? '#94A3B8' : 'var(--text-primary)') : 'transparent',
                     }}>{jour}</span>
                     {busyChantiers.length > 0 && !isToday && (
                       <div style={{ display: 'flex', gap: 2, flexWrap: 'wrap', justifyContent: 'center' }}>
@@ -720,10 +734,24 @@ export default function Planning({
           </div>
 
           {/* Prochains jalons */}
-          <div style={carteV1}>
-            <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-primary)', marginBottom: 14 }}>Prochains jalons</div>
+          <div style={{ ...carteV1, ...(isMobile ? { borderRadius: 16 } : {}) }}>
+            {isMobile ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, paddingBottom: 12, marginBottom: 12, borderBottom: '1px solid #EEF2F7' }}>
+                <div style={tuileEntete}><Flag size={14} /></div>
+                <div style={{ flex: 1, minWidth: 0, fontWeight: 700, fontSize: 15, color: '#0D1B2E' }}>Prochains jalons</div>
+              </div>
+            ) : (
+              <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-primary)', marginBottom: 14 }}>Prochains jalons</div>
+            )}
             {prochainsJalons.length === 0 ? (
-              <div style={{ color: 'var(--text-muted)', fontSize: 13, textAlign: 'center', padding: '16px 0' }}>Aucun jalon dans les 60 prochains jours</div>
+              isMobile ? (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: 10, padding: '8px 8px 12px' }}>
+                  <div style={tuileVide}><Flag size={21} /></div>
+                  <div style={{ fontWeight: 700, fontSize: 14, color: '#475569' }}>Aucun jalon dans les 60 prochains jours</div>
+                </div>
+              ) : (
+                <div style={{ color: 'var(--text-muted)', fontSize: 13, textAlign: 'center', padding: '16px 0' }}>Aucun jalon dans les 60 prochains jours</div>
+              )
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {prochainsJalons.map((ev, i) => {

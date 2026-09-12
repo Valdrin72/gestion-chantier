@@ -10,6 +10,21 @@ import {
   V1, FONT_UI, carteV1, fmtCH, mono, badgeV1, pastille, barreProgression,
   heroFond, heroMono, scoreCouleur, scoreLibelle, RYTHME,
 } from '../../design/v1';
+import useMasquageAuDefilement from '../../hooks/useMasquageAuDefilement';
+
+/**
+ * Fond hero MOBILE — 3 tons + trame technique + halo (cohérent avec Chantiers #179).
+ * Combine, en un seul background : halo radial coin haut-droit, quadrillage 44px,
+ * dégradé 168° 3 tons. Utilisé UNIQUEMENT en mode compact (mobile) ; le PC garde heroFond.
+ */
+const heroFondMobile = {
+  background: `
+    radial-gradient(220px 220px at 100% -50px, rgba(255,255,255,0.10), transparent 70%),
+    repeating-linear-gradient(0deg, rgba(255,255,255,0.035) 0 1px, transparent 1px 44px),
+    repeating-linear-gradient(90deg, rgba(255,255,255,0.035) 0 1px, transparent 1px 44px),
+    linear-gradient(168deg, #0B2E55 0%, #0d3d6e 46%, #15528F 100%)`,
+  color: '#fff',
+};
 
 // ── Petits éléments ─────────────────────────────────────────────────────────
 
@@ -36,15 +51,27 @@ export function Sparkline({ points = [], couleur = V1.bleu, largeur = 72, hauteu
 }
 
 /** Anneau de score santé (hero). */
-export function AnneauScore({ score, taille = 132 }) {
+export function AnneauScore({ score, taille = 132, degrade = false }) {
   const c = scoreCouleur(score);
   const r = (taille - 16) / 2, circ = 2 * Math.PI * r;
   const pct = score === null ? 0 : Math.max(0, Math.min(100, score));
+  // Dégradé mobile : fondu de la MÊME teinte (sombre → vif) → l'anneau n'est plus « plat ».
+  // PC (degrade=false) conserve la couleur unie d'aujourd'hui.
+  const gid = React.useId();
+  const strokeArc = degrade ? `url(#${gid})` : c;
   return (
     <div style={{ position: 'relative', width: taille, height: taille, flexShrink: 0 }}>
       <svg width={taille} height={taille} style={{ transform: 'rotate(-90deg)' }}>
+        {degrade && (
+          <defs>
+            <linearGradient id={gid} x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor={c} stopOpacity="0.35" />
+              <stop offset="100%" stopColor={c} stopOpacity="1" />
+            </linearGradient>
+          </defs>
+        )}
         <circle cx={taille / 2} cy={taille / 2} r={r} fill="none" stroke="rgba(255,255,255,0.14)" strokeWidth="7" />
-        <circle cx={taille / 2} cy={taille / 2} r={r} fill="none" stroke={c} strokeWidth="7" strokeLinecap="round"
+        <circle cx={taille / 2} cy={taille / 2} r={r} fill="none" stroke={strokeArc} strokeWidth="7" strokeLinecap="round"
           strokeDasharray={`${(pct / 100) * circ} ${circ}`} style={{ filter: `drop-shadow(0 0 8px ${c})` }} />
       </svg>
       <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
@@ -64,33 +91,61 @@ export function AnneauScore({ score, taille = 132 }) {
 export function HeroDirection({ prenom = 'Valdrin', dateLabel, periodeGlobale, setPeriodeGlobale = () => {},
   nbActifs = 0, nbCollaborateurs = 0, score = null, actions = [], ongletsRdv = null, onCloche = () => {}, onMenu = null, compact = false }) {
   const PERIODES = [{ id: 'semaine', label: 'Cette semaine' }, { id: 'mois', label: 'Ce mois' }, { id: 'annee', label: 'Cette année' }];
+  // Mobile : la barre d'outils devient FIXE et se rétracte au défilement — MÊME mécanisme
+  // que la bottom-nav (useMasquageAuDefilement partagé) pour un comportement cohérent.
+  const { cachee, reduceMotion } = useMasquageAuDefilement();
+  const btnHero = { background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.18)', borderRadius: 10, cursor: 'pointer', color: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, width: 44, height: 44, padding: 0 };
   return (
-    <div style={{ ...heroFond, borderRadius: 0, padding: compact ? '18px 18px 96px' : '30px 32px 128px', position: 'relative' }} data-testid="hero-direction">
+    <div style={{ ...(compact ? heroFondMobile : heroFond), borderRadius: 0, padding: compact ? '68px 16px 96px' : '30px 32px 128px', position: 'relative', overflow: compact ? 'hidden' : undefined }} data-testid="hero-direction">
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: compact ? 14 : 34, flexWrap: 'wrap' }}>
-        {onMenu && (
-          <button onClick={onMenu} aria-label="Menu" style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.18)', borderRadius: 8, padding: 7, cursor: 'pointer', color: '#fff', display: 'inline-flex' }}>
-            <Menu size={16} />
+      {compact ? (
+        /* ── TOPBAR MOBILE fixe + rétractable (mêmes contrôles/handlers, cibles ≥44px) ── */
+        <div data-testid="topbar-mobile" style={{
+          position: 'fixed', top: 0, left: 0, right: 0, zIndex: 45,
+          display: 'flex', alignItems: 'center', gap: 8, padding: '9px 14px calc(9px + env(safe-area-inset-top, 0px))',
+          background: 'linear-gradient(168deg,#0B2E55 0%,#0d3d6e 60%,#15528F 100%)',
+          boxShadow: '0 4px 16px rgba(11,27,46,0.28)',
+          transform: cachee ? 'translateY(-115%)' : 'translateY(0)',
+          transition: reduceMotion ? 'none' : 'transform 0.22s ease',
+        }}>
+          {onMenu && (
+            <button onClick={onMenu} aria-label="Menu" style={btnHero}><Menu size={18} /></button>
+          )}
+          <span style={{ fontFamily: FONT_UI, fontWeight: 800, fontSize: 15, letterSpacing: '0.06em', color: '#fff', flexShrink: 0 }}>CYNA</span>
+          <select value={periodeGlobale} onChange={e => setPeriodeGlobale(e.target.value)} aria-label="Période"
+            style={{ flex: 1, minWidth: 0, height: 44, background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.18)', borderRadius: 10, padding: '0 10px', color: '#fff', fontFamily: FONT_UI, fontSize: 13, cursor: 'pointer' }}>
+            {PERIODES.map(p => <option key={p.id} value={p.id} style={{ color: '#16233A' }}>{p.label}</option>)}
+          </select>
+          <span style={{ ...heroMono(10, 0.75), flexShrink: 0, whiteSpace: 'nowrap' }}>{dateLabel}</span>
+          <button onClick={onCloche} aria-label="Notifications" style={btnHero}><Bell size={16} /></button>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 34, flexWrap: 'wrap' }}>
+          {onMenu && (
+            <button onClick={onMenu} aria-label="Menu" style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.18)', borderRadius: 8, padding: 7, cursor: 'pointer', color: '#fff', display: 'inline-flex' }}>
+              <Menu size={16} />
+            </button>
+          )}
+          <span style={{ fontFamily: FONT_UI, fontWeight: 800, fontSize: 15, letterSpacing: '0.06em' }}>CYNA</span>
+          <span style={heroMono(10, 0.55)}>· TABLEAU DE BORD · DIRECTION</span>
+          <span style={{ marginLeft: 'auto', ...heroMono(10, 0.75) }}>{dateLabel}</span>
+          <button onClick={onCloche} aria-label="Notifications" style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.18)', borderRadius: 8, padding: 6, cursor: 'pointer', color: '#fff', display: 'inline-flex' }}>
+            <Bell size={13} />
           </button>
-        )}
-        <span style={{ fontFamily: FONT_UI, fontWeight: 800, fontSize: 15, letterSpacing: '0.06em' }}>CYNA</span>
-        <span style={heroMono(10, 0.55)}>· TABLEAU DE BORD · DIRECTION</span>
-        <span style={{ marginLeft: 'auto', ...heroMono(10, 0.75) }}>{dateLabel}</span>
-        <button onClick={onCloche} aria-label="Notifications" style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.18)', borderRadius: 8, padding: 6, cursor: 'pointer', color: '#fff', display: 'inline-flex' }}>
-          <Bell size={13} />
-        </button>
-        <select value={periodeGlobale} onChange={e => setPeriodeGlobale(e.target.value)} aria-label="Période"
-          style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.18)', borderRadius: 8, padding: '5px 8px', color: '#fff', fontFamily: FONT_UI, fontSize: 12, cursor: 'pointer' }}>
-          {PERIODES.map(p => <option key={p.id} value={p.id} style={{ color: '#16233A' }}>{p.label}</option>)}
-        </select>
-        {ongletsRdv}
-      </div>
+          <select value={periodeGlobale} onChange={e => setPeriodeGlobale(e.target.value)} aria-label="Période"
+            style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.18)', borderRadius: 8, padding: '5px 8px', color: '#fff', fontFamily: FONT_UI, fontSize: 12, cursor: 'pointer' }}>
+            {PERIODES.map(p => <option key={p.id} value={p.id} style={{ color: '#16233A' }}>{p.label}</option>)}
+          </select>
+          {ongletsRdv}
+        </div>
+      )}
 
       <div style={{ display: 'flex', gap: compact ? 18 : 40, alignItems: 'flex-start', flexWrap: compact ? 'wrap' : 'nowrap' }}>
         {/* Gauche : salutation */}
         <div style={{ flex: '1 1 320px', minWidth: 240 }}>
-          <div style={heroMono(11, 0.6)}>ACCUEIL / 00</div>
-          <h1 style={{ fontFamily: FONT_UI, fontWeight: 700, fontSize: compact ? 26 : 47, margin: compact ? '8px 0 8px' : '12px 0 10px', letterSpacing: '-0.02em', color: '#fff' }}>
+          {/* Fil d'Ariane « ACCUEIL / 00 » : PC seulement. Mobile → supprimé (doublon avec l'onglet Accueil actif de la bottom-nav). */}
+          {!compact && <div style={heroMono(11, 0.6)}>ACCUEIL / 00</div>}
+          <h1 style={{ fontFamily: FONT_UI, fontWeight: 700, fontSize: compact ? 26 : 47, margin: compact ? '0 0 8px' : '12px 0 10px', letterSpacing: '-0.02em', color: '#fff' }}>
             Bonjour {prenom}
           </h1>
           <div style={{ fontFamily: FONT_UI, fontSize: 14, color: 'rgba(255,255,255,0.78)' }}>
@@ -103,7 +158,7 @@ export function HeroDirection({ prenom = 'Valdrin', dateLabel, periodeGlobale, s
 
         {/* Centre-droit : anneau score */}
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-          <AnneauScore score={score} taille={compact ? 88 : 168} />
+          <AnneauScore score={score} taille={compact ? 88 : 168} degrade={compact} />
           <div style={heroMono(9, 0.65)}>SANTÉ ENTREPRISE · {scoreLibelle(score)}</div>
         </div>
 

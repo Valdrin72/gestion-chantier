@@ -2,13 +2,24 @@ import React, { useState, useMemo, useEffect, useLayoutEffect } from 'react';
 import { Clock, Menu } from 'lucide-react';
 import { fmtN, getHeuresParEmployeParDate } from './donnees';
 import { bornesPeriode } from './calculs/periode';
-import { V1, mono, carteV1, heroFond, heroMono } from './design/v1';
+import { V1, mono, carteV1, heroFond, heroMono, FONT_MONO } from './design/v1';
 import { useApp } from './context/AppContext';
 import useIsMobile from './hooks/useIsMobile';
 import ModalPointageFormulaire from './components/pointages/ModalPointageFormulaire';
 
 // Bouton translucide du hero bleu nuit (mêmes tokens que les autres pages v1).
 const heroBtn = { background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.18)', borderRadius: 8, padding: '6px 11px', cursor: 'pointer', color: '#fff', display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: 'inherit', fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap' };
+// Bouton hero MOBILE : cible tactile 44px.
+const heroBtnM = { background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.18)', borderRadius: 12, minHeight: 44, padding: '0 12px', cursor: 'pointer', color: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontFamily: 'inherit', fontSize: 13.5, fontWeight: 600, whiteSpace: 'nowrap', flexShrink: 0 };
+// Fond hero MOBILE — 3 tons + trame + halo (cohérent #179/#182/#184). PC garde heroFond.
+const heroFondMobile = {
+  background: `
+    radial-gradient(220px 220px at 100% -50px, rgba(255,255,255,0.10), transparent 70%),
+    repeating-linear-gradient(0deg, rgba(255,255,255,0.035) 0 1px, transparent 1px 44px),
+    repeating-linear-gradient(90deg, rgba(255,255,255,0.035) 0 1px, transparent 1px 44px),
+    linear-gradient(168deg, #0B2E55 0%, #0d3d6e 46%, #15528F 100%)`,
+  color: '#fff',
+};
 const PERIODES = [{ id: 'semaine', label: 'Cette semaine' }, { id: 'mois', label: 'Ce mois' }, { id: 'annee', label: 'Cette année' }];
 
 function getWeekStart(date) {
@@ -130,7 +141,7 @@ export default function Heures({ chantiers = [], parametres = {}, setChantiers }
     { label: `HEURES ${periodeLabel}`, value: `${fmtN(Math.round(totalHeures))}h`, couleur: '#8FBCE6', sub: hasSamediHeures ? 'incl. SAM' : null },
     { label: 'MOYENNE / EMPLOYÉ',      value: `${moyenneParEmploye}h`,              couleur: '#4ADE80', sub: null },
     { label: 'HEURES SUPP.',           value: `${Math.round(totalSupp)}h`,          couleur: '#F5B14A', sub: totalSupp > 0 ? `${nbSuppEmployes} employé${nbSuppEmployes > 1 ? 's' : ''}` : null },
-    { label: 'NON SAISIES',            value: `${nonSaisis}`,                       couleur: nonSaisis > 0 ? '#FF7A6B' : '#4ADE80', sub: nonSaisis > 0 ? 'relancer' : null },
+    { label: 'NON SAISIES',            value: `${nonSaisis}`,                       couleur: nonSaisis > 0 ? '#FF7A6B' : '#4ADE80', sub: nonSaisis > 0 ? 'relancer' : null, estAlerte: true, alerteActive: nonSaisis > 0 },
   ];
 
   const btnStyle = { background: 'transparent', border: `1px solid ${V1.separation}`, borderRadius: 20, padding: '7px 14px', cursor: 'pointer', fontSize: 13, fontWeight: 500, color: V1.texteMuted, fontFamily: 'inherit', transition: 'all 0.15s' };
@@ -146,51 +157,92 @@ export default function Heures({ chantiers = [], parametres = {}, setChantiers }
   return (
     <div>
       {/* ══ HERO BLEU NUIT (design v1, bord à bord, collé au sommet) ══ */}
-      <div className="page-hero-bleed" data-testid="hero-heures" style={{ ...heroFond, padding: '20px 32px 0', position: 'relative' }}>
-        {/* Ligne 1 — ☰ · CYNA · HEURES / 06 · sélecteur période + Saisir des heures */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18, flexWrap: 'wrap' }}>
-          {ouvrirMenu && (
-            <button onClick={ouvrirMenu} aria-label="Menu" style={{ ...heroBtn, padding: 7 }}><Menu size={16} /></button>
-          )}
-          <span style={{ fontFamily: "'Inter', sans-serif", fontWeight: 800, fontSize: 15, letterSpacing: '0.06em', color: '#fff' }}>CYNA</span>
-          <span style={heroMono(10, 0.55)}>· HEURES / 06 · {periodeLabel}</span>
-          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-            <select value={periodeGlobale} onChange={e => setPeriodeGlobale(e.target.value)} aria-label="Période" style={{ ...heroBtn, padding: '6px 8px' }}>
-              {PERIODES.map(p => <option key={p.id} value={p.id} style={{ color: '#16233A' }}>{p.label}</option>)}
-            </select>
-            <button onClick={() => setPointageModal({})} style={{ ...heroBtn, background: 'rgba(255,255,255,0.16)', border: '1px solid rgba(255,255,255,0.3)', fontWeight: 700 }}>
-              <Clock size={14} strokeWidth={2.5} /> Saisir des heures
-            </button>
+      <div className="page-hero-bleed" data-testid="hero-heures" style={{ ...(isMobile ? heroFondMobile : heroFond), padding: isMobile ? '16px 16px 0' : '20px 32px 0', position: 'relative', overflow: isMobile ? 'hidden' : undefined }}>
+        {/* ── EN-TÊTE ────────────────────────────────────────────── */}
+        {isMobile ? (
+          <>
+            {/* Mobile — ligne marque : ☰ · CYNA · HEURES (doublon /06 supprimé) */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+              {ouvrirMenu && (
+                <button onClick={ouvrirMenu} aria-label="Menu" style={{ ...heroBtn, borderRadius: 12, width: 44, height: 44, padding: 0, justifyContent: 'center' }}><Menu size={18} /></button>
+              )}
+              <span style={{ fontFamily: "'Inter', sans-serif", fontWeight: 800, fontSize: 15, letterSpacing: '0.06em', color: '#fff', flexShrink: 0 }}>CYNA</span>
+              <span style={{ ...heroMono(10, 0.6), whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>· HEURES</span>
+            </div>
+            {/* Mobile — barre d'outils 44px : période + Saisir des heures sur une ligne */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+              <select value={periodeGlobale} onChange={e => setPeriodeGlobale(e.target.value)} aria-label="Période" style={{ ...heroBtnM, flex: '0 1 128px', minWidth: 0 }}>
+                {PERIODES.map(p => <option key={p.id} value={p.id} style={{ color: '#16233A' }}>{p.label}</option>)}
+              </select>
+              <button onClick={() => setPointageModal({})} style={{ ...heroBtnM, flex: '1 1 auto', minWidth: 0, background: 'rgba(255,255,255,0.16)', border: '1px solid rgba(255,255,255,0.3)', fontWeight: 700, overflow: 'hidden' }}>
+                <Clock size={15} strokeWidth={2.5} style={{ flexShrink: 0 }} /> Saisir des heures
+              </button>
+            </div>
+          </>
+        ) : (
+          /* Ligne 1 (desktop) — ☰ · CYNA · HEURES / 06 · sélecteur période + Saisir des heures */
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18, flexWrap: 'wrap' }}>
+            {ouvrirMenu && (
+              <button onClick={ouvrirMenu} aria-label="Menu" style={{ ...heroBtn, padding: 7 }}><Menu size={16} /></button>
+            )}
+            <span style={{ fontFamily: "'Inter', sans-serif", fontWeight: 800, fontSize: 15, letterSpacing: '0.06em', color: '#fff' }}>CYNA</span>
+            <span style={heroMono(10, 0.55)}>· HEURES / 06 · {periodeLabel}</span>
+            <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <select value={periodeGlobale} onChange={e => setPeriodeGlobale(e.target.value)} aria-label="Période" style={{ ...heroBtn, padding: '6px 8px' }}>
+                {PERIODES.map(p => <option key={p.id} value={p.id} style={{ color: '#16233A' }}>{p.label}</option>)}
+              </select>
+              <button onClick={() => setPointageModal({})} style={{ ...heroBtn, background: 'rgba(255,255,255,0.16)', border: '1px solid rgba(255,255,255,0.3)', fontWeight: 700 }}>
+                <Clock size={14} strokeWidth={2.5} /> Saisir des heures
+              </button>
+            </div>
           </div>
-        </div>
+        )}
 
-        {/* Ligne 2 — titre + ligne mono (semaine + collaborateurs) */}
-        <div style={heroMono(11, 0.6)}>HEURES / 06</div>
+        {/* Ligne 2 — fil d'Ariane (mobile : « HEURES » sans /06 ; PC : « HEURES / 06 ») + titre + ligne mono */}
+        <div style={heroMono(11, 0.6)}>{isMobile ? 'HEURES' : 'HEURES / 06'}</div>
         <h1 style={{ fontFamily: "'Inter', sans-serif", fontWeight: 700, fontSize: 34, margin: '8px 0 8px', letterSpacing: '-0.02em', color: '#fff' }}>Heures</h1>
         <div style={heroMono(11, 0.7)}>{weekLabelMono} · {actifs.length} COLLABORATEUR{actifs.length > 1 ? 'S' : ''}</div>
 
         {/* Ligne 3 — les 4 chiffres clés */}
         <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(4, 1fr)', gap: 12, marginTop: 20, paddingBottom: 24 }} data-testid="hero-chiffres">
-          {heroChiffres.map(t => (
+          {heroChiffres.map(t => {
+            // Mobile : valeur en BLANC, sauf NON SAISIES en rouge quand > 0 (1 seule couleur = 1 vraie alerte).
+            const valColor = isMobile ? (t.estAlerte && t.alerteActive ? '#FF7A6B' : '#fff') : t.couleur;
+            return (
             <div key={t.label} data-testid={`hero-kpi-${t.label.toLowerCase().replace(/[^a-zà-ÿ]+/g, '-').replace(/^-|-$/g, '')}`}
-              style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 12, padding: '12px 14px' }}>
+              style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 12, padding: '12px 14px', ...(isMobile ? { minHeight: 82, display: 'flex', flexDirection: 'column' } : {}) }}>
               <div style={heroMono(9, 0.6)}>{t.label}</div>
-              <div style={{ ...mono(22, t.couleur, 500), lineHeight: 1.1, marginTop: 4 }}>{t.value}</div>
-              {t.sub && <div style={heroMono(9, 0.5)}>{t.sub}</div>}
+              <div style={{ ...mono(22, valColor, 500), lineHeight: 1.1, marginTop: isMobile ? 'auto' : 4 }}>{t.value}</div>
+              {t.sub && (
+                isMobile && t.estAlerte ? (
+                  <span style={{ alignSelf: 'flex-start', marginTop: 6, display: 'inline-flex', alignItems: 'center', background: 'rgba(255,122,107,0.18)', border: '1px solid rgba(255,122,107,0.45)', color: '#FF7A6B', borderRadius: 999, padding: '2px 9px', fontFamily: FONT_MONO, fontSize: 9, fontWeight: 700, letterSpacing: '0.04em' }}>{t.sub}</span>
+                ) : (
+                  <div style={heroMono(9, 0.5)}>{t.sub}</div>
+                )
+              )}
             </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
       {/* Timesheet table */}
-      <div style={carteV1}>
+      <div style={{ ...carteV1, ...(isMobile ? { marginBottom: 32 } : {}) }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, gap: 12, flexWrap: 'wrap' }}>
           <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 12, fontWeight: 700, color: V1.bleu, textTransform: 'uppercase', letterSpacing: '0.14em' }}>Saisie hebdomadaire</div>
+          {isMobile ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%' }}>
+              <button onClick={prevWeek} aria-label="Semaine précédente" style={{ ...btnStyle, width: 44, minHeight: 44, padding: 0, borderRadius: 12, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>←</button>
+              <button onClick={thisWeek} style={{ ...btnStyle, flex: 1, minWidth: 0, minHeight: 44, borderRadius: 12, background: isCurrentWeek ? V1.bleu : 'transparent', color: isCurrentWeek ? '#fff' : V1.texteMuted, border: isCurrentWeek ? `1px solid ${V1.bleu}` : `1px solid ${V1.separation}` }}>Cette semaine</button>
+              <button onClick={nextWeek} aria-label="Semaine suivante" style={{ ...btnStyle, width: 44, minHeight: 44, padding: 0, borderRadius: 12, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>→</button>
+            </div>
+          ) : (
           <div style={{ display: 'flex', gap: 8 }}>
             <button onClick={prevWeek} style={btnStyle}>← Sem. préc.</button>
             <button onClick={thisWeek} style={{ ...btnStyle, background: isCurrentWeek ? V1.bleu : 'transparent', color: isCurrentWeek ? '#fff' : V1.texteMuted, border: isCurrentWeek ? `1px solid ${V1.bleu}` : `1px solid ${V1.separation}` }}>Cette semaine</button>
             <button onClick={nextWeek} style={btnStyle}>Sem. suiv. →</button>
           </div>
+          )}
         </div>
 
         {employes.length === 0 ? (
@@ -246,8 +298,10 @@ export default function Heures({ chantiers = [], parametres = {}, setChantiers }
                             title={estFutur ? 'Date future — saisie impossible' : isSamFuturAutorise ? 'Saisir heures du samedi (confirmation requise)' : h > 0 ? `Modifier — ${h}h` : 'Saisir heures'}
                           >
                             {h > 0
-                              ? <span style={{ ...cs, ...mono(13, cs.color, 700), borderRadius: 6, padding: '3px 8px', display: 'inline-block' }}>{h}h</span>
-                              : <span style={{ color: V1.texteMuted, fontSize: 14, opacity: 0.4 }}>{estFutur ? '—' : '+'}</span>
+                              ? <span style={{ ...cs, ...mono(13, cs.color, 700), borderRadius: 6, padding: '3px 8px', display: 'inline-block', ...(isMobile ? { minWidth: 44, minHeight: 44, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', boxSizing: 'border-box' } : {}) }}>{h}h</span>
+                              : (isMobile
+                                  ? <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: 44, minHeight: 44, borderRadius: 10, color: estFutur ? V1.texteMuted : V1.bleu, fontSize: 22, fontWeight: 600, opacity: estFutur ? 0.35 : 0.7 }}>{estFutur ? '—' : '+'}</span>
+                                  : <span style={{ color: V1.texteMuted, fontSize: 14, opacity: 0.4 }}>{estFutur ? '—' : '+'}</span>)
                             }
                           </td>
                         );

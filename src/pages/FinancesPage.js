@@ -10,13 +10,32 @@ import { estDansPeriode, caFactureDansPeriode, caPayeDansPeriode, periodeLabel }
 import { useApp } from '../context/AppContext';
 import useIsMobile from '../hooks/useIsMobile';
 import { prochainRappel } from '../relances';
-import { V1, mono, carteV1, heroFond, heroMono, RYTHME } from '../design/v1';
+import { V1, mono, carteV1, heroFond, heroMono, RYTHME, FONT_MONO } from '../design/v1';
 
 const fmt  = (n) => (parseFloat(n) || 0).toLocaleString('fr-CH', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 const fmtK = (n) => { const v = parseFloat(n) || 0; return v >= 1000 ? `${(v/1000).toFixed(1)}k` : String(Math.round(v)); };
 
 // Bouton translucide du hero bleu nuit (mêmes tokens que les autres pages v1).
 const heroBtn = { background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.18)', borderRadius: 8, padding: '6px 11px', cursor: 'pointer', color: '#fff', display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: 'inherit', fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap' };
+// Bouton hero MOBILE : cible tactile 44px.
+const heroBtnM = { background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.18)', borderRadius: 12, minHeight: 44, padding: '0 12px', cursor: 'pointer', color: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontFamily: 'inherit', fontSize: 13.5, fontWeight: 600, whiteSpace: 'nowrap', flexShrink: 0 };
+// Fond hero MOBILE — 3 tons + trame + halo (cohérent #179/#182/#184/#186). PC garde heroFond.
+const heroFondMobile = {
+  background: `
+    radial-gradient(220px 220px at 100% -50px, rgba(255,255,255,0.10), transparent 70%),
+    repeating-linear-gradient(0deg, rgba(255,255,255,0.035) 0 1px, transparent 1px 44px),
+    repeating-linear-gradient(90deg, rgba(255,255,255,0.035) 0 1px, transparent 1px 44px),
+    linear-gradient(168deg, #0B2E55 0%, #0d3d6e 46%, #15528F 100%)`,
+  color: '#fff',
+};
+// Carte blanche mobile (fond blanc, rayon 16, ombre 2 niveaux) — remplace le gris-sur-gris.
+const carteBlancheM = { background: '#fff', border: '1px solid #E2E8F0', borderRadius: 16, boxShadow: '0 1px 2px rgba(13,27,46,0.04), 0 2px 6px rgba(13,27,46,0.05)', overflow: 'hidden' };
+// Tuile-icône d'état vide (mobile) — 44px, gabarit unique #179/#182/#184/#186.
+const tuileVideM = { width: 44, height: 44, borderRadius: 13, background: '#F1F5F9', border: '1px solid #E2E8F0', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94A3B8', flexShrink: 0 };
+// Tuile-icône d'en-tête de carte (mobile) — 26px.
+const tuileEnteteM = { width: 26, height: 26, borderRadius: 8, background: '#E8F0F9', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#1557A0', flexShrink: 0 };
+// Badge de comptage pilule (mobile).
+const badgeCompteM = { flexShrink: 0, display: 'inline-flex', alignItems: 'center', borderRadius: 999, padding: '5px 10px', background: '#F1F5F9', boxShadow: 'inset 0 0 0 1px #E2E8F0', fontFamily: FONT_MONO, fontSize: 10, fontWeight: 700, letterSpacing: '0.04em', color: '#475569', whiteSpace: 'nowrap' };
 // Solde restant d'une facture (source unique : montantTTC − Σ paiements). Lecture seule.
 const soldeRestantFacture = (f) => {
   const total = parseFloat(f.montantTTC) || parseFloat(f.montantHT) || 0;
@@ -215,7 +234,9 @@ function Tresorerie({ factures = [], chantiers = [], clients = [], devis = [], p
           { label: 'FACTURABLE MAINTENANT', val: `CHF ${fmt(data.totalAFacturer)}`, couleur: V1.ok, sub: `${data.aFacturer.length} chantier${data.aFacturer.length !== 1 ? 's' : ''} — selon avancement` },
           { label: 'MARGE MOYENNE', val: marge.pct === null ? '—' : `${Math.round(marge.pct)}%`, couleur: V1.bleu, sub: marge.nbAnalyses > 0 ? `sur ${marge.nbAnalyses} chantier${marge.nbAnalyses > 1 ? 's' : ''} avec coûts saisis` : 'Aucun chantier avec coûts saisis' },
         ].map(k => (
-          <div key={k.label} style={{ ...carteV1, borderTop: `3px solid ${k.couleur}` }}>
+          <div key={k.label} style={{ ...carteV1, ...(isMobile ? { borderTop: `1px solid ${V1.separation}`, overflow: 'hidden', position: 'relative', paddingTop: 16 } : { borderTop: `3px solid ${k.couleur}` }) }}>
+            {/* Mobile — liseré 3px INTÉGRÉ au rayon (barre en absolu, clippée par overflow:hidden) */}
+            {isMobile && <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: k.couleur }} />}
             <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: V1.texteMuted, marginBottom: 8 }}>{k.label}</div>
             <div style={{ ...mono(22, k.couleur, 600), lineHeight: 1.1 }}>{k.val}</div>
             <div style={{ fontSize: 11, color: V1.texteMuted, marginTop: 6, lineHeight: 1.35 }}>{k.sub}</div>
@@ -224,9 +245,9 @@ function Tresorerie({ factures = [], chantiers = [], clients = [], devis = [], p
       </div>
 
       {/* ── Timeline 8 semaines ── */}
-      <div style={{ background: 'var(--surface-glass)', border: '1px solid var(--border-glass)', borderRadius: 16, padding: '22px 24px', marginBottom: 24 }}>
+      <div style={isMobile ? { ...carteBlancheM, padding: '16px 16px', marginBottom: 24 } : { background: 'var(--surface-glass)', border: '1px solid var(--border-glass)', borderRadius: 16, padding: '22px 24px', marginBottom: 24 }}>
         <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 8 }}>
-          <Calendar size={15} style={{ color: '#0d3d6e' }} />
+          {isMobile ? (<span style={tuileEnteteM}><Calendar size={15} /></span>) : (<Calendar size={15} style={{ color: '#0d3d6e' }} />)}
           Encaissements prévus — 8 semaines
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', height: 100 }}>
@@ -249,20 +270,35 @@ function Tresorerie({ factures = [], chantiers = [], clients = [], devis = [], p
           })}
         </div>
         {data.totalAEncaisser === 0 && (
-          <div style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: 13, padding: '20px 0' }}>Aucune facture impayée</div>
+          isMobile ? (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, padding: '16px 0 4px', textAlign: 'center' }}>
+              <span style={tuileVideM}><Calendar size={20} /></span>
+              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>Aucune facture impayée</div>
+            </div>
+          ) : (
+            <div style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: 13, padding: '20px 0' }}>Aucune facture impayée</div>
+          )
         )}
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 20 }}>
         {/* ── Factures à encaisser ── */}
-        <div style={{ background: 'var(--surface-glass)', border: '1px solid var(--border-glass)', borderRadius: 16, padding: '20px 22px' }}>
+        <div style={isMobile ? { ...carteBlancheM, padding: '16px 16px' } : { background: 'var(--surface-glass)', border: '1px solid var(--border-glass)', borderRadius: 16, padding: '20px 22px' }}>
           <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
-            <CreditCard size={14} style={{ color: '#f59e0b' }} />
+            {isMobile ? (<span style={tuileEnteteM}><CreditCard size={15} /></span>) : (<CreditCard size={14} style={{ color: '#f59e0b' }} />)}
             Factures à encaisser
-            <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--text-muted)', fontWeight: 500 }}>{data.impayees.length} facture{data.impayees.length !== 1 ? 's' : ''}</span>
+            <span style={isMobile ? { ...badgeCompteM, marginLeft: 'auto' } : { marginLeft: 'auto', fontSize: 11, color: 'var(--text-muted)', fontWeight: 500 }}>{data.impayees.length} facture{data.impayees.length !== 1 ? 's' : ''}</span>
           </div>
           {data.impayees.length === 0 ? (
-            <div style={{ color: 'var(--text-muted)', fontSize: 13, textAlign: 'center', padding: '20px 0' }}>Aucune facture en attente</div>
+            isMobile ? (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, padding: '20px 0', textAlign: 'center' }}>
+                <span style={tuileVideM}><CreditCard size={20} /></span>
+                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>Aucune facture en attente</div>
+                <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Tout est encaissé</div>
+              </div>
+            ) : (
+              <div style={{ color: 'var(--text-muted)', fontSize: 13, textAlign: 'center', padding: '20px 0' }}>Aucune facture en attente</div>
+            )
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 380, overflowY: 'auto' }}>
               {data.impayees.map(f => {
@@ -291,14 +327,22 @@ function Tresorerie({ factures = [], chantiers = [], clients = [], devis = [], p
         </div>
 
         {/* ── Chantiers à facturer ── */}
-        <div style={{ background: 'var(--surface-glass)', border: '1px solid var(--border-glass)', borderRadius: 16, padding: '20px 22px' }}>
+        <div style={isMobile ? { ...carteBlancheM, padding: '16px 16px' } : { background: 'var(--surface-glass)', border: '1px solid var(--border-glass)', borderRadius: 16, padding: '20px 22px' }}>
           <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
-            <TrendingUp size={14} style={{ color: '#10b981' }} />
+            {isMobile ? (<span style={tuileEnteteM}><TrendingUp size={15} /></span>) : (<TrendingUp size={14} style={{ color: '#10b981' }} />)}
             Chantiers à facturer
-            <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--text-muted)', fontWeight: 500 }}>{data.aFacturer.length} chantier{data.aFacturer.length !== 1 ? 's' : ''}</span>
+            <span style={isMobile ? { ...badgeCompteM, marginLeft: 'auto' } : { marginLeft: 'auto', fontSize: 11, color: 'var(--text-muted)', fontWeight: 500 }}>{data.aFacturer.length} chantier{data.aFacturer.length !== 1 ? 's' : ''}</span>
           </div>
           {data.aFacturer.length === 0 ? (
-            <div style={{ color: 'var(--text-muted)', fontSize: 13, textAlign: 'center', padding: '20px 0' }}>Tous les chantiers sont à jour</div>
+            isMobile ? (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, padding: '20px 0', textAlign: 'center' }}>
+                <span style={tuileVideM}><TrendingUp size={20} /></span>
+                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>Tous les chantiers sont à jour</div>
+                <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Rien à facturer pour l'instant</div>
+              </div>
+            ) : (
+              <div style={{ color: 'var(--text-muted)', fontSize: 13, textAlign: 'center', padding: '20px 0' }}>Tous les chantiers sont à jour</div>
+            )
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 380, overflowY: 'auto' }}>
               {data.aFacturer.map(c => (
@@ -636,13 +680,13 @@ export default function Finances({
         { label: 'À RELANCER',      val: String(relancesKpis.nbARelancer),           couleur: '#F5B14A' },
         { label: 'MONTANT IMPAYÉ',  val: `CHF ${fmt(relancesKpis.montantImpaye)}`,    couleur: '#FF7A6B' },
         { label: '1ER RAPPEL',      val: String(relancesKpis.nb1erRappel),           couleur: '#8FBCE6' },
-        { label: 'MISE EN DEMEURE', val: String(relancesKpis.nbMiseEnDemeure),       couleur: '#FF7A6B' },
+        { label: 'MISE EN DEMEURE', val: String(relancesKpis.nbMiseEnDemeure),       couleur: '#FF7A6B', estAlerte: true, alerteActive: relancesKpis.nbMiseEnDemeure > 0 },
       ]
     : [
         { label: 'FACTURÉ TTC',   val: `CHF ${fmt(kpis.totalFacture)}`, couleur: '#8FBCE6' },
         { label: 'PAYÉ TTC',      val: `CHF ${fmt(kpis.totalPaye)}`,    couleur: '#4ADE80' },
         { label: 'EN ATTENTE · À CE JOUR', val: `CHF ${fmt(kpis.enAttente)}`, couleur: '#F5B14A' },
-        { label: 'EN RETARD · À CE JOUR',  val: `CHF ${fmt(kpis.enRetard)}`,  couleur: '#FF7A6B' },
+        { label: 'EN RETARD · À CE JOUR',  val: `CHF ${fmt(kpis.enRetard)}`,  couleur: '#FF7A6B', estAlerte: true, alerteActive: kpis.enRetard > 0 },
       ];
 
   const PERIODES = [{ id: 'semaine', label: 'Cette semaine' }, { id: 'mois', label: 'Ce mois' }, { id: 'annee', label: 'Cette année' }];
@@ -656,49 +700,81 @@ export default function Finances({
     <div>
       {/* ══ HERO BLEU NUIT (design v1, bord à bord, collé au sommet) ══ */}
       <div className="page-hero-bleed" data-testid="hero-finances"
-        style={{ ...heroFond, padding: '20px 32px 0', position: 'relative' }}>
+        style={{ ...(isMobile ? heroFondMobile : heroFond), padding: isMobile ? '16px 16px 0' : '20px 32px 0', position: 'relative', overflow: isMobile ? 'hidden' : undefined }}>
 
-        {/* Ligne 1 — ☰ · CYNA · FINANCES / 03 · période · sélecteur + Nouvelle facture */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18, flexWrap: 'wrap' }}>
-          {ouvrirMenu && (
-            <button onClick={ouvrirMenu} aria-label="Menu" style={{ ...heroBtn, padding: 7 }}><Menu size={16} /></button>
-          )}
-          <span style={{ fontFamily: "'Inter', sans-serif", fontWeight: 800, fontSize: 15, letterSpacing: '0.06em', color: '#fff' }}>CYNA</span>
-          <span style={heroMono(10, 0.55)}>· FINANCES / 03 · {periodeLabel(periodeGlobale).toUpperCase()}</span>
-          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-            <select value={periodeGlobale} onChange={e => setPeriodeGlobale(e.target.value)} aria-label="Période"
-              style={{ ...heroBtn, padding: '6px 8px' }}>
-              {PERIODES.map(p => <option key={p.id} value={p.id} style={{ color: '#16233A' }}>{p.label}</option>)}
-            </select>
-            <button onClick={() => { setOnglet('factures'); setNouvelleFactureSignal(n => n + 1); }}
-              style={{ ...heroBtn, background: 'rgba(255,255,255,0.16)', border: '1px solid rgba(255,255,255,0.3)', fontWeight: 700 }}>
-              <Plus size={14} /> Nouvelle facture
-            </button>
+        {/* ── EN-TÊTE ────────────────────────────────────────────── */}
+        {isMobile ? (
+          <>
+            {/* Mobile — ligne marque : ☰ · CYNA · FINANCES (doublon /03 supprimé) */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+              {ouvrirMenu && (
+                <button onClick={ouvrirMenu} aria-label="Menu" style={{ ...heroBtn, borderRadius: 12, width: 44, height: 44, padding: 0, justifyContent: 'center' }}><Menu size={18} /></button>
+              )}
+              <span style={{ fontFamily: "'Inter', sans-serif", fontWeight: 800, fontSize: 15, letterSpacing: '0.06em', color: '#fff', flexShrink: 0 }}>CYNA</span>
+              <span style={{ ...heroMono(10, 0.6), whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>· FINANCES</span>
+            </div>
+            {/* Mobile — barre d'outils 44px : période + Nouvelle facture */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+              <select value={periodeGlobale} onChange={e => setPeriodeGlobale(e.target.value)} aria-label="Période" style={{ ...heroBtnM, flex: '0 1 128px', minWidth: 0 }}>
+                {PERIODES.map(p => <option key={p.id} value={p.id} style={{ color: '#16233A' }}>{p.label}</option>)}
+              </select>
+              <button onClick={() => { setOnglet('factures'); setNouvelleFactureSignal(n => n + 1); }} style={{ ...heroBtnM, flex: '1 1 auto', minWidth: 0, background: 'rgba(255,255,255,0.16)', border: '1px solid rgba(255,255,255,0.3)', fontWeight: 700, overflow: 'hidden' }}>
+                <Plus size={15} style={{ flexShrink: 0 }} /> Nouvelle facture
+              </button>
+            </div>
+          </>
+        ) : (
+          /* Ligne 1 (desktop) — ☰ · CYNA · FINANCES / 03 · période · sélecteur + Nouvelle facture */
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18, flexWrap: 'wrap' }}>
+            {ouvrirMenu && (
+              <button onClick={ouvrirMenu} aria-label="Menu" style={{ ...heroBtn, padding: 7 }}><Menu size={16} /></button>
+            )}
+            <span style={{ fontFamily: "'Inter', sans-serif", fontWeight: 800, fontSize: 15, letterSpacing: '0.06em', color: '#fff' }}>CYNA</span>
+            <span style={heroMono(10, 0.55)}>· FINANCES / 03 · {periodeLabel(periodeGlobale).toUpperCase()}</span>
+            <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <select value={periodeGlobale} onChange={e => setPeriodeGlobale(e.target.value)} aria-label="Période"
+                style={{ ...heroBtn, padding: '6px 8px' }}>
+                {PERIODES.map(p => <option key={p.id} value={p.id} style={{ color: '#16233A' }}>{p.label}</option>)}
+              </select>
+              <button onClick={() => { setOnglet('factures'); setNouvelleFactureSignal(n => n + 1); }}
+                style={{ ...heroBtn, background: 'rgba(255,255,255,0.16)', border: '1px solid rgba(255,255,255,0.3)', fontWeight: 700 }}>
+                <Plus size={14} /> Nouvelle facture
+              </button>
+            </div>
           </div>
-        </div>
+        )}
 
-        {/* Ligne 2 — titre + ligne mono */}
-        <div style={heroMono(11, 0.6)}>FINANCES / 03</div>
+        {/* Ligne 2 — fil d'Ariane (mobile : « FINANCES » sans /03 ; PC : « FINANCES / 03 ») + titre + ligne mono */}
+        <div style={heroMono(11, 0.6)}>{isMobile ? 'FINANCES' : 'FINANCES / 03'}</div>
         <h1 style={{ fontFamily: "'Inter', sans-serif", fontWeight: 700, fontSize: 34, margin: '8px 0 8px', letterSpacing: '-0.02em', color: '#fff' }}>Finances</h1>
         <div style={heroMono(11, 0.7)}>FACTURES · PAIEMENTS · SUIVI FINANCIER</div>
 
         {/* Ligne 3 — les 4 chiffres clés (adaptés à l'onglet) */}
         <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(4, 1fr)', gap: 12, marginTop: 20 }} data-testid="hero-chiffres">
-          {heroChiffres.map(t => (
+          {heroChiffres.map(t => {
+            // Mobile : valeur BLANCHE, sauf l'alerte (EN RETARD / MISE EN DEMEURE) en rouge quand > 0.
+            const valColor = isMobile ? (t.estAlerte && t.alerteActive ? '#FF7A6B' : '#fff') : t.couleur;
+            return (
             <div key={t.label} data-testid={`hero-kpi-${t.label.toLowerCase().replace(/\s+/g, '-')}`}
-              style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 12, padding: '12px 14px' }}>
+              style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 12, padding: '12px 14px', ...(isMobile ? { minHeight: 84, display: 'flex', flexDirection: 'column' } : {}) }}>
               <div style={heroMono(9, 0.6)}>{t.label}</div>
-              <div style={{ ...mono(22, t.couleur, 500), lineHeight: 1.1, marginTop: 4 }}>{t.val}</div>
+              <div style={{ ...mono(22, valColor, 500), lineHeight: 1.1, marginTop: isMobile ? 'auto' : 4 }}>{t.val}</div>
             </div>
-          ))}
+            );
+          })}
         </div>
 
         {/* Ligne 4 — onglets collés au bas du hero (avec compteurs) */}
-        <div style={{ display: 'flex', gap: 2, marginTop: 22, overflowX: 'auto', scrollbarWidth: 'none' }}>
+        <div style={{ display: 'flex', gap: isMobile ? 0 : 2, marginTop: 22, overflowX: 'auto', scrollbarWidth: 'none', ...(isMobile ? { borderBottom: '1px solid rgba(255,255,255,0.16)' } : {}) }}>
           {tabs.map(t => {
             const actif = onglet === t.id;
             return (
-              <button key={t.id} onClick={() => setOnglet(t.id)} style={{
+              <button key={t.id} onClick={() => setOnglet(t.id)} style={isMobile ? {
+                position: 'relative', flex: 1, minWidth: 0, minHeight: 44,
+                background: 'transparent', border: 'none', cursor: 'pointer', fontFamily: 'inherit',
+                color: actif ? '#fff' : 'rgba(255,255,255,0.66)', fontSize: 14, fontWeight: actif ? 700 : 500,
+                padding: '0 4px 11px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+              } : {
                 background: 'transparent', border: 'none',
                 borderBottom: actif ? '2px solid #fff' : '2px solid transparent',
                 color: actif ? '#fff' : 'rgba(255,255,255,0.6)',
@@ -712,9 +788,11 @@ export default function Finances({
                     background: t.badgeRouge ? 'rgba(255,122,107,0.25)' : 'rgba(255,255,255,0.16)',
                     color: t.badgeRouge ? '#FF7A6B' : '#fff',
                     border: t.badgeRouge ? '1px solid rgba(255,122,107,0.5)' : '1px solid rgba(255,255,255,0.2)',
-                    borderRadius: 20, padding: '1px 8px', fontSize: 11, fontWeight: 700,
+                    borderRadius: 20, padding: '1px 8px', fontSize: 11, fontWeight: 700, minWidth: 20, textAlign: 'center',
                   }}>{t.count}</span>
                 )}
+                {/* Mobile — soulignement 3px arrondi ancré sur le filet continu */}
+                {isMobile && <span style={{ position: 'absolute', left: 8, right: 8, bottom: -1, height: 3, borderRadius: '3px 3px 0 0', background: actif ? '#fff' : 'transparent' }} />}
               </button>
             );
           })}
@@ -782,6 +860,8 @@ export default function Finances({
           afficherNotif={afficherNotif}
         />
       )}
+      {/* Point 11 — bas de page dégagé (mobile) : respire au-dessus de la nav */}
+      {isMobile && <div style={{ height: 12 }} aria-hidden="true" />}
     </div>
   );
 }

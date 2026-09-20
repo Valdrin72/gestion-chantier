@@ -11,6 +11,7 @@ import { FileDown, Download, HardHat } from 'lucide-react';
 import { DS } from './ds';
 import { mono, RYTHME } from './design/v1';
 import { useApp } from './context/AppContext';
+import useIsMobile from './hooks/useIsMobile';
 import { exportCSV } from './utils/exportCSV';
 import { fmtN, genererNumeroFacture, calculerStatutFacture, calculerCAForfait, tauxTVAParam, tauxDocumentFige } from './donnees';
 import { estDansPeriode } from './calculs/periode';
@@ -123,6 +124,7 @@ function KpiCard({ label, value, couleur, icon, sous }) {
 // ── COMPOSANT PRINCIPAL ──────────────────────────────────────
 export default function Factures({ profil, clients = [], chantiers = [], devis = [], factures = [], onSave, naviguer, hideHeader = false, periodeGlobale = 'mois', parametres = null, preRemplir = null, onConsumePreRemplir = null, nouvelleFactureSignal = 0 }) {
   const { pointages = [] } = useApp();
+  const isMobile = useIsMobile();
   const [vue, setVue] = useState('liste');   // 'liste' | 'form' | 'detail'
   const [selected, setSelected] = useState(null);
   const [filtreStatut, setFiltreStatut] = useState('');
@@ -499,24 +501,29 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
         </div>
       )}
 
-      {/* Filtres — barre v1 (recherche + statut + type) */}
-      <div style={{ display: 'flex', gap: 12, marginBottom: RYTHME.entreCartes, flexWrap: 'wrap', alignItems: 'center' }}>
+      {/* Filtres — barre v1 (recherche + statut + type).
+          Mobile (point 10) : recherche pleine largeur puis 2 filtres égaux, tous 46px de haut. */}
+      <div style={isMobile
+        ? { display: 'flex', flexDirection: 'column', gap: 10, marginBottom: RYTHME.entreCartes }
+        : { display: 'flex', gap: 12, marginBottom: RYTHME.entreCartes, flexWrap: 'wrap', alignItems: 'center' }}>
         <input
           placeholder="Rechercher (numéro, client, objet)…"
           value={recherche}
           onChange={e => setRecherche(e.target.value)}
-          style={{ ...S.input, width: 260 }}
+          style={isMobile ? { ...S.input, width: '100%', height: 46, boxSizing: 'border-box' } : { ...S.input, width: 260 }}
         />
-        <select value={filtreStatut} onChange={e => setFiltreStatut(e.target.value)}
-          style={{ ...S.input, width: 160 }}>
-          <option value="">Tous statuts</option>
-          {Object.entries(STATUT_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-        </select>
-        <select value={filtreType} onChange={e => setFiltreType(e.target.value)}
-          style={{ ...S.input, width: 160 }}>
-          <option value="">Tous types</option>
-          {Object.entries(TYPE_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-        </select>
+        <div style={isMobile ? { display: 'flex', gap: 10 } : { display: 'contents' }}>
+          <select value={filtreStatut} onChange={e => setFiltreStatut(e.target.value)}
+            style={isMobile ? { ...S.input, flex: 1, minWidth: 0, height: 46, boxSizing: 'border-box' } : { ...S.input, width: 160 }}>
+            <option value="">Tous statuts</option>
+            {Object.entries(STATUT_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+          </select>
+          <select value={filtreType} onChange={e => setFiltreType(e.target.value)}
+            style={isMobile ? { ...S.input, flex: 1, minWidth: 0, height: 46, boxSizing: 'border-box' } : { ...S.input, width: 160 }}>
+            <option value="">Tous types</option>
+            {Object.entries(TYPE_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+          </select>
+        </div>
       </div>
 
       {/* Liste factures — card rows */}

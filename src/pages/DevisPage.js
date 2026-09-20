@@ -139,6 +139,17 @@ function CalculateurMO({ surface, onApply }) {
 
 // Bouton translucide du hero bleu nuit (mêmes tokens que les autres pages v1).
 const heroBtn = { background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.18)', borderRadius: 8, padding: '6px 11px', cursor: 'pointer', color: '#fff', display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: 'inherit', fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap' };
+// Bouton hero MOBILE : cible tactile 44px (cohérent #186/#187).
+const heroBtnM = { background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.18)', borderRadius: 12, minHeight: 44, padding: '0 12px', cursor: 'pointer', color: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontFamily: 'inherit', fontSize: 13.5, fontWeight: 600, whiteSpace: 'nowrap', flexShrink: 0 };
+// Fond hero MOBILE — 3 tons + trame + halo (identique #187). PC garde heroFond.
+const heroFondMobile = {
+  background: `
+    radial-gradient(220px 220px at 100% -50px, rgba(255,255,255,0.10), transparent 70%),
+    repeating-linear-gradient(0deg, rgba(255,255,255,0.035) 0 1px, transparent 1px 44px),
+    repeating-linear-gradient(90deg, rgba(255,255,255,0.035) 0 1px, transparent 1px 44px),
+    linear-gradient(168deg, #0B2E55 0%, #0d3d6e 46%, #15528F 100%)`,
+  color: '#fff',
+};
 const PERIODES = [{ id: 'semaine', label: 'Cette semaine' }, { id: 'mois', label: 'Ce mois' }, { id: 'annee', label: 'Cette année' }];
 
 function Devis() {
@@ -324,37 +335,60 @@ function Devis() {
         ];
         const suffixePeriode = periodeGlobale === 'semaine' ? 'CETTE SEMAINE' : periodeGlobale === 'mois' ? 'CE MOIS' : 'CETTE ANNÉE';
         return (
-          <div className="page-hero-bleed" data-testid="hero-devis" style={{ ...heroFond, padding: '20px 32px 0', position: 'relative' }}>
-            {/* Ligne 1 — ☰ · CYNA · DEVIS / 04 · période · sélecteur + CSV + Nouveau devis */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18, flexWrap: 'wrap' }}>
-              {ouvrirMenu && (
-                <button onClick={ouvrirMenu} aria-label="Menu" style={{ ...heroBtn, padding: 7 }}><Menu size={16} /></button>
-              )}
-              <span style={{ fontFamily: "'Inter', sans-serif", fontWeight: 800, fontSize: 15, letterSpacing: '0.06em', color: '#fff' }}>CYNA</span>
-              <span style={heroMono(10, 0.55)}>· DEVIS / 04 · {periodeLabel(periodeGlobale).toUpperCase()}</span>
-              <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                <select value={periodeGlobale} onChange={e => setPeriodeGlobale(e.target.value)} aria-label="Période" style={{ ...heroBtn, padding: '6px 8px' }}>
-                  {PERIODES.map(p => <option key={p.id} value={p.id} style={{ color: '#16233A' }}>{p.label}</option>)}
-                </select>
-                {devis.length > 0 && (
-                  <button onClick={exporterCSV} style={heroBtn}><Download size={13} /> Exporter CSV</button>
+          <div className="page-hero-bleed" data-testid="hero-devis" style={{ ...(isMobile ? heroFondMobile : heroFond), padding: isMobile ? '16px 16px 0' : '20px 32px 0', position: 'relative', overflow: isMobile ? 'hidden' : undefined }}>
+            {isMobile ? (
+              <>
+                {/* Mobile — ligne marque : ☰ · CYNA · DEVIS (doublon /04 supprimé) */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+                  {ouvrirMenu && (
+                    <button onClick={ouvrirMenu} aria-label="Menu" style={{ ...heroBtn, borderRadius: 12, width: 44, height: 44, padding: 0, justifyContent: 'center' }}><Menu size={18} /></button>
+                  )}
+                  <span style={{ fontFamily: "'Inter', sans-serif", fontWeight: 800, fontSize: 15, letterSpacing: '0.06em', color: '#fff', flexShrink: 0 }}>CYNA</span>
+                  <span style={{ ...heroMono(10, 0.6), whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>· DEVIS</span>
+                </div>
+                {/* Mobile — barre d'outils 44px : période + CSV (si devis) + Nouveau devis */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                  <select value={periodeGlobale} onChange={e => setPeriodeGlobale(e.target.value)} aria-label="Période" style={{ ...heroBtnM, flex: '1 1 auto', minWidth: 0 }}>
+                    {PERIODES.map(p => <option key={p.id} value={p.id} style={{ color: '#16233A' }}>{p.label}</option>)}
+                  </select>
+                  {devis.length > 0 && (
+                    <button onClick={exporterCSV} aria-label="Exporter CSV" title="Exporter CSV" style={{ ...heroBtnM, width: 44, padding: 0 }}><Download size={16} /></button>
+                  )}
+                  <button onClick={() => { setForm(vide); setAjout(!ajout); }} style={{ ...heroBtnM, background: 'rgba(255,255,255,0.16)', border: '1px solid rgba(255,255,255,0.3)', fontWeight: 700 }}><Plus size={15} style={{ flexShrink: 0 }} /> Nouveau devis</button>
+                </div>
+              </>
+            ) : (
+              /* Ligne 1 (desktop) — ☰ · CYNA · DEVIS / 04 · période · sélecteur + CSV + Nouveau devis */
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18, flexWrap: 'wrap' }}>
+                {ouvrirMenu && (
+                  <button onClick={ouvrirMenu} aria-label="Menu" style={{ ...heroBtn, padding: 7 }}><Menu size={16} /></button>
                 )}
-                <button onClick={() => { setForm(vide); setAjout(!ajout); }} style={{ ...heroBtn, background: 'rgba(255,255,255,0.16)', border: '1px solid rgba(255,255,255,0.3)', fontWeight: 700 }}><Plus size={14} /> Nouveau devis</button>
+                <span style={{ fontFamily: "'Inter', sans-serif", fontWeight: 800, fontSize: 15, letterSpacing: '0.06em', color: '#fff' }}>CYNA</span>
+                <span style={heroMono(10, 0.55)}>· DEVIS / 04 · {periodeLabel(periodeGlobale).toUpperCase()}</span>
+                <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                  <select value={periodeGlobale} onChange={e => setPeriodeGlobale(e.target.value)} aria-label="Période" style={{ ...heroBtn, padding: '6px 8px' }}>
+                    {PERIODES.map(p => <option key={p.id} value={p.id} style={{ color: '#16233A' }}>{p.label}</option>)}
+                  </select>
+                  {devis.length > 0 && (
+                    <button onClick={exporterCSV} style={heroBtn}><Download size={13} /> Exporter CSV</button>
+                  )}
+                  <button onClick={() => { setForm(vide); setAjout(!ajout); }} style={{ ...heroBtn, background: 'rgba(255,255,255,0.16)', border: '1px solid rgba(255,255,255,0.3)', fontWeight: 700 }}><Plus size={14} /> Nouveau devis</button>
+                </div>
               </div>
-            </div>
+            )}
 
-            {/* Ligne 2 — titre + ligne mono */}
-            <div style={heroMono(11, 0.6)}>DEVIS / 04</div>
+            {/* Ligne 2 — fil d'Ariane (mobile : « DEVIS » sans /04 ; PC : « DEVIS / 04 ») + titre + ligne mono */}
+            <div style={heroMono(11, 0.6)}>{isMobile ? 'DEVIS' : 'DEVIS / 04'}</div>
             <h1 style={{ fontFamily: "'Inter', sans-serif", fontWeight: 700, fontSize: 34, margin: '8px 0 8px', letterSpacing: '-0.02em', color: '#fff' }}>Devis</h1>
             <div style={heroMono(11, 0.7)}>{devisActifs.length} DEVIS · {devisAcceptes.length} ACCEPTÉS {suffixePeriode}</div>
 
-            {/* Ligne 3 — les 4 chiffres clés */}
+            {/* Ligne 3 — les 4 chiffres clés (mobile : valeurs BLANCHES, aucun KPI en alerte) */}
             <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(4, 1fr)', gap: 12, marginTop: 20, paddingBottom: 24 }} data-testid="hero-chiffres">
               {heroChiffres.map(t => (
                 <div key={t.label} data-testid={`hero-kpi-${t.label.toLowerCase().replace(/[^a-zà-ÿ]+/g, '-').replace(/^-|-$/g, '')}`}
-                  style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 12, padding: '12px 14px' }}>
+                  style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 12, padding: '12px 14px', ...(isMobile ? { minHeight: 84, display: 'flex', flexDirection: 'column' } : {}) }}>
                   <div style={heroMono(9, 0.6)}>{t.label}</div>
-                  <div style={{ ...mono(22, t.couleur, 500), lineHeight: 1.1, marginTop: 4 }}>{t.val}</div>
+                  <div style={{ ...mono(22, isMobile ? '#fff' : t.couleur, 500), lineHeight: 1.1, marginTop: isMobile ? 'auto' : 4 }}>{t.val}</div>
                 </div>
               ))}
             </div>
@@ -366,7 +400,11 @@ function Devis() {
       {(() => {
         const STATUTS_DEVIS = ['Tous', 'brouillon', 'envoyé', 'accepté', 'refusé'];
         return (
-          <div style={{ display: 'flex', gap: 8, marginBottom: RYTHME.entreCartes, flexWrap: 'wrap' }}>
+          /* Filtres d'état en pastilles — sur une ligne collante qui défile sur mobile (pattern Chantiers) */
+          <div style={{
+            display: 'flex', gap: 8, marginBottom: RYTHME.entreCartes, overflowX: 'auto', WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none', paddingBottom: 2,
+            ...(isMobile ? { position: 'sticky', top: 0, zIndex: 20, background: 'rgba(238,243,248,0.94)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)', borderBottom: `1px solid ${V1.separation}`, paddingTop: 10, marginLeft: -12, marginRight: -12, paddingLeft: 12, paddingRight: 12 } : { flexWrap: 'wrap' }),
+          }}>
             {STATUTS_DEVIS.map(s => {
               const actif = filtreDevis === s;
               return (
@@ -377,6 +415,8 @@ function Devis() {
                   padding: '7px 14px', borderRadius: 20, cursor: 'pointer', fontSize: 13,
                   fontWeight: actif ? 700 : 500, fontFamily: 'inherit',
                   textTransform: 'capitalize', transition: 'all 0.15s',
+                  whiteSpace: 'nowrap', flexShrink: 0,
+                  ...(isMobile ? { minHeight: 44, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' } : {}),
                 }}>{s}</button>
               );
             })}
@@ -935,6 +975,8 @@ function Devis() {
           </div>
         );
       })()}
+      {/* Point 12 — bas de page dégagé (mobile) : respire au-dessus de la bottom-nav (.page-pad réserve déjà 86px) */}
+      {isMobile && <div style={{ height: 12 }} aria-hidden="true" />}
     </div>
   );
 }

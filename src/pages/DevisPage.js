@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useLayoutEffect } from 'react';
 import {
   Plus, Pencil, Trash2, HardHat, Receipt,
-  Clock, FileDown, Download, Archive, Menu,
+  Clock, FileDown, Download, Archive, Menu, Info,
 } from 'lucide-react';
 import { fmtN, C, creerFactureDepuisDevis } from '../donnees';
 import { estDansPeriode, caSigneDevisDansPeriode, periodeLabel } from '../calculs/periode';
@@ -151,6 +151,10 @@ const heroFondMobile = {
   color: '#fff',
 };
 const PERIODES = [{ id: 'semaine', label: 'Cette semaine' }, { id: 'mois', label: 'Ce mois' }, { id: 'annee', label: 'Cette année' }];
+// Bouton « + Ajouter » pleine largeur 44px (mobile, point 08) — couleur/bordure passées par section.
+const btnAjoutM = (couleur, bordure) => ({ width: '100%', minHeight: 44, borderRadius: 12, background: '#fff', border: `1px solid ${bordure}`, color: couleur, fontFamily: 'inherit', fontWeight: 700, fontSize: 13, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: 0 });
+// État vide (mobile, point 07) — sous-carte blanche isolée + icône, texte non-italique.
+const videLigneM = { display: 'flex', alignItems: 'center', gap: 9, background: '#fff', border: '1px solid #E8EDF3', borderRadius: 10, padding: '11px 13px', fontSize: 12, color: '#64748B', lineHeight: 1.45 };
 
 function Devis() {
   const { devis, setDevis, clients, parametres, naviguer, setChantiers, chantiers, factures, setFactures, contexte = {}, afficherNotif, confirmer, periodeGlobale = 'mois', setPeriodeGlobale = () => {}, ouvrirMenu } = useApp();
@@ -476,7 +480,15 @@ function Devis() {
                         setForm(f => ({ ...f, typesTravaux: nv }));
                         if (erreurs.typesTravaux) setErreurs(prev => ({ ...prev, typesTravaux: null }));
                       }}
-                      style={{
+                      style={isMobile ? {
+                        // Mobile (point 06) : vraie case à cocher — 44px, blanc bordé si non coché, bleu si coché.
+                        minHeight: 44, padding: '0 14px', borderRadius: 999, cursor: 'pointer', fontSize: 13,
+                        fontFamily: 'inherit', transition: 'all 0.15s', display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                        fontWeight: actif ? 700 : 500,
+                        background: actif ? '#E8F0F9' : '#fff',
+                        color: actif ? '#0d3d6e' : '#475569',
+                        border: `1px solid ${actif ? '#1557A0' : '#E2E8F0'}`,
+                      } : {
                         background: actif ? 'rgba(13,61,110,0.12)' : 'transparent',
                         color: actif ? '#0d3d6e' : 'var(--text-muted)',
                         border: `1px solid ${actif ? '#0d3d6e60' : 'var(--border)'}`,
@@ -594,18 +606,22 @@ function Devis() {
 
           {/* ── Avenants ── */}
           <div style={{ background: V1.bleuFond, border: `1px solid ${V1.bleuClair}`, borderRadius: 12, padding: '20px', marginBottom: 20 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, ...(isMobile ? { flexDirection: 'column', alignItems: 'stretch', gap: 12 } : {}) }}>
               <div>
                 <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: V1.bleu }}>Avenants (travaux supplémentaires)</div>
                 <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>Travaux additionnels négociés — s'ajoutent au CA du devis</div>
               </div>
               <button
                 onClick={() => setForm({ ...form, avenants: [...(form.avenants || []), { id: Date.now(), description: '', montant: '' }] })}
-                style={{ ...DS.btnGhost, fontSize: 12, padding: '5px 12px' }}
+                style={isMobile ? btnAjoutM(V1.bleu, V1.bleuClair) : { ...DS.btnGhost, fontSize: 12, padding: '5px 12px' }}
               >+ Ajouter un avenant</button>
             </div>
             {(form.avenants || []).length === 0 && (
-              <div style={{ fontSize: 12, color: 'var(--text-muted)', fontStyle: 'italic' }}>Aucun avenant — cliquez sur "Ajouter un avenant" si des travaux supplémentaires ont été négociés.</div>
+              isMobile ? (
+                <div style={videLigneM}><Info size={15} style={{ flexShrink: 0, color: '#94A3B8' }} /><span>Aucun avenant — utilisez « Ajouter un avenant » si des travaux supplémentaires ont été négociés.</span></div>
+              ) : (
+                <div style={{ fontSize: 12, color: 'var(--text-muted)', fontStyle: 'italic' }}>Aucun avenant — cliquez sur "Ajouter un avenant" si des travaux supplémentaires ont été négociés.</div>
+              )
             )}
             {(form.avenants || []).map((a, i) => (
               <div key={a.id} style={{ display: 'grid', gridTemplateColumns: 'var(--g-2a)', gap: 8, marginBottom: 8, alignItems: 'center' }}>
@@ -642,18 +658,22 @@ function Devis() {
 
           {/* ── Heures en régie ── */}
           <div style={{ background: 'rgba(245,158,11,0.04)', border: '1px solid rgba(245,158,11,0.2)', borderRadius: 12, padding: '20px', marginBottom: 20 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, ...(isMobile ? { flexDirection: 'column', alignItems: 'stretch', gap: 12 } : {}) }}>
               <div>
                 <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: '#f59e0b', display: 'flex', alignItems: 'center', gap: 5 }}><Clock size={11} />Heures en régie (CA supplémentaire)</div>
                 <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>Heures facturées au temps passé — s'ajoutent au CA du devis</div>
               </div>
               <button
                 onClick={() => setForm({ ...form, heuresRegie: [...(form.heuresRegie || []), { id: Date.now(), description: '', heures: '', tarifHeure: '' }] })}
-                style={{ ...DS.btnGhost, fontSize: 12, padding: '5px 12px' }}
+                style={isMobile ? btnAjoutM('#B45309', '#FDE7C3') : { ...DS.btnGhost, fontSize: 12, padding: '5px 12px' }}
               >+ Ajouter une ligne</button>
             </div>
             {(form.heuresRegie || []).length === 0 && (
-              <div style={{ fontSize: 12, color: 'var(--text-muted)', fontStyle: 'italic' }}>Aucune heure en régie — cliquez sur "Ajouter une ligne" pour en saisir.</div>
+              isMobile ? (
+                <div style={videLigneM}><Info size={15} style={{ flexShrink: 0, color: '#94A3B8' }} /><span>Aucune heure en régie — utilisez « Ajouter une ligne » pour en saisir.</span></div>
+              ) : (
+                <div style={{ fontSize: 12, color: 'var(--text-muted)', fontStyle: 'italic' }}>Aucune heure en régie — cliquez sur "Ajouter une ligne" pour en saisir.</div>
+              )
             )}
             {(form.heuresRegie || []).map((r, i) => (
               <div key={r.id} style={{ display: 'grid', gridTemplateColumns: 'var(--g-line)', gap: 8, marginBottom: 8, alignItems: 'center' }}>
@@ -706,9 +726,15 @@ function Devis() {
               {Object.values(erreurs).filter(Boolean)[0]}
             </div>
           )}
-          <div style={{ display: 'flex', gap: '10px' }}>
-            <button onClick={sauvegarder} style={btnPrimaire}>Sauvegarder</button>
-            <button onClick={() => { setAjout(false); setForm(vide); setErreurs({}); }} style={DS.btnGhost}>Annuler</button>
+          <div style={isMobile ? {
+            // Point 11 — barre d'actions ancrée en pied de carte (full-bleed : annule le padding mobile 14px 12px)
+            display: 'flex', gap: 10, alignItems: 'center',
+            marginTop: 20, marginLeft: -12, marginRight: -12, marginBottom: -14,
+            padding: '13px 14px', borderTop: '1px solid #EEF2F7', background: '#F8FAFC',
+            borderBottomLeftRadius: 14, borderBottomRightRadius: 14,
+          } : { display: 'flex', gap: '10px' }}>
+            <button onClick={sauvegarder} style={isMobile ? { ...btnPrimaire, flex: 1, minWidth: 0, minHeight: 48 } : btnPrimaire}>Sauvegarder</button>
+            <button onClick={() => { setAjout(false); setForm(vide); setErreurs({}); }} style={isMobile ? { ...DS.btnGhost, flex: 'none', minWidth: 104, minHeight: 48 } : DS.btnGhost}>Annuler</button>
           </div>
         </div>
       )}

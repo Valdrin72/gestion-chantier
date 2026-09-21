@@ -5,6 +5,7 @@ import { fmtN } from '../../donnees';
 import { conseilPrixM2ParType, MARGE_MIN_NEGO } from '../../calculs/conseilPrix';
 import { useClaudeAI } from '../../hooks/useClaudeAI';
 import { V1, mono } from '../../design/v1';
+import useIsMobile from '../../hooks/useIsMobile';
 
 const FIABLE = '#1E8A4C';         // vert « source fiable »
 const FIABLE_FOND = 'rgba(30,138,76,0.08)';
@@ -177,6 +178,7 @@ function SectionLabel({ couleur, children }) {
  */
 export default function AideDevisPanel({ typesSelectionnes = [], surface = 0 }) {
   const { chantiers = [], factures = [], devis = [], parametres = {}, pointages = [] } = useApp();
+  const isMobile = useIsMobile();
   const [ouvert, setOuvert] = React.useState(true);
   const types = (typesSelectionnes || []).filter(Boolean);
   const iaActivee = parametres?.parametres?.iaActivee !== false;
@@ -203,9 +205,17 @@ export default function AideDevisPanel({ typesSelectionnes = [], surface = 0 }) 
             </span>
           )}
         </div>
-        <button onClick={() => setOuvert(o => !o)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: V1.texteMuted, display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, fontFamily: 'inherit' }}>
-          {ouvert ? <><ChevronUp size={14} /> Réduire</> : <><ChevronDown size={14} /> Développer</>}
-        </button>
+        {isMobile ? (
+          // Point 09 — cible tactile 44px : chevron qui tourne (0° ouvert → 180° réduit)
+          <button onClick={() => setOuvert(o => !o)} aria-label={ouvert ? 'Réduire' : 'Développer'} aria-expanded={ouvert}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: V1.texteMuted, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 44, height: 44, flexShrink: 0, padding: 0, fontFamily: 'inherit' }}>
+            <ChevronUp size={20} style={{ transition: 'transform 0.2s ease', transform: ouvert ? 'rotate(0deg)' : 'rotate(180deg)' }} />
+          </button>
+        ) : (
+          <button onClick={() => setOuvert(o => !o)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: V1.texteMuted, display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, fontFamily: 'inherit' }}>
+            {ouvert ? <><ChevronUp size={14} /> Réduire</> : <><ChevronDown size={14} /> Développer</>}
+          </button>
+        )}
       </div>
 
       {ouvert && (

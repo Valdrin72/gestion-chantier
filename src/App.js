@@ -1,7 +1,8 @@
 import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { HardHat, FileText, Users, ChevronRight, Sparkles } from 'lucide-react';
 import { Sidebar, Topbar, MobileNav } from './components/Layout';
-import { construireMaisons, filtrerMaisons, raccourcisMobileTerrain } from './nav/maisons';
+import { construireMaisons, filtrerMaisons, raccourcisMobileTerrain, menuMobile } from './nav/maisons';
+import useIsMobile from './hooks/useIsMobile';
 import { migrerDevisId, donneesInitiales, migrerJournal } from './donnees';
 import { migrerJournalVersPointages } from './migration/migrerJournalVersPointages';
 import { completerPointagesDepuisJournal, aChantierLegacy } from './migration/completerPointagesDepuisJournal';
@@ -330,6 +331,11 @@ function AppInner({ profil, deconnecter, userId, isDemo = false }) {
     construireMaisons({ urgentAlerteCount, nbFacturesRetard }),
     pagesAutorisees
   );
+  // Mode consultation mobile (Lot 0) : le menu latéral PC reste `maisonsAutorisees`
+  // (inchangé) ; seule la nav MOBILE utilise `maisonsMobile` (Rapports/Calculs/Paramètres
+  // hors menu, Centre IA promu). `consultationMobile` sera le point de vérité des lots 1-5.
+  const isMobile = useIsMobile();
+  const maisonsMobile = useMemo(() => menuMobile(maisonsAutorisees), [maisonsAutorisees]);
 
   const appValue = useMemo(() => ({
     chantiers, setChantiers, clients, setClients, devis, setDevis,
@@ -341,9 +347,12 @@ function AppInner({ profil, deconnecter, userId, isDemo = false }) {
     ouvrirMenu: () => setSidebarOuvert(true),
     deconnecter, afficherNotif, confirmer,
     isDemo,
+    // Lot 0 : point de vérité unique du « mode consultation » mobile. Défini ici,
+    // appliqué page par page dans les lots 1-5 (masquage des actions d'écriture).
+    consultationMobile: isMobile,
   }), [ // eslint-disable-line react-hooks/exhaustive-deps
     chantiers, clients, devis, factures, parametres, pointages,
-    actionsLog, profil, contexte, periodeGlobale, agentState, isDemo,
+    actionsLog, profil, contexte, periodeGlobale, agentState, isDemo, isMobile,
   ]);
 
   return (
@@ -429,7 +438,7 @@ function AppInner({ profil, deconnecter, userId, isDemo = false }) {
           );
         })()}
         <MobileNav
-          maisons={maisonsAutorisees} raccourcis={raccourcisMobileTerrain(maisonsAutorisees)}
+          maisons={maisonsMobile} raccourcis={raccourcisMobileTerrain(maisonsAutorisees)}
           page={page} naviguer={naviguer}
           mobileMenuOuvert={mobileMenuOuvert} setMobileMenuOuvert={setMobileMenuOuvert}
         />

@@ -54,6 +54,35 @@ export function ecransAtteignables(maisons) {
 }
 
 /**
+ * Menu MOBILE « mode consultation » (Lot 0). Sur téléphone, Analyse/Rapports,
+ * Calculs et Paramètres sortent du menu (la saisie/config se fait sur PC).
+ * Le Centre IA (`agents`), enfant de la maison « Analyse & IA » dont la page
+ * principale (`rapport`) quitte le menu, est PROMU en entrée directe pour rester
+ * accessible et découvrable en un tap. Les Alertes (enfant d'Accueil) restent.
+ *
+ * ⚠ Purement une VUE du menu mobile : ne touche ni le routage (les pages restent
+ * atteignables par lien direct — KPI « Marge moyenne », alertes → `rapport`), ni
+ * le menu latéral PC (qui continue d'utiliser `maisons` tel quel). Prend en entrée
+ * les maisons DÉJÀ filtrées par rôle (`filtrerMaisons`).
+ */
+const HORS_MENU_MOBILE = ['rapport', 'calculs', 'parametres'];
+
+export function menuMobile(maisons = []) {
+  return maisons
+    .map(m => {
+      // Maison « Analyse & IA » : page rapport hors menu, mais Centre IA promu en entrée directe.
+      if (m.page === 'rapport') {
+        const centreIA = (m.enfants || []).find(e => e.id === 'agents');
+        if (!centreIA) return null; // rôle sans Centre IA → la maison quitte le menu mobile
+        return { id: 'maison_ia', label: centreIA.label, labelCourt: centreIA.label, Icon: centreIA.Icon, page: 'agents', enfants: [] };
+      }
+      // Autres maisons : on retire seulement les enfants hors menu (ex. Calculs).
+      return { ...m, enfants: (m.enfants || []).filter(e => !HORS_MENU_MOBILE.includes(e.id)) };
+    })
+    .filter(m => m && !HORS_MENU_MOBILE.includes(m.page)); // retire Paramètres
+}
+
+/**
  * Raccourcis de la BARRE MOBILE (bottom-nav), pensés « terrain » : les écrans du
  * quotidien depuis le chantier. Ordre voulu : Accueil · Chantiers · Heures · Planning.
  * (Finances/Analyse restent accessibles via le bouton « Plus » — tiroir complet.)

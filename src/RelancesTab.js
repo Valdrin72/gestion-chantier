@@ -6,6 +6,7 @@ import { CheckCircle, Mail, Send, Copy, X, AlertTriangle } from 'lucide-react';
 import { prochainRappel, niveauInfo, genererTexteRappel, marquerRappelEnvoye } from './relances';
 import { DS } from './ds';
 import { V1, mono, carteV1, RYTHME } from './design/v1';
+import { useApp } from './context/AppContext';
 
 const fmt = (n) => (parseFloat(n) || 0).toLocaleString('fr-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
@@ -139,6 +140,7 @@ function BadgeNiveau({ niveau }) {
 
 // ── Composant principal ───────────────────────────────────────
 export default function RelancesTab({ factures = [], clients = [], chantiers = [], setFactures, afficherNotif }) {
+  const { consultationMobile } = useApp();
   const [modalItem, setModalItem] = useState(null);
 
   const aRelancer = useMemo(() =>
@@ -155,6 +157,7 @@ export default function RelancesTab({ factures = [], clients = [], chantiers = [
     [aRelancer]
   );
   const handleMarquerEnvoye = (item) => {
+    if (consultationMobile) return; // lecture seule mobile
     const miseAJour = marquerRappelEnvoye(item.f, item.prochaine.niveau);
     setFactures(prev => prev.map(f => String(f.id) === String(item.f.id) ? miseAJour : f));
     const info = niveauInfo(item.prochaine.niveau);
@@ -258,14 +261,16 @@ export default function RelancesTab({ factures = [], clients = [], chantiers = [
                           <Mail size={13} />
                           Voir lettre
                         </button>
-                        <button
-                          onClick={() => handleMarquerEnvoye({ f, prochaine })}
-                          style={DS.btnSuccess}
-                          title="Marquer ce rappel comme envoyé"
-                        >
-                          <Send size={13} />
-                          Marquer envoyé
-                        </button>
+                        {!consultationMobile && (
+                          <button
+                            onClick={() => handleMarquerEnvoye({ f, prochaine })}
+                            style={DS.btnSuccess}
+                            title="Marquer ce rappel comme envoyé"
+                          >
+                            <Send size={13} />
+                            Marquer envoyé
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>

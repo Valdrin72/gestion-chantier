@@ -3,6 +3,7 @@ import { Clock, Calendar, X } from 'lucide-react';
 import { DS } from './ds';
 import { V1, mono, carteV1, heroFond, heroMono } from './design/v1';
 import useIsMobile from './hooks/useIsMobile';
+import { useApp } from './context/AppContext';
 
 // Catégories — palette v1 : Réunion bleu, Livraison vert, RDV Client ambre, Autre gris.
 const CATEGORIES = [
@@ -21,6 +22,7 @@ export default function Calendrier({
   viewDate: viewDateProp, nouvelEvenementSignal = 0,
 }) {
   const isMobile = useIsMobile();
+  const { consultationMobile } = useApp();
   const today = new Date();
   // Le mois affiché est piloté par le hero de PlanningPage ; fallback interne : mois courant.
   const [viewDateInterne] = useState(() => new Date(today.getFullYear(), today.getMonth(), 1));
@@ -32,17 +34,20 @@ export default function Calendrier({
 
   // Ouverture de la modale « Nouvel événement » demandée depuis le hero.
   React.useEffect(() => {
+    if (consultationMobile) return; // Mode consultation mobile : création d'événement inatteignable.
     if (nouvelEvenementSignal > 0) setModal({ form: { ...FORM_VIDE, date: '' } });
-  }, [nouvelEvenementSignal]);
+  }, [nouvelEvenementSignal, consultationMobile]);
 
   const year = viewDate.getFullYear();
   const month = viewDate.getMonth();
 
   const ouvrirModal = (dateISO = '') => {
+    if (consultationMobile) return; // Mode consultation mobile : pas de création par clic sur un jour.
     setModal({ form: { ...FORM_VIDE, date: dateISO } });
   };
 
   const sauvegarder = () => {
+    if (consultationMobile) return; // Mode consultation mobile : aucune écriture d'événement.
     if (!modal.form.titre.trim() || !modal.form.date) return;
     const cat = CATEGORIES.find(c => c.id === modal.form.categorie);
     setCustomEvents(prev => {
@@ -60,11 +65,14 @@ export default function Calendrier({
     setModal(null);
   };
 
-  const supprimerEvent = (id) => setCustomEvents(prev => {
-    const next = prev.filter(e => e.id !== id);
-    try { localStorage.setItem('cyna_cal_events', JSON.stringify(next)); } catch {}
-    return next;
-  });
+  const supprimerEvent = (id) => {
+    if (consultationMobile) return; // Mode consultation mobile : suppression d'événement bloquée.
+    setCustomEvents(prev => {
+      const next = prev.filter(e => e.id !== id);
+      try { localStorage.setItem('cyna_cal_events', JSON.stringify(next)); } catch {}
+      return next;
+    });
+  };
 
   const firstDayDow = (new Date(year, month, 1).getDay() + 6) % 7;
   const daysInMonth = new Date(year, month + 1, 0).getDate();
@@ -169,17 +177,17 @@ export default function Calendrier({
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)' }}>
             {cells.map((cell, i) => (
               <div key={i}
-                onClick={() => cell.day && ouvrirModal(isoFromCell(cell.day))}
+                onClick={consultationMobile ? undefined : () => cell.day && ouvrirModal(isoFromCell(cell.day))}
                 style={{
                   minHeight: 88, padding: '8px',
                   borderRight: (i + 1) % 7 !== 0 ? '1px solid var(--ds-card-border)' : 'none',
                   borderBottom: i < 35 ? '1px solid var(--ds-card-border)' : 'none',
                   background: cell.day === null ? 'var(--bg-glass)' : 'transparent',
-                  cursor: cell.day ? 'pointer' : 'default',
+                  cursor: (cell.day && !consultationMobile) ? 'pointer' : 'default',
                   transition: 'background 0.1s',
                 }}
-                onMouseEnter={e => { if (cell.day) e.currentTarget.style.background = 'var(--bg-hover)'; }}
-                onMouseLeave={e => { if (cell.day) e.currentTarget.style.background = 'transparent'; }}
+                onMouseEnter={e => { if (cell.day && !consultationMobile) e.currentTarget.style.background = 'var(--bg-hover)'; }}
+                onMouseLeave={e => { if (cell.day && !consultationMobile) e.currentTarget.style.background = 'transparent'; }}
               >
                 {cell.day !== null && (
                   <>
@@ -195,18 +203,18 @@ export default function Calendrier({
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                       {cell.events.slice(0, 2).map((ev, ei) => (
                         <div key={ei}
-                          onClick={ev.custom ? (e) => { e.stopPropagation(); supprimerEvent(ev.id); } : undefined}
-                          title={ev.custom ? 'Cliquer pour supprimer' : ev.label}
+                          onClick={(ev.custom && !consultationMobile) ? (e) => { e.stopPropagation(); supprimerEvent(ev.id); } : undefined}
+                          title={(ev.custom && !consultationMobile) ? 'Cliquer pour supprimer' : ev.label}
                           style={{
                             background: ev.bg, color: ev.color,
                             borderRadius: 4, padding: '2px 5px',
                             fontSize: 10, fontWeight: 600,
                             overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                            cursor: ev.custom ? 'pointer' : 'default',
+                            cursor: (ev.custom && !consultationMobile) ? 'pointer' : 'default',
                             display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 3,
                           }}>
                           <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{ev.label}</span>
-                          {ev.custom && <X size={8} strokeWidth={3} style={{ flexShrink: 0 }} />}
+                          {ev.custom && !consultationMobile && <X size={8} strokeWidth={3} style={{ flexShrink: 0 }} />}
                         </div>
                       ))}
                       {cell.events.length > 2 && (
@@ -262,7 +270,7 @@ export default function Calendrier({
                       <div style={{ fontSize: 11, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 4 }}>
                         <Clock size={10} /> {ev.sub}
                       </div>
-                      {ev.custom && (
+                      {ev.custom && !consultationMobile && (
                         <button onClick={() => supprimerEvent(ev.id)} style={{ marginTop: 4, background: 'none', border: 'none', color: '#ef4444', fontSize: 11, cursor: 'pointer', padding: 0, fontFamily: 'inherit' }}>
                           Supprimer
                         </button>
@@ -276,8 +284,8 @@ export default function Calendrier({
         </div>
       </div>
 
-      {/* Modal nouvel événement */}
-      {modal && (
+      {/* Modal nouvel événement — jamais rendue en mode consultation mobile (défense en profondeur). */}
+      {modal && !consultationMobile && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(4px)', padding: '20px 16px' }}
           onClick={() => setModal(null)}>
           <div style={{ background: 'var(--bg-card)', border: '1px solid var(--ds-card-border)', borderRadius: 18, overflowX: 'hidden', overflowY: 'auto', maxHeight: '90vh', width: '100%', maxWidth: 420, boxSizing: 'border-box', boxShadow: '0 20px 60px rgba(0,0,0,0.4)' }}

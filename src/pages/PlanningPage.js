@@ -22,7 +22,7 @@ const heroFondMobile = {
 
 // ── Planning (Calendrier + Gantt) + Événements — un seul hero, 3 onglets ────
 function PlanningPage({ chantiers, setChantiers, clients, devis, factures, parametres, naviguer }) {
-  const { ouvrirMenu } = useApp();
+  const { ouvrirMenu, consultationMobile } = useApp();
   const isMobile = useIsMobile();
   const [onglet, setOnglet] = useState('calendrier');
   // Le Gantt n'a pas d'intérêt sur téléphone (planification large, illisible en petit) :
@@ -114,7 +114,7 @@ function PlanningPage({ chantiers, setChantiers, clients, devis, factures, param
                   <Zap size={15} /> Optimiser l'équipe
                 </button>
               )}
-              {ongletActif === 'evenements' && (
+              {ongletActif === 'evenements' && !consultationMobile && (
                 <button onClick={() => setNouvelEvenementSignal(n => n + 1)}
                   style={{ ...heroBtnM, background: 'rgba(255,255,255,0.16)', border: '1px solid rgba(255,255,255,0.3)', fontWeight: 700 }}>
                   <Plus size={15} /> Nouvel événement

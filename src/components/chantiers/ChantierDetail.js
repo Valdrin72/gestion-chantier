@@ -42,7 +42,7 @@ const carteStyle = DS.card;
 const heroBtn = { background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.18)', borderRadius: 8, padding: '6px 11px', cursor: 'pointer', color: '#fff', display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: 'inherit', fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap' };
 
 function ChantierDetail({ chantier, detailOnglet, setDetailOnglet, modeCompleter, onRetour, onModifier, onSupprimer, onPasserEnCours }) {
-  const { factures = [], clients, devis = [], parametres, setChantiers, naviguer, ouvrirSaisieHeures, agentState, confirmer, afficherNotif, pointages = [], ouvrirMenu } = useApp();
+  const { factures = [], clients, devis = [], parametres, setChantiers, naviguer, ouvrirSaisieHeures, agentState, confirmer, afficherNotif, pointages = [], ouvrirMenu, consultationMobile } = useApp();
   const { etat, couts } = useChantierCalculs(chantier);
   const isMobile = useIsMobile();
   // La fiche passe en « hero plein écran » → le Topbar blanc est masqué (CSS), comme la liste.
@@ -286,17 +286,18 @@ function ChantierDetail({ chantier, detailOnglet, setDetailOnglet, modeCompleter
           <span style={heroMono(10, 0.55)}>· CHANTIER · {c.numero || '—'}</span>
           <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
             <button onClick={onRetour} style={heroBtn}><ChevronRight size={13} style={{ transform: 'rotate(180deg)' }} /> Retour</button>
-            {!estNouveauPlanifie && (
+            {!estNouveauPlanifie && !consultationMobile && (
               <button onClick={() => onModifier(c)} style={heroBtn}><Pencil size={13} /> Modifier</button>
             )}
-            {c.devisId && !isChantierActif(c) && !STATUTS_CLOS.includes(c.statut) && (
+            {c.devisId && !isChantierActif(c) && !STATUTS_CLOS.includes(c.statut) && !consultationMobile && (
               <button onClick={() => onPasserEnCours(c)} style={heroBtn}><PlayCircle size={13} /> Passer en cours</button>
             )}
+            {/* Saisir heures : GARDÉ sur mobile — c'est l'entrée du pointage depuis le chantier (décision patron). */}
             {isChantierActif(c) && (
               <button onClick={() => ouvrirSaisieHeures(c)} style={heroBtn}><Clock size={13} /> Saisir heures</button>
             )}
             {/* C8 état 1 → 2 : le patron marque les travaux finis — logique STRICTEMENT inchangée. */}
-            {isChantierActif(c) && (
+            {isChantierActif(c) && !consultationMobile && (
               <button
                 onClick={async () => {
                   if (confirmer && !await confirmer(`Marquer les travaux de « ${c.nom || c.numero} » comme terminés ?\n\nLe chantier passera en « Attente paiement » jusqu'à l'encaissement complet des factures.`, { labelOui: 'Travaux terminés' })) return;
@@ -307,7 +308,9 @@ function ChantierDetail({ chantier, detailOnglet, setDetailOnglet, modeCompleter
               ><CheckCircle size={13} /> Travaux terminés</button>
             )}
             <button onClick={() => naviguer('finances', { chantierActif: c.id })} style={heroBtn}><DollarSign size={13} /> Finances</button>
-            <button onClick={() => onSupprimer(c.id)} style={{ ...heroBtn, color: '#FF7A6B' }}><Trash2 size={13} /> Supprimer</button>
+            {!consultationMobile && (
+              <button onClick={() => onSupprimer(c.id)} style={{ ...heroBtn, color: '#FF7A6B' }}><Trash2 size={13} /> Supprimer</button>
+            )}
           </div>
         </div>
 
@@ -390,10 +393,12 @@ function ChantierDetail({ chantier, detailOnglet, setDetailOnglet, modeCompleter
             <div style={{ fontWeight: 700, color: '#065f46', fontSize: 14 }}>Chantier créé avec succès</div>
             <div style={{ fontSize: 12, color: '#047857', marginTop: 2 }}>Complétez les informations (adresse, équipe, dates), puis passez en cours et saisissez les heures.</div>
           </div>
-          <button
-            onClick={() => onModifier(c)}
-            style={{ background: 'linear-gradient(135deg, #10b981, #059669)', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 16px', fontWeight: 700, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}
-          ><Pencil size={14} /> Compléter le chantier</button>
+          {!consultationMobile && (
+            <button
+              onClick={() => onModifier(c)}
+              style={{ background: 'linear-gradient(135deg, #10b981, #059669)', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 16px', fontWeight: 700, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}
+            ><Pencil size={14} /> Compléter le chantier</button>
+          )}
         </div>
       )}
 
@@ -425,14 +430,16 @@ function ChantierDetail({ chantier, detailOnglet, setDetailOnglet, modeCompleter
             <div style={{ fontSize: 13, fontWeight: 800, color: '#059669' }}>Tout est payé — le chantier peut être clôturé</div>
             <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 3 }}>Reste dû : CHF 0 sur {facturesLiees.length} facture{facturesLiees.length > 1 ? 's' : ''}. L'argent est rentré.</div>
           </div>
-          <button
-            onClick={async () => {
-              if (confirmer && !await confirmer(`Passer « ${c.nom || c.numero} » en Terminé ?\n\nToutes les factures sont encaissées — le chantier sera bouclé (conservé dans l'historique).`, { labelOui: 'Terminer' })) return;
-              if (setChantiers) setChantiers(prev => prev.map(ch => String(ch.id) === String(c.id) ? { ...ch, statut: 'Terminé', dateFin: ch.dateFin || new Date().toISOString().slice(0, 10) } : ch));
-              if (afficherNotif) afficherNotif('Chantier terminé — tout est encaissé ✓');
-            }}
-            style={{ background: 'linear-gradient(135deg, #10b981, #059669)', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 16px', fontWeight: 700, fontSize: 13, cursor: 'pointer', whiteSpace: 'nowrap' }}
-          >Passer en Terminé</button>
+          {!consultationMobile && (
+            <button
+              onClick={async () => {
+                if (confirmer && !await confirmer(`Passer « ${c.nom || c.numero} » en Terminé ?\n\nToutes les factures sont encaissées — le chantier sera bouclé (conservé dans l'historique).`, { labelOui: 'Terminer' })) return;
+                if (setChantiers) setChantiers(prev => prev.map(ch => String(ch.id) === String(c.id) ? { ...ch, statut: 'Terminé', dateFin: ch.dateFin || new Date().toISOString().slice(0, 10) } : ch));
+                if (afficherNotif) afficherNotif('Chantier terminé — tout est encaissé ✓');
+              }}
+              style={{ background: 'linear-gradient(135deg, #10b981, #059669)', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 16px', fontWeight: 700, fontSize: 13, cursor: 'pointer', whiteSpace: 'nowrap' }}
+            >Passer en Terminé</button>
+          )}
         </div>
       )}
 
@@ -636,7 +643,7 @@ function ChantierDetail({ chantier, detailOnglet, setDetailOnglet, modeCompleter
           <div style={{ background: 'rgba(239,68,68,0.05)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 10, padding: '14px 18px', marginBottom: 16 }}>
             <div style={{ fontWeight: 700, color: '#ef4444', fontSize: 13, marginBottom: 4 }}>Aucun devis lié</div>
             <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Le chiffre d'affaires est indisponible. Liez un devis accepté pour activer le suivi financier.</div>
-            <button onClick={() => onModifier(c)} style={{ marginTop: 10, ...DS.btnGhost, fontSize: 12, padding: '5px 12px' }}>Modifier le chantier</button>
+            {!consultationMobile && <button onClick={() => onModifier(c)} style={{ marginTop: 10, ...DS.btnGhost, fontSize: 12, padding: '5px 12px' }}>Modifier le chantier</button>}
           </div>
         )}
 
@@ -677,7 +684,8 @@ function ChantierDetail({ chantier, detailOnglet, setDetailOnglet, modeCompleter
         )}
 
         {/* ── Extras / travaux imprévus (saisie inline) ─────────────────── */}
-        {(() => {
+        {/* Mode consultation mobile : bloc de saisie entièrement masqué (ajout / ✕ / facturer). */}
+        {!consultationMobile && (() => {
           const employes = parametres?.employes || [];
           const extras = c.extras || [];
           // Source de vérité : facture non annulée avec extraId === extra.id

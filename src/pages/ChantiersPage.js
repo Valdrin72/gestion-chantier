@@ -14,7 +14,7 @@ const sanitiser = (obj) => {
 };
 
 function Chantiers() {
-  const { chantiers, setChantiers, devis = [], factures = [], pointages = [], parametres, naviguer, contexte, afficherNotif, confirmer } = useApp();
+  const { chantiers, setChantiers, devis = [], factures = [], pointages = [], parametres, naviguer, contexte, afficherNotif, confirmer, consultationMobile } = useApp();
   const { filtre, setFiltre, chantiersFiltres, chantiersArchives, joursParChantier } = useChantierFiltres();
 
   const [vue, setVue] = useState('liste');
@@ -181,7 +181,7 @@ function Chantiers() {
       onSupprimer={supprimer}
       onArchiver={archiverChantier}
       onRestaurer={restaurerChantier}
-      formSlot={ajout && (
+      formSlot={ajout && !consultationMobile && (
         <ChantierForm
           form={form}
           setForm={setForm}

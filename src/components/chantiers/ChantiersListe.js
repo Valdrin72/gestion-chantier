@@ -36,7 +36,7 @@ function ChantiersListe({
   onRestaurer,
   formSlot,
 }) {
-  const { chantiers, clients, devis = [], factures = [], pointages = [], parametres, naviguer, contexte, agentState, confirmer, periodeGlobale = 'mois', setPeriodeGlobale = () => {}, ouvrirMenu } = useApp();
+  const { chantiers, clients, devis = [], factures = [], pointages = [], parametres, naviguer, contexte, agentState, confirmer, periodeGlobale = 'mois', setPeriodeGlobale = () => {}, ouvrirMenu, consultationMobile } = useApp();
   const isMobile = useIsMobile();
   const [page, setPage] = useState(0);
   const [vueMode, setVueMode] = useState('liste');
@@ -196,7 +196,7 @@ function ChantiersListe({
       </select>
       {/* Notifications */}
       <button onClick={() => naviguer('alertes')} aria-label="Notifications" style={{ ...heroBtn, padding: 7 }}><Bell size={15} /></button>
-      {chantiersFiltres.length > 0 && <button onClick={exporterCSV} style={heroBtn}><Download size={13} /> CSV</button>}
+      {chantiersFiltres.length > 0 && !consultationMobile && <button onClick={exporterCSV} style={heroBtn}><Download size={13} /> CSV</button>}
       <div style={{ display: 'flex', background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.18)', borderRadius: 8, overflow: 'hidden' }}>
         <button onClick={() => setVueMode('liste')} title="Vue liste"
           style={{ padding: '6px 10px', cursor: 'pointer', fontFamily: 'inherit', border: 'none', background: vueMode === 'liste' ? '#fff' : 'transparent', color: vueMode === 'liste' ? V1.marine : 'rgba(255,255,255,0.8)', display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 700 }}>
@@ -362,13 +362,17 @@ function ChantiersListe({
                       </span>
                     </div>
                   </div>
-                  <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }} onClick={e => e.stopPropagation()}>
-                    <button onClick={() => onSelect(c)} style={{ ...DS.iconBtn, width: 44, height: 44 }} title="Voir détail"><Eye size={16} /></button>
-                    <button onClick={() => onModifier(c)} style={{ ...DS.iconBtn, width: 44, height: 44 }} title="Modifier"><Pencil size={16} /></button>
-                    {estReference(c)
-                      ? (onArchiver && <button onClick={() => onArchiver(c.id)} style={{ ...DS.iconBtn, width: 44, height: 44 }} title="Archiver"><Archive size={16} /></button>)
-                      : (onSupprimer && <button onClick={async () => { if (await confirmer(`Supprimer "${c.nom || c.numero}" ?\n\nCette action est irréversible.`, { labelOui: 'Supprimer' })) onSupprimer(c.id); }} style={{ ...DS.iconBtn, width: 44, height: 44, color: V1.danger }} title="Supprimer"><Trash2 size={16} /></button>)}
-                  </div>
+                  {/* Mode consultation mobile : la carte entière est cliquable (onSelect) → la rangée
+                      d'actions d'écriture est masquée (pas de bouton solitaire « Voir »). */}
+                  {!consultationMobile && (
+                    <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }} onClick={e => e.stopPropagation()}>
+                      <button onClick={() => onSelect(c)} style={{ ...DS.iconBtn, width: 44, height: 44 }} title="Voir détail"><Eye size={16} /></button>
+                      <button onClick={() => onModifier(c)} style={{ ...DS.iconBtn, width: 44, height: 44 }} title="Modifier"><Pencil size={16} /></button>
+                      {estReference(c)
+                        ? (onArchiver && <button onClick={() => onArchiver(c.id)} style={{ ...DS.iconBtn, width: 44, height: 44 }} title="Archiver"><Archive size={16} /></button>)
+                        : (onSupprimer && <button onClick={async () => { if (await confirmer(`Supprimer "${c.nom || c.numero}" ?\n\nCette action est irréversible.`, { labelOui: 'Supprimer' })) onSupprimer(c.id); }} style={{ ...DS.iconBtn, width: 44, height: 44, color: V1.danger }} title="Supprimer"><Trash2 size={16} /></button>)}
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -454,7 +458,7 @@ function ChantiersListe({
               label={c.nom || c.numero}
               sublabel={`${c.numero || ''}${c.statut ? ` · ${c.statut}` : ''}`}
               dateArchivage={c.dateArchivage}
-              onRestaurer={() => onRestaurer && onRestaurer(c.id)}
+              onRestaurer={consultationMobile ? undefined : () => onRestaurer && onRestaurer(c.id)}
               onClick={() => onSelect(c)}
             />
           ))}

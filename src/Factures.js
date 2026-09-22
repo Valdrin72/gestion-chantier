@@ -123,7 +123,7 @@ function KpiCard({ label, value, couleur, icon, sous }) {
 
 // ── COMPOSANT PRINCIPAL ──────────────────────────────────────
 export default function Factures({ profil, clients = [], chantiers = [], devis = [], factures = [], onSave, naviguer, hideHeader = false, periodeGlobale = 'mois', parametres = null, preRemplir = null, onConsumePreRemplir = null, nouvelleFactureSignal = 0 }) {
-  const { pointages = [] } = useApp();
+  const { pointages = [], consultationMobile } = useApp();
   const isMobile = useIsMobile();
   const [vue, setVue] = useState('liste');   // 'liste' | 'form' | 'detail'
   const [selected, setSelected] = useState(null);
@@ -179,6 +179,7 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
 
   // ── Enregistrer un paiement depuis la facture ─────────────
   const enregistrerPaiement = () => {
+    if (consultationMobile) return; // lecture seule mobile — aucune écriture d'argent
     if (!paiementModal || !paiementForm.montant) return;
     const f = paiementModal;
     const montant = parseFloat(paiementForm.montant) || 0;
@@ -256,6 +257,7 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
 
   // ── Ouvrir formulaire ────────────────────────────────────
   const ouvrirForm = (facture = null) => {
+    if (consultationMobile) return; // pas de formulaire de facture sur mobile
     if (facture) {
       setForm({ ...facture });
     } else {
@@ -313,6 +315,7 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
   };
 
   const sauvegarder = (statut = null) => {
+    if (consultationMobile) return;
     const data = statut ? { ...form, statut } : { ...form };
     if (!data.clientId) { alert('Le client est obligatoire.'); return; }
     // Validation stricte à l'émission
@@ -368,6 +371,7 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
   };
 
   const supprimerFacture = (id, returnToListe = false) => {
+    if (consultationMobile) return;
     const f = factures.find(x => x.id === id);
     const msg = `Supprimer la facture ${f?.numero || ''} ?\nCette action est irréversible.`;
     if (!window.confirm(msg)) return;
@@ -378,6 +382,7 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
   // Annuler une facture émise/partielle/payée — garde le numéro + la trace (statut 'annulee').
   // Remplace la suppression interdite sur ces statuts. Sur facture avec paiements → avertissement renforcé.
   const annulerFacture = (id, returnToListe = false) => {
+    if (consultationMobile) return;
     const f = factures.find(x => x.id === id);
     if (!f) return;
     if (f.statut === 'annulee' || f.statut === 'brouillon') return; // pas d'action sur ces statuts
@@ -398,6 +403,7 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
   };
 
   const confirmerRappelEnvoye = () => {
+    if (consultationMobile) return;
     if (!rappelModal) return;
     const { facture, niveau } = rappelModal;
     const factureMAJ = marquerRappelEnvoye(facture, niveau);
@@ -407,6 +413,7 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
   };
 
   const changerStatut = (id, statut) => {
+    if (consultationMobile) return;
     const f = factures.find(x => x.id === id);
     if (!f) return;
     if (statut === 'envoyee') {
@@ -482,10 +489,10 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
             <div className="page-title-sub">{factures.length} facture{factures.length !== 1 ? 's' : ''}</div>
           </div>
           <div className="page-actions-group">
-            {factures.length > 0 && (
+            {factures.length > 0 && !consultationMobile && (
               <button style={S.btnGhost} onClick={exporterCSV}><Download size={14} /> Exporter CSV</button>
             )}
-            {canEdit && (
+            {canEdit && !consultationMobile && (
               <button style={S.btnPrimary} onClick={() => ouvrirForm()}>+ Nouvelle facture</button>
             )}
           </div>
@@ -587,6 +594,8 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
                     </td>
                     <td style={S.td}><BadgeStatut statut={f.statut} /></td>
                     <td style={S.td} onClick={e => e.stopPropagation()}>
+                      {/* Consultation mobile : toute la colonne d'actions (écritures + exports) est masquée ; la ligne reste cliquable pour ouvrir le détail. */}
+                      {!consultationMobile && (
                       <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', alignItems: 'center' }}>
                         {canEdit && f.statut !== 'annulee' && (
                           <>
@@ -640,6 +649,7 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
                           );
                         })()}
                       </div>
+                      )}
                     </td>
                   </tr>
                 );
@@ -666,8 +676,8 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
         </div>
       )}
 
-      {/* ── Modal paiement ── */}
-      {paiementModal && (
+      {/* ── Modal paiement (jamais rendue en consultation mobile) ── */}
+      {paiementModal && !consultationMobile && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px 16px' }}
           onClick={e => { if (e.target === e.currentTarget) setPaiementModal(null); }}>
           <div style={{ background: 'linear-gradient(145deg, rgba(255,255,255,0.07) 0%, rgba(255,255,255,0.03) 100%)', backdropFilter: 'blur(20px) saturate(1.8)', WebkitBackdropFilter: 'blur(20px) saturate(1.8)', borderRadius: 18, padding: 28, width: '100%', maxWidth: 420, boxSizing: 'border-box', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 24px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.1), inset 0 1px 0 rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.1)' }}>
@@ -716,7 +726,7 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
             <button style={S.btnGhost} onClick={() => setVue('liste')}>← Retour</button>
             <div className="page-title-main">Facture {f.numero}</div>
             <BadgeStatut statut={f.statut} />
-          {(() => {
+          {!consultationMobile && (() => {
             const chantierDetail = chantiers.find(c => String(c.id) === String(f.chantierId));
             const clientDetail = clients.find(c => String(c.id) === String(f.clientId));
             const devisDetail = devis.find(d => String(d.id) === String(f.devisId));
@@ -737,7 +747,7 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
               </>
             );
           })()}
-          {canEdit && f.statut !== 'annulee' && (
+          {canEdit && f.statut !== 'annulee' && !consultationMobile && (
             <>
               <button style={S.btnGhost} onClick={() => ouvrirForm(f)}>Modifier</button>
               {f.statut === 'brouillon' && (
@@ -1007,7 +1017,7 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
         )}
 
         {/* Action bas de page : brouillon = supprimer, émise/partielle/payée = annuler, annulée = rien. */}
-        {canEdit && f.statut === 'brouillon' && (
+        {canEdit && f.statut === 'brouillon' && !consultationMobile && (
           <div style={{ marginTop: 16, display: 'flex', gap: 8 }}>
             <button style={S.btnDanger} onClick={() => {
               supprimerFacture(f.id);
@@ -1015,14 +1025,14 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
             }}>Supprimer</button>
           </div>
         )}
-        {canEdit && (f.statut === 'envoyee' || f.statut === 'partielle' || f.statut === 'payee') && (
+        {canEdit && (f.statut === 'envoyee' || f.statut === 'partielle' || f.statut === 'payee') && !consultationMobile && (
           <div style={{ marginTop: 16, display: 'flex', gap: 8 }}>
             <button style={S.btnDanger} onClick={() => annulerFacture(f.id, true)}>Annuler</button>
           </div>
         )}
 
-        {/* ── Modal paiement (vue détail) ── */}
-        {paiementModal && (
+        {/* ── Modal paiement (vue détail) — jamais rendue en consultation mobile ── */}
+        {paiementModal && !consultationMobile && (
           <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px 16px' }}
             onClick={e => { if (e.target === e.currentTarget) setPaiementModal(null); }}>
             <div style={{ background: 'linear-gradient(145deg, rgba(255,255,255,0.07) 0%, rgba(255,255,255,0.03) 100%)', backdropFilter: 'blur(20px) saturate(1.8)', WebkitBackdropFilter: 'blur(20px) saturate(1.8)', borderRadius: 18, padding: 28, width: '100%', maxWidth: 420, boxSizing: 'border-box', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 24px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.1), inset 0 1px 0 rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.1)' }}>
@@ -1110,7 +1120,7 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
                   <button style={S.btnGhost} onClick={imprimer}>🖨 Imprimer</button>
                   <div style={{ flex: 1 }} />
                   <button style={S.btnGhost} onClick={() => setRappelModal(null)}>Fermer</button>
-                  {!dejaEnvoye && (
+                  {!dejaEnvoye && !consultationMobile && (
                     <button onClick={confirmerRappelEnvoye}
                       style={{ ...S.btnSuccess, background: info.couleur, borderColor: info.couleur }}>
                       ✓ Marquer comme envoyé
@@ -1128,7 +1138,7 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
   // ============================
   //  FORMULAIRE
   // ============================
-  if (vue === 'form' && form) {
+  if (vue === 'form' && form && !consultationMobile) {
     const isNew = !factures.some(f => f.id === form.id);
 
     return (<React.Fragment key="form">

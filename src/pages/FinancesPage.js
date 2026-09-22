@@ -536,7 +536,7 @@ export default function Finances({
   parametres = null,
   pointages = [],
 }) {
-  const { confirmer, afficherNotif, ouvrirMenu, setPeriodeGlobale = () => {} } = useApp();
+  const { confirmer, afficherNotif, ouvrirMenu, setPeriodeGlobale = () => {}, consultationMobile } = useApp();
   const isMobile = useIsMobile();
   const [onglet, setOnglet] = useState('tresorerie');
   const [preRemplirFacture, setPreRemplirFacture] = useState(null);
@@ -713,14 +713,16 @@ export default function Finances({
               <span style={{ fontFamily: "'Inter', sans-serif", fontWeight: 800, fontSize: 15, letterSpacing: '0.06em', color: '#fff', flexShrink: 0 }}>CYNA</span>
               <span style={{ ...heroMono(10, 0.6), whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>· FINANCES</span>
             </div>
-            {/* Mobile — barre d'outils 44px : période + Nouvelle facture */}
+            {/* Mobile — barre d'outils 44px : période (+ Nouvelle facture, masqué en consultation) */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-              <select value={periodeGlobale} onChange={e => setPeriodeGlobale(e.target.value)} aria-label="Période" style={{ ...heroBtnM, flex: '0 1 128px', minWidth: 0 }}>
+              <select value={periodeGlobale} onChange={e => setPeriodeGlobale(e.target.value)} aria-label="Période" style={{ ...heroBtnM, flex: consultationMobile ? '1 1 auto' : '0 1 128px', minWidth: 0 }}>
                 {PERIODES.map(p => <option key={p.id} value={p.id} style={{ color: '#16233A' }}>{p.label}</option>)}
               </select>
-              <button onClick={() => { setOnglet('factures'); setNouvelleFactureSignal(n => n + 1); }} style={{ ...heroBtnM, flex: '1 1 auto', minWidth: 0, background: 'rgba(255,255,255,0.16)', border: '1px solid rgba(255,255,255,0.3)', fontWeight: 700, overflow: 'hidden' }}>
-                <Plus size={15} style={{ flexShrink: 0 }} /> Nouvelle facture
-              </button>
+              {!consultationMobile && (
+                <button onClick={() => { setOnglet('factures'); setNouvelleFactureSignal(n => n + 1); }} style={{ ...heroBtnM, flex: '1 1 auto', minWidth: 0, background: 'rgba(255,255,255,0.16)', border: '1px solid rgba(255,255,255,0.3)', fontWeight: 700, overflow: 'hidden' }}>
+                  <Plus size={15} style={{ flexShrink: 0 }} /> Nouvelle facture
+                </button>
+              )}
             </div>
           </>
         ) : (
@@ -807,12 +809,14 @@ export default function Finances({
             <strong>{facturesOrphelines.length} facture{facturesOrphelines.length > 1 ? 's' : ''} sans chantier ni devis rattaché</strong>
             {' '}— le chantier ou le devis lié a été supprimé. Ces montants sont exclus des totaux.
           </div>
-          <button
-            onClick={async () => { if (await confirmer(`Supprimer définitivement ${facturesOrphelines.length} facture(s) orpheline(s) ?\n\nCette action est irréversible.`, { labelOui: 'Supprimer' })) onSave(factures.filter(f => !facturesOrphelines.some(o => o.id === f.id))); }}
-            style={{ padding: '6px 14px', borderRadius: 8, border: '1px solid rgba(239,68,68,0.4)', background: 'rgba(239,68,68,0.12)', color: '#ef4444', fontSize: 12, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}
-          >
-            Supprimer
-          </button>
+          {!consultationMobile && (
+            <button
+              onClick={async () => { if (await confirmer(`Supprimer définitivement ${facturesOrphelines.length} facture(s) orpheline(s) ?\n\nCette action est irréversible.`, { labelOui: 'Supprimer' })) onSave(factures.filter(f => !facturesOrphelines.some(o => o.id === f.id))); }}
+              style={{ padding: '6px 14px', borderRadius: 8, border: '1px solid rgba(239,68,68,0.4)', background: 'rgba(239,68,68,0.12)', color: '#ef4444', fontSize: 12, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}
+            >
+              Supprimer
+            </button>
+          )}
         </div>
       )}
 
@@ -832,7 +836,7 @@ export default function Finances({
 
       {/* ── Contenu ── */}
       {onglet === 'tresorerie' && (
-        <Tresorerie factures={facturesValides} chantiers={chantiers} clients={clients} devis={devis} parametres={parametres} onEmettreFacture={onEmettreFacture} onEmettreExtra={onEmettreExtra} pointages={pointages} />
+        <Tresorerie factures={facturesValides} chantiers={chantiers} clients={clients} devis={devis} parametres={parametres} onEmettreFacture={consultationMobile ? null : onEmettreFacture} onEmettreExtra={consultationMobile ? null : onEmettreExtra} pointages={pointages} />
       )}
       <div style={{ display: onglet === 'factures' ? 'block' : 'none' }}>
         <Factures

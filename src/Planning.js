@@ -216,7 +216,7 @@ export default function Planning({
   onMoisPrecedent, onMoisSuivant, ganttOffset: ganttOffsetProp,
   showOptimiseur: showOptimiseurProp, setShowOptimiseur: setShowOptimiseurProp,
 }) {
-  const { pointages = [] } = useApp();
+  const { pointages = [], consultationMobile } = useApp();
   const isMobile = useIsMobile();
   // Tuile-icône d'état vide (mobile) — même gabarit que Chantiers/Dashboard.
   const tuileVide = { width: 44, height: 44, borderRadius: 13, background: '#F1F5F9', border: '1px solid #E2E8F0', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94A3B8', flexShrink: 0 };
@@ -238,6 +238,7 @@ export default function Planning({
 
   // ── Modal helpers ──────────────────────────────────────────────
   const ouvrirModal = useCallback((c) => {
+    if (consultationMobile) return; // Mode consultation mobile : la modale d'édition ne s'ouvre pas.
     setModal({
       chantier: c,
       form: {
@@ -247,9 +248,10 @@ export default function Planning({
         inclusSamedi: c.inclusSamedi || false,
       }
     });
-  }, []);
+  }, [consultationMobile]);
 
   const sauvegarderModal = useCallback(() => {
+    if (consultationMobile) return; // Mode consultation mobile : aucune écriture planning.
     setModal(prev => {
       if (!prev) return null;
       const { chantier, form } = prev;
@@ -260,9 +262,10 @@ export default function Planning({
       ));
       return null;
     });
-  }, [setChantiers]);
+  }, [setChantiers, consultationMobile]);
 
   const supprimerDuPlanning = useCallback(() => {
+    if (consultationMobile) return; // Mode consultation mobile : pas de retrait du planning.
     setModal(prev => {
       if (!prev) return null;
       const { chantier } = prev;
@@ -272,7 +275,7 @@ export default function Planning({
       ));
       return null;
     });
-  }, [setChantiers]);
+  }, [setChantiers, consultationMobile]);
 
   // ── Navigation mois — pilotée par le hero (fallback interne en standalone) ──
   const moisPrecedent = onMoisPrecedent ?? (() => {
@@ -574,10 +577,18 @@ export default function Planning({
                 {chantiersNonPlanifies.length} sans date :
               </span>
               {chantiersNonPlanifies.map(c => (
-                <button key={c.id} onClick={() => ouvrirModal(c)}
-                  style={{ background: 'rgba(245,158,11,0.15)', color: '#f59e0b', border: '1px solid rgba(245,158,11,0.35)', borderRadius: 8, padding: '4px 12px', cursor: 'pointer', fontSize: 12, fontWeight: 600, fontFamily: 'inherit' }}>
-                  + Planifier {c.nom || c.numero}
-                </button>
+                consultationMobile ? (
+                  /* Mode consultation mobile : chip en lecture seule (pas de planification). */
+                  <span key={c.id}
+                    style={{ background: 'rgba(245,158,11,0.15)', color: '#f59e0b', border: '1px solid rgba(245,158,11,0.35)', borderRadius: 8, padding: '4px 12px', fontSize: 12, fontWeight: 600 }}>
+                    {c.nom || c.numero}
+                  </span>
+                ) : (
+                  <button key={c.id} onClick={() => ouvrirModal(c)}
+                    style={{ background: 'rgba(245,158,11,0.15)', color: '#f59e0b', border: '1px solid rgba(245,158,11,0.35)', borderRadius: 8, padding: '4px 12px', cursor: 'pointer', fontSize: 12, fontWeight: 600, fontFamily: 'inherit' }}>
+                    + Planifier {c.nom || c.numero}
+                  </button>
+                )
               ))}
             </div>
           )}
@@ -624,7 +635,7 @@ export default function Planning({
                     </div>
                     <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
                       <span style={{ ...mono(10, cs.color, 600), textTransform: 'uppercase', letterSpacing: '0.04em', background: cs.bg, borderRadius: 6, padding: '3px 10px' }}>{c.statut}</span>
-                      <button onClick={() => ouvrirModal(c)} style={btnEdit}>Modifier</button>
+                      {!consultationMobile && <button onClick={() => ouvrirModal(c)} style={btnEdit}>Modifier</button>}
                     </div>
                   </div>
 
@@ -780,7 +791,8 @@ export default function Planning({
       )} {/* fin vue === 'calendrier' */}
 
       {/* ── MODAL ÉDITION ───────────────────────────────────────── */}
-      {modal && (
+      {/* Défense en profondeur : jamais rendue en mode consultation mobile (ouvrirModal est déjà gardé). */}
+      {modal && !consultationMobile && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(4px)', padding: '20px 16px' }} onClick={() => setModal(null)}>
           <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-glass-strong)', borderRadius: 18, padding: 32, maxWidth: 520, width: '100%', boxSizing: 'border-box', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 24px 64px rgba(0,0,0,0.6)' }} onClick={e => e.stopPropagation()}>
             <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--text-primary)', marginBottom: 6 }}>Modifier le planning</div>

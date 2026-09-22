@@ -153,7 +153,7 @@ const heroFondMobile = {
 const PERIODES = [{ id: 'semaine', label: 'Cette semaine' }, { id: 'mois', label: 'Ce mois' }, { id: 'annee', label: 'Cette année' }];
 
 function Devis() {
-  const { devis, setDevis, clients, parametres, naviguer, setChantiers, chantiers, factures, setFactures, contexte = {}, afficherNotif, confirmer, periodeGlobale = 'mois', setPeriodeGlobale = () => {}, ouvrirMenu } = useApp();
+  const { devis, setDevis, clients, parametres, naviguer, setChantiers, chantiers, factures, setFactures, contexte = {}, afficherNotif, confirmer, periodeGlobale = 'mois', setPeriodeGlobale = () => {}, ouvrirMenu, consultationMobile } = useApp();
   const isMobile = useIsMobile();
   const [ajout, setAjout] = useState(false);
   // La page passe en « hero plein écran » (Topbar blanc masqué) comme les autres pages v1.
@@ -173,6 +173,7 @@ function Devis() {
 
   // Devis standalone (aucun chantier/facture) → suppression dure autorisée.
   const supprimerDevis = async (d) => {
+    if (consultationMobile) return; // lecture seule mobile
     if (!await confirmer(`Supprimer le devis "${d.numero}" ?\n\nCette action est irréversible.`, { labelOui: 'Supprimer' })) return;
     setDevis(devis.filter(dv => String(dv.id) !== String(d.id)));
     if (afficherNotif) afficherNotif('Devis supprimé');
@@ -180,12 +181,14 @@ function Devis() {
 
   // Devis référencé → archivage (soft) : rangé hors de la liste active, rien n'est détruit.
   const archiverDevis = async (d) => {
+    if (consultationMobile) return;
     if (!await confirmer(`Archiver le devis "${d.numero}" ?\n\nIl sera rangé hors de la liste active mais conservé (chantier et/ou factures liés).`, { labelOui: 'Archiver' })) return;
     setDevis(devis.map(dv => String(dv.id) === String(d.id) ? archiver(dv) : dv));
     if (afficherNotif) afficherNotif('Devis archivé — visible via « Voir les archivés »');
   };
 
   const restaurerDevis = (d) => {
+    if (consultationMobile) return;
     setDevis(devis.map(dv => String(dv.id) === String(d.id) ? restaurer(dv) : dv));
     if (afficherNotif) afficherNotif('Devis restauré dans la liste active');
   };
@@ -215,13 +218,15 @@ function Devis() {
   }, [chantiers, devis]);
 
 
-  // Ouverture directe du formulaire depuis la sidebar
+  // Ouverture directe du formulaire depuis la sidebar (jamais sur mobile — consultation seule)
   React.useEffect(() => {
+    if (consultationMobile) return;
     if (contexte?.ouvrirNouveau) { setForm(vide); setAjout(true); }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Préremplissage depuis Import PDF
+  // Préremplissage depuis Import PDF (jamais sur mobile)
   React.useEffect(() => {
+    if (consultationMobile) return;
     if (!contexte?.prixPropose && !contexte?.lignes?.length) return;
     const lignesTexte = (contexte.lignes || []).length > 0
       ? '\n\nPostes détectés (PDF' + (contexte.source ? ' : ' + contexte.source : '') + ') :\n'
@@ -234,6 +239,7 @@ function Devis() {
   const formatDateCH = (s) => { if (!s) return '—'; const [y, m, d] = (s || '').split('-'); return (d && m && y) ? `${d}.${m}.${y}` : s; };
 
   const sauvegarder = () => {
+    if (consultationMobile) return;
     const nouvellesErreurs = {};
     if (!form.clientId) nouvellesErreurs.clientId = 'Sélectionner un client';
     if (!form.typesTravaux?.length) nouvellesErreurs.typesTravaux = 'Sélectionner au moins un type de travaux';
@@ -277,6 +283,7 @@ function Devis() {
   };
 
   const ouvrirConfirmConversion = (d) => {
+    if (consultationMobile) return;
     const client = clients.find(c => String(c.id) === String(d.clientId));
     const nomSuggere = client?.entreprise
       ? `${client.entreprise} — ${d.numero}`
@@ -285,6 +292,7 @@ function Devis() {
   };
 
   const confirmerConversion = () => {
+    if (consultationMobile) return;
     if (!confirmConversion) return;
     const { devis: d, nomChantier } = confirmConversion;
     const newId = Date.now();
@@ -351,10 +359,12 @@ function Devis() {
                   <select value={periodeGlobale} onChange={e => setPeriodeGlobale(e.target.value)} aria-label="Période" style={{ ...heroBtnM, flex: '1 1 auto', minWidth: 0 }}>
                     {PERIODES.map(p => <option key={p.id} value={p.id} style={{ color: '#16233A' }}>{p.label}</option>)}
                   </select>
-                  {devis.length > 0 && (
+                  {devis.length > 0 && !consultationMobile && (
                     <button onClick={exporterCSV} aria-label="Exporter CSV" title="Exporter CSV" style={{ ...heroBtnM, width: 44, padding: 0 }}><Download size={16} /></button>
                   )}
-                  <button onClick={() => { setForm(vide); setAjout(!ajout); }} style={{ ...heroBtnM, background: 'rgba(255,255,255,0.16)', border: '1px solid rgba(255,255,255,0.3)', fontWeight: 700 }}><Plus size={15} style={{ flexShrink: 0 }} /> Nouveau devis</button>
+                  {!consultationMobile && (
+                    <button onClick={() => { setForm(vide); setAjout(!ajout); }} style={{ ...heroBtnM, background: 'rgba(255,255,255,0.16)', border: '1px solid rgba(255,255,255,0.3)', fontWeight: 700 }}><Plus size={15} style={{ flexShrink: 0 }} /> Nouveau devis</button>
+                  )}
                 </div>
               </>
             ) : (
@@ -424,7 +434,7 @@ function Devis() {
         );
       })()}
 
-      {ajout && (
+      {ajout && !consultationMobile && (
         <div style={carteStyle}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20, flexWrap: 'wrap' }}>
             <div className="ds-card-title" style={{ margin: 0 }}>{form.id ? 'Modifier' : 'Nouveau'} devis</div>
@@ -745,7 +755,7 @@ function Devis() {
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr>
-                  {['Référence', 'Date', 'Client', 'Chantier lié', 'CA HT', 'Statut', 'Actions'].map(col => (
+                  {['Référence', 'Date', 'Client', 'Chantier lié', 'CA HT', 'Statut', ...(consultationMobile ? [] : ['Actions'])].map(col => (
                     <th key={col} style={{ ...mono(10, V1.texteMuted), textAlign: 'left', textTransform: 'uppercase', letterSpacing: '0.06em', padding: '12px 14px', borderBottom: `1px solid ${V1.separation}`, background: '#FAFBFC', whiteSpace: 'nowrap' }}>{col}</th>
                   ))}
                 </tr>
@@ -808,6 +818,8 @@ function Devis() {
                           background: statutStyle.bg, borderRadius: 20, padding: '3px 10px', whiteSpace: 'nowrap', display: 'inline-block',
                         }}>{d.statut}</span>
                       </td>
+                      {/* Colonne d'actions retirée en consultation mobile (aucun bouton d'écriture/export) */}
+                      {!consultationMobile && (
                       <td style={{ ...td, whiteSpace: 'nowrap' }}>
                         <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
                           {!chantierLie && isAccepte && (
@@ -864,6 +876,7 @@ function Devis() {
                             )}
                         </div>
                       </td>
+                      )}
                     </tr>
                   );
                 })}
@@ -898,7 +911,7 @@ function Devis() {
                 label={d.numero || 'Devis'}
                 sublabel={[client?.entreprise || `${client?.prenom || ''} ${client?.nom || ''}`.trim(), d.statut].filter(Boolean).join(' · ')}
                 dateArchivage={d.dateArchivage}
-                onRestaurer={() => restaurerDevis(d)}
+                onRestaurer={consultationMobile ? undefined : () => restaurerDevis(d)}
               />
             );
           })}
@@ -906,7 +919,7 @@ function Devis() {
       )}
 
       {/* ── Modale confirmation conversion devis → chantier ── */}
-      {confirmConversion && (() => {
+      {confirmConversion && !consultationMobile && (() => {
         const d = confirmConversion.devis;
         const client = clients.find(c => String(c.id) === String(d.clientId));
         const montant = parseFloat(d.montantHT || d.prixPropose) || 0;

@@ -38,19 +38,21 @@ export default function ArchivedRow({ label, sublabel, dateArchivage, onRestaure
             Archivé le {dateFmt}
           </span>
         )}
-        <button
-          type="button"
-          onClick={onRestaurer}
-          style={{
-            display: 'inline-flex', alignItems: 'center', gap: 5,
-            background: 'transparent', border: '1px solid var(--border-hover)',
-            borderRadius: 8, padding: '5px 11px', cursor: 'pointer',
-            fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', fontFamily: 'inherit',
-          }}
-          title="Restaurer — remettre dans la liste active"
-        >
-          <RotateCcw size={13} /> Restaurer
-        </button>
+        {onRestaurer && (
+          <button
+            type="button"
+            onClick={onRestaurer}
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 5,
+              background: 'transparent', border: '1px solid var(--border-hover)',
+              borderRadius: 8, padding: '5px 11px', cursor: 'pointer',
+              fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', fontFamily: 'inherit',
+            }}
+            title="Restaurer — remettre dans la liste active"
+          >
+            <RotateCcw size={13} /> Restaurer
+          </button>
+        )}
       </div>
     </div>
   );

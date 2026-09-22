@@ -24,7 +24,7 @@ const ROLES_DIRECTION = ['chef de chantier', "chef d'équipe", 'comptable'];
 const couleurPosteV1 = (poste) => ROLES_DIRECTION.includes((poste || '').trim().toLowerCase()) ? V1.warn : V1.bleu;
 
 function Employes({ parametres, setParametres, chantiers, naviguer }) {
-  const { profil, afficherNotif, periodeGlobale, ouvrirMenu } = useApp();
+  const { profil, afficherNotif, periodeGlobale, ouvrirMenu, consultationMobile } = useApp();
   const isMobile = useIsMobile();
   const voirSalaires = ['cyna', 'cynatech'].includes(profil?.id);
   // La page passe en « hero plein écran » (Topbar blanc masqué) comme les autres pages v1.
@@ -36,6 +36,7 @@ function Employes({ parametres, setParametres, chantiers, naviguer }) {
   const [ajout, setAjout] = useState(false);
   const [form, setForm] = useState({ nom: '', poste: 'Ouvrier qualifié', tarifHeure: '', tarifRegieHeure: '', telephone: '', email: '', actif: true });
   const sauvegarder = () => {
+    if (consultationMobile) return; // lecture seule mobile
     if (!form.nom || !form.tarifHeure) {
       if (afficherNotif) afficherNotif('Le nom et le tarif horaire sont obligatoires', 'error');
       return;
@@ -80,11 +81,13 @@ function Employes({ parametres, setParametres, chantiers, naviguer }) {
               )}
               <span style={{ fontFamily: "'Inter', sans-serif", fontWeight: 800, fontSize: 15, letterSpacing: '0.06em', color: '#fff' }}>CYNA</span>
               <span style={heroMono(10, 0.55)}>· ÉQUIPE / 09</span>
-              <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
-                <button onClick={() => setAjout(!ajout)} style={{ ...heroBtn, background: 'rgba(255,255,255,0.16)', border: '1px solid rgba(255,255,255,0.3)', fontWeight: 700 }}>
-                  <Plus size={14} /> Nouvel employé
-                </button>
-              </div>
+              {!consultationMobile && (
+                <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <button onClick={() => setAjout(!ajout)} style={{ ...heroBtn, background: 'rgba(255,255,255,0.16)', border: '1px solid rgba(255,255,255,0.3)', fontWeight: 700 }}>
+                    <Plus size={14} /> Nouvel employé
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Ligne 2 — titre + ligne mono */}
@@ -125,7 +128,7 @@ function Employes({ parametres, setParametres, chantiers, naviguer }) {
 
       {onglet === 'equipe' && <>
 
-      {ajout && (
+      {ajout && !consultationMobile && (
         <div style={{ ...carteStyle, borderTop: `3px solid ${V1.bleu}` }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>
             <div className="ds-card-title" style={{ margin: 0 }}>{form.id ? 'Modifier' : 'Nouvel'} employé</div>
@@ -195,14 +198,18 @@ function Employes({ parametres, setParametres, chantiers, naviguer }) {
                 <button onClick={() => naviguer('chantiers', { employeActif: e.id })} style={{ ...DS.btnGhost, fontSize: '12px', padding: '6px 11px' }}>
                   <HardHat size={13} /> Chantiers ({chantiersEmp.length})
                 </button>
-                <button onClick={() => { setForm({ ...e, tarifHeure: tarifHoraireEmploye(e) || '' }); setAjout(true); }} style={{ ...DS.btnGhost, padding: '6px 10px' }}><Pencil size={13} /></button>
-                <button
-                  onClick={() => setParametres({ ...parametres, employes: (parametres.employes || []).map(emp => String(emp.id) === String(e.id) ? { ...emp, actif: e.actif === false } : emp) })}
-                  style={{ ...(e.actif === false ? btnSucces : DS.btnGhost), padding: '6px 10px', fontSize: '12px' }}
-                  title={e.actif === false ? 'Réactiver cet employé' : 'Désactiver cet employé (conserve l\'historique)'}
-                >
-                  <Power size={13} /> {e.actif === false ? 'Réactiver' : 'Désactiver'}
-                </button>
+                {!consultationMobile && (
+                  <button onClick={() => { setForm({ ...e, tarifHeure: tarifHoraireEmploye(e) || '' }); setAjout(true); }} style={{ ...DS.btnGhost, padding: '6px 10px' }}><Pencil size={13} /></button>
+                )}
+                {!consultationMobile && (
+                  <button
+                    onClick={() => { if (consultationMobile) return; setParametres({ ...parametres, employes: (parametres.employes || []).map(emp => String(emp.id) === String(e.id) ? { ...emp, actif: e.actif === false } : emp) }); }}
+                    style={{ ...(e.actif === false ? btnSucces : DS.btnGhost), padding: '6px 10px', fontSize: '12px' }}
+                    title={e.actif === false ? 'Réactiver cet employé' : 'Désactiver cet employé (conserve l\'historique)'}
+                  >
+                    <Power size={13} /> {e.actif === false ? 'Réactiver' : 'Désactiver'}
+                  </button>
+                )}
               </div>
             </div>
           );

@@ -34,7 +34,7 @@ const couleurType = (type) => {
 };
 
 function Clients({ clients, setClients, chantiers, devis = [], factures = [], naviguer }) {
-  const { confirmer, afficherNotif, ouvrirMenu } = useApp();
+  const { confirmer, afficherNotif, ouvrirMenu, consultationMobile } = useApp();
   const isMobile = useIsMobile();
   // La page passe en « hero plein écran » (Topbar blanc masqué) comme les autres pages v1.
   useLayoutEffect(() => {
@@ -50,6 +50,7 @@ function Clients({ clients, setClients, chantiers, devis = [], factures = [], na
   const estReference = (c) => clientEstReferencé(c, { chantiers, devis, factures }) !== null;
   const [form, setForm] = useState({ nom: '', prenom: '', entreprise: '', telephone: '', email: '', adresse: '', ville: '', canton: '', type: 'Entreprise', notes: '' });
   const sauvegarder = () => {
+    if (consultationMobile) return; // lecture seule mobile
     if (!form.nom || !form.prenom) {
       if (afficherNotif) afficherNotif('Le nom et le prénom du client sont obligatoires', 'error');
       return;
@@ -64,6 +65,7 @@ function Clients({ clients, setClients, chantiers, devis = [], factures = [], na
   };
   // Client vierge (aucun chantier/devis/facture) → suppression dure autorisée.
   const supprimer = async (c) => {
+    if (consultationMobile) return;
     if (!await confirmer(`Supprimer ${c.prenom} ${c.nom} ?\n\nCette action est irréversible.`, { labelOui: 'Supprimer' })) return;
     setClients(clients.filter(cl => String(cl.id) !== String(c.id)));
     if (afficherNotif) afficherNotif('Client supprimé');
@@ -71,17 +73,19 @@ function Clients({ clients, setClients, chantiers, devis = [], factures = [], na
 
   // Client référencé → archivage (soft) : rangé hors de la liste active, rien n'est détruit.
   const archiverClient = async (c) => {
+    if (consultationMobile) return;
     if (!await confirmer(`Archiver ${c.prenom} ${c.nom} ?\n\nIl sera rangé hors de la liste active mais conservé (chantiers, devis, factures, historique).`, { labelOui: 'Archiver' })) return;
     setClients(clients.map(cl => String(cl.id) === String(c.id) ? archiver(cl) : cl));
     if (afficherNotif) afficherNotif('Client archivé — visible via « Voir les archivés »');
   };
 
   const restaurerClient = (c) => {
+    if (consultationMobile) return;
     setClients(clients.map(cl => String(cl.id) === String(c.id) ? restaurer(cl) : cl));
     if (afficherNotif) afficherNotif('Client restauré dans la liste active');
   };
 
-  const ouvrirNouveau = () => { setForm({ nom: '', prenom: '', entreprise: '', telephone: '', email: '', adresse: '', ville: '', canton: '', type: 'Entreprise', notes: '' }); setAjout(true); };
+  const ouvrirNouveau = () => { if (consultationMobile) return; setForm({ nom: '', prenom: '', entreprise: '', telephone: '', email: '', adresse: '', ville: '', canton: '', type: 'Entreprise', notes: '' }); setAjout(true); };
 
   return (
     <div>
@@ -106,11 +110,13 @@ function Clients({ clients, setClients, chantiers, devis = [], factures = [], na
               )}
               <span style={{ fontFamily: "'Inter', sans-serif", fontWeight: 800, fontSize: 15, letterSpacing: '0.06em', color: '#fff' }}>CYNA</span>
               <span style={heroMono(10, 0.55)}>· CLIENTS / 08</span>
-              <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
-                <button onClick={ouvrirNouveau} style={{ ...heroBtn, background: 'rgba(255,255,255,0.16)', border: '1px solid rgba(255,255,255,0.3)', fontWeight: 700 }}>
-                  <Plus size={14} /> Nouveau client
-                </button>
-              </div>
+              {!consultationMobile && (
+                <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <button onClick={ouvrirNouveau} style={{ ...heroBtn, background: 'rgba(255,255,255,0.16)', border: '1px solid rgba(255,255,255,0.3)', fontWeight: 700 }}>
+                    <Plus size={14} /> Nouveau client
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Ligne 2 — titre + ligne mono */}
@@ -133,7 +139,7 @@ function Clients({ clients, setClients, chantiers, devis = [], factures = [], na
         );
       })()}
 
-      {ajout && (
+      {ajout && !consultationMobile && (
         <div style={{ ...carteStyle, borderTop: `3px solid ${V1.bleu}` }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>
             <div className="ds-card-title" style={{ margin: 0 }}>{form.id ? 'Modifier le' : 'Nouveau'} client</div>
@@ -225,12 +231,14 @@ function Clients({ clients, setClients, chantiers, devis = [], factures = [], na
                 <button onClick={() => naviguer('devis', { clientActif: c.id })} style={{ ...DS.btnGhost, fontSize: '12px', padding: '6px 11px' }}>
                   <FileText size={13} /> Devis
                 </button>
-                <button onClick={() => { setForm(c); setAjout(true); window.scrollTo({ top: 0, behavior: 'smooth' }); }} style={{ ...DS.btnGhost, fontSize: '12px', padding: '6px 11px' }}>
-                  <Pencil size={13} /> Modifier
-                </button>
-                {estReference(c)
+                {!consultationMobile && (
+                  <button onClick={() => { setForm(c); setAjout(true); window.scrollTo({ top: 0, behavior: 'smooth' }); }} style={{ ...DS.btnGhost, fontSize: '12px', padding: '6px 11px' }}>
+                    <Pencil size={13} /> Modifier
+                  </button>
+                )}
+                {!consultationMobile && (estReference(c)
                   ? <button onClick={() => archiverClient(c)} style={{ ...DS.btnGhost, padding: '6px 10px' }} title="Archiver ce client (historique conservé)"><Archive size={13} /></button>
-                  : <button onClick={() => supprimer(c)} style={{ ...DS.btnGhost, padding: '6px 10px', color: V1.danger }} title="Supprimer ce client"><Trash2 size={13} /></button>}
+                  : <button onClick={() => supprimer(c)} style={{ ...DS.btnGhost, padding: '6px 10px', color: V1.danger }} title="Supprimer ce client"><Trash2 size={13} /></button>)}
               </div>
             </div>
           );
@@ -247,7 +255,7 @@ function Clients({ clients, setClients, chantiers, devis = [], factures = [], na
               label={`${c.prenom || ''} ${c.nom || ''}`.trim() || c.entreprise || '—'}
               sublabel={[c.entreprise, c.email].filter(Boolean).join(' · ')}
               dateArchivage={c.dateArchivage}
-              onRestaurer={() => restaurerClient(c)}
+              onRestaurer={consultationMobile ? undefined : () => restaurerClient(c)}
             />
           ))}
         </div>

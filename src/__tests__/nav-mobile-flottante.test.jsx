@@ -65,11 +65,12 @@ describe('barre mobile — style FLOTTANT', () => {
 });
 
 describe('barre mobile — navigation inchangée', () => {
-  it('4 raccourcis + Plus toujours présents, navigation fonctionnelle', () => {
+  it('4 raccourcis présents (sans « Plus »), navigation fonctionnelle', () => {
     const { nav, naviguer } = renderNav();
     const barre = nav();
-    ['Accueil', 'Chantiers', 'Heures', 'Planning', 'Plus'].forEach(l =>
+    ['Accueil', 'Chantiers', 'Heures', 'Planning'].forEach(l =>
       expect(within(barre).getByText(l)).toBeInTheDocument());
+    expect(within(barre).queryByText('Plus')).toBeNull(); // « Plus » retiré : nav = ☰
     fireEvent.click(within(barre).getByText('Heures'));
     expect(naviguer).toHaveBeenCalledWith('heures');
   });

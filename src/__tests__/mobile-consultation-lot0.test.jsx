@@ -9,9 +9,10 @@
  */
 import React from 'react';
 import { describe, it, expect, vi, beforeAll } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
-import { construireMaisons, filtrerMaisons, menuMobile, raccourcisMobileTerrain } from '../nav/maisons';
-import { MobileNav } from '../components/Layout';
+import { screen, fireEvent } from '@testing-library/react';
+import { renderWithApp } from '../test-utils/renderWithApp';
+import { construireMaisons, filtrerMaisons, menuMobile } from '../nav/maisons';
+import { Sidebar } from '../components/Layout';
 
 beforeAll(() => {
   if (!window.matchMedia) {
@@ -60,32 +61,28 @@ describe('menuMobile — fondation (fonction pure)', () => {
   });
 });
 
-describe('MobileNav — drawer « Plus » réel', () => {
-  const renderNav = () => {
-    const maisons = maisonsCompletes();
-    return render(
-      <MobileNav maisons={menuMobile(maisons)} raccourcis={raccourcisMobileTerrain(maisons)}
-        page="dashboard" naviguer={vi.fn()} mobileMenuOuvert={true} setMobileMenuOuvert={vi.fn()} />
-    );
-  };
+describe('Sidebar mobile — la liste filtrée menuMobile est affichée dans le ☰', () => {
+  // Décision patron : la navigation mobile vit dans le ☰ (Sidebar), alimenté par menuMobile.
+  const renderSidebarMobile = (naviguer = vi.fn()) => renderWithApp(
+    <Sidebar sidebarOuvert setSidebarOuvert={vi.fn()} maisons={menuMobile(maisonsCompletes())}
+      page="dashboard" naviguer={naviguer} darkMode={false} toggleDarkMode={vi.fn()}
+      profil={{ nom: 'Valdrin', id: 'cyna' }} deconnecter={vi.fn()} />,
+    { consultationMobile: true },
+  );
 
-  it('le drawer montre Centre IA et Alertes, pas Analyse/Calculs/Config', () => {
-    renderNav();
+  it('le ☰ montre Centre IA et Alertes, pas Analyse/Calculs/Config', () => {
+    renderSidebarMobile();
     expect(screen.getByText('Centre IA')).toBeInTheDocument();
-    expect(screen.getByText('Alertes')).toBeInTheDocument();
+    expect(screen.getByText('Alertes')).toBeInTheDocument();  // enfant d'Accueil (maison active, dépliée)
     expect(screen.queryByText('Analyse')).toBeNull();
     expect(screen.queryByText('Calculs')).toBeNull();
-    expect(screen.queryByText('Config')).toBeNull();       // labelCourt de Paramètres
+    expect(screen.queryByText('Config')).toBeNull();          // labelCourt de Paramètres
     expect(screen.queryByText('Paramètres')).toBeNull();
   });
 
-  it('les liens de navigation du drawer restent fonctionnels (Centre IA → agents)', () => {
-    const maisons = maisonsCompletes();
+  it('les liens de navigation du ☰ restent fonctionnels (Centre IA → agents)', () => {
     const naviguer = vi.fn();
-    render(
-      <MobileNav maisons={menuMobile(maisons)} raccourcis={raccourcisMobileTerrain(maisons)}
-        page="dashboard" naviguer={naviguer} mobileMenuOuvert={true} setMobileMenuOuvert={vi.fn()} />
-    );
+    renderSidebarMobile(naviguer);
     fireEvent.click(screen.getByText('Centre IA'));
     expect(naviguer).toHaveBeenCalledWith('agents');
   });

@@ -3,9 +3,10 @@
  * Teste le VRAI module de config (src/nav/maisons.js) ET le VRAI composant Sidebar.
  */
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { screen, fireEvent } from '@testing-library/react';
 import { construireMaisons, filtrerMaisons, ecransAtteignables } from '../maisons';
 import { Sidebar } from '../../components/Layout';
+import { renderWithApp } from '../../test-utils/renderWithApp';
 
 // Les 13 écrans de l'ancien menu — aucun ne doit devenir orphelin.
 const ANCIEN_MENU = [
@@ -56,13 +57,15 @@ describe('config des maisons — 5 maisons, tous les écrans atteignables', () =
 describe('Sidebar (vrai composant) — on atteint chaque maison et les écrans clés', () => {
   const rendre = (page = 'dashboard') => {
     const naviguer = vi.fn();
-    render(
+    // Sidebar lit consultationMobile via useApp → rendu dans AppProvider (bureau : nav complète).
+    renderWithApp(
       <Sidebar
         sidebarOuvert setSidebarOuvert={() => {}}
         maisons={construireMaisons()} page={page} naviguer={naviguer}
         darkMode={false} toggleDarkMode={() => {}}
         profil={{ nom: 'CYNA', id: 'cyna' }} deconnecter={() => {}}
-      />
+      />,
+      { consultationMobile: false },
     );
     return naviguer;
   };

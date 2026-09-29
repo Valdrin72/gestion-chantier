@@ -16,8 +16,10 @@ function BadgeCompteur({ valeur }) {
 }
 
 export function Sidebar({ sidebarOuvert, setSidebarOuvert, maisons = [], page, naviguer, darkMode, toggleDarkMode, profil, deconnecter }) {
-  // Mode consultation mobile : le ☰ n'ouvre plus qu'un panneau réduit (profil + déconnexion).
-  // La navigation, c'est le rôle de « Plus » (bottom-nav). PC : Sidebar complète, inchangée.
+  // Navigation mobile : décision patron — un SEUL menu, le ☰ (Sidebar). La liste passée en
+  // `maisons` est déjà filtrée pour le mobile (menuMobile : sans Analyse/Calculs/Paramètres),
+  // filtrage fait côté App. Le CTA « Nouveau devis » reste masqué sur mobile (mode consultation,
+  // Lot 3). PC : Sidebar complète et inchangée.
   const { consultationMobile } = useApp();
   // Une maison est « active » si sa page principale ou un de ses enfants est affiché.
   const maisonActive = (m) => m.page === page || (m.enfants || []).some(e => e.id === page);
@@ -53,7 +55,6 @@ export function Sidebar({ sidebarOuvert, setSidebarOuvert, maisons = [], page, n
             <X size={14} />
           </button>
         </div>
-        {!consultationMobile && (
         <nav className="sidebar-nav">
           {maisons.map(m => {
             const enfants = m.enfants || [];
@@ -96,15 +97,13 @@ export function Sidebar({ sidebarOuvert, setSidebarOuvert, maisons = [], page, n
             );
           })}
         </nav>
-        )}
         {!consultationMobile && (
         <button className="sidebar-cta" onClick={() => { naviguer('devis', { ouvrirNouveau: true }); setSidebarOuvert(false); }}>
           <Plus size={16} strokeWidth={2.6} /> Nouveau devis
         </button>
         )}
-        {/* Consultation mobile : le bloc profil remonte juste sous le logo (cluster « compte » en haut,
-            pas de grand vide au milieu) ; sur PC il reste ancré en bas via flex:1 de .sidebar-nav. */}
-        <div className="sidebar-profile" style={{ cursor: 'default', ...(consultationMobile ? { marginTop: 4, borderTop: 'none' } : {}) }}>
+        {/* Profil ancré en bas (flex:1 de .sidebar-nav le pousse), identique mobile et PC. */}
+        <div className="sidebar-profile" style={{ cursor: 'default' }}>
           <div style={{
             width: 36, height: 36, borderRadius: '50%', flexShrink: 0,
             background: profil?.couleur || '#3382c2',
@@ -490,11 +489,15 @@ export function Topbar({ setSidebarOuvert, canGoBack, page, revenirArriere, dark
   );
 }
 
+// Décision patron : un SEUL menu de navigation mobile — le ☰ (Sidebar). Le bouton « Plus » et
+// son tiroir sont mis HORS SERVICE (non rendus) mais le code et son CSS (#197) restent en place :
+// il suffit de repasser ce drapeau à `true` pour tout réactiver sans rien réécrire.
+const DRAWER_PLUS_ACTIF = false;
+
 export function MobileNav({ maisons = [], raccourcis = null, page, naviguer, mobileMenuOuvert, setMobileMenuOuvert }) {
   const maisonActive = (m) => m.page === page || (m.enfants || []).some(e => e.id === page);
   // Barre du bas : raccourcis « terrain » explicites si fournis (Accueil · Chantiers · Heures ·
-  // Planning), sinon repli sur les 4 premières maisons. Le bouton « Plus » ouvre TOUJOURS le
-  // tiroir complet (toutes les pages via `maisons`) — Finances/Analyse y restent accessibles.
+  // Planning), sinon repli sur les 4 premières maisons. La navigation complète vit dans le ☰.
   const barre = (raccourcis && raccourcis.length) ? raccourcis : maisons.slice(0, 4);
 
   // ── Barre FLOTTANTE animée : se cache au défilement vers le bas, revient vers le haut ──
@@ -521,14 +524,16 @@ export function MobileNav({ maisons = [], raccourcis = null, page, naviguer, mob
             <span className="bottom-nav-label">{m.labelCourt}</span>
           </button>
         ))}
+        {DRAWER_PLUS_ACTIF && (
         <button className={`bottom-nav-item${mobileMenuOuvert ? ' active' : ''}`} onClick={() => setMobileMenuOuvert(v => !v)}>
           <span className="bottom-nav-icon">
             {mobileMenuOuvert ? <X size={22} strokeWidth={2} /> : <Menu size={22} strokeWidth={1.8} />}
           </span>
           <span className="bottom-nav-label">Plus</span>
         </button>
+        )}
       </nav>
-      {mobileMenuOuvert && (
+      {DRAWER_PLUS_ACTIF && mobileMenuOuvert && (
         <div className="mobile-drawer-overlay" onClick={() => setMobileMenuOuvert(false)}>
           <div className="mobile-drawer" onClick={e => e.stopPropagation()}>
             <div className="drawer-handle" />

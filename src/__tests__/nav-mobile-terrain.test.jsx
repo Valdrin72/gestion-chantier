@@ -1,9 +1,9 @@
 /**
  * Barre de navigation MOBILE (bottom-nav) — raccourcis « terrain ».
  *
- * Avant : Accueil · Chantiers · Finances · Analyse · [Plus].
- * Après : Accueil · Chantiers · Heures · Planning · [Plus].
- * Finances/Analyse SORTENT des raccourcis directs mais RESTENT dans le tiroir « Plus ».
+ * Décision patron : un SEUL menu de navigation mobile — le ☰ (Sidebar). La bottom-nav ne garde
+ * que ses 4 raccourcis terrain (Accueil · Chantiers · Heures · Planning) ; le bouton « Plus » et
+ * son tiroir sont mis hors service (flag DRAWER_PLUS_ACTIF=false), code et CSS conservés.
  * Le menu latéral PC (Sidebar, dérivé de `maisons`) est STRICTEMENT INCHANGÉ.
  *
  * Preuve RTL RÉELLE : vrais composants MobileNav + Sidebar, vraie config `construireMaisons`.
@@ -49,11 +49,14 @@ describe('raccourcisMobileTerrain (pure)', () => {
 });
 
 describe('bottom-nav mobile — raccourcis terrain', () => {
-  it('la barre contient Accueil, Chantiers, Heures, Planning + « Plus »', () => {
+  it('la barre contient Accueil, Chantiers, Heures, Planning et PAS « Plus »', () => {
     const { container } = renderNav();
     const barre = container.querySelector('.bottom-nav');
-    ['Accueil', 'Chantiers', 'Heures', 'Planning', 'Plus'].forEach(l =>
+    ['Accueil', 'Chantiers', 'Heures', 'Planning'].forEach(l =>
       expect(within(barre).getByText(l)).toBeInTheDocument());
+    expect(within(barre).queryByText('Plus')).toBeNull(); // navigation complète = ☰ (Sidebar)
+    // exactement 4 entrées → répartition propre (flex:1), pas de trou à droite
+    expect(barre.querySelectorAll('.bottom-nav-item').length).toBe(4);
   });
 
   it('la barre ne contient PLUS Finances ni Analyse en raccourci direct', () => {
@@ -73,17 +76,13 @@ describe('bottom-nav mobile — raccourcis terrain', () => {
   });
 });
 
-describe('tiroir « Plus » — toutes les pages restent accessibles', () => {
-  it('le tiroir liste TOUTES les pages, y compris Finances et Analyse', () => {
+describe('tiroir « Plus » — hors service (flag DRAWER_PLUS_ACTIF=false)', () => {
+  it('le tiroir n\'est PAS rendu, même en demandant son ouverture', () => {
+    // Régression : la navigation complète passe par le ☰ ; le tiroir « Plus » est désactivé
+    // (code + CSS conservés pour rollback). Il ne doit pas apparaître dans le DOM.
     const { container } = renderNav({ ouvert: true });
-    const tiroir = container.querySelector('.mobile-drawer');
-    expect(tiroir).not.toBeNull();
-    // Finances + Analyse toujours atteignables via le tiroir (non supprimées).
-    expect(within(tiroir).getByText('Finances')).toBeInTheDocument();
-    expect(within(tiroir).getByText('Analyse')).toBeInTheDocument();
-    // Et les autres écrans terrain aussi.
-    ['Accueil', 'Chantiers', 'Heures', 'Planning', 'Config'].forEach(l =>
-      expect(within(tiroir).getByText(l)).toBeInTheDocument());
+    expect(container.querySelector('.mobile-drawer')).toBeNull();
+    expect(container.querySelector('.mobile-drawer-overlay')).toBeNull();
   });
 });
 

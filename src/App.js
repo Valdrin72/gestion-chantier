@@ -358,9 +358,10 @@ function AppInner({ profil, deconnecter, userId, isDemo = false }) {
   return (
     <AppProvider value={appValue}>
     <div data-theme={darkMode ? 'dark' : 'light'} className="app-layout">
+      {/* Mobile : liste filtrée (menuMobile, sans Analyse/Calculs/Paramètres). PC : liste complète, inchangée. */}
       <Sidebar
         sidebarOuvert={sidebarOuvert} setSidebarOuvert={setSidebarOuvert}
-        maisons={maisonsAutorisees} page={page} naviguer={naviguer}
+        maisons={isMobile ? maisonsMobile : maisonsAutorisees} page={page} naviguer={naviguer}
         darkMode={darkMode} toggleDarkMode={toggleDarkMode}
         profil={profil} deconnecter={deconnecter}
       />

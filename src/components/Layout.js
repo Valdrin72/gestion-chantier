@@ -16,6 +16,9 @@ function BadgeCompteur({ valeur }) {
 }
 
 export function Sidebar({ sidebarOuvert, setSidebarOuvert, maisons = [], page, naviguer, darkMode, toggleDarkMode, profil, deconnecter }) {
+  // Mode consultation mobile : le ☰ n'ouvre plus qu'un panneau réduit (profil + déconnexion).
+  // La navigation, c'est le rôle de « Plus » (bottom-nav). PC : Sidebar complète, inchangée.
+  const { consultationMobile } = useApp();
   // Une maison est « active » si sa page principale ou un de ses enfants est affiché.
   const maisonActive = (m) => m.page === page || (m.enfants || []).some(e => e.id === page);
   // Maisons dépliées : par défaut, celle qui contient la page courante.
@@ -50,6 +53,7 @@ export function Sidebar({ sidebarOuvert, setSidebarOuvert, maisons = [], page, n
             <X size={14} />
           </button>
         </div>
+        {!consultationMobile && (
         <nav className="sidebar-nav">
           {maisons.map(m => {
             const enfants = m.enfants || [];
@@ -92,10 +96,15 @@ export function Sidebar({ sidebarOuvert, setSidebarOuvert, maisons = [], page, n
             );
           })}
         </nav>
+        )}
+        {!consultationMobile && (
         <button className="sidebar-cta" onClick={() => { naviguer('devis', { ouvrirNouveau: true }); setSidebarOuvert(false); }}>
           <Plus size={16} strokeWidth={2.6} /> Nouveau devis
         </button>
-        <div className="sidebar-profile" style={{ cursor: 'default' }}>
+        )}
+        {/* Consultation mobile : le bloc profil remonte juste sous le logo (cluster « compte » en haut,
+            pas de grand vide au milieu) ; sur PC il reste ancré en bas via flex:1 de .sidebar-nav. */}
+        <div className="sidebar-profile" style={{ cursor: 'default', ...(consultationMobile ? { marginTop: 4, borderTop: 'none' } : {}) }}>
           <div style={{
             width: 36, height: 36, borderRadius: '50%', flexShrink: 0,
             background: profil?.couleur || '#3382c2',

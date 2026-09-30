@@ -5,6 +5,7 @@ import AuditApp from '../AuditApp';
 import ClaudeIAPanel from '../components/ia/ClaudeIAPanel';
 import { useApp } from '../context/AppContext';
 import { heroFond, heroMono, mono } from '../design/v1';
+import useIsMobile from '../hooks/useIsMobile';
 
 // Bouton translucide du hero bleu nuit (mêmes tokens que les autres pages v1).
 const heroBtn = { background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.18)', borderRadius: 8, padding: '6px 11px', cursor: 'pointer', color: '#fff', display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: 'inherit', fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap' };
@@ -18,6 +19,7 @@ const ONGLET_META = {
 
 function CentreIA() {
   const { chantiers, devis, factures, clients, parametres, agentState, ouvrirMenu } = useApp();
+  const isMobile = useIsMobile();
   const [onglet, setOnglet] = useState('agents');
 
   // La page passe en « hero plein écran » (Topbar blanc masqué) comme les autres pages v1.
@@ -82,23 +84,23 @@ function CentreIA() {
       {/* ══ HERO BLEU NUIT (design v1, bord à bord, collé au sommet) — partagé par les 3 onglets ══ */}
       <div className="page-hero-bleed" data-testid="hero-ia" style={{ ...heroFond, padding: '20px 32px 0', position: 'relative' }}>
         {/* Ligne 1 — ☰ · CYNA · IA / {contexte} + bouton contextuel translucide à droite */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18, flexWrap: isMobile ? 'nowrap' : 'wrap' }}>
           {ouvrirMenu && (
             <button onClick={ouvrirMenu} aria-label="Menu" style={{ ...heroBtn, padding: 7 }}><Menu size={16} /></button>
           )}
           <span style={{ fontFamily: "'Inter', sans-serif", fontWeight: 800, fontSize: 15, letterSpacing: '0.06em', color: '#fff' }}>CYNA</span>
-          <span style={heroMono(10, 0.55)}>· IA / {meta.contexte}</span>
+          <span style={heroMono(10, 0.55)}>· IA{isMobile ? '' : ` / ${meta.contexte}`}</span>
           <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
             {onglet === 'agents' && forcerExecution && (
               <button onClick={() => forcerExecution()} disabled={running}
-                style={{ ...heroBtn, background: 'rgba(255,255,255,0.16)', border: '1px solid rgba(255,255,255,0.3)', fontWeight: 700, opacity: running ? 0.7 : 1 }}>
+                style={{ ...heroBtn, background: 'rgba(255,255,255,0.16)', border: '1px solid rgba(255,255,255,0.3)', fontWeight: 700, opacity: running ? 0.7 : 1, ...(isMobile ? { minHeight: 44, padding: '0 14px' } : {}) }}>
                 <RefreshCw size={14} style={{ animation: running ? 'spin 1s linear infinite' : 'none' }} />
                 {running ? 'Exécution...' : 'Forcer exécution'}
               </button>
             )}
             {onglet === 'audit' && (
               <button onClick={() => setAuditRelanceSignal(n => n + 1)}
-                style={{ ...heroBtn, background: 'rgba(255,255,255,0.16)', border: '1px solid rgba(255,255,255,0.3)', fontWeight: 700 }}>
+                style={{ ...heroBtn, background: 'rgba(255,255,255,0.16)', border: '1px solid rgba(255,255,255,0.3)', fontWeight: 700, ...(isMobile ? { minHeight: 44, padding: '0 14px' } : {}) }}>
                 <RefreshCw size={14} /> Relancer l'audit
               </button>
             )}
@@ -106,9 +108,10 @@ function CentreIA() {
         </div>
 
         {/* Ligne 2 — index mono + titre de l'onglet (icône + titre) + ligne mono contextuelle */}
-        <div style={heroMono(11, 0.6)}>IA / 12</div>
+        {/* Mobile : triple en-tête retiré → pas de « IA / 12 » ni d'icône de titre. */}
+        {!isMobile && <div style={heroMono(11, 0.6)}>IA / 12</div>}
         <h1 style={{ fontFamily: "'Inter', sans-serif", fontWeight: 700, fontSize: 34, margin: '8px 0 8px', letterSpacing: '-0.02em', color: '#fff', display: 'flex', alignItems: 'center', gap: 12 }}>
-          <HeroIcon size={30} strokeWidth={1.8} />
+          {!isMobile && <HeroIcon size={30} strokeWidth={1.8} />}
           {meta.titre}
         </h1>
         <div style={heroMono(11, 0.7)}>
@@ -122,8 +125,14 @@ function CentreIA() {
 
         {/* Ligne 3 — les chiffres clés (adaptés à l'onglet ; compteurs Audit filtrables) */}
         {heroChiffres.length > 0 && (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginTop: 20 }} data-testid="hero-chiffres">
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)', gap: 12, marginTop: 20 }} data-testid="hero-chiffres">
             {heroChiffres.map(t => {
+              // Mobile : valeurs en blanc ; rouge uniquement sur ALERTES ACTIVES / ERREURS et si > 0.
+              const estCompteurRouge = t.label === 'ALERTES ACTIVES' || t.label === 'ERREURS';
+              const valNum = typeof t.val === 'number' ? t.val : parseInt(t.val, 10);
+              const couleurVal = isMobile
+                ? ((estCompteurRouge && valNum > 0) ? '#FF7A6B' : '#fff')
+                : t.couleur;
               const commun = {
                 'data-testid': `hero-kpi-${t.label.toLowerCase().replace(/\s+/g, '-')}`,
                 style: {
@@ -134,7 +143,7 @@ function CentreIA() {
               };
               const contenu = (<>
                 <div style={heroMono(9, 0.6)}>{t.label}</div>
-                <div style={{ ...mono(22, t.couleur, 500), lineHeight: 1.1, marginTop: 4 }}>{t.val}</div>
+                <div style={{ ...mono(22, couleurVal, 500), lineHeight: 1.1, marginTop: 4 }}>{t.val}</div>
               </>);
               return t.onClick ? (
                 <button key={t.label} onClick={t.onClick} {...commun}

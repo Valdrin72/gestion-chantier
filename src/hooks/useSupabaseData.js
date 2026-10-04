@@ -48,6 +48,7 @@ const MESSAGE_CONFLIT = "Quelqu'un a enregistré entre-temps. Vos dernières mod
 const MESSAGE_COPIE_OK = ' Une copie de vos modifications non enregistrées est conservée sur cet appareil.';
 const MESSAGE_COPIE_KO = " La copie locale de vos modifications n'a pas pu être conservée (stockage de l'appareil plein).";
 const NB_COPIES_REJETEES = 5;
+const PREFIXE_COPIE_REJETEE = 'cyna_sauvegarde_rejetee_';
 
 export class ConflitVersionError extends Error {}
 async function lireRowUser(userId) {
@@ -495,23 +496,24 @@ export default function useSupabaseData(userId, isDemo = false) {
   function messageConflit() {
     return MESSAGE_CONFLIT + (copieRejetOkRef.current ? MESSAGE_COPIE_OK : MESSAGE_COPIE_KO);
   }
-  // F3 / REV-02 — chaque conflit a SA clé 'cyna_sauvegarde_rejetee_<id>' (jamais réécrite par
-  // un autre conflit) ; 'cyna_sauvegardes_rejetees_index' liste les NB_COPIES_REJETEES derniers
-  // ids (les plus anciennes copies sont supprimées) ; 'cyna_sauvegarde_rejetee' = copie du dernier,
-  // au mieux. « Copie conservée » n'est annoncé que si la clé propre du conflit a été écrite.
+  // F3 / REV-02 / REV-03 — chaque conflit a SA clé 'cyna_sauvegarde_rejetee_<horodatage>-<suffixe>'
+  // (jamais réécrite par un autre conflit). La rétention se calcule sur les clés RÉELLEMENT
+  // présentes (aucune liste à tenir à jour, copies orphelines comprises) : on garde les
+  // NB_COPIES_REJETEES plus récentes. 'cyna_sauvegarde_rejetee' = copie du dernier, au mieux.
+  // « Copie conservée » n'est annoncé que si la clé propre du conflit a été écrite.
   function conserverRejet(updates) {
     rejetRef.current = { ...(rejetRef.current || {}), ...updates };
     const entree = { id: rejetIdRef.current, date: new Date().toISOString(), ...rejetRef.current };
-    copieRejetOkRef.current = sauvegarderLocal(`cyna_sauvegarde_rejetee_${rejetIdRef.current}`, entree);
+    copieRejetOkRef.current = sauvegarderLocal(`${PREFIXE_COPIE_REJETEE}${rejetIdRef.current}`, entree);
     if (!copieRejetOkRef.current) return;
-    let index = [];
-    try { index = JSON.parse(localStorage.getItem('cyna_sauvegardes_rejetees_index')) || []; } catch {}
-    if (!Array.isArray(index)) index = [];
-    index = [rejetIdRef.current, ...index.filter(id => id !== rejetIdRef.current)];
-    for (const ancien of index.slice(NB_COPIES_REJETEES)) {
-      try { localStorage.removeItem(`cyna_sauvegarde_rejetee_${ancien}`); } catch {}
-    }
-    sauvegarderLocal('cyna_sauvegardes_rejetees_index', index.slice(0, NB_COPIES_REJETEES));
+    try {
+      const horodatage = cle => parseInt(cle.slice(PREFIXE_COPIE_REJETEE.length), 10) || 0;
+      Object.keys(localStorage)
+        .filter(cle => cle.startsWith(PREFIXE_COPIE_REJETEE))
+        .sort((a, b) => horodatage(b) - horodatage(a))
+        .slice(NB_COPIES_REJETEES)
+        .forEach(cle => localStorage.removeItem(cle));
+    } catch {}
     sauvegarderLocal('cyna_sauvegarde_rejetee', entree);
   }
   function appliquerOpportuniste(row) {

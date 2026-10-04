@@ -76,6 +76,9 @@ async function boot() { const hook = renderHook(() => useSupabaseData('user')); 
 function distant(version = 1) { store.row = row(version, { ...blob(), devis: [{ id: 'distant' }] }); }
 function emit() { act(() => store.handlers.forEach(handler => handler({ new: store.row }))); }
 function visible() { act(() => document.dispatchEvent(new Event('visibilitychange'))); }
+const copies = () => Object.keys(localStorage).filter(k => k.startsWith('cyna_sauvegarde_rejetee_'))
+  .sort((a, b) => parseInt(b.slice(24), 10) - parseInt(a.slice(24), 10))
+  .map(k => JSON.parse(localStorage.getItem(k)));
 beforeEach(() => {
   localStorage.clear();
   localStorage.setItem('cyna_onboarding_done', '1');
@@ -308,19 +311,17 @@ describe('anti-écrasement user : vrai hook et serveur en mémoire', () => {
     distant(1); act(() => h.result.current.setDevis([{ id: 'premier' }])); await tick(); await settle();
     expect(h.result.current.etatSync.message).toContain('copie de vos modifications non enregistrées');
     distant(2); act(() => h.result.current.setDevis([{ id: 'second' }])); await tick(); await settle();
-    const ids = JSON.parse(localStorage.getItem('cyna_sauvegardes_rejetees_index'));
-    expect(ids).toHaveLength(2);
-    expect(ids.map(id => JSON.parse(localStorage.getItem(`cyna_sauvegarde_rejetee_${id}`)).devis[0].id)).toEqual(['second', 'premier']);
+    expect(copies().map(c => c.devis[0].id)).toEqual(['second', 'premier']);
     expect(JSON.parse(localStorage.getItem('cyna_sauvegarde_rejetee')).devis).toEqual([{ id: 'second' }]);
     expect(store.row.data.devis).toEqual([{ id: 'distant' }]);
   });
   it('REV-02 : quota partiel (index et pointeur refusés) → les copies des deux conflits restent intactes', async () => {
     const h = await boot();
     distant(1); act(() => h.result.current.setDevis([{ id: 'premier' }])); await tick(); await settle();
-    const [idPremier] = JSON.parse(localStorage.getItem('cyna_sauvegardes_rejetees_index'));
+    const idPremier = copies()[0].id;
     const original = Storage.prototype.setItem;
     const espion = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (cle, valeur) {
-      if (cle === 'cyna_sauvegardes_rejetees_index' || cle === 'cyna_sauvegarde_rejetee') throw new Error('QuotaExceededError');
+      if (cle === 'cyna_sauvegarde_rejetee') throw new Error('QuotaExceededError');
       return original.call(this, cle, valeur);
     });
     try {
@@ -335,7 +336,7 @@ describe('anti-écrasement user : vrai hook et serveur en mémoire', () => {
   it("REV-02 : la copie du 2e conflit échoue → la 1re reste intacte et le message ne ment pas", async () => {
     const h = await boot();
     distant(1); act(() => h.result.current.setDevis([{ id: 'premier' }])); await tick(); await settle();
-    const [idPremier] = JSON.parse(localStorage.getItem('cyna_sauvegardes_rejetees_index'));
+    const idPremier = copies()[0].id;
     const original = Storage.prototype.setItem;
     const espion = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (cle, valeur) {
       if (String(cle).startsWith('cyna_sauvegarde_rejetee_') && cle !== `cyna_sauvegarde_rejetee_${idPremier}`) throw new Error('QuotaExceededError');
@@ -352,10 +353,34 @@ describe('anti-écrasement user : vrai hook et serveur en mémoire', () => {
     for (let i = 1; i <= 6; i++) {
       distant(i); act(() => h.result.current.setDevis([{ id: `c${i}` }])); await tick(); await settle();
     }
-    const ids = JSON.parse(localStorage.getItem('cyna_sauvegardes_rejetees_index'));
-    expect(ids).toHaveLength(5);
-    expect(ids.map(id => JSON.parse(localStorage.getItem(`cyna_sauvegarde_rejetee_${id}`)).devis[0].id)).toEqual(['c6', 'c5', 'c4', 'c3', 'c2']);
-    expect(Object.keys(localStorage).filter(k => k.startsWith('cyna_sauvegarde_rejetee_'))).toHaveLength(5);
+    expect(copies().map(c => c.devis[0].id)).toEqual(['c6', 'c5', 'c4', 'c3', 'c2']);
+  });
+  it('REV-03 : 5 copies + 2 orphelines existantes → après un conflit, exactement les 5 plus récentes (dont la nouvelle)', async () => {
+    const ancienne = (ms, id) => localStorage.setItem(`cyna_sauvegarde_rejetee_${ms}-x${id}`, JSON.stringify({ id: `${ms}-x${id}`, devis: [{ id }] }));
+    [1000, 2000, 3000, 4000, 5000].forEach((ms, i) => ancienne(ms, `a${i + 1}`));
+    ancienne(500, 'orpheline1'); ancienne(700, 'orpheline2');
+    const h = await boot();
+    distant(1); act(() => h.result.current.setDevis([{ id: 'nouvelle' }])); await tick(); await settle();
+    expect(copies().map(c => c.devis[0].id)).toEqual(['nouvelle', 'a5', 'a4', 'a3', 'a2']);
+  });
+  it('REV-03 : le pointeur échoue sur plusieurs conflits d’affilée → la limite de 5 tient et la copie la plus récente est intacte', async () => {
+    const h = await boot();
+    const original = Storage.prototype.setItem;
+    const espion = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (cle, valeur) {
+      if (cle === 'cyna_sauvegarde_rejetee') throw new Error('QuotaExceededError');
+      return original.call(this, cle, valeur);
+    });
+    try {
+      for (let i = 1; i <= 8; i++) {
+        distant(i); act(() => h.result.current.setDevis([{ id: `k${i}` }])); await tick(); await settle();
+        await act(async () => { await vi.advanceTimersByTimeAsync(2); });
+      }
+    } finally { espion.mockRestore(); }
+    const restantes = copies();
+    expect(restantes).toHaveLength(5);
+    expect(restantes[0].devis).toEqual([{ id: 'k8' }]);
+    expect(restantes.map(c => c.devis[0].id)).toEqual(['k8', 'k7', 'k6', 'k5', 'k4']);
+    expect(h.result.current.etatSync.message).toContain('copie de vos modifications non enregistrées');
   });
   it('REV-01 : un updater qui renvoie la même valeur ne déclenche aucune sauvegarde', async () => {
     const h = await boot();

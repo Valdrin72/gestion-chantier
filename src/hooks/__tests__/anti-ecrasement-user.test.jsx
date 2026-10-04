@@ -65,6 +65,7 @@ import useSupabaseData from '../useSupabaseData';
 import { supabase } from '../../lib/supabase';
 import { BandeauSauvegarde, EcranErreurChargement } from '../../components/EtatSauvegarde';
 import App from '../../App';
+import { regenererJournalDepuisPointages } from '../../migration/regenererJournalDepuisPointages';
 
 const blob = () => ({ chantiers: [], devis: [{ id: 'initial' }], factures: [], clients: [], pointages: [], parametres: { employes: [{ id: 1, tarifJour: 350 }, { id: 2, tarifJour: 450 }] } });
 const row = (version = 0, data = blob()) => ({ id: 'row', numero: '__cyna_storage__', version, data });
@@ -307,10 +308,85 @@ describe('anti-écrasement user : vrai hook et serveur en mémoire', () => {
     distant(1); act(() => h.result.current.setDevis([{ id: 'premier' }])); await tick(); await settle();
     expect(h.result.current.etatSync.message).toContain('copie de vos modifications non enregistrées');
     distant(2); act(() => h.result.current.setDevis([{ id: 'second' }])); await tick(); await settle();
-    const historique = JSON.parse(localStorage.getItem('cyna_sauvegardes_rejetees'));
-    expect(historique.map(e => e.devis[0].id)).toEqual(['second', 'premier']);
+    const ids = JSON.parse(localStorage.getItem('cyna_sauvegardes_rejetees_index'));
+    expect(ids).toHaveLength(2);
+    expect(ids.map(id => JSON.parse(localStorage.getItem(`cyna_sauvegarde_rejetee_${id}`)).devis[0].id)).toEqual(['second', 'premier']);
     expect(JSON.parse(localStorage.getItem('cyna_sauvegarde_rejetee')).devis).toEqual([{ id: 'second' }]);
     expect(store.row.data.devis).toEqual([{ id: 'distant' }]);
+  });
+  it('REV-02 : quota partiel (index et pointeur refusés) → les copies des deux conflits restent intactes', async () => {
+    const h = await boot();
+    distant(1); act(() => h.result.current.setDevis([{ id: 'premier' }])); await tick(); await settle();
+    const [idPremier] = JSON.parse(localStorage.getItem('cyna_sauvegardes_rejetees_index'));
+    const original = Storage.prototype.setItem;
+    const espion = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (cle, valeur) {
+      if (cle === 'cyna_sauvegardes_rejetees_index' || cle === 'cyna_sauvegarde_rejetee') throw new Error('QuotaExceededError');
+      return original.call(this, cle, valeur);
+    });
+    try {
+      distant(2); act(() => h.result.current.setDevis([{ id: 'second' }])); await tick(); await settle();
+    } finally { espion.mockRestore(); }
+    expect(JSON.parse(localStorage.getItem(`cyna_sauvegarde_rejetee_${idPremier}`)).devis).toEqual([{ id: 'premier' }]);
+    const autres = Object.keys(localStorage).filter(k => k.startsWith('cyna_sauvegarde_rejetee_') && k !== `cyna_sauvegarde_rejetee_${idPremier}`);
+    expect(autres).toHaveLength(1);
+    expect(JSON.parse(localStorage.getItem(autres[0])).devis).toEqual([{ id: 'second' }]);
+    expect(h.result.current.etatSync.message).toContain('copie de vos modifications non enregistrées');
+  });
+  it("REV-02 : la copie du 2e conflit échoue → la 1re reste intacte et le message ne ment pas", async () => {
+    const h = await boot();
+    distant(1); act(() => h.result.current.setDevis([{ id: 'premier' }])); await tick(); await settle();
+    const [idPremier] = JSON.parse(localStorage.getItem('cyna_sauvegardes_rejetees_index'));
+    const original = Storage.prototype.setItem;
+    const espion = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (cle, valeur) {
+      if (String(cle).startsWith('cyna_sauvegarde_rejetee_') && cle !== `cyna_sauvegarde_rejetee_${idPremier}`) throw new Error('QuotaExceededError');
+      return original.call(this, cle, valeur);
+    });
+    try {
+      distant(2); act(() => h.result.current.setDevis([{ id: 'second' }])); await tick(); await settle();
+    } finally { espion.mockRestore(); }
+    expect(JSON.parse(localStorage.getItem(`cyna_sauvegarde_rejetee_${idPremier}`)).devis).toEqual([{ id: 'premier' }]);
+    expect(h.result.current.etatSync.message).toContain("n'a pas pu être conservée");
+  });
+  it('REV-02 : au-delà de 5 conflits, seules les 5 dernières copies sont gardées', async () => {
+    const h = await boot();
+    for (let i = 1; i <= 6; i++) {
+      distant(i); act(() => h.result.current.setDevis([{ id: `c${i}` }])); await tick(); await settle();
+    }
+    const ids = JSON.parse(localStorage.getItem('cyna_sauvegardes_rejetees_index'));
+    expect(ids).toHaveLength(5);
+    expect(ids.map(id => JSON.parse(localStorage.getItem(`cyna_sauvegarde_rejetee_${id}`)).devis[0].id)).toEqual(['c6', 'c5', 'c4', 'c3', 'c2']);
+    expect(Object.keys(localStorage).filter(k => k.startsWith('cyna_sauvegarde_rejetee_'))).toHaveLength(5);
+  });
+  it('REV-01 : un updater qui renvoie la même valeur ne déclenche aucune sauvegarde', async () => {
+    const h = await boot();
+    act(() => {
+      h.result.current.setChantiers(prev => prev);
+      h.result.current.setDevis(prev => prev);
+      h.result.current.setFactures(prev => prev);
+      h.result.current.setClients(prev => prev);
+      h.result.current.setParametres(prev => prev);
+      h.result.current.setPointages(prev => prev);
+    });
+    await tick(1500);
+    expect(store.writes).toHaveLength(0);
+    // Et le temps réel n'est pas bloqué : aucun jeton ne reste en attente.
+    distant(1); emit(); expect(h.result.current.devis).toEqual([{ id: 'distant' }]);
+  });
+  it('REV-01 : vraie App avec pointages, deux instances en temps réel → aucune sauvegarde en boucle', async () => {
+    const pointages = [{ id: 'P1', date: '2026-09-01', employeId: 1, repartitions: [{ chantierId: 'C1', categorie: 'production', heures: 8 }], deplacement: null, majoration: [] }];
+    const chantiers = regenererJournalDepuisPointages(pointages, [{ id: 'C1', nom: 'Bureaux', devisId: 'D1', statut: 'En cours', journal: [] }]);
+    const parametres = { employes: [{ id: 1, nom: 'Müller', tarifJour: 400 }], migrationJournalV2Done: true, backfillMajorationPhase4Done: true, backfillCoefMO10Done: true, coefficientMainOeuvre: 1 };
+    const donnees = (devis) => ({ chantiers, devis, factures: [], clients: [], pointages, parametres });
+    store.row = row(0, donnees([{ id: 'D1', numero: 'D-1' }]));
+    render(<><App /><App /></>); await settle(); await tick(3000); await settle();
+    expect(screen.getAllByText('Tableau de bord chargé')).toHaveLength(2);
+    expect(store.writes).toHaveLength(0);
+    // Un autre appareil enregistre : les deux instances l'appliquent, régénèrent le journal
+    // (identique) et ne doivent RIEN renvoyer.
+    store.row = row(1, donnees([{ id: 'D1', numero: 'D-1' }, { id: 'D2', numero: 'D-2' }]));
+    emit(); await settle(); await tick(3000); await settle(); await tick(3000);
+    expect(store.writes).toHaveLength(0);
+    expect(store.row.version).toBe(1);
   });
   it("F3 : stockage plein → le message dit que la copie n'a pas pu être conservée", async () => {
     const h = await boot();

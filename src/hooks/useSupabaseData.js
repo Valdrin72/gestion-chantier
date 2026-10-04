@@ -495,17 +495,24 @@ export default function useSupabaseData(userId, isDemo = false) {
   function messageConflit() {
     return MESSAGE_CONFLIT + (copieRejetOkRef.current ? MESSAGE_COPIE_OK : MESSAGE_COPIE_KO);
   }
-  // F3 — 'cyna_sauvegarde_rejetee' = dernier conflit ; 'cyna_sauvegardes_rejetees' = les
-  // NB_COPIES_REJETEES derniers conflits (un 2e conflit n'efface plus la copie du 1er).
+  // F3 / REV-02 — chaque conflit a SA clé 'cyna_sauvegarde_rejetee_<id>' (jamais réécrite par
+  // un autre conflit) ; 'cyna_sauvegardes_rejetees_index' liste les NB_COPIES_REJETEES derniers
+  // ids (les plus anciennes copies sont supprimées) ; 'cyna_sauvegarde_rejetee' = copie du dernier,
+  // au mieux. « Copie conservée » n'est annoncé que si la clé propre du conflit a été écrite.
   function conserverRejet(updates) {
     rejetRef.current = { ...(rejetRef.current || {}), ...updates };
-    const entree = { date: new Date().toISOString(), ...rejetRef.current };
-    copieRejetOkRef.current = sauvegarderLocal('cyna_sauvegarde_rejetee', entree);
-    let historique = [];
-    try { historique = JSON.parse(localStorage.getItem('cyna_sauvegardes_rejetees')) || []; } catch {}
-    if (!Array.isArray(historique)) historique = [];
-    historique = [{ id: rejetIdRef.current, ...entree }, ...historique.filter(h => h?.id !== rejetIdRef.current)];
-    sauvegarderLocal('cyna_sauvegardes_rejetees', historique.slice(0, NB_COPIES_REJETEES));
+    const entree = { id: rejetIdRef.current, date: new Date().toISOString(), ...rejetRef.current };
+    copieRejetOkRef.current = sauvegarderLocal(`cyna_sauvegarde_rejetee_${rejetIdRef.current}`, entree);
+    if (!copieRejetOkRef.current) return;
+    let index = [];
+    try { index = JSON.parse(localStorage.getItem('cyna_sauvegardes_rejetees_index')) || []; } catch {}
+    if (!Array.isArray(index)) index = [];
+    index = [rejetIdRef.current, ...index.filter(id => id !== rejetIdRef.current)];
+    for (const ancien of index.slice(NB_COPIES_REJETEES)) {
+      try { localStorage.removeItem(`cyna_sauvegarde_rejetee_${ancien}`); } catch {}
+    }
+    sauvegarderLocal('cyna_sauvegardes_rejetees_index', index.slice(0, NB_COPIES_REJETEES));
+    sauvegarderLocal('cyna_sauvegarde_rejetee', entree);
   }
   function appliquerOpportuniste(row) {
     if (!row?.data || !(Number(row.version) > versionRef.current)) return;
@@ -598,6 +605,9 @@ export default function useSupabaseData(userId, isDemo = false) {
     setChantiersState(prev => {
       attentesLocalesRef.current.delete(jeton);
       const next = typeof updater === 'function' ? updater(prev) : updater;
+      // REV-01 — rien n'a changé (ex. régénération du journal identique) : aucune sauvegarde,
+      // sinon deux appareils ouverts se renverraient indéfiniment des sauvegardes inutiles.
+      if (Object.is(next, prev)) return prev;
       sauvegarderLocal('cyna_chantiers', next);
       scheduleSync({ chantiers: next });
       return next;
@@ -610,6 +620,7 @@ export default function useSupabaseData(userId, isDemo = false) {
     setDevisState(prev => {
       attentesLocalesRef.current.delete(jeton);
       const next = typeof data === 'function' ? data(prev) : data;
+      if (Object.is(next, prev)) return prev;
       sauvegarderLocal('cyna_devis', next);
       scheduleSync({ devis: next });
       return next;
@@ -622,6 +633,7 @@ export default function useSupabaseData(userId, isDemo = false) {
     setFacturesState(prev => {
       attentesLocalesRef.current.delete(jeton);
       const next = typeof data === 'function' ? data(prev) : data;
+      if (Object.is(next, prev)) return prev;
       sauvegarderLocal('cyna_factures', next);
       scheduleSync({ factures: next });
       return next;
@@ -634,6 +646,7 @@ export default function useSupabaseData(userId, isDemo = false) {
     setClientsState(prev => {
       attentesLocalesRef.current.delete(jeton);
       const next = typeof data === 'function' ? data(prev) : data;
+      if (Object.is(next, prev)) return prev;
       sauvegarderLocal('cyna_clients', next);
       scheduleSync({ clients: next });
       return next;
@@ -646,6 +659,7 @@ export default function useSupabaseData(userId, isDemo = false) {
     setParametresState(prev => {
       attentesLocalesRef.current.delete(jeton);
       const next = typeof data === 'function' ? data(prev) : data;
+      if (Object.is(next, prev)) return prev;
       sauvegarderLocal('cyna_parametres', next);
       scheduleSync({ parametres: next });
       return next;
@@ -658,6 +672,7 @@ export default function useSupabaseData(userId, isDemo = false) {
     setPointagesState(prev => {
       attentesLocalesRef.current.delete(jeton);
       const next = typeof updater === 'function' ? updater(prev) : updater;
+      if (Object.is(next, prev)) return prev;
       scheduleSync({ pointages: next });
       return next;
     });

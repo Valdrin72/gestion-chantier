@@ -11,6 +11,7 @@ import Finances from './pages/FinancesPage';
 import Login from './Login';
 import useAuth, { DEMO_USER_ID } from './hooks/useAuth';
 import useSupabaseData from './hooks/useSupabaseData';
+import { EcranErreurChargement, BandeauSauvegarde } from './components/EtatSauvegarde';
 import useAgents from './useAgents';
 import Heures from './Heures';
 import PointagesPage from './pages/PointagesPage';
@@ -76,7 +77,7 @@ function AppInner({ profil, deconnecter, userId, isDemo = false }) {
     parametres, setParametres,
     pointages, setPointages,
     loading: dataLoading,
-    syncing,
+    syncing, etatSync, reessayerChargement, reessayerSauvegarde, fermerMessageSync,
   } = useSupabaseData(userId, isDemo);
 
   // Filet de sécurité (mode démo uniquement) : si après chargement tout est vide, recharger donneesInitiales.
@@ -355,8 +356,13 @@ function AppInner({ profil, deconnecter, userId, isDemo = false }) {
     actionsLog, profil, contexte, periodeGlobale, agentState, isDemo, isMobile,
   ]);
 
+  if (etatSync.erreurChargement) {
+    return <EcranErreurChargement message={etatSync.erreurChargement} onReessayer={reessayerChargement} onDeconnecter={deconnecter} />;
+  }
+
   return (
     <AppProvider value={appValue}>
+    <BandeauSauvegarde statut={etatSync.statut} message={etatSync.message} onReessayer={reessayerSauvegarde} onFermer={fermerMessageSync} />
     <div data-theme={darkMode ? 'dark' : 'light'} className="app-layout">
       {/* Mobile : liste filtrée (menuMobile, sans Analyse/Calculs/Paramètres). PC : liste complète, inchangée. */}
       <Sidebar

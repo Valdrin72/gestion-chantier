@@ -44,33 +44,30 @@ function sauvegarderLocal(cle, data) {
   try { localStorage.setItem(cle, JSON.stringify(data)); } catch {}
 }
 
+export class ConflitVersionError extends Error {}
 async function lireRowUser(userId) {
-  const { data } = await supabase
-    .from(STORAGE_TABLE)
-    .select('id, data')
-    .eq('user_id', userId)
-    .eq('numero', STORAGE_MARKER)
-    .maybeSingle();
+  const { data, error } = await supabase.from(STORAGE_TABLE)
+    .select('id, data, version').eq('user_id', userId)
+    .eq('numero', STORAGE_MARKER).maybeSingle();
+  if (error) throw error;
   return data ?? null;
 }
-
-async function ecrireRowUser(userId, rowId, payload) {
+async function ecrireRowUser(userId, rowId, payload, version) {
   if (rowId) {
-    const { error } = await supabase
-      .from(STORAGE_TABLE)
-      .update({ data: payload })
-      .eq('id', rowId);
+    const { data, error } = await supabase.from(STORAGE_TABLE)
+      .update({ data: payload, version: version + 1 })
+      .eq('id', rowId).eq('version', version).select('id, version');
+    if (error?.code === 'P0409') throw new ConflitVersionError();
     if (error) throw error;
-    return rowId;
-  } else {
-    const { data, error } = await supabase
-      .from(STORAGE_TABLE)
-      .insert({ user_id: userId, numero: STORAGE_MARKER, data: payload })
-      .select('id')
-      .single();
-    if (error) throw error;
-    return data.id;
+    if (!data?.length) throw new ConflitVersionError();
+    return data[0];
   }
+  const { data, error } = await supabase.from(STORAGE_TABLE)
+    .insert({ user_id: userId, numero: STORAGE_MARKER, data: payload })
+    .select('id, version').single();
+  if (error?.code === '23505') throw new ConflitVersionError();
+  if (error) throw error;
+  return data;
 }
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -240,6 +237,14 @@ export default function useSupabaseData(userId, isDemo = false) {
   const [loading,     setLoading]         = useState(true);
   const [syncing,     setSyncing]         = useState(false);
 
+  const [etatSync, setEtatSync] = useState({ erreurChargement: null, statut: 'ok', message: null });
+  const versionRef = useRef(0);
+  const chargementOkRef = useRef(false);
+  const enVolRef = useRef(null);
+  const generationRef = useRef(0);
+  const recuperationRef = useRef(false);
+  const recuperationGenRef = useRef(0);
+  const rejetRef = useRef(null);
   const rowIdRef    = useRef(null);
   const syncTimer   = useRef(null);
   const pendingRef  = useRef(null);
@@ -343,47 +348,10 @@ export default function useSupabaseData(userId, isDemo = false) {
           return;
         }
 
-        // ── MODE USER (défaut) — comportement historique strictement inchangé ──
-        const row = await lireRowUser(userId);
-        if (cancelled) return;
-
-        if (row && row.data && Object.keys(row.data).length > 0) {
-          rowIdRef.current = row.id;
-          appliquerData(row.data);
-        } else {
-          // Blob absent : initialiser avec données correctes selon le mode
-          const localData = isDemo
-            ? {
-                chantiers:  donneesInitiales.chantiers.map(c => ({ ...c, journal: migrerJournal(c.journal || []) })),
-                devis:      donneesInitiales.devis,
-                factures:   donneesInitiales.factures || [],
-                clients:    donneesInitiales.clients,
-                parametres: { ...donneesInitiales, demoVersion: DEMO_VERSION },
-                pointages:  [],
-              }
-            : {
-                chantiers: [], devis: [], factures: [], clients: [],
-                parametres: PARAMETRES_DEFAUT,
-                pointages:  [],
-              };
-          if (!cancelled) appliquerData(localData);
-          const id = await ecrireRowUser(userId, row?.id ?? null, localData);
-          if (!cancelled) rowIdRef.current = id;
-        }
+        await chargerUser(() => cancelled);
       } catch (e) {
         if (process.env.NODE_ENV !== 'production') console.warn('[Sync] Chargement Supabase échoué, fallback:', e.message);
-        // Fallback erreur : démo garde ses données, vrai compte reste vide
-        if (!cancelled) appliquerData(isDemo
-          ? {
-              chantiers:  donneesInitiales.chantiers,
-              devis:      donneesInitiales.devis,
-              factures:   donneesInitiales.factures || [],
-              clients:    donneesInitiales.clients,
-              parametres: { ...donneesInitiales, demoVersion: DEMO_VERSION },
-              pointages:  [],
-            }
-          : { chantiers: [], devis: [], factures: [], clients: [], parametres: PARAMETRES_DEFAUT, pointages: [] }
-        );
+        if (modeRef.current === 'org' && !cancelled) appliquerData({});
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -413,14 +381,12 @@ export default function useSupabaseData(userId, isDemo = false) {
         } catch {}
         return;
       }
-      // ── MODE USER (défaut) — inchangé ──
+      if (!chargementOkRef.current || enVolRef.current || recuperationRef.current) return;
+      const generation = generationRef.current;
       try {
         const row = await lireRowUser(userId);
-        if (cancelled) return;
-        if (row && row.data && Object.keys(row.data).length > 0) {
-          rowIdRef.current = row.id;
-          appliquerData(row.data);
-        }
+        if (cancelled || pendingRef.current || enVolRef.current || recuperationRef.current || generation !== generationRef.current) return;
+        appliquerOpportuniste(row);
       } catch {}
     }
     document.addEventListener('visibilitychange', resyncSiVisible);
@@ -435,9 +401,7 @@ export default function useSupabaseData(userId, isDemo = false) {
           filter: `user_id=eq.${userId}`,
         }, (payload) => {
           const row = payload.new || payload.record;
-          if (row?.numero === STORAGE_MARKER && row?.data) {
-            appliquerData(row.data);
-          }
+          if (row?.numero === STORAGE_MARKER && chargementOkRef.current && !pendingRef.current && !enVolRef.current && !recuperationRef.current) appliquerOpportuniste(row);
         })
         .subscribe((status) => {
           if (status === 'CHANNEL_ERROR') {
@@ -458,6 +422,11 @@ export default function useSupabaseData(userId, isDemo = false) {
 
   // ── Sauvegarde Supabase avec debounce 800ms ──────────────────────────────
   function scheduleSync(updates) {
+    updates = Object.fromEntries(Object.entries(updates).filter(([cle, valeur]) => {
+      if (typeof valeur !== 'function') return true;
+      if (process.env.NODE_ENV !== 'production') console.warn('[Sync] updater non résolu ignoré:', cle);
+      return false;
+    }));
     // ── Lot 4b — MODE ORG : écriture SÛRE dans org_storage, protégée par 3 verrous ──
     if (modeRef.current === 'org') {
       // VERROU 1 — jamais d'écriture tant qu'on n'a pas chargé une ligne org NON vide
@@ -492,24 +461,99 @@ export default function useSupabaseData(userId, isDemo = false) {
       return;
     }
 
-    // ── MODE USER (défaut) — comportement historique strictement inchangé ──
+    generationRef.current += 1;
+    if (recuperationRef.current) { conserverRejet(updates); return; }
+    if (!chargementOkRef.current) return;
     pendingRef.current = { ...(pendingRef.current || dataRef.current), ...updates };
-    dataRef.current   = { ...dataRef.current, ...updates };
-    if (syncTimer.current) clearTimeout(syncTimer.current);
-    syncTimer.current = setTimeout(async () => {
-      if (!mountedRef.current) return;
-      const payload = pendingRef.current;
-      pendingRef.current = null;
-      setSyncing(true);
-      try {
-        const id = await ecrireRowUser(userId, rowIdRef.current, payload);
-        if (mountedRef.current) rowIdRef.current = id;
-      } catch (e) {
-        if (process.env.NODE_ENV !== 'production') console.warn('[Sync Supabase]', e.message);
-      } finally {
-        if (mountedRef.current) setSyncing(false);
+    dataRef.current = { ...dataRef.current, ...updates };
+    clearTimeout(syncTimer.current);
+    const generation = recuperationGenRef.current;
+    syncTimer.current = setTimeout(() => flush(generation), 800);
+  }
+
+  function conserverRejet(updates) {
+    rejetRef.current = { ...(rejetRef.current || {}), ...updates };
+    sauvegarderLocal('cyna_sauvegarde_rejetee', { date: new Date().toISOString(), ...rejetRef.current });
+  }
+  function appliquerOpportuniste(row) {
+    if (!row?.data || !(Number(row.version) > versionRef.current)) return;
+    rowIdRef.current = row.id;
+    versionRef.current = Number(row.version) || 0;
+    appliquerData(row.data);
+  }
+  async function chargerUser(estAnnule = () => !mountedRef.current, verifierGeneration = false) {
+    const generation = generationRef.current;
+    try {
+      const row = await lireRowUser(userId);
+      if (estAnnule() || (verifierGeneration && generation !== generationRef.current)) return;
+      rowIdRef.current = row?.id ?? null;
+      versionRef.current = Number(row?.version) || 0;
+      chargementOkRef.current = true;
+      if (row?.data && Object.keys(row.data).length) appliquerData(row.data);
+      else {
+        appliquerData({});
+        pendingRef.current = dataRef.current;
+        clearTimeout(syncTimer.current);
+        recuperationRef.current = false;
+        flush(recuperationGenRef.current);
       }
-    }, 800);
+      recuperationRef.current = false;
+      setEtatSync(prev => ({ ...prev, erreurChargement: null }));
+    } catch {
+      if (estAnnule()) return;
+      chargementOkRef.current = false;
+      if (isDemo) appliquerData({});
+      else setEtatSync(prev => ({ ...prev, erreurChargement: 'Impossible de charger vos données. Réessayez ou déconnectez-vous.' }));
+    }
+  }
+  async function flush(generation = recuperationGenRef.current) {
+    // Plusieurs timers peuvent attendre la même écriture : revérifier à chaque réveil.
+    while (enVolRef.current) await enVolRef.current;
+    if (!mountedRef.current || !chargementOkRef.current || recuperationRef.current || generation !== recuperationGenRef.current || !pendingRef.current) return;
+    const payload = pendingRef.current;
+    pendingRef.current = null;
+    setSyncing(true);
+    const travail = Promise.resolve().then(async () => {
+      try {
+        const row = await ecrireRowUser(userId, rowIdRef.current, payload, versionRef.current);
+        if (!mountedRef.current) return;
+        rowIdRef.current = row.id;
+        versionRef.current = Number(row.version) || 0;
+        setEtatSync({ erreurChargement: null, statut: 'ok', message: null });
+      } catch (e) {
+        if (!mountedRef.current) return;
+        if (e instanceof ConflitVersionError) {
+          recuperationRef.current = true;
+          recuperationGenRef.current += 1;
+          clearTimeout(syncTimer.current);
+          rejetRef.current = null;
+          conserverRejet({ ...payload, ...(pendingRef.current || {}) });
+          pendingRef.current = null;
+          setEtatSync({ erreurChargement: null, statut: 'conflit', message: 'Rechargement des données à jour…' });
+          try {
+            const row = await lireRowUser(userId);
+            if (!mountedRef.current) return;
+            if (!row?.data) throw new Error('Ligne de stockage absente');
+            rowIdRef.current = row.id;
+            versionRef.current = Number(row.version) || 0;
+            appliquerData(row.data);
+            recuperationRef.current = false;
+            setEtatSync({ erreurChargement: null, statut: 'conflit', message: "Quelqu'un a enregistré entre-temps. Vos dernières modifications n'ont pas été enregistrées ; les données à jour ont été rechargées." });
+          } catch {
+            chargementOkRef.current = false;
+            setEtatSync(prev => ({ ...prev, erreurChargement: 'Impossible de recharger les données à jour. Réessayez.' }));
+          }
+        } else {
+          pendingRef.current = { ...payload, ...(pendingRef.current || {}) };
+          clearTimeout(syncTimer.current);
+          setEtatSync({ erreurChargement: null, statut: 'echec', message: 'Non enregistré. Vos modifications sont conservées ; réessayez.' });
+        }
+      }
+    });
+    enVolRef.current = travail;
+    await travail;
+    if (enVolRef.current === travail) enVolRef.current = null;
+    if (mountedRef.current) setSyncing(false);
   }
 
   // ── Setters (état + localStorage + Supabase) ─────────────────────────────
@@ -524,30 +568,42 @@ export default function useSupabaseData(userId, isDemo = false) {
   }, [userId]);
 
   const setDevis = useCallback((data) => {
-    setDevisState(data);
-    sauvegarderLocal('cyna_devis', data);
-    scheduleSync({ devis: data });
+    setDevisState(prev => {
+      const next = typeof data === 'function' ? data(prev) : data;
+      sauvegarderLocal('cyna_devis', next);
+      scheduleSync({ devis: next });
+      return next;
+    });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
 
   const setFactures = useCallback((data) => {
-    setFacturesState(data);
-    sauvegarderLocal('cyna_factures', data);
-    scheduleSync({ factures: data });
+    setFacturesState(prev => {
+      const next = typeof data === 'function' ? data(prev) : data;
+      sauvegarderLocal('cyna_factures', next);
+      scheduleSync({ factures: next });
+      return next;
+    });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
 
   const setClients = useCallback((data) => {
-    setClientsState(data);
-    sauvegarderLocal('cyna_clients', data);
-    scheduleSync({ clients: data });
+    setClientsState(prev => {
+      const next = typeof data === 'function' ? data(prev) : data;
+      sauvegarderLocal('cyna_clients', next);
+      scheduleSync({ clients: next });
+      return next;
+    });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
 
   const setParametres = useCallback((data) => {
-    setParametresState(data);
-    sauvegarderLocal('cyna_parametres', data);
-    scheduleSync({ parametres: data });
+    setParametresState(prev => {
+      const next = typeof data === 'function' ? data(prev) : data;
+      sauvegarderLocal('cyna_parametres', next);
+      scheduleSync({ parametres: next });
+      return next;
+    });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
 
@@ -567,6 +623,14 @@ export default function useSupabaseData(userId, isDemo = false) {
     clients, setClients,
     parametres, setParametres,
     pointages, setPointages,
-    loading, syncing,
+    loading, syncing, etatSync,
+    reessayerChargement: async () => {
+      if (modeRef.current !== 'user') return;
+      setLoading(true);
+      await chargerUser(() => !mountedRef.current, true);
+      if (mountedRef.current) setLoading(false);
+    },
+    reessayerSauvegarde: () => flush(),
+    fermerMessageSync: () => setEtatSync(prev => ({ ...prev, statut: 'ok', message: null })),
   };
 }

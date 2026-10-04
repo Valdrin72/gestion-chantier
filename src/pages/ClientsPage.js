@@ -1,4 +1,4 @@
-import React, { useState, useLayoutEffect } from 'react';
+import React, { useRef, useState, useLayoutEffect } from 'react';
 import {
   FileText, HardHat, Plus, Pencil, Trash2, Archive, Menu,
 } from 'lucide-react';
@@ -11,6 +11,8 @@ import { clientEstReferencé } from '../utils/referenceGuard';
 import { archiver, restaurer, filtrerActifs, filtrerArchives } from '../utils/archiveHelpers';
 import ArchiveToggle from '../components/shared/ArchiveToggle';
 import ArchivedRow from '../components/shared/ArchivedRow';
+
+import { aEteModifieAilleurs } from '../utils/gardeEdition';
 
 // Supprime les balises HTML des champs texte avant sauvegarde (protection XSS dans PDF)
 const sanitiser = (obj) => {
@@ -49,7 +51,19 @@ function Clients({ clients, setClients, chantiers, devis = [], factures = [], na
   // Un client référencé (chantiers/devis/factures) ne se supprime pas → on l'archive.
   const estReference = (c) => clientEstReferencé(c, { chantiers, devis, factures }) !== null;
   const [form, setForm] = useState({ nom: '', prenom: '', entreprise: '', telephone: '', email: '', adresse: '', ville: '', canton: '', type: 'Entreprise', notes: '' });
+  const origineEditionRef = useRef(null);
+  useLayoutEffect(() => {
+    origineEditionRef.current = form.id && ajout
+      ? JSON.parse(JSON.stringify(clients.find(item => String(item.id) === String(form.id)) || null))
+      : null;
+    // Capture uniquement à l'ouverture, jamais lors d'un rechargement distant.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.id, ajout]);
   const sauvegarder = () => {
+    if (form.id && aEteModifieAilleurs(origineEditionRef.current, clients.find(item => String(item.id) === String(form.id)))) {
+      afficherNotif?.("Ce client a été modifié sur un autre appareil pendant que vous l'éditiez. Vos changements n'ont pas été enregistrés : fermez et rouvrez-le pour repartir de la version à jour.", 'error');
+      return;
+    }
     if (consultationMobile) return; // lecture seule mobile
     if (!form.nom || !form.prenom) {
       if (afficherNotif) afficherNotif('Le nom et le prénom du client sont obligatoires', 'error');

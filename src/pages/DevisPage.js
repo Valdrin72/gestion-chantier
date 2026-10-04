@@ -1,4 +1,5 @@
-import React, { useState, useMemo, useLayoutEffect } from 'react';
+import { aEteModifieAilleurs } from '../utils/gardeEdition';
+import React, { useRef, useState, useMemo, useLayoutEffect } from 'react';
 import {
   Plus, Pencil, Trash2, HardHat, Receipt,
   Clock, FileDown, Download, Archive, Menu,
@@ -201,6 +202,14 @@ function Devis() {
     montantHT: '', dureeEstimee: '', nombrePersonnes: '', avenants: [], heuresRegie: [], notes: '',
   };
   const [form, setForm] = useState(vide);
+  const origineEditionRef = useRef(null);
+  useLayoutEffect(() => {
+    origineEditionRef.current = form.id && ajout
+      ? JSON.parse(JSON.stringify(devis.find(item => String(item.id) === String(form.id)) || null))
+      : null;
+    // Capture uniquement à l'ouverture, jamais lors d'un rechargement distant.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.id, ajout]);
   const [erreurs, setErreurs] = useState({});
 
   // Helper unifié : CA signé d'un devis (montant HT + avenants + heures régie)
@@ -239,6 +248,10 @@ function Devis() {
   const formatDateCH = (s) => { if (!s) return '—'; const [y, m, d] = (s || '').split('-'); return (d && m && y) ? `${d}.${m}.${y}` : s; };
 
   const sauvegarder = () => {
+    if (form.id && aEteModifieAilleurs(origineEditionRef.current, devis.find(item => String(item.id) === String(form.id)))) {
+      afficherNotif?.("Ce devis a été modifié sur un autre appareil pendant que vous l'éditiez. Vos changements n'ont pas été enregistrés : fermez et rouvrez-le pour repartir de la version à jour.", 'error');
+      return;
+    }
     if (consultationMobile) return;
     const nouvellesErreurs = {};
     if (!form.clientId) nouvellesErreurs.clientId = 'Sélectionner un client';

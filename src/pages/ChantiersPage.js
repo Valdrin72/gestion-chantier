@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useLayoutEffect, useState } from 'react';
 import { donneesInitiales, heuresEmploye } from '../donnees';
 import { useApp } from '../context/AppContext';
 import { useChantierFiltres } from '../hooks/useChantierFiltres';
@@ -6,6 +6,8 @@ import { archiver, restaurer } from '../utils/archiveHelpers';
 import ChantierDetail from '../components/chantiers/ChantierDetail';
 import ChantierForm from '../components/chantiers/ChantierForm';
 import ChantiersListe from '../components/chantiers/ChantiersListe';
+
+import { aEteModifieAilleurs } from '../utils/gardeEdition';
 
 // Supprime les balises HTML des champs texte avant sauvegarde (protection XSS dans PDF)
 const sanitiser = (obj) => {
@@ -33,6 +35,14 @@ function Chantiers() {
     journal: [],
   };
   const [form, setForm] = useState(vide);
+  const origineEditionRef = useRef(null);
+  useLayoutEffect(() => {
+    origineEditionRef.current = form.id && ajout
+      ? JSON.parse(JSON.stringify(chantiers.find(item => String(item.id) === String(form.id)) || null))
+      : null;
+    // Capture uniquement à l'ouverture, jamais lors d'un rechargement distant.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.id, ajout]);
   const [erreurs, setErreurs] = useState({});
 
   // Sync selected avec chantiers[] — évite données stales après modification externe
@@ -53,6 +63,10 @@ function Chantiers() {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const sauvegarder = () => {
+    if (form.id && aEteModifieAilleurs(origineEditionRef.current, chantiers.find(item => String(item.id) === String(form.id)))) {
+      afficherNotif?.("Ce chantier a été modifié sur un autre appareil pendant que vous l'éditiez. Vos changements n'ont pas été enregistrés : fermez et rouvrez-le pour repartir de la version à jour.", 'error');
+      return;
+    }
     const nouvellesErreurs = {};
     if (!form.nom?.trim()) nouvellesErreurs.nom = 'Le nom du chantier est obligatoire';
     if (!form.devisId) nouvellesErreurs.devisId = 'Un devis signé est obligatoire pour créer un chantier';

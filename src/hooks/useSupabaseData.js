@@ -41,8 +41,13 @@ const { chantiers: _dc, devis: _dd, clients: _dcl, factures: _df, employes: _de,
 export const PARAMETRES_DEFAUT = { ...PARAMETRES_DEFAUT_BASE, employes: [], demoVersion: DEMO_VERSION };
 
 function sauvegarderLocal(cle, data) {
-  try { localStorage.setItem(cle, JSON.stringify(data)); } catch {}
+  try { localStorage.setItem(cle, JSON.stringify(data)); return true; } catch { return false; }
 }
+
+const MESSAGE_CONFLIT = "Quelqu'un a enregistré entre-temps. Vos dernières modifications n'ont pas été enregistrées ; les données à jour ont été rechargées.";
+const MESSAGE_COPIE_OK = ' Une copie de vos modifications non enregistrées est conservée sur cet appareil.';
+const MESSAGE_COPIE_KO = " La copie locale de vos modifications n'a pas pu être conservée (stockage de l'appareil plein).";
+const NB_COPIES_REJETEES = 5;
 
 export class ConflitVersionError extends Error {}
 async function lireRowUser(userId) {
@@ -245,6 +250,12 @@ export default function useSupabaseData(userId, isDemo = false) {
   const recuperationRef = useRef(false);
   const recuperationGenRef = useRef(0);
   const rejetRef = useRef(null);
+  const rejetIdRef = useRef(null);
+  const copieRejetOkRef = useRef(true);
+  // F1 — modifications locales demandées mais dont l'updater React n'a pas encore tourné
+  // (React peut différer un updater jusqu'au rendu suivant). Marquées SYNCHRONEMENT dans
+  // chaque setter : tant que l'ensemble n'est pas vide, aucune donnée distante n'est appliquée.
+  const attentesLocalesRef = useRef(new Set());
   const rowIdRef    = useRef(null);
   const syncTimer   = useRef(null);
   const pendingRef  = useRef(null);
@@ -381,11 +392,11 @@ export default function useSupabaseData(userId, isDemo = false) {
         } catch {}
         return;
       }
-      if (!chargementOkRef.current || enVolRef.current || recuperationRef.current) return;
+      if (!chargementOkRef.current || !aucuneModificationLocale()) return;
       const generation = generationRef.current;
       try {
         const row = await lireRowUser(userId);
-        if (cancelled || pendingRef.current || enVolRef.current || recuperationRef.current || generation !== generationRef.current) return;
+        if (cancelled || !aucuneModificationLocale() || generation !== generationRef.current) return;
         appliquerOpportuniste(row);
       } catch {}
     }
@@ -401,7 +412,7 @@ export default function useSupabaseData(userId, isDemo = false) {
           filter: `user_id=eq.${userId}`,
         }, (payload) => {
           const row = payload.new || payload.record;
-          if (row?.numero === STORAGE_MARKER && chargementOkRef.current && !pendingRef.current && !enVolRef.current && !recuperationRef.current) appliquerOpportuniste(row);
+          if (row?.numero === STORAGE_MARKER && chargementOkRef.current && aucuneModificationLocale()) appliquerOpportuniste(row);
         })
         .subscribe((status) => {
           if (status === 'CHANNEL_ERROR') {
@@ -471,9 +482,30 @@ export default function useSupabaseData(userId, isDemo = false) {
     syncTimer.current = setTimeout(() => flush(generation), 800);
   }
 
+  function aucuneModificationLocale() {
+    return !pendingRef.current && !enVolRef.current && !recuperationRef.current
+      && attentesLocalesRef.current.size === 0;
+  }
+  function marquerModificationLocale() {
+    const jeton = {};
+    attentesLocalesRef.current.add(jeton);
+    generationRef.current += 1;
+    return jeton;
+  }
+  function messageConflit() {
+    return MESSAGE_CONFLIT + (copieRejetOkRef.current ? MESSAGE_COPIE_OK : MESSAGE_COPIE_KO);
+  }
+  // F3 — 'cyna_sauvegarde_rejetee' = dernier conflit ; 'cyna_sauvegardes_rejetees' = les
+  // NB_COPIES_REJETEES derniers conflits (un 2e conflit n'efface plus la copie du 1er).
   function conserverRejet(updates) {
     rejetRef.current = { ...(rejetRef.current || {}), ...updates };
-    sauvegarderLocal('cyna_sauvegarde_rejetee', { date: new Date().toISOString(), ...rejetRef.current });
+    const entree = { date: new Date().toISOString(), ...rejetRef.current };
+    copieRejetOkRef.current = sauvegarderLocal('cyna_sauvegarde_rejetee', entree);
+    let historique = [];
+    try { historique = JSON.parse(localStorage.getItem('cyna_sauvegardes_rejetees')) || []; } catch {}
+    if (!Array.isArray(historique)) historique = [];
+    historique = [{ id: rejetIdRef.current, ...entree }, ...historique.filter(h => h?.id !== rejetIdRef.current)];
+    sauvegarderLocal('cyna_sauvegardes_rejetees', historique.slice(0, NB_COPIES_REJETEES));
   }
   function appliquerOpportuniste(row) {
     if (!row?.data || !(Number(row.version) > versionRef.current)) return;
@@ -483,6 +515,7 @@ export default function useSupabaseData(userId, isDemo = false) {
   }
   async function chargerUser(estAnnule = () => !mountedRef.current, verifierGeneration = false) {
     const generation = generationRef.current;
+    const finDeRecuperation = recuperationRef.current;
     try {
       const row = await lireRowUser(userId);
       if (estAnnule() || (verifierGeneration && generation !== generationRef.current)) return;
@@ -498,7 +531,9 @@ export default function useSupabaseData(userId, isDemo = false) {
         flush(recuperationGenRef.current);
       }
       recuperationRef.current = false;
-      setEtatSync(prev => ({ ...prev, erreurChargement: null }));
+      // F2 — un « Réessayer » qui termine une récupération de conflit annonce le conflit.
+      if (finDeRecuperation) setEtatSync({ erreurChargement: null, statut: 'conflit', message: messageConflit() });
+      else setEtatSync(prev => ({ ...prev, erreurChargement: null }));
     } catch {
       if (estAnnule()) return;
       chargementOkRef.current = false;
@@ -527,6 +562,7 @@ export default function useSupabaseData(userId, isDemo = false) {
           recuperationGenRef.current += 1;
           clearTimeout(syncTimer.current);
           rejetRef.current = null;
+          rejetIdRef.current = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
           conserverRejet({ ...payload, ...(pendingRef.current || {}) });
           pendingRef.current = null;
           setEtatSync({ erreurChargement: null, statut: 'conflit', message: 'Rechargement des données à jour…' });
@@ -538,10 +574,10 @@ export default function useSupabaseData(userId, isDemo = false) {
             versionRef.current = Number(row.version) || 0;
             appliquerData(row.data);
             recuperationRef.current = false;
-            setEtatSync({ erreurChargement: null, statut: 'conflit', message: "Quelqu'un a enregistré entre-temps. Vos dernières modifications n'ont pas été enregistrées ; les données à jour ont été rechargées." });
+            setEtatSync({ erreurChargement: null, statut: 'conflit', message: messageConflit() });
           } catch {
             chargementOkRef.current = false;
-            setEtatSync(prev => ({ ...prev, erreurChargement: 'Impossible de recharger les données à jour. Réessayez.' }));
+            setEtatSync(prev => ({ ...prev, erreurChargement: "Impossible de recharger les données à jour. Vos dernières modifications n'ont pas été enregistrées" + (copieRejetOkRef.current ? ' (une copie est conservée sur cet appareil)' : '') + '. Réessayez.' }));
           }
         } else {
           pendingRef.current = { ...payload, ...(pendingRef.current || {}) };
@@ -558,7 +594,9 @@ export default function useSupabaseData(userId, isDemo = false) {
 
   // ── Setters (état + localStorage + Supabase) ─────────────────────────────
   const setChantiers = useCallback((updater) => {
+    const jeton = marquerModificationLocale();
     setChantiersState(prev => {
+      attentesLocalesRef.current.delete(jeton);
       const next = typeof updater === 'function' ? updater(prev) : updater;
       sauvegarderLocal('cyna_chantiers', next);
       scheduleSync({ chantiers: next });
@@ -568,7 +606,9 @@ export default function useSupabaseData(userId, isDemo = false) {
   }, [userId]);
 
   const setDevis = useCallback((data) => {
+    const jeton = marquerModificationLocale();
     setDevisState(prev => {
+      attentesLocalesRef.current.delete(jeton);
       const next = typeof data === 'function' ? data(prev) : data;
       sauvegarderLocal('cyna_devis', next);
       scheduleSync({ devis: next });
@@ -578,7 +618,9 @@ export default function useSupabaseData(userId, isDemo = false) {
   }, [userId]);
 
   const setFactures = useCallback((data) => {
+    const jeton = marquerModificationLocale();
     setFacturesState(prev => {
+      attentesLocalesRef.current.delete(jeton);
       const next = typeof data === 'function' ? data(prev) : data;
       sauvegarderLocal('cyna_factures', next);
       scheduleSync({ factures: next });
@@ -588,7 +630,9 @@ export default function useSupabaseData(userId, isDemo = false) {
   }, [userId]);
 
   const setClients = useCallback((data) => {
+    const jeton = marquerModificationLocale();
     setClientsState(prev => {
+      attentesLocalesRef.current.delete(jeton);
       const next = typeof data === 'function' ? data(prev) : data;
       sauvegarderLocal('cyna_clients', next);
       scheduleSync({ clients: next });
@@ -598,7 +642,9 @@ export default function useSupabaseData(userId, isDemo = false) {
   }, [userId]);
 
   const setParametres = useCallback((data) => {
+    const jeton = marquerModificationLocale();
     setParametresState(prev => {
+      attentesLocalesRef.current.delete(jeton);
       const next = typeof data === 'function' ? data(prev) : data;
       sauvegarderLocal('cyna_parametres', next);
       scheduleSync({ parametres: next });
@@ -608,7 +654,9 @@ export default function useSupabaseData(userId, isDemo = false) {
   }, [userId]);
 
   const setPointages = useCallback((updater) => {
+    const jeton = marquerModificationLocale();
     setPointagesState(prev => {
+      attentesLocalesRef.current.delete(jeton);
       const next = typeof updater === 'function' ? updater(prev) : updater;
       scheduleSync({ pointages: next });
       return next;

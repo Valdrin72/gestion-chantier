@@ -56,3 +56,32 @@ describe.each([
     }
   });
 });
+
+describe.each([
+  { nom: 'devis', Component: Devis, liste: 'devis', setter: 'setDevis', initial: devis, modifier: () => fireEvent.click(screen.getByTitle('Modifier')), changer: () => fireEvent.change(screen.getByPlaceholderText('Observations, conditions particulières...'), { target: { value: '9000' } }), sauver: /Sauvegarder/i },
+  { nom: 'chantier', Component: Chantiers, liste: 'chantiers', setter: 'setChantiers', initial: chantier, modifier: () => fireEvent.click(screen.getByTitle('Modifier')), changer: () => fireEvent.change(screen.getByDisplayValue(/Bureaux/), { target: { value: 'Bureaux V3' } }), sauver: /Enregistrer le suivi/i },
+  { nom: 'client', Component: Clients, liste: 'clients', setter: 'setClients', initial: client, modifier: () => fireEvent.click(screen.getByText('Modifier')), changer: () => fireEvent.change(screen.getByDisplayValue(/Marc/), { target: { value: 'Marco' } }), sauver: /Enregistrer les modifications/i },
+])('F4 garde formulaire $nom', spec => {
+  it('bloqué, puis « Modifier » recliqué sur le même enregistrement → la sauvegarde repart de la version à jour', () => {
+    const ctxOverrides = {
+      clients: [client], devis: [devis], chantiers: [chantier],
+      parametres: { employes: [], typesTravaux: [{ id: 1, nom: 'Cloisons', unite: 'm²', tarifBase: 125 }], parametres: { tauxTVA: 8.1, coefficientMainOeuvre: 1.35 } },
+      periodeGlobale: 'tout', afficherNotif: vi.fn(),
+      [spec.setter]: vi.fn(),
+    };
+    const { Component } = spec;
+    const props = spec.nom === 'client' ? { clients: [client], setClients: ctxOverrides.setClients, chantiers: [], devis: [], factures: [] } : {};
+    const h = renderWithApp(<Component {...props} />, ctxOverrides);
+    spec.modifier();
+    const current = [{ ...spec.initial, notes: 'Modification distante' }];
+    h.rerender(<AppProvider value={{ ...h.ctx, [spec.liste]: current }}><Component {...props} {...(spec.nom === 'client' ? { clients: current } : {})} /></AppProvider>);
+    spec.changer();
+    fireEvent.click(screen.getByRole('button', { name: spec.sauver }));
+    expect(ctxOverrides[spec.setter]).not.toHaveBeenCalled();
+    // L'utilisateur suit le message : il reclique « Modifier » sur le même enregistrement.
+    spec.modifier();
+    spec.changer();
+    fireEvent.click(screen.getByRole('button', { name: spec.sauver }));
+    expect(ctxOverrides[spec.setter]).toHaveBeenCalledOnce();
+  });
+});

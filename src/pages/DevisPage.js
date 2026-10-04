@@ -1,4 +1,4 @@
-import { aEteModifieAilleurs } from '../utils/gardeEdition';
+import { aEteModifieAilleurs, copieOrigine } from '../utils/gardeEdition';
 import React, { useRef, useState, useMemo, useLayoutEffect } from 'react';
 import {
   Plus, Pencil, Trash2, HardHat, Receipt,
@@ -205,7 +205,7 @@ function Devis() {
   const origineEditionRef = useRef(null);
   useLayoutEffect(() => {
     origineEditionRef.current = form.id && ajout
-      ? JSON.parse(JSON.stringify(devis.find(item => String(item.id) === String(form.id)) || null))
+      ? copieOrigine((devis.find(item => String(item.id) === String(form.id)) || null))
       : null;
     // Capture uniquement à l'ouverture, jamais lors d'un rechargement distant.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -869,7 +869,7 @@ function Devis() {
                             ><FileDown size={14} /></button>
                           )}
                           <button
-                            onClick={() => { setForm({ ...d, montantHT: d.montantHT || d.prixPropose || '' }); setAjout(true); }}
+                            onClick={() => { origineEditionRef.current = copieOrigine(devis.find(item => String(item.id) === String(d.id))); setForm({ ...d, montantHT: d.montantHT || d.prixPropose || '' }); setAjout(true); }}
                             style={DS.iconBtn}
                             title="Modifier"
                           ><Pencil size={14} /></button>

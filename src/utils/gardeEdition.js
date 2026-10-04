@@ -7,6 +7,11 @@ function stable(valeur) {
   return valeur;
 }
 
+// Copie figée de l'enregistrement stocké au moment où l'édition s'ouvre.
+export function copieOrigine(enregistrement) {
+  return enregistrement ? JSON.parse(JSON.stringify(enregistrement)) : null;
+}
+
 export function aEteModifieAilleurs(origine, actuel) {
   return !actuel || JSON.stringify(stable(origine)) !== JSON.stringify(stable(actuel));
 }

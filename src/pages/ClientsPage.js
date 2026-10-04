@@ -12,7 +12,7 @@ import { archiver, restaurer, filtrerActifs, filtrerArchives } from '../utils/ar
 import ArchiveToggle from '../components/shared/ArchiveToggle';
 import ArchivedRow from '../components/shared/ArchivedRow';
 
-import { aEteModifieAilleurs } from '../utils/gardeEdition';
+import { aEteModifieAilleurs, copieOrigine } from '../utils/gardeEdition';
 
 // Supprime les balises HTML des champs texte avant sauvegarde (protection XSS dans PDF)
 const sanitiser = (obj) => {
@@ -54,7 +54,7 @@ function Clients({ clients, setClients, chantiers, devis = [], factures = [], na
   const origineEditionRef = useRef(null);
   useLayoutEffect(() => {
     origineEditionRef.current = form.id && ajout
-      ? JSON.parse(JSON.stringify(clients.find(item => String(item.id) === String(form.id)) || null))
+      ? copieOrigine((clients.find(item => String(item.id) === String(form.id)) || null))
       : null;
     // Capture uniquement à l'ouverture, jamais lors d'un rechargement distant.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -246,7 +246,7 @@ function Clients({ clients, setClients, chantiers, devis = [], factures = [], na
                   <FileText size={13} /> Devis
                 </button>
                 {!consultationMobile && (
-                  <button onClick={() => { setForm(c); setAjout(true); window.scrollTo({ top: 0, behavior: 'smooth' }); }} style={{ ...DS.btnGhost, fontSize: '12px', padding: '6px 11px' }}>
+                  <button onClick={() => { origineEditionRef.current = copieOrigine(clients.find(item => String(item.id) === String(c.id))); setForm(c); setAjout(true); window.scrollTo({ top: 0, behavior: 'smooth' }); }} style={{ ...DS.btnGhost, fontSize: '12px', padding: '6px 11px' }}>
                     <Pencil size={13} /> Modifier
                   </button>
                 )}

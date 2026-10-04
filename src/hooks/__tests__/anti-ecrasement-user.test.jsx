@@ -275,6 +275,55 @@ describe('anti-écrasement user : vrai hook et serveur en mémoire', () => {
     expect(h.result.current.devis).toEqual([{ id: 'initial' }]); expect(h.result.current.etatSync.erreurChargement).toBeNull();
     act(() => h.result.current.setDevis([{ id: 'après' }])); await tick(); expect(store.row.data.devis).toEqual([{ id: 'après' }]);
   });
+  it("F1 : updater différé par React + temps réel avant le rendu → pas d'écrasement", async () => {
+    const h = await boot();
+    act(() => {
+      // Une 1re mise à jour d'état sur le même composant rend l'updater suivant DIFFÉRÉ au rendu.
+      h.result.current.fermerMessageSync();
+      h.result.current.setDevis(prev => [...prev, { id: 'local' }]);
+      // L'événement distant arrive AVANT que React n'exécute l'updater.
+      distant(1); store.handlers.forEach(handler => handler({ new: store.row }));
+    });
+    await settle();
+    expect(h.result.current.devis).toEqual([{ id: 'initial' }, { id: 'local' }]);
+    await tick();
+    expect(store.writes[0].filters.version).toBe(0);
+    expect(store.row.data.devis).toEqual([{ id: 'distant' }]);
+    expect(h.result.current.etatSync.statut).toBe('conflit');
+  });
+  it('F2 : Réessayer après récupération ratée annonce le conflit', async () => {
+    const h = await boot(); store.writeError = { code: 'P0409' }; store.readError = { message: 'offline' };
+    act(() => h.result.current.setDevis([{ id: 'rejet' }])); await tick();
+    expect(h.result.current.etatSync.erreurChargement).toContain("n'ont pas été enregistrées");
+    store.writeError = null; store.readError = null;
+    await act(async () => h.result.current.reessayerChargement());
+    expect(h.result.current.etatSync.erreurChargement).toBeNull();
+    expect(h.result.current.etatSync.statut).toBe('conflit');
+    expect(h.result.current.etatSync.message).toContain("Vos dernières modifications n'ont pas été enregistrées");
+    expect(h.result.current.etatSync.message).not.toContain('Rechargement');
+  });
+  it('F3 : deux conflits successifs gardent les deux copies et le message les mentionne', async () => {
+    const h = await boot();
+    distant(1); act(() => h.result.current.setDevis([{ id: 'premier' }])); await tick(); await settle();
+    expect(h.result.current.etatSync.message).toContain('copie de vos modifications non enregistrées');
+    distant(2); act(() => h.result.current.setDevis([{ id: 'second' }])); await tick(); await settle();
+    const historique = JSON.parse(localStorage.getItem('cyna_sauvegardes_rejetees'));
+    expect(historique.map(e => e.devis[0].id)).toEqual(['second', 'premier']);
+    expect(JSON.parse(localStorage.getItem('cyna_sauvegarde_rejetee')).devis).toEqual([{ id: 'second' }]);
+    expect(store.row.data.devis).toEqual([{ id: 'distant' }]);
+  });
+  it("F3 : stockage plein → le message dit que la copie n'a pas pu être conservée", async () => {
+    const h = await boot();
+    const original = Storage.prototype.setItem;
+    const espion = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (cle, valeur) {
+      if (String(cle).startsWith('cyna_sauvegarde')) throw new Error('QuotaExceededError');
+      return original.call(this, cle, valeur);
+    });
+    try {
+      distant(1); act(() => h.result.current.setDevis([{ id: 'perdu' }])); await tick(); await settle();
+      expect(h.result.current.etatSync.message).toContain("n'a pas pu être conservée");
+    } finally { espion.mockRestore(); }
+  });
   it('migration : précontrôle sans destruction, trigger limité et index partiel', () => {
     const sql = readFileSync('supabase/migrations/20261004120000_devis_version_anti_ecrasement.sql', 'utf8');
     const code = sql.replace(/--[^\n]*/g, '').toLowerCase();

@@ -7,7 +7,7 @@ import ChantierDetail from '../components/chantiers/ChantierDetail';
 import ChantierForm from '../components/chantiers/ChantierForm';
 import ChantiersListe from '../components/chantiers/ChantiersListe';
 
-import { aEteModifieAilleurs } from '../utils/gardeEdition';
+import { aEteModifieAilleurs, copieOrigine } from '../utils/gardeEdition';
 
 // Supprime les balises HTML des champs texte avant sauvegarde (protection XSS dans PDF)
 const sanitiser = (obj) => {
@@ -38,7 +38,7 @@ function Chantiers() {
   const origineEditionRef = useRef(null);
   useLayoutEffect(() => {
     origineEditionRef.current = form.id && ajout
-      ? JSON.parse(JSON.stringify(chantiers.find(item => String(item.id) === String(form.id)) || null))
+      ? copieOrigine((chantiers.find(item => String(item.id) === String(form.id)) || null))
       : null;
     // Capture uniquement à l'ouverture, jamais lors d'un rechargement distant.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -158,6 +158,8 @@ function Chantiers() {
   };
 
   const ouvrirModification = (c) => {
+    // F4 — recapturer l'origine à chaque ouverture, même si c'est le même chantier.
+    origineEditionRef.current = copieOrigine(chantiers.find(item => String(item.id) === String(c.id)));
     setSelected(null); setVue('liste'); setForm({ ...vide, ...c }); setAjout(true);
   };
 

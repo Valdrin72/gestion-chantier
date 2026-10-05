@@ -31,7 +31,7 @@ vi.mock('../../lib/supabase', () => {
         return Promise.resolve({ data: null, error: null });
       },
       upsert(payload, opts) { store.writes.push({ op: 'upsert', table, payload, opts }); return Promise.resolve({ error: null }); },
-      update(payload) { store.writes.push({ op: 'update', table, payload }); return { eq: () => Promise.resolve({ error: null }) }; },
+      update(payload) { store.writes.push({ op: 'update', table, payload }); return { eq: () => ({ eq: () => ({ select: () => Promise.resolve({ data: [{ id: store.userRow?.id || 'row-x', version: payload.version }], error: null }) }) }) }; },
       insert(payload) { store.writes.push({ op: 'insert', table, payload }); return { select: () => ({ single: () => Promise.resolve({ data: { id: 'row-x' }, error: null }) }) }; },
     };
     return b;

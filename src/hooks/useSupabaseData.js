@@ -18,6 +18,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabase';
+import { enregistrerCopieRejetee, nouvelIdCopie } from '../utils/copiesRejetees';
 import { donneesInitiales, migrerJournal, migrerStatutsC8, normaliserTarifsEmployes } from '../donnees';
 
 const STORAGE_MARKER = '__cyna_storage__';
@@ -41,36 +42,37 @@ const { chantiers: _dc, devis: _dd, clients: _dcl, factures: _df, employes: _de,
 export const PARAMETRES_DEFAUT = { ...PARAMETRES_DEFAUT_BASE, employes: [], demoVersion: DEMO_VERSION };
 
 function sauvegarderLocal(cle, data) {
-  try { localStorage.setItem(cle, JSON.stringify(data)); } catch {}
+  try { localStorage.setItem(cle, JSON.stringify(data)); return true; } catch { return false; }
 }
 
+const MESSAGE_CONFLIT = "Quelqu'un a enregistré entre-temps. Vos dernières modifications n'ont pas été enregistrées ; les données à jour ont été rechargées.";
+const MESSAGE_COPIE_OK = ' Une copie de vos modifications non enregistrées est conservée sur cet appareil.';
+const MESSAGE_COPIE_KO = " La copie locale de vos modifications n'a pas pu être conservée (stockage de l'appareil plein).";
+
+export class ConflitVersionError extends Error {}
 async function lireRowUser(userId) {
-  const { data } = await supabase
-    .from(STORAGE_TABLE)
-    .select('id, data')
-    .eq('user_id', userId)
-    .eq('numero', STORAGE_MARKER)
-    .maybeSingle();
+  const { data, error } = await supabase.from(STORAGE_TABLE)
+    .select('id, data, version').eq('user_id', userId)
+    .eq('numero', STORAGE_MARKER).maybeSingle();
+  if (error) throw error;
   return data ?? null;
 }
-
-async function ecrireRowUser(userId, rowId, payload) {
+async function ecrireRowUser(userId, rowId, payload, version) {
   if (rowId) {
-    const { error } = await supabase
-      .from(STORAGE_TABLE)
-      .update({ data: payload })
-      .eq('id', rowId);
+    const { data, error } = await supabase.from(STORAGE_TABLE)
+      .update({ data: payload, version: version + 1 })
+      .eq('id', rowId).eq('version', version).select('id, version');
+    if (error?.code === 'P0409') throw new ConflitVersionError();
     if (error) throw error;
-    return rowId;
-  } else {
-    const { data, error } = await supabase
-      .from(STORAGE_TABLE)
-      .insert({ user_id: userId, numero: STORAGE_MARKER, data: payload })
-      .select('id')
-      .single();
-    if (error) throw error;
-    return data.id;
+    if (!data?.length) throw new ConflitVersionError();
+    return data[0];
   }
+  const { data, error } = await supabase.from(STORAGE_TABLE)
+    .insert({ user_id: userId, numero: STORAGE_MARKER, data: payload })
+    .select('id, version').single();
+  if (error?.code === '23505') throw new ConflitVersionError();
+  if (error) throw error;
+  return data;
 }
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -240,6 +242,20 @@ export default function useSupabaseData(userId, isDemo = false) {
   const [loading,     setLoading]         = useState(true);
   const [syncing,     setSyncing]         = useState(false);
 
+  const [etatSync, setEtatSync] = useState({ erreurChargement: null, statut: 'ok', message: null });
+  const versionRef = useRef(0);
+  const chargementOkRef = useRef(false);
+  const enVolRef = useRef(null);
+  const generationRef = useRef(0);
+  const recuperationRef = useRef(false);
+  const recuperationGenRef = useRef(0);
+  const rejetRef = useRef(null);
+  const rejetIdRef = useRef(null);
+  const copieRejetOkRef = useRef(true);
+  // F1 — modifications locales demandées mais dont l'updater React n'a pas encore tourné
+  // (React peut différer un updater jusqu'au rendu suivant). Marquées SYNCHRONEMENT dans
+  // chaque setter : tant que l'ensemble n'est pas vide, aucune donnée distante n'est appliquée.
+  const attentesLocalesRef = useRef(new Set());
   const rowIdRef    = useRef(null);
   const syncTimer   = useRef(null);
   const pendingRef  = useRef(null);
@@ -343,47 +359,10 @@ export default function useSupabaseData(userId, isDemo = false) {
           return;
         }
 
-        // ── MODE USER (défaut) — comportement historique strictement inchangé ──
-        const row = await lireRowUser(userId);
-        if (cancelled) return;
-
-        if (row && row.data && Object.keys(row.data).length > 0) {
-          rowIdRef.current = row.id;
-          appliquerData(row.data);
-        } else {
-          // Blob absent : initialiser avec données correctes selon le mode
-          const localData = isDemo
-            ? {
-                chantiers:  donneesInitiales.chantiers.map(c => ({ ...c, journal: migrerJournal(c.journal || []) })),
-                devis:      donneesInitiales.devis,
-                factures:   donneesInitiales.factures || [],
-                clients:    donneesInitiales.clients,
-                parametres: { ...donneesInitiales, demoVersion: DEMO_VERSION },
-                pointages:  [],
-              }
-            : {
-                chantiers: [], devis: [], factures: [], clients: [],
-                parametres: PARAMETRES_DEFAUT,
-                pointages:  [],
-              };
-          if (!cancelled) appliquerData(localData);
-          const id = await ecrireRowUser(userId, row?.id ?? null, localData);
-          if (!cancelled) rowIdRef.current = id;
-        }
+        await chargerUser(() => cancelled);
       } catch (e) {
         if (process.env.NODE_ENV !== 'production') console.warn('[Sync] Chargement Supabase échoué, fallback:', e.message);
-        // Fallback erreur : démo garde ses données, vrai compte reste vide
-        if (!cancelled) appliquerData(isDemo
-          ? {
-              chantiers:  donneesInitiales.chantiers,
-              devis:      donneesInitiales.devis,
-              factures:   donneesInitiales.factures || [],
-              clients:    donneesInitiales.clients,
-              parametres: { ...donneesInitiales, demoVersion: DEMO_VERSION },
-              pointages:  [],
-            }
-          : { chantiers: [], devis: [], factures: [], clients: [], parametres: PARAMETRES_DEFAUT, pointages: [] }
-        );
+        if (modeRef.current === 'org' && !cancelled) appliquerData({});
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -413,14 +392,12 @@ export default function useSupabaseData(userId, isDemo = false) {
         } catch {}
         return;
       }
-      // ── MODE USER (défaut) — inchangé ──
+      if (!chargementOkRef.current || !aucuneModificationLocale()) return;
+      const generation = generationRef.current;
       try {
         const row = await lireRowUser(userId);
-        if (cancelled) return;
-        if (row && row.data && Object.keys(row.data).length > 0) {
-          rowIdRef.current = row.id;
-          appliquerData(row.data);
-        }
+        if (cancelled || !aucuneModificationLocale() || generation !== generationRef.current) return;
+        appliquerOpportuniste(row);
       } catch {}
     }
     document.addEventListener('visibilitychange', resyncSiVisible);
@@ -435,9 +412,7 @@ export default function useSupabaseData(userId, isDemo = false) {
           filter: `user_id=eq.${userId}`,
         }, (payload) => {
           const row = payload.new || payload.record;
-          if (row?.numero === STORAGE_MARKER && row?.data) {
-            appliquerData(row.data);
-          }
+          if (row?.numero === STORAGE_MARKER && chargementOkRef.current && aucuneModificationLocale()) appliquerOpportuniste(row);
         })
         .subscribe((status) => {
           if (status === 'CHANNEL_ERROR') {
@@ -458,6 +433,11 @@ export default function useSupabaseData(userId, isDemo = false) {
 
   // ── Sauvegarde Supabase avec debounce 800ms ──────────────────────────────
   function scheduleSync(updates) {
+    updates = Object.fromEntries(Object.entries(updates).filter(([cle, valeur]) => {
+      if (typeof valeur !== 'function') return true;
+      if (process.env.NODE_ENV !== 'production') console.warn('[Sync] updater non résolu ignoré:', cle);
+      return false;
+    }));
     // ── Lot 4b — MODE ORG : écriture SÛRE dans org_storage, protégée par 3 verrous ──
     if (modeRef.current === 'org') {
       // VERROU 1 — jamais d'écriture tant qu'on n'a pas chargé une ligne org NON vide
@@ -492,30 +472,129 @@ export default function useSupabaseData(userId, isDemo = false) {
       return;
     }
 
-    // ── MODE USER (défaut) — comportement historique strictement inchangé ──
+    generationRef.current += 1;
+    if (recuperationRef.current) { conserverRejet(updates); return; }
+    if (!chargementOkRef.current) return;
     pendingRef.current = { ...(pendingRef.current || dataRef.current), ...updates };
-    dataRef.current   = { ...dataRef.current, ...updates };
-    if (syncTimer.current) clearTimeout(syncTimer.current);
-    syncTimer.current = setTimeout(async () => {
-      if (!mountedRef.current) return;
-      const payload = pendingRef.current;
-      pendingRef.current = null;
-      setSyncing(true);
-      try {
-        const id = await ecrireRowUser(userId, rowIdRef.current, payload);
-        if (mountedRef.current) rowIdRef.current = id;
-      } catch (e) {
-        if (process.env.NODE_ENV !== 'production') console.warn('[Sync Supabase]', e.message);
-      } finally {
-        if (mountedRef.current) setSyncing(false);
+    dataRef.current = { ...dataRef.current, ...updates };
+    clearTimeout(syncTimer.current);
+    const generation = recuperationGenRef.current;
+    syncTimer.current = setTimeout(() => flush(generation), 800);
+  }
+
+  function aucuneModificationLocale() {
+    return !pendingRef.current && !enVolRef.current && !recuperationRef.current
+      && attentesLocalesRef.current.size === 0;
+  }
+  function marquerModificationLocale() {
+    const jeton = {};
+    attentesLocalesRef.current.add(jeton);
+    generationRef.current += 1;
+    return jeton;
+  }
+  function messageConflit() {
+    return MESSAGE_CONFLIT + (copieRejetOkRef.current ? MESSAGE_COPIE_OK : MESSAGE_COPIE_KO);
+  }
+  // F3 / REV-02 / REV-03 — copie de secours locale du conflit en cours (src/utils/copiesRejetees.js).
+  // « Copie conservée » n'est annoncé que si la copie de CE conflit a réellement été écrite.
+  function conserverRejet(updates) {
+    rejetRef.current = { ...(rejetRef.current || {}), ...updates };
+    copieRejetOkRef.current = enregistrerCopieRejetee(rejetIdRef.current, rejetRef.current);
+  }
+  function appliquerOpportuniste(row) {
+    if (!row?.data || !(Number(row.version) > versionRef.current)) return;
+    rowIdRef.current = row.id;
+    versionRef.current = Number(row.version) || 0;
+    appliquerData(row.data);
+  }
+  async function chargerUser(estAnnule = () => !mountedRef.current, verifierGeneration = false) {
+    const generation = generationRef.current;
+    const finDeRecuperation = recuperationRef.current;
+    try {
+      const row = await lireRowUser(userId);
+      if (estAnnule() || (verifierGeneration && generation !== generationRef.current)) return;
+      rowIdRef.current = row?.id ?? null;
+      versionRef.current = Number(row?.version) || 0;
+      chargementOkRef.current = true;
+      if (row?.data && Object.keys(row.data).length) appliquerData(row.data);
+      else {
+        appliquerData({});
+        pendingRef.current = dataRef.current;
+        clearTimeout(syncTimer.current);
+        recuperationRef.current = false;
+        flush(recuperationGenRef.current);
       }
-    }, 800);
+      recuperationRef.current = false;
+      // F2 — un « Réessayer » qui termine une récupération de conflit annonce le conflit.
+      if (finDeRecuperation) setEtatSync({ erreurChargement: null, statut: 'conflit', message: messageConflit() });
+      else setEtatSync(prev => ({ ...prev, erreurChargement: null }));
+    } catch {
+      if (estAnnule()) return;
+      chargementOkRef.current = false;
+      if (isDemo) appliquerData({});
+      else setEtatSync(prev => ({ ...prev, erreurChargement: 'Impossible de charger vos données. Réessayez ou déconnectez-vous.' }));
+    }
+  }
+  async function flush(generation = recuperationGenRef.current) {
+    // Plusieurs timers peuvent attendre la même écriture : revérifier à chaque réveil.
+    while (enVolRef.current) await enVolRef.current;
+    if (!mountedRef.current || !chargementOkRef.current || recuperationRef.current || generation !== recuperationGenRef.current || !pendingRef.current) return;
+    const payload = pendingRef.current;
+    pendingRef.current = null;
+    setSyncing(true);
+    const travail = Promise.resolve().then(async () => {
+      try {
+        const row = await ecrireRowUser(userId, rowIdRef.current, payload, versionRef.current);
+        if (!mountedRef.current) return;
+        rowIdRef.current = row.id;
+        versionRef.current = Number(row.version) || 0;
+        setEtatSync({ erreurChargement: null, statut: 'ok', message: null });
+      } catch (e) {
+        if (!mountedRef.current) return;
+        if (e instanceof ConflitVersionError) {
+          recuperationRef.current = true;
+          recuperationGenRef.current += 1;
+          clearTimeout(syncTimer.current);
+          rejetRef.current = null;
+          rejetIdRef.current = nouvelIdCopie();
+          conserverRejet({ ...payload, ...(pendingRef.current || {}) });
+          pendingRef.current = null;
+          setEtatSync({ erreurChargement: null, statut: 'conflit', message: 'Rechargement des données à jour…' });
+          try {
+            const row = await lireRowUser(userId);
+            if (!mountedRef.current) return;
+            if (!row?.data) throw new Error('Ligne de stockage absente');
+            rowIdRef.current = row.id;
+            versionRef.current = Number(row.version) || 0;
+            appliquerData(row.data);
+            recuperationRef.current = false;
+            setEtatSync({ erreurChargement: null, statut: 'conflit', message: messageConflit() });
+          } catch {
+            chargementOkRef.current = false;
+            setEtatSync(prev => ({ ...prev, erreurChargement: "Impossible de recharger les données à jour. Vos dernières modifications n'ont pas été enregistrées" + (copieRejetOkRef.current ? ' (une copie est conservée sur cet appareil)' : '') + '. Réessayez.' }));
+          }
+        } else {
+          pendingRef.current = { ...payload, ...(pendingRef.current || {}) };
+          clearTimeout(syncTimer.current);
+          setEtatSync({ erreurChargement: null, statut: 'echec', message: 'Non enregistré. Vos modifications sont conservées ; réessayez.' });
+        }
+      }
+    });
+    enVolRef.current = travail;
+    await travail;
+    if (enVolRef.current === travail) enVolRef.current = null;
+    if (mountedRef.current) setSyncing(false);
   }
 
   // ── Setters (état + localStorage + Supabase) ─────────────────────────────
   const setChantiers = useCallback((updater) => {
+    const jeton = marquerModificationLocale();
     setChantiersState(prev => {
+      attentesLocalesRef.current.delete(jeton);
       const next = typeof updater === 'function' ? updater(prev) : updater;
+      // REV-01 — rien n'a changé (ex. régénération du journal identique) : aucune sauvegarde,
+      // sinon deux appareils ouverts se renverraient indéfiniment des sauvegardes inutiles.
+      if (Object.is(next, prev)) return prev;
       sauvegarderLocal('cyna_chantiers', next);
       scheduleSync({ chantiers: next });
       return next;
@@ -524,36 +603,63 @@ export default function useSupabaseData(userId, isDemo = false) {
   }, [userId]);
 
   const setDevis = useCallback((data) => {
-    setDevisState(data);
-    sauvegarderLocal('cyna_devis', data);
-    scheduleSync({ devis: data });
+    const jeton = marquerModificationLocale();
+    setDevisState(prev => {
+      attentesLocalesRef.current.delete(jeton);
+      const next = typeof data === 'function' ? data(prev) : data;
+      if (Object.is(next, prev)) return prev;
+      sauvegarderLocal('cyna_devis', next);
+      scheduleSync({ devis: next });
+      return next;
+    });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
 
   const setFactures = useCallback((data) => {
-    setFacturesState(data);
-    sauvegarderLocal('cyna_factures', data);
-    scheduleSync({ factures: data });
+    const jeton = marquerModificationLocale();
+    setFacturesState(prev => {
+      attentesLocalesRef.current.delete(jeton);
+      const next = typeof data === 'function' ? data(prev) : data;
+      if (Object.is(next, prev)) return prev;
+      sauvegarderLocal('cyna_factures', next);
+      scheduleSync({ factures: next });
+      return next;
+    });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
 
   const setClients = useCallback((data) => {
-    setClientsState(data);
-    sauvegarderLocal('cyna_clients', data);
-    scheduleSync({ clients: data });
+    const jeton = marquerModificationLocale();
+    setClientsState(prev => {
+      attentesLocalesRef.current.delete(jeton);
+      const next = typeof data === 'function' ? data(prev) : data;
+      if (Object.is(next, prev)) return prev;
+      sauvegarderLocal('cyna_clients', next);
+      scheduleSync({ clients: next });
+      return next;
+    });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
 
   const setParametres = useCallback((data) => {
-    setParametresState(data);
-    sauvegarderLocal('cyna_parametres', data);
-    scheduleSync({ parametres: data });
+    const jeton = marquerModificationLocale();
+    setParametresState(prev => {
+      attentesLocalesRef.current.delete(jeton);
+      const next = typeof data === 'function' ? data(prev) : data;
+      if (Object.is(next, prev)) return prev;
+      sauvegarderLocal('cyna_parametres', next);
+      scheduleSync({ parametres: next });
+      return next;
+    });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
 
   const setPointages = useCallback((updater) => {
+    const jeton = marquerModificationLocale();
     setPointagesState(prev => {
+      attentesLocalesRef.current.delete(jeton);
       const next = typeof updater === 'function' ? updater(prev) : updater;
+      if (Object.is(next, prev)) return prev;
       scheduleSync({ pointages: next });
       return next;
     });
@@ -567,6 +673,14 @@ export default function useSupabaseData(userId, isDemo = false) {
     clients, setClients,
     parametres, setParametres,
     pointages, setPointages,
-    loading, syncing,
+    loading, syncing, etatSync,
+    reessayerChargement: async () => {
+      if (modeRef.current !== 'user') return;
+      setLoading(true);
+      await chargerUser(() => !mountedRef.current, true);
+      if (mountedRef.current) setLoading(false);
+    },
+    reessayerSauvegarde: () => flush(),
+    fermerMessageSync: () => setEtatSync(prev => ({ ...prev, statut: 'ok', message: null })),
   };
 }

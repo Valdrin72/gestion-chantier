@@ -15,23 +15,27 @@ export function nouvelIdCopie() {
 
 /**
  * Écrit (ou réécrit, pour le même id) une copie rejetée puis applique la rétention.
- * @returns {boolean} true seulement si la copie de CE refus a réellement été écrite.
+ * La copie qu'on vient d'écrire est TOUJOURS protégée : elle compte comme la plus récente
+ * (même si son id est ancien, ex. conflit réécrit pendant sa récupération) et la limite
+ * s'applique aux AUTRES copies (REV-01).
+ * @returns {boolean} true seulement si la copie de CE refus existe réellement après rétention.
  */
 export function enregistrerCopieRejetee(id, contenu) {
+  const cleCopie = `${PREFIXE_COPIE_REJETEE}${id}`;
   const entree = { id, date: new Date().toISOString(), ...contenu };
   try {
-    localStorage.setItem(`${PREFIXE_COPIE_REJETEE}${id}`, JSON.stringify(entree));
+    localStorage.setItem(cleCopie, JSON.stringify(entree));
   } catch {
     return false;
   }
   try {
     const horodatage = cle => parseInt(cle.slice(PREFIXE_COPIE_REJETEE.length), 10) || 0;
     Object.keys(localStorage)
-      .filter(cle => cle.startsWith(PREFIXE_COPIE_REJETEE))
+      .filter(cle => cle.startsWith(PREFIXE_COPIE_REJETEE) && cle !== cleCopie)
       .sort((a, b) => horodatage(b) - horodatage(a))
-      .slice(NB_COPIES_REJETEES)
+      .slice(NB_COPIES_REJETEES - 1)
       .forEach(cle => localStorage.removeItem(cle));
   } catch {}
   try { localStorage.setItem('cyna_sauvegarde_rejetee', JSON.stringify(entree)); } catch {}
-  return true;
+  try { return localStorage.getItem(cleCopie) !== null; } catch { return false; }
 }

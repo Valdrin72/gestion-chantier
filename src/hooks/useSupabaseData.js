@@ -18,6 +18,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabase';
+import { enregistrerCopieRejetee, nouvelIdCopie } from '../utils/copiesRejetees';
 import { donneesInitiales, migrerJournal, migrerStatutsC8, normaliserTarifsEmployes } from '../donnees';
 
 const STORAGE_MARKER = '__cyna_storage__';
@@ -47,8 +48,6 @@ function sauvegarderLocal(cle, data) {
 const MESSAGE_CONFLIT = "Quelqu'un a enregistré entre-temps. Vos dernières modifications n'ont pas été enregistrées ; les données à jour ont été rechargées.";
 const MESSAGE_COPIE_OK = ' Une copie de vos modifications non enregistrées est conservée sur cet appareil.';
 const MESSAGE_COPIE_KO = " La copie locale de vos modifications n'a pas pu être conservée (stockage de l'appareil plein).";
-const NB_COPIES_REJETEES = 5;
-const PREFIXE_COPIE_REJETEE = 'cyna_sauvegarde_rejetee_';
 
 export class ConflitVersionError extends Error {}
 async function lireRowUser(userId) {
@@ -496,25 +495,11 @@ export default function useSupabaseData(userId, isDemo = false) {
   function messageConflit() {
     return MESSAGE_CONFLIT + (copieRejetOkRef.current ? MESSAGE_COPIE_OK : MESSAGE_COPIE_KO);
   }
-  // F3 / REV-02 / REV-03 — chaque conflit a SA clé 'cyna_sauvegarde_rejetee_<horodatage>-<suffixe>'
-  // (jamais réécrite par un autre conflit). La rétention se calcule sur les clés RÉELLEMENT
-  // présentes (aucune liste à tenir à jour, copies orphelines comprises) : on garde les
-  // NB_COPIES_REJETEES plus récentes. 'cyna_sauvegarde_rejetee' = copie du dernier, au mieux.
-  // « Copie conservée » n'est annoncé que si la clé propre du conflit a été écrite.
+  // F3 / REV-02 / REV-03 — copie de secours locale du conflit en cours (src/utils/copiesRejetees.js).
+  // « Copie conservée » n'est annoncé que si la copie de CE conflit a réellement été écrite.
   function conserverRejet(updates) {
     rejetRef.current = { ...(rejetRef.current || {}), ...updates };
-    const entree = { id: rejetIdRef.current, date: new Date().toISOString(), ...rejetRef.current };
-    copieRejetOkRef.current = sauvegarderLocal(`${PREFIXE_COPIE_REJETEE}${rejetIdRef.current}`, entree);
-    if (!copieRejetOkRef.current) return;
-    try {
-      const horodatage = cle => parseInt(cle.slice(PREFIXE_COPIE_REJETEE.length), 10) || 0;
-      Object.keys(localStorage)
-        .filter(cle => cle.startsWith(PREFIXE_COPIE_REJETEE))
-        .sort((a, b) => horodatage(b) - horodatage(a))
-        .slice(NB_COPIES_REJETEES)
-        .forEach(cle => localStorage.removeItem(cle));
-    } catch {}
-    sauvegarderLocal('cyna_sauvegarde_rejetee', entree);
+    copieRejetOkRef.current = enregistrerCopieRejetee(rejetIdRef.current, rejetRef.current);
   }
   function appliquerOpportuniste(row) {
     if (!row?.data || !(Number(row.version) > versionRef.current)) return;
@@ -571,7 +556,7 @@ export default function useSupabaseData(userId, isDemo = false) {
           recuperationGenRef.current += 1;
           clearTimeout(syncTimer.current);
           rejetRef.current = null;
-          rejetIdRef.current = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+          rejetIdRef.current = nouvelIdCopie();
           conserverRejet({ ...payload, ...(pendingRef.current || {}) });
           pendingRef.current = null;
           setEtatSync({ erreurChargement: null, statut: 'conflit', message: 'Rechargement des données à jour…' });

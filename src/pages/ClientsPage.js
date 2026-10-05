@@ -12,7 +12,7 @@ import { archiver, restaurer, filtrerActifs, filtrerArchives } from '../utils/ar
 import ArchiveToggle from '../components/shared/ArchiveToggle';
 import ArchivedRow from '../components/shared/ArchivedRow';
 
-import { aEteModifieAilleurs, copieOrigine } from '../utils/gardeEdition';
+import { aEteModifieAilleurs, conserverBrouillonRefuse, copieOrigine } from '../utils/gardeEdition';
 
 // Supprime les balises HTML des champs texte avant sauvegarde (protection XSS dans PDF)
 const sanitiser = (obj) => {
@@ -61,7 +61,7 @@ function Clients({ clients, setClients, chantiers, devis = [], factures = [], na
   }, [form.id, ajout]);
   const sauvegarder = () => {
     if (form.id && aEteModifieAilleurs(origineEditionRef.current, clients.find(item => String(item.id) === String(form.id)))) {
-      afficherNotif?.("Ce client a été modifié sur un autre appareil pendant que vous l'éditiez. Vos changements n'ont pas été enregistrés : fermez et rouvrez-le pour repartir de la version à jour.", 'error');
+      afficherNotif?.("Ce client a été modifié sur un autre appareil pendant que vous l'éditiez. Vos changements n'ont pas été enregistrés : fermez et rouvrez-le pour repartir de la version à jour." + conserverBrouillonRefuse('clients', form), 'error');
       return;
     }
     if (consultationMobile) return; // lecture seule mobile

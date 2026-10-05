@@ -1,4 +1,4 @@
-import { aEteModifieAilleurs, copieOrigine } from '../utils/gardeEdition';
+import { aEteModifieAilleurs, conserverBrouillonRefuse, copieOrigine } from '../utils/gardeEdition';
 import React, { useRef, useState, useMemo, useLayoutEffect } from 'react';
 import {
   Plus, Pencil, Trash2, HardHat, Receipt,
@@ -249,7 +249,7 @@ function Devis() {
 
   const sauvegarder = () => {
     if (form.id && aEteModifieAilleurs(origineEditionRef.current, devis.find(item => String(item.id) === String(form.id)))) {
-      afficherNotif?.("Ce devis a été modifié sur un autre appareil pendant que vous l'éditiez. Vos changements n'ont pas été enregistrés : fermez et rouvrez-le pour repartir de la version à jour.", 'error');
+      afficherNotif?.("Ce devis a été modifié sur un autre appareil pendant que vous l'éditiez. Vos changements n'ont pas été enregistrés : fermez et rouvrez-le pour repartir de la version à jour." + conserverBrouillonRefuse('devis', form), 'error');
       return;
     }
     if (consultationMobile) return;

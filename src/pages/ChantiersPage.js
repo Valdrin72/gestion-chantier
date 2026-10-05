@@ -7,7 +7,7 @@ import ChantierDetail from '../components/chantiers/ChantierDetail';
 import ChantierForm from '../components/chantiers/ChantierForm';
 import ChantiersListe from '../components/chantiers/ChantiersListe';
 
-import { aEteModifieAilleurs, copieOrigine } from '../utils/gardeEdition';
+import { aEteModifieAilleurs, conserverBrouillonRefuse, copieOrigine } from '../utils/gardeEdition';
 
 // Supprime les balises HTML des champs texte avant sauvegarde (protection XSS dans PDF)
 const sanitiser = (obj) => {
@@ -64,7 +64,7 @@ function Chantiers() {
 
   const sauvegarder = () => {
     if (form.id && aEteModifieAilleurs(origineEditionRef.current, chantiers.find(item => String(item.id) === String(form.id)))) {
-      afficherNotif?.("Ce chantier a été modifié sur un autre appareil pendant que vous l'éditiez. Vos changements n'ont pas été enregistrés : fermez et rouvrez-le pour repartir de la version à jour.", 'error');
+      afficherNotif?.("Ce chantier a été modifié sur un autre appareil pendant que vous l'éditiez. Vos changements n'ont pas été enregistrés : fermez et rouvrez-le pour repartir de la version à jour." + conserverBrouillonRefuse('chantiers', form), 'error');
       return;
     }
     const nouvellesErreurs = {};

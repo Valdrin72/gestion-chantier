@@ -14,6 +14,8 @@ const cible = chargerCibleStaging();
 export default defineConfig({
   testDir: './e2e',
   testMatch: /.*\.spec\.mjs/,
+  // Une seule connexion de vérification avant tout scénario ; si elle échoue, rien ne tourne.
+  globalSetup: './e2e/preflight-connexion.mjs',
   timeout: 180_000,
   workers: 1,
   retries: 0,

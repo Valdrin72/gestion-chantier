@@ -2,7 +2,8 @@
 // Sécurité : refuse de démarrer si .env.local ne pointe pas vers staging, et bloque toute
 // requête vers la prod dans chaque navigateur. Les identifiants ne sont jamais affichés.
 import { test, expect } from '@playwright/test';
-import { chargerCibleStaging, destinationAutorisee, STAGING_HOST, STAGING_REF } from './env-staging.mjs';
+import { chargerCibleStaging } from './env-staging.mjs';
+import { connecter, nouvelAppareil, verifierPasDArret } from './appareil.mjs';
 
 const MARQUEUR = '__cyna_storage__';
 // Garde-fou n°1 : origine EXACTE de staging (sinon arrêt avant tout).
@@ -49,63 +50,7 @@ async function attendreServeur(page, predicat, delai = 20_000) {
 }
 
 // ── Navigateur / interface ────────────────────────────────────────────────────
-async function nouvelAppareil(browser) {
-  const context = await browser.newContext();
-  // Garde-fou n°2 : le navigateur ne peut joindre QUE l'app locale et la base staging,
-  // en HTTP comme en WebSocket (temps réel). Toute autre base Supabase est notée et bloquée.
-  const bloquees = [];
-  const noter = adresse => { try { const h = new URL(adresse).hostname; if (h.endsWith('.supabase.co') && h !== STAGING_HOST) bloquees.push(h); } catch {} };
-  await context.route('**/*', route => {
-    const adresse = route.request().url();
-    if (destinationAutorisee(adresse)) return route.continue();
-    noter(adresse); return route.abort('blockedbyclient');
-  });
-  await context.routeWebSocket(/.*/, ws => {
-    if (destinationAutorisee(ws.url())) { ws.connectToServer(); return; }
-    noter(ws.url()); ws.close();
-  });
-  await context.addInitScript(() => {
-    try {
-      localStorage.setItem('cyna_onboarding_done', '1');
-      localStorage.setItem('cyna_storage_mode', 'user');
-    } catch {}
-  });
-  const page = await context.newPage();
-  // Diagnostic temps réel : statut d'abonnement postgres_changes et nombre d'événements reçus.
-  const realtime = { statuts: [], evenements: 0 };
-  page.on('websocket', ws => {
-    if (!/realtime/.test(ws.url())) return;
-    ws.on('framereceived', f => {
-      const t = typeof f.payload === 'string' ? f.payload : '';
-      if (!t.includes('postgres_changes')) return;
-      try {
-        const m = JSON.parse(t);
-        const [evenement, charge] = Array.isArray(m) ? [m[3], m[4]] : [m.event, m.payload];
-        if (evenement === 'postgres_changes') realtime.evenements += 1;
-        if (evenement === 'system') realtime.statuts.push(`${charge?.status} : ${String(charge?.message || '').slice(0, 70)}`);
-      } catch {}
-    });
-  });
-  return { context, page, realtime, bloquees };
-}
-async function connecter(page) {
-  await page.goto('/');
-  // R4 — toute erreur de saisie est remplacée par un message générique : le journal d'erreur
-  // de Playwright pourrait sinon recopier la valeur saisie.
-  try {
-    await page.getByPlaceholder('votre@email.com').fill(CIBLE.email, { timeout: 20_000 });
-    await page.getByPlaceholder('••••••••').fill(CIBLE.motDePasse, { timeout: 20_000 });
-    await page.locator('button[type="submit"]').click({ timeout: 20_000 });
-  } catch {
-    throw new Error('ARRÊT : saisie des identifiants impossible (détails masqués).');
-  }
-  const ok = page.getByPlaceholder('votre@email.com').waitFor({ state: 'detached', timeout: 30_000 }).then(() => 'ok');
-  const ko = page.getByText('⚠').first().waitFor({ timeout: 30_000 }).then(() => 'ko');
-  if ((await Promise.race([ok, ko]).catch(() => 'ko')) !== 'ok') throw new Error('ARRÊT : la connexion du compte de test a échoué.');
-  // La session ouverte par l'app doit être celle de staging (preuve que l'app parle à staging).
-  const cleSession = await page.evaluate(() => Object.keys(localStorage).find(k => k.startsWith('sb-') && k.endsWith('-auth-token')));
-  if (cleSession !== `sb-${STAGING_REF}-auth-token`) throw new Error("ARRÊT : la session ouverte par l'app n'est pas celle de staging.");
-}
+// nouvelAppareil / connecter : voir e2e/appareil.mjs (partagés avec la vérification préalable).
 async function allerClients(page) {
   // « Clients » est un sous-menu de la maison « Finances » (src/nav/maisons.js). Le menu latéral
   // peut être hors de la zone visible : clic déclenché directement sur l'élément.
@@ -149,6 +94,7 @@ test.describe('E2E anti-écrasement — staging, mode user', () => {
   let A, B, versionInitiale;
 
   test.beforeAll(async ({ browser }) => {
+    verifierPasDArret();
     A = await nouvelAppareil(browser);
     B = await nouvelAppareil(browser);
     await connecter(A.page);
@@ -203,30 +149,61 @@ test.describe('E2E anti-écrasement — staging, mode user', () => {
 
   test('(b) A et B modifient le même client presque en même temps → aucune perte silencieuse', async () => {
     await recharger(A); await recharger(B);
-    const texteA = `conflit A ${RUN}`, texteB = `conflit B ${RUN}`;
-    await modifierNotes(A.page, 'c', texteA, { enregistrer: false });
-    await modifierNotes(B.page, 'c', texteB, { enregistrer: false });
-    // R3 — observation lancée AVANT les clics (le message de la garde disparaît après 3 s).
+    const textes = { A: `conflit A ${RUN}`, B: `conflit B ${RUN}` };
+    await modifierNotes(A.page, 'c', textes.A, { enregistrer: false });
+    await modifierNotes(B.page, 'c', textes.B, { enregistrer: false });
+    // Observation des messages lancée AVANT les clics (le message de la garde disparaît après 3 s).
     const observer = p => Promise.any([
       p.getByText(/Quelqu'un a enregistré entre-temps/).first().waitFor({ timeout: 15_000 }).then(() => 'conflit'),
       p.getByText(/modifié sur un autre appareil/).first().waitFor({ timeout: 15_000 }).then(() => 'garde'),
-    ]).catch(() => 'aucun message');
+    ]).catch(() => null);
+    // Historique côté serveur : toutes les valeurs successives des notes du client C.
+    const historique = [];
+    let suivre = true;
+    const suivi = (async () => {
+      while (suivre) {
+        const n = clientServeur(await lireBlob(A.page), 'c')?.notes;
+        if (n !== historique[historique.length - 1]) historique.push(n);
+        await A.page.waitForTimeout(200);
+      }
+    })();
     const vus = { A: observer(A.page), B: observer(B.page) };
     const bouton = p => p.getByRole('button', { name: 'Enregistrer les modifications' });
     await Promise.all([bouton(A.page).click(), bouton(B.page).click()]);
-    // État du serveur attendu séparément de l'observation des messages.
-    const ligne = await attendreServeur(A.page, l => [texteA, texteB].includes(clientServeur(l, 'c')?.notes));
-    expect(ligne, 'le serveur contient la version de A ou de B').toBeTruthy();
+    // Issue TERMINALE des deux sauvegardes : messages observés (ou délai écoulé), puis le serveur
+    // doit rester stable 3 s après la dernière modification constatée.
+    const message = { A: await vus.A, B: await vus.B };
+    let stable = Date.now();
+    for (let n = historique.length; Date.now() - stable < 3_000;) {
+      await A.page.waitForTimeout(250);
+      if (historique.length !== n) { n = historique.length; stable = Date.now(); }
+    }
+    suivre = false; await suivi;
+    const ligne = await lireBlob(A.page);
     const final = clientServeur(ligne, 'c').notes;
-    const [gagnant, perdant, nomPerdant, textePerdant] = final === texteA ? ['A', B, 'B', texteB] : ['B', A, 'A', texteA];
-    const vuPerdant = await vus[nomPerdant];
-    const vuGagnant = await vus[gagnant];
-    // R2 — dans TOUS les cas de refus, la modification du perdant doit exister en copie de secours.
-    const copie = aCopie(await copiesRejetees(perdant.page), 'c', textePerdant);
-    const ok = vuPerdant !== 'aucun message' && copie;
-    resultat(`(b) ${ok ? 'OK' : 'ÉCHEC'} — ${gagnant} gagne (version ${ligne.version}) ; le perdant (${nomPerdant}) voit : ${vuPerdant} ; copie de secours du perdant : ${copie ? 'présente' : 'ABSENTE'} ; le gagnant voit : ${vuGagnant}`);
-    expect(vuPerdant, 'le perdant voit un message').not.toBe('aucun message');
-    expect(copie, 'copie de secours du perdant présente').toBe(true);
+    const enregistre = cote => historique.includes(textes[cote]);
+    const copie = { A: aCopie(await copiesRejetees(A.page), 'c', textes.A), B: aCopie(await copiesRejetees(B.page), 'c', textes.B) };
+    // Après rechargement, les deux appareils affichent la valeur finale du serveur.
+    for (const app of [A, B]) {
+      await recharger(app);
+      expect(await (await ouvrirEdition(app.page, 'c')).inputValue(), 'valeur affichée après rechargement').toBe(final);
+      await recharger(app);
+    }
+    // Règle : un côté qui a vu un message est REFUSÉ → copie exacte de son brouillon, et sa valeur
+    // n'est pas la valeur finale ; un côté sans message doit avoir été réellement enregistré.
+    const erreurs = [];
+    if (![textes.A, textes.B].includes(final)) erreurs.push('valeur finale inattendue');
+    for (const cote of ['A', 'B']) {
+      if (message[cote]) {
+        if (!copie[cote]) erreurs.push(`${cote} refusé sans copie de secours`);
+        if (final === textes[cote]) erreurs.push(`${cote} refusé mais sa valeur est la finale`);
+      } else if (!enregistre(cote)) erreurs.push(`${cote} sans message ET jamais enregistré (perte silencieuse)`);
+    }
+    const issue = message.A || message.B
+      ? `${message.A ? 'A' : 'B'} refusé (${message.A || message.B}) avec copie de secours, ${message.A ? 'B' : 'A'} enregistré`
+      : "les deux sauvegardes sont passées, l'une après l'autre";
+    resultat(`(b) ${erreurs.length ? 'ÉCHEC — ' + erreurs.join(' ; ') : 'OK'} — issue : ${issue} ; valeur finale = celle de ${final === textes.A ? 'A' : 'B'} ; historique serveur : ${historique.length} valeur(s) ; version ${ligne.version}`);
+    expect(erreurs).toEqual([]);
   });
 
   test('(c) réseau coupé pendant une modification → « Non enregistré », puis Réessayer sauvegarde', async () => {

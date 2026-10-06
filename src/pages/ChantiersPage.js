@@ -1,3 +1,4 @@
+import { mettreALaCorbeille } from '../utils/corbeille';
 import useActionConfirmee from '../hooks/useActionConfirmee';
 import { chantierEstReferencé } from '../utils/referenceGuard';
 import React, { useRef, useLayoutEffect, useState } from 'react';
@@ -18,7 +19,7 @@ const sanitiser = (obj) => {
 };
 
 function Chantiers() {
-  const { chantiers, setChantiers, devis = [], factures = [], pointages = [], parametres, naviguer, contexte, afficherNotif, confirmer, consultationMobile } = useApp();
+  const { chantiers, setChantiers, devis = [], factures = [], pointages = [], parametres, naviguer, contexte, afficherNotif, confirmer, consultationMobile, profil, userId } = useApp();
   const { filtre, setFiltre, chantiersFiltres, chantiersArchives, joursParChantier } = useChantierFiltres();
 
   const listesRef = useRef({ chantiers, factures, pointages });
@@ -131,12 +132,12 @@ function Chantiers() {
     if (!origine || consultationMobile) return;
     const reference = chantierEstReferencé(origine, listesRef.current);
     if (reference) { afficherNotif?.(reference, 'error'); return; }
-    if (!await confirmer(`Supprimer le chantier "${origine.nom}" ?\n\nCette action est irréversible.`, { labelOui: 'Supprimer' })) return;
+    if (!await confirmer(`Supprimer le chantier "${origine.nom}" ?\n\nCet élément sera placé dans la corbeille (Paramètres → Corbeille) pendant 30 jours.`, { labelOui: 'Supprimer' })) return;
     agir(setChantiers, prev => {
       const actuel = prev.find(ch => String(ch.id) === String(id));
       const erreur = aEteModifieAilleurs(origine, actuel) ? "Cet élément a été modifié ou supprimé pendant la confirmation. Vérifiez les données puis recommencez." : chantierEstReferencé(actuel, listesRef.current);
-      return { erreur, valeur: erreur ? prev : prev.filter(ch => String(ch.id) !== String(id)) };
-    }, 'Chantier supprimé', () => { setSelected(null); setVue('liste'); });
+      return { erreur, valeur: erreur ? prev : prev.map(ch => String(ch.id) === String(id) ? mettreALaCorbeille(ch, profil?.nom || userId) : ch) };
+    }, 'Chantier placé dans la corbeille', () => { setSelected(null); setVue('liste'); });
   };
 
   const archiverChantier = async id => {

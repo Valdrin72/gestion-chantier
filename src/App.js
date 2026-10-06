@@ -1,3 +1,4 @@
+import { visibles, appliquerSurVisibles, aPurger, retirerDefinitivement } from './utils/corbeille';
 import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { HardHat, FileText, Users, ChevronRight, Sparkles } from 'lucide-react';
 import { Sidebar, Topbar, MobileNav } from './components/Layout';
@@ -70,22 +71,38 @@ function App() {
 
 function AppInner({ profil, deconnecter, userId, isDemo = false }) {
   const {
-    chantiers, setChantiers,
-    devis, setDevis,
+    chantiers: chantiersBruts, setChantiers: setChantiersBruts,
+    devis: devisBruts, setDevis: setDevisBruts,
     factures, setFactures,
-    clients, setClients,
+    clients: clientsBruts, setClients: setClientsBruts,
     parametres, setParametres,
     pointages, setPointages,
+    setDonneesListes, importerTout, modeStockage,
     loading: dataLoading,
     syncing, etatSync, reessayerChargement, reessayerSauvegarde, fermerMessageSync,
   } = useSupabaseData(userId, isDemo);
+
+  const chantiers = useMemo(() => visibles(chantiersBruts), [chantiersBruts]);
+  const devis = useMemo(() => visibles(devisBruts), [devisBruts]);
+  const clients = useMemo(() => visibles(clientsBruts), [clientsBruts]);
+  const setChantiers = useCallback(u => setChantiersBruts((prev, ids) => appliquerSurVisibles(prev, u, ids)), [setChantiersBruts]);
+  const setDevis = useCallback(u => setDevisBruts((prev, ids) => appliquerSurVisibles(prev, u, ids)), [setDevisBruts]);
+  const setClients = useCallback(u => setClientsBruts((prev, ids) => appliquerSurVisibles(prev, u, ids)), [setClientsBruts]);
+  const listesCompletes = useMemo(() => ({ chantiers: chantiersBruts, devis: devisBruts, clients: clientsBruts, factures, pointages }), [chantiersBruts, devisBruts, clientsBruts, factures, pointages]);
+  useEffect(() => {
+    if (dataLoading) return;
+    const purger = () => setDonneesListes(prev => retirerDefinitivement(prev, aPurger(prev), modeStockage === 'org'));
+    purger();
+    const timer = setInterval(purger, 3600000);
+    return () => clearInterval(timer);
+  }, [dataLoading, setDonneesListes, modeStockage]);
 
   // Filet de sécurité (mode démo uniquement) : si après chargement tout est vide, recharger donneesInitiales.
   // Ne s'applique PAS à un vrai compte — un compte vide est un démarrage propre légitime.
   const injectedRef = useRef(false);
   useEffect(() => {
     if (!isDemo || dataLoading || injectedRef.current) return;
-    if (chantiers.length === 0 && devis.length === 0) {
+    if (chantiersBruts.length === 0 && devisBruts.length === 0) {
       injectedRef.current = true;
       setChantiers(donneesInitiales.chantiers.map(ch => ({ ...ch, journal: migrerJournal(ch.journal || []) })));
       setDevis(donneesInitiales.devis);
@@ -93,7 +110,7 @@ function AppInner({ profil, deconnecter, userId, isDemo = false }) {
       setClients(donneesInitiales.clients);
       setParametres({ ...donneesInitiales, demoVersion: 5 });
     }
-  }, [isDemo, dataLoading, chantiers.length, devis.length, setChantiers, setDevis, setFactures, setClients, setParametres]);
+  }, [isDemo, dataLoading, chantiersBruts.length, devisBruts.length, setChantiers, setDevis, setFactures, setClients, setParametres]);
 
   const [page, setPage] = useState('dashboard');
   const [contexte, setContexte] = useState({});
@@ -343,7 +360,7 @@ function AppInner({ profil, deconnecter, userId, isDemo = false }) {
     chantiers, setChantiers, clients, setClients, devis, setDevis,
     factures, setFactures, parametres, setParametres,
     pointages, setPointages,
-    actionsLog, profil,
+    actionsLog, profil, userId, listesCompletes, setDonneesListes, importerTout, modeStockage,
     logAction, naviguer, contexte, periodeGlobale, setPeriodeGlobale,
     agentState, ouvrirSaisieHeures: ouvrirSaisieHeuresApp,
     ouvrirMenu: () => setSidebarOuvert(true),
@@ -354,6 +371,7 @@ function AppInner({ profil, deconnecter, userId, isDemo = false }) {
     consultationMobile: isMobile,
   }), [ // eslint-disable-line react-hooks/exhaustive-deps
     chantiers, clients, devis, factures, parametres, pointages,
+    listesCompletes, setDonneesListes, importerTout, modeStockage, userId,
     actionsLog, profil, contexte, periodeGlobale, agentState, isDemo, isMobile,
   ]);
 

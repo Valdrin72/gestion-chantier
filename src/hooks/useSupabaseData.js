@@ -1,3 +1,4 @@
+import { fusionnerIdsSupprimes, donneesImportees } from '../utils/corbeille';
 /**
  * CYNA — Sync données localStorage ↔ Supabase (cloud)
  *
@@ -230,15 +231,37 @@ const _initDevis     = donneesInitiales.devis;
 const _initFactures  = donneesInitiales.factures || [];
 const _initClients   = donneesInitiales.clients;
 
+// CORB-03 — clés mises en cache dans localStorage par les opérations composées (corbeille,
+// import) : les mêmes que les setters individuels. Les pointages n'y sont JAMAIS recopiés
+// (historique d'heures potentiellement volumineux, jamais relu) : la place reste disponible
+// pour les copies de secours.
+const CLES_CACHE_LOCAL = ['chantiers', 'devis', 'factures', 'clients', 'parametres'];
+
+// CORB-02 — LIMITE CONNUE DU MODE ORG (le mode 'user', utilisé en production, n'est pas concerné) :
+// en mode org, l'écriture est un upsert « dernier qui écrit gagne », sans contrôle de version, et
+// le chargement distant n'applique pas idsSupprimes. Un appareil qui n'a pas encore reçu une mise
+// à la corbeille ou une suppression définitive peut donc renvoyer l'élément et le faire
+// réapparaître. La garantie « aucune réapparition » de la corbeille ne vaut qu'en mode user.
+// À traiter avant toute activation du mode org en production.
 export default function useSupabaseData(userId, isDemo = false) {
   // État initial : données démo en mode démo, vide pour un vrai compte.
   // AppInner est monté avec key={userId} → remonte si l'utilisateur change.
-  const [chantiers,   setChantiersState]  = useState(() => isDemo ? _initChantiers : []);
-  const [devis,       setDevisState]      = useState(() => isDemo ? _initDevis : []);
-  const [factures,    setFacturesState]   = useState(() => isDemo ? _initFactures : []);
-  const [clients,     setClientsState]    = useState(() => isDemo ? _initClients : []);
-  const [parametres,  setParametresState] = useState(() => isDemo ? donneesInitiales : PARAMETRES_DEFAUT);
-  const [pointages,   setPointagesState]  = useState([]);
+  const [donnees, setDonneesState] = useState(() => ({
+    chantiers: isDemo ? _initChantiers : [], devis: isDemo ? _initDevis : [],
+    factures: isDemo ? _initFactures : [], clients: isDemo ? _initClients : [],
+    parametres: isDemo ? donneesInitiales : PARAMETRES_DEFAUT, pointages: [],
+  }));
+  const { chantiers, devis, factures, clients, parametres, pointages } = donnees;
+  const setterEtat = cle => updater => setDonneesState(prev => {
+    const next = typeof updater === 'function' ? updater(prev[cle], prev.parametres) : updater;
+    return Object.is(next, prev[cle]) ? prev : { ...prev, [cle]: next };
+  });
+  const setChantiersState = setterEtat('chantiers');
+  const setDevisState = setterEtat('devis');
+  const setFacturesState = setterEtat('factures');
+  const setClientsState = setterEtat('clients');
+  const setParametresState = setterEtat('parametres');
+  const setPointagesState = setterEtat('pointages');
   const [loading,     setLoading]         = useState(true);
   const [syncing,     setSyncing]         = useState(false);
 
@@ -318,12 +341,7 @@ export default function useSupabaseData(userId, isDemo = false) {
     const resolved = resolveDataFromBlob(blobData, isDemo);
     const { chantiers: ch, devis: dv, factures: fa, clients: cl, parametres: pa, pointages: pt, needsSync } = resolved;
 
-    setChantiersState(ch);
-    setDevisState(dv);
-    setFacturesState(fa);
-    setClientsState(cl);
-    setParametresState(pa);
-    setPointagesState(pt);
+    setDonneesState({ chantiers: ch, devis: dv, factures: fa, clients: cl, parametres: pa, pointages: pt });
     dataRef.current = { chantiers: ch, devis: dv, factures: fa, clients: cl, parametres: pa, pointages: pt };
 
     if (needsSync) {
@@ -656,9 +674,9 @@ export default function useSupabaseData(userId, isDemo = false) {
   const setChantiers = useCallback((updater) => {
     if (modeRef.current === 'user' && !chargementOkRef.current) return;
     const jeton = marquerModificationLocale();
-    setChantiersState(prev => {
+    setChantiersState((prev, parametresActuels) => {
       attentesLocalesRef.current.delete(jeton);
-      const next = typeof updater === 'function' ? updater(prev) : updater;
+      const next = typeof updater === 'function' ? updater(prev, parametresActuels.idsSupprimes?.chantiers) : updater;
       // REV-01 — rien n'a changé (ex. régénération du journal identique) : aucune sauvegarde,
       // sinon deux appareils ouverts se renverraient indéfiniment des sauvegardes inutiles.
       if (Object.is(next, prev)) return prev;
@@ -672,9 +690,9 @@ export default function useSupabaseData(userId, isDemo = false) {
   const setDevis = useCallback((data) => {
     if (modeRef.current === 'user' && !chargementOkRef.current) return;
     const jeton = marquerModificationLocale();
-    setDevisState(prev => {
+    setDevisState((prev, parametresActuels) => {
       attentesLocalesRef.current.delete(jeton);
-      const next = typeof data === 'function' ? data(prev) : data;
+      const next = typeof data === 'function' ? data(prev, parametresActuels.idsSupprimes?.devis) : data;
       if (Object.is(next, prev)) return prev;
       sauvegarderLocal('cyna_devis', next);
       scheduleSync({ devis: next });
@@ -700,9 +718,9 @@ export default function useSupabaseData(userId, isDemo = false) {
   const setClients = useCallback((data) => {
     if (modeRef.current === 'user' && !chargementOkRef.current) return;
     const jeton = marquerModificationLocale();
-    setClientsState(prev => {
+    setClientsState((prev, parametresActuels) => {
       attentesLocalesRef.current.delete(jeton);
-      const next = typeof data === 'function' ? data(prev) : data;
+      const next = typeof data === 'function' ? data(prev, parametresActuels.idsSupprimes?.clients) : data;
       if (Object.is(next, prev)) return prev;
       sauvegarderLocal('cyna_clients', next);
       scheduleSync({ clients: next });
@@ -716,7 +734,8 @@ export default function useSupabaseData(userId, isDemo = false) {
     const jeton = marquerModificationLocale();
     setParametresState(prev => {
       attentesLocalesRef.current.delete(jeton);
-      const next = typeof data === 'function' ? data(prev) : data;
+      const propose = typeof data === 'function' ? data(prev) : data;
+      const next = propose === prev ? prev : { ...propose, idsSupprimes: fusionnerIdsSupprimes(prev.idsSupprimes, propose.idsSupprimes) };
       if (Object.is(next, prev)) return prev;
       sauvegarderLocal('cyna_parametres', next);
       scheduleSync({ parametres: next });
@@ -738,6 +757,37 @@ export default function useSupabaseData(userId, isDemo = false) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
 
+  const setDonneesListes = useCallback(updater => {
+    if (modeRef.current === 'user' && !chargementOkRef.current) return;
+    if (modeRef.current === 'org' && !orgChargeeRef.current) return;
+    const jeton = marquerModificationLocale();
+    setDonneesState(prev => {
+      attentesLocalesRef.current.delete(jeton);
+      const propose = typeof updater === 'function' ? updater(prev) : updater;
+      if (propose === prev) return prev;
+      const next = { ...propose, parametres: { ...propose.parametres,
+        idsSupprimes: fusionnerIdsSupprimes(prev.parametres.idsSupprimes, propose.parametres.idsSupprimes) } };
+      if (modeRef.current === 'org' && estPayloadVide(next)) return prev;
+      for (const cle of CLES_CACHE_LOCAL) sauvegarderLocal('cyna_' + cle, next[cle]);
+      scheduleSync(next);
+      return next;
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId]);
+  const importerTout = useCallback(data => {
+    if (modeRef.current === 'user' && !chargementOkRef.current) return;
+    if (modeRef.current === 'org' && !orgChargeeRef.current) return;
+    const jeton = marquerModificationLocale();
+    setDonneesState(prev => {
+      attentesLocalesRef.current.delete(jeton);
+      const next = donneesImportees(prev, data);
+      for (const cle of CLES_CACHE_LOCAL) sauvegarderLocal('cyna_' + cle, next[cle]);
+      scheduleSync(next);
+      return next;
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId]);
+
   return {
     chantiers, setChantiers,
     devis, setDevis,
@@ -745,6 +795,7 @@ export default function useSupabaseData(userId, isDemo = false) {
     clients, setClients,
     parametres, setParametres,
     pointages, setPointages,
+    setDonneesListes, importerTout, modeStockage: modeRef.current,
     loading, syncing, etatSync,
     reessayerChargement: async () => {
       if (modeRef.current !== 'user') return;

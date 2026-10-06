@@ -78,6 +78,13 @@ async function supprimerClient(page, nom) {
     .filter({ has: page.getByTitle('Supprimer ce client', { exact: true }) })
     .last().getByTitle('Supprimer ce client', { exact: true }).click();
   await page.getByRole('button', { name: 'Supprimer', exact: true }).click();
+  expect(await attendre(page, b => (b.data.clients || []).find(c => c.nom === nom)?.supprime_le), 'client à la corbeille').toBeTruthy();
+  await page.getByRole('navigation').getByText('Paramètres', { exact: true }).dispatchEvent('click');
+  await page.getByText('Corbeille', { exact: true }).click();
+  const ligne = page.getByRole('region', { name: 'Clients' }).locator('div').filter({ has: page.getByText(etiquette(nom), { exact: true }) }).last();
+  await ligne.getByRole('button', { name: 'Supprimer définitivement', exact: true }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Supprimer définitivement', exact: true }).click();
+  await allerClients(page);
 }
 
 test.describe.serial('E2E historique — staging, mode user', () => {
@@ -98,7 +105,7 @@ test.describe.serial('E2E historique — staging, mode user', () => {
   });
   test.afterAll(async () => { await A?.context.close(); });
 
-  test('3 enregistrements qui retirent un client → 3 versions dans l’historique', async () => {
+  test('3 mises à la corbeille puis suppressions définitives → au moins 3 versions dans l’historique', async () => {
     await allerClients(A.page);
     for (const nom of noms) await creerClient(A.page, nom);
     expect(await attendre(A.page, b => noms.every(n => aClient(b, n))), 'clients de test enregistrés').toBeTruthy();
@@ -109,7 +116,10 @@ test.describe.serial('E2E historique — staging, mode user', () => {
       expect(await attendre(A.page, b => !aClient(b, nom) && b.version > versionAvant), `suppression de ${nom} enregistrée`).toBeTruthy();
     }
     const nouvelles = await nouvellesDepuis(A.page, depuisId);
-    expect(nouvelles.length, 'au moins 3 nouvelles versions').toBeGreaterThanOrEqual(3);
+    // Règle de l'historique (migration 20261006120000) : une copie quand un identifiant DISPARAÎT
+    // (ou si la dernière copie a plus de 5 min). Une mise à la corbeille garde l'élément dans le
+    // blob (pas de copie, c'est voulu) ; chaque suppression définitive en crée une.
+    expect(nouvelles.length, 'au moins 3 nouvelles versions (une par suppression définitive)').toBeGreaterThanOrEqual(3);
     expect(nouvelles.every(h => h.user_id === idCompte1)).toBe(true);
     const versions = nouvelles.map(h => Number(h.version));
     expect([...versions].sort((a, b) => a - b), 'versions croissantes').toEqual(versions);

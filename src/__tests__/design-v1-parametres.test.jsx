@@ -54,13 +54,13 @@ describe('HERO — titre + boutons backup + ☰', () => {
   });
 });
 
-describe('MENU latéral — 8 catégories + navigation', () => {
-  it('liste les 8 catégories et cliquer « Devis » puis « Travaux » change le contenu', () => {
+describe('MENU latéral — 9 catégories + navigation', () => {
+  it('liste les 9 catégories et cliquer « Devis » puis « Travaux » change le contenu', () => {
     renderParams();
     // Localités + Zones géo. retirées (ménage Réglages) : la ville chantier est en saisie libre,
     // aucun tarif de zone/déplacement n'était consommé par l'app.
     ['Réglages tableau de bord', 'Légende des statuts', 'Devis', 'Travaux',
-     'Société', 'Paiements', 'Rapport', 'Agents IA'].forEach(cat => {
+     'Société', 'Paiements', 'Rapport', 'Agents IA', 'Corbeille'].forEach(cat => {
       expect(screen.getByText(cat)).toBeInTheDocument();
     });
     // Onglets retirés → plus affichés.

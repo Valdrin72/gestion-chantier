@@ -1,3 +1,4 @@
+import Corbeille from '../components/parametres/Corbeille';
 import React, { useState, useLayoutEffect } from 'react';
 import { ChevronRight, Menu } from 'lucide-react';
 import { C } from '../donnees';
@@ -71,7 +72,7 @@ function Parametres({ parametres, setParametres, clients = [], setClients = () =
   const [saved, setSaved] = useState(false);
   const timerSaved = React.useRef(null);
   const importRef = React.useRef(null);
-  const { confirmer, afficherNotif, ouvrirMenu } = useApp();
+  const { confirmer, afficherNotif, ouvrirMenu, listesCompletes, importerTout } = useApp();
   const [memoireVidee, setMemoireVidee] = useState(false);
 
   const iaActivee = parametres.parametres?.iaActivee !== false; // activé par défaut
@@ -90,7 +91,7 @@ function Parametres({ parametres, setParametres, clients = [], setClients = () =
   const exporterDonnees = () => {
     const date = new Date().toISOString().slice(0, 10);
     const blob = new Blob(
-      [JSON.stringify({ meta: { date, version: 1, app: 'CYNA' }, chantiers, devis, factures, clients, parametres, pointages }, null, 2)],
+      [JSON.stringify({ meta: { date, version: 1, app: 'CYNA' }, chantiers, devis, factures, clients, parametres, pointages, ...listesCompletes }, null, 2)],
       { type: 'application/json' }
     );
     const url = URL.createObjectURL(blob);
@@ -120,7 +121,7 @@ function Parametres({ parametres, setParametres, clients = [], setClients = () =
 
       const ok = window.confirm(
         `Restaurer la sauvegarde du ${data.meta?.date || 'date inconnue'} ?\n\n` +
-        `Cette action remplacera les données actuelles :\n` +
+        `Cette action remplacera les données actuelles ; la corbeille actuelle sera remplacée par celle de la sauvegarde :\n` +
         `• ${(data.chantiers || []).length} chantiers\n` +
         `• ${(data.devis || []).length} devis\n` +
         `• ${(data.factures || []).length} factures\n` +
@@ -143,12 +144,11 @@ function Parametres({ parametres, setParametres, clients = [], setClients = () =
         }
       }
 
-      if (data.parametres) setParametres(data.parametres);
-      if (data.clients) setClients(data.clients);
-      if (data.chantiers) setChantiers(data.chantiers);
-      if (data.devis) setDevis(data.devis);
-      if (data.factures) setFactures(data.factures);
-      setPointages(pointagesRestaures);
+      if (importerTout) importerTout({ chantiers: data.chantiers, devis: data.devis, factures: data.factures, clients: data.clients, parametres: data.parametres, pointages: pointagesRestaures });
+      else {
+        setParametres(data.parametres); setClients(data.clients); setChantiers(data.chantiers);
+        setDevis(data.devis); setFactures(data.factures); setPointages(pointagesRestaures);
+      }
       if (ancienFormat) {
         alert(`Sauvegarde restaurée. Backup ancien format sans pointages → vos ${heuresActuelles}h pointées ont été CONSERVÉES (non écrasées).`);
       } else {
@@ -167,6 +167,7 @@ function Parametres({ parametres, setParametres, clients = [], setClients = () =
   };
 
   const onglets = [
+    { id: 'corbeille', label: 'Corbeille', desc: 'Restaurer ou supprimer définitivement' },
     { id: 'dashboard', label: 'Réglages tableau de bord', desc: 'Alertes et affichage' },
     { id: 'chantiers', label: 'Légende des statuts', desc: 'Statuts et priorités (lecture seule)' },
     { id: 'devis', label: 'Devis', desc: 'Marges et tarifs' },
@@ -255,6 +256,7 @@ function Parametres({ parametres, setParametres, clients = [], setClients = () =
 
         {/* ── Content panel ── */}
         <div>
+      {onglet === 'corbeille' && <Corbeille />}
       {onglet === 'dashboard' && (
         <div style={carteStyle}>
           {/* Simulateur de scénarios — visible uniquement en mode démo (self-gate) */}

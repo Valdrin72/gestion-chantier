@@ -48,7 +48,7 @@ describe.each(specs)('confirmation différée : $nom', spec => {
       expect(current[0].archive).not.toBe(true);
       expect(notifier).toHaveBeenCalledWith(expect.any(String), 'error');
     } else {
-      if (action === 'suppression') expect(current.some(x => x.id === spec.initial.id)).toBe(false);
+      if (action === 'suppression') expect(current.find(x => x.id === spec.initial.id).supprime_le).toEqual(expect.any(String));
       else expect(current.find(x => x.id === spec.initial.id).archive).toBe(true);
       if (changement === 'autre') expect(current.some(x => x.id === 99)).toBe(true);
     }
@@ -123,8 +123,8 @@ describe.each(specs)('file React réelle : $nom', spec => {
 });
 
 describe.each([
-  { nom: 'client', Component: Clients, liste: 'clients', setter: 'setClients', initial: client, ref: { clientId: 1 }, supprime: 'Client supprimé', archive: 'Client archivé — visible via « Voir les archivés »' },
-  { nom: 'devis', Component: Devis, liste: 'devis', setter: 'setDevis', initial: devis, ref: { devisId: 100 }, supprime: 'Devis supprimé', archive: 'Devis archivé — visible via « Voir les archivés »' },
+  { nom: 'client', Component: Clients, liste: 'clients', setter: 'setClients', initial: client, ref: { clientId: 1 }, supprime: 'Client placé dans la corbeille', archive: 'Client archivé — visible via « Voir les archivés »' },
+  { nom: 'devis', Component: Devis, liste: 'devis', setter: 'setDevis', initial: devis, ref: { devisId: 100 }, supprime: 'Devis placé dans la corbeille', archive: 'Devis archivé — visible via « Voir les archivés »' },
   { nom: 'chantier', Component: Chantiers, liste: 'chantiers', setter: 'setChantiers', initial: chantier, ref: { chantierId: 10 }, supprime: null, archive: 'Chantier archivé — visible via « Voir les archivés »', explication: 'Il sera rangé hors de la liste active mais conservé (heures, factures, historique).' },
 ])('textes rétablis : $nom', spec => {
   it.each(['suppression', 'archivage'])('%s acceptée → message d’origine', async action => {

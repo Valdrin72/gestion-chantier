@@ -252,7 +252,7 @@ describe('ChantiersPage — suppression protégée (Option 2)', () => {
     await waitFor(() => expect(ctx.setChantiers).toHaveBeenCalled());
     const updater = ctx.setChantiers.mock.calls.at(-1)[0];
     const arg = typeof updater === 'function' ? updater(ctx.chantiers) : updater;
-    expect(arg.some(c => String(c.id) === '1')).toBe(false);
+    expect(arg.find(c => String(c.id) === '1').supprime_le).toEqual(expect.any(String));
     expect(arg.some(c => String(c.id) === '2')).toBe(true);
   });
 

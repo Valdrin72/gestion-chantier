@@ -292,7 +292,7 @@ test.describe('E2E anti-écrasement — staging, mode user', () => {
     expect(await attendreServeur(B.page, l => clientServeur(l, 'y')?.notes === texteY)).toBeTruthy();
     await expect(A.page.getByText(texteY, { exact: true })).toBeVisible({ timeout: 20_000 });
     await A.page.getByRole('button', { name: 'Supprimer', exact: true }).click();
-    expect(await attendreServeur(A.page, l => !clientServeur(l, 'x') && clientServeur(l, 'y')?.notes === texteY)).toBeTruthy();
+    expect(await attendreServeur(A.page, l => clientServeur(l, 'x')?.supprime_le && clientServeur(l, 'y')?.notes === texteY)).toBeTruthy();
     await expect(B.page.getByText(etiquette('x'), { exact: true })).toHaveCount(0, { timeout: 20_000 });
     await ligneClient(A.page, 'x2').getByTitle('Supprimer ce client', { exact: true }).click();
     const texteX = `X distant ${RUN}`;

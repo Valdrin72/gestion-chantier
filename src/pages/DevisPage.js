@@ -1,3 +1,4 @@
+import { mettreALaCorbeille } from '../utils/corbeille';
 import useActionConfirmee from '../hooks/useActionConfirmee';
 import { aEteModifieAilleurs, conserverBrouillonRefuse, copieOrigine } from '../utils/gardeEdition';
 import React, { useRef, useState, useMemo, useLayoutEffect } from 'react';
@@ -155,7 +156,7 @@ const heroFondMobile = {
 const PERIODES = [{ id: 'semaine', label: 'Cette semaine' }, { id: 'mois', label: 'Ce mois' }, { id: 'annee', label: 'Cette année' }];
 
 function Devis() {
-  const { devis, setDevis, clients, parametres, naviguer, setChantiers, chantiers, factures, setFactures, contexte = {}, afficherNotif, confirmer, periodeGlobale = 'mois', setPeriodeGlobale = () => {}, ouvrirMenu, consultationMobile } = useApp();
+  const { devis, setDevis, clients, parametres, naviguer, setChantiers, chantiers, factures, setFactures, contexte = {}, afficherNotif, confirmer, periodeGlobale = 'mois', setPeriodeGlobale = () => {}, ouvrirMenu, consultationMobile, profil, userId } = useApp();
   const isMobile = useIsMobile();
   const assocRef = useRef({ chantiers, factures });
   assocRef.current = { chantiers, factures, devis };
@@ -180,12 +181,12 @@ function Devis() {
   const supprimerDevis = async (d) => {
     const origine = copieOrigine(d);
     if (consultationMobile) return; // lecture seule mobile
-    if (!await confirmer(`Supprimer le devis "${d.numero}" ?\n\nCette action est irréversible.`, { labelOui: 'Supprimer' })) return;
+    if (!await confirmer(`Supprimer le devis "${d.numero}" ?\n\nCet élément sera placé dans la corbeille (Paramètres → Corbeille) pendant 30 jours.`, { labelOui: 'Supprimer' })) return;
     agir(setDevis, prev => {
       const actuel = prev.find(item => String(item.id) === String(d.id));
       const erreur = aEteModifieAilleurs(origine, actuel) ? "Cet élément a été modifié ou supprimé pendant la confirmation. Vérifiez les données puis recommencez." : devisEstReferencé(actuel, assocRef.current);
-      return { erreur, valeur: erreur ? prev : prev.filter(item => String(item.id) !== String(d.id)) };
-    }, 'Devis supprimé');
+      return { erreur, valeur: erreur ? prev : prev.map(item => String(item.id) === String(d.id) ? mettreALaCorbeille(item, profil?.nom || userId) : item) };
+    }, 'Devis placé dans la corbeille');
   };
 
   // Devis référencé → archivage (soft) : rangé hors de la liste active, rien n'est détruit.

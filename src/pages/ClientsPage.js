@@ -1,3 +1,4 @@
+import { mettreALaCorbeille } from '../utils/corbeille';
 import useActionConfirmee from '../hooks/useActionConfirmee';
 import React, { useRef, useState, useLayoutEffect } from 'react';
 import {
@@ -37,7 +38,7 @@ const couleurType = (type) => {
 };
 
 function Clients({ clients, setClients, chantiers, devis = [], factures = [], naviguer }) {
-  const { confirmer, afficherNotif, ouvrirMenu, consultationMobile } = useApp();
+  const { confirmer, afficherNotif, ouvrirMenu, consultationMobile, profil, userId } = useApp();
   const isMobile = useIsMobile();
   const assocRef = useRef({ chantiers, devis, factures });
   assocRef.current = { chantiers, devis, factures };
@@ -85,12 +86,12 @@ function Clients({ clients, setClients, chantiers, devis = [], factures = [], na
   const supprimer = async (c) => {
     const origine = copieOrigine(c);
     if (consultationMobile) return;
-    if (!await confirmer(`Supprimer ${c.prenom} ${c.nom} ?\n\nCette action est irréversible.`, { labelOui: 'Supprimer' })) return;
+    if (!await confirmer(`Supprimer ${c.prenom} ${c.nom} ?\n\nCet élément sera placé dans la corbeille (Paramètres → Corbeille) pendant 30 jours.`, { labelOui: 'Supprimer' })) return;
     agir(setClients, prev => {
       const actuel = prev.find(item => String(item.id) === String(c.id));
       const erreur = aEteModifieAilleurs(origine, actuel) ? "Cet élément a été modifié ou supprimé pendant la confirmation. Vérifiez les données puis recommencez." : clientEstReferencé(actuel, assocRef.current);
-      return { erreur, valeur: erreur ? prev : prev.filter(item => String(item.id) !== String(c.id)) };
-    }, 'Client supprimé');
+      return { erreur, valeur: erreur ? prev : prev.map(item => String(item.id) === String(c.id) ? mettreALaCorbeille(item, profil?.nom || userId) : item) };
+    }, 'Client placé dans la corbeille');
   };
 
   // Client référencé → archivage (soft) : rangé hors de la liste active, rien n'est détruit.

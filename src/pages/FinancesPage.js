@@ -536,7 +536,7 @@ export default function Finances({
   parametres = null,
   pointages = [],
 }) {
-  const { confirmer, afficherNotif, ouvrirMenu, setPeriodeGlobale = () => {}, consultationMobile } = useApp();
+  const { listesCompletes, confirmer, afficherNotif, ouvrirMenu, setPeriodeGlobale = () => {}, consultationMobile } = useApp();
   const isMobile = useIsMobile();
   const [onglet, setOnglet] = useState('tresorerie');
   const [preRemplirFacture, setPreRemplirFacture] = useState(null);
@@ -603,16 +603,17 @@ export default function Finances({
   }, [chantiers, factures, parametres]);
 
   // ── Exclure les factures orphelines (chantier, devis ou client supprimé, ou sans ancrage) ──
+  const referencesFactures = useMemo(() => listesCompletes || { chantiers, devis, clients }, [listesCompletes, chantiers, devis, clients]);
   const facturesOrphelines = useMemo(() =>
     factures.filter(f => {
       // Facture sans chantierId ni devisId = orpheline (pas d'ancrage dans le portefeuille)
       if (!f.chantierId && !f.devisId) return true;
-      if (f.chantierId && !chantiers.some(ch => String(ch.id) === String(f.chantierId))) return true;
-      if (f.devisId   && !devis.some(d   => String(d.id)   === String(f.devisId)))   return true;
-      if (f.clientId  && !clients.some(cl => String(cl.id)  === String(f.clientId)))  return true;
+      if (f.chantierId && !referencesFactures.chantiers.some(ch => String(ch.id) === String(f.chantierId))) return true;
+      if (f.devisId   && !referencesFactures.devis.some(d   => String(d.id)   === String(f.devisId)))   return true;
+      if (f.clientId  && !referencesFactures.clients.some(cl => String(cl.id)  === String(f.clientId)))  return true;
       return false;
     })
-  , [factures, chantiers, devis, clients]);
+  , [factures, referencesFactures]);
 
   const facturesValides = useMemo(() =>
     factures.filter(f => !facturesOrphelines.some(o => o.id === f.id))

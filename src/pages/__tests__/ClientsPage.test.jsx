@@ -192,7 +192,7 @@ describe('ClientsPage', () => {
 
   // ── 5. Suppression client sans référence ──────────────────────────────────────
   describe('Suppression client sans référence', () => {
-    it('confirmer → retire le client de la liste', async () => {
+    it('confirmer → marque le client à la corbeille', async () => {
       const setClients = vi.fn();
       renderClients({ setClients });
       // Clique sur la corbeille du premier client (Marc Dupont)
@@ -202,8 +202,8 @@ describe('ClientsPage', () => {
         expect(setClients).toHaveBeenCalledTimes(1);
       });
       const restants = setClients.mock.calls[0][0]([clone(CLIENT_1), clone(CLIENT_2)]);
-      expect(restants).toHaveLength(1);
-      expect(restants.find(c => c.id === 1)).toBeFalsy(); // Dupont supprimé
+      expect(restants).toHaveLength(2);
+      expect(restants.find(c => c.id === 1).supprime_le).toEqual(expect.any(String)); // Dupont à la corbeille
       expect(restants.find(c => c.id === 2)).toBeTruthy(); // Martin conservé
     });
 
@@ -285,7 +285,7 @@ describe('ClientsPage', () => {
       fireEvent.click(supprimer[0]);
       await waitFor(() => expect(setClients).toHaveBeenCalled());
       const restants = setClients.mock.calls[0][0]([clone(CLIENT_1), clone(CLIENT_2)]);
-      expect(restants.find(c => c.id === 2)).toBeFalsy(); // Martin supprimé (dur)
+      expect(restants.find(c => c.id === 2).supprime_le).toEqual(expect.any(String)); // Martin supprimé (dur)
       expect(restants.find(c => c.id === 1)).toBeTruthy(); // Dupont conservé
     });
   });

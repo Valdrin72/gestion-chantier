@@ -670,7 +670,8 @@ describe('DevisPage — suppression protégée', () => {
     await waitFor(() => expect(ctx.setDevis).toHaveBeenCalledOnce());
 
     const nouveauxDevis = ctx.setDevis.mock.calls[0][0](ctx.devis);
-    expect(nouveauxDevis).toHaveLength(0);
+    expect(nouveauxDevis).toHaveLength(1);
+    expect(nouveauxDevis[0].supprime_le).toEqual(expect.any(String));
     // Pas de cascade — setChantiers et setFactures ne doivent pas être appelés
     expect(ctx.setChantiers).not.toHaveBeenCalled();
     expect(ctx.setFactures).not.toHaveBeenCalled();

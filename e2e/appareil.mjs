@@ -52,22 +52,23 @@ export async function nouvelAppareil(browser, { baseURL } = {}) {
   });
   return { context, page, realtime, bloquees };
 }
-export async function connecter(page) {
+// identifiants : { email, motDePasse } ; par défaut, le compte de test principal.
+export async function connecter(page, identifiants = { email: CIBLE.email, motDePasse: CIBLE.motDePasse }) {
   verifierPasDArret();
   try {
-    await connecterUneFois(page);
+    await connecterUneFois(page, identifiants);
   } catch (e) {
     poserArret();
     throw e;
   }
 }
-async function connecterUneFois(page) {
+async function connecterUneFois(page, identifiants) {
   await page.goto('/');
   // R4 — toute erreur de saisie est remplacée par un message générique : le journal d'erreur
   // de Playwright pourrait sinon recopier la valeur saisie.
   try {
-    await page.getByPlaceholder('votre@email.com').fill(CIBLE.email, { timeout: 20_000 });
-    await page.getByPlaceholder('••••••••').fill(CIBLE.motDePasse, { timeout: 20_000 });
+    await page.getByPlaceholder('votre@email.com').fill(identifiants.email, { timeout: 20_000 });
+    await page.getByPlaceholder('••••••••').fill(identifiants.motDePasse, { timeout: 20_000 });
     await page.locator('button[type="submit"]').click({ timeout: 20_000 });
   } catch {
     throw new Error('ARRÊT : saisie des identifiants impossible (détails masqués).');

@@ -17,7 +17,8 @@ function lireEnv(fichier) {
   return env;
 }
 
-/** Renvoie { url, anon, email, motDePasse } ou lève une erreur SANS afficher de valeur. */
+/** Renvoie { url, anon, email, motDePasse, email2?, motDePasse2? } ou lève une erreur SANS afficher de valeur.
+ *  Le second compte (E2E_EMAIL_2 / E2E_PASSWORD_2) est facultatif : il sert au test d'isolation. */
 export function chargerCibleStaging() {
   const local = lireEnv('.env.local');
   let origine = '';
@@ -27,7 +28,10 @@ export function chargerCibleStaging() {
   if (!local.REACT_APP_SUPABASE_ANON_KEY) throw new Error('ARRÊT : clé anonyme staging absente de .env.local.');
   const test = lireEnv('.env.test.local');
   if (!test.E2E_EMAIL || !test.E2E_PASSWORD) throw new Error('ARRÊT : E2E_EMAIL / E2E_PASSWORD absents de .env.test.local.');
-  return { url: STAGING_ORIGIN, anon: local.REACT_APP_SUPABASE_ANON_KEY, email: test.E2E_EMAIL, motDePasse: test.E2E_PASSWORD };
+  return {
+    url: STAGING_ORIGIN, anon: local.REACT_APP_SUPABASE_ANON_KEY, email: test.E2E_EMAIL, motDePasse: test.E2E_PASSWORD,
+    email2: test.E2E_EMAIL_2 || null, motDePasse2: test.E2E_PASSWORD_2 || null,
+  };
 }
 
 /** Destinations réseau autorisées pour le navigateur : l'app locale et la base staging. */

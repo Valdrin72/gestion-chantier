@@ -39,3 +39,24 @@ export function enregistrerCopieRejetee(id, contenu) {
   try { localStorage.setItem('cyna_sauvegarde_rejetee', JSON.stringify(entree)); } catch {}
   try { return localStorage.getItem(cleCopie) !== null; } catch { return false; }
 }
+
+export const PREFIXE_ECHEC = 'cyna_sauvegarde_en_echec_';
+
+// Ces clés ne participent jamais à la rétention des copies rejetées.
+export function lireCopieEchec(cle) {
+  try { return JSON.parse(localStorage.getItem(cle)); } catch { return null; }
+}
+export function ecrireCopieEchec(cle, contenu) {
+  const texte = JSON.stringify(contenu);
+  try {
+    localStorage.setItem(cle, texte);
+    return localStorage.getItem(cle) === texte;
+  } catch { return false; }
+}
+export function rangerCopieEchec(cle, source) {
+  const copie = lireCopieEchec(cle);
+  if (!copie) return true;
+  const id = nouvelIdCopie();
+  if (!enregistrerCopieRejetee(id, { ...copie, source }) || !localStorage.getItem(PREFIXE_COPIE_REJETEE + id)) return false;
+  try { localStorage.removeItem(cle); return true; } catch { return false; }
+}

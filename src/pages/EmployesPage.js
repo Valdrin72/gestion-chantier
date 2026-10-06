@@ -1,4 +1,5 @@
-import React, { useState, useLayoutEffect } from 'react';
+import { copieOrigine, aEteModifieAilleurs, conserverBrouillonRefuse } from '../utils/gardeEdition';
+import React, { useRef, useState, useLayoutEffect } from 'react';
 import {
   HardHat, Plus, Pencil, Power, BarChart2, Clock, Menu,
 } from 'lucide-react';
@@ -35,6 +36,7 @@ function Employes({ parametres, setParametres, chantiers, naviguer }) {
   const [onglet, setOnglet] = useState('equipe');
   const [ajout, setAjout] = useState(false);
   const [form, setForm] = useState({ nom: '', poste: 'Ouvrier qualifié', tarifHeure: '', tarifRegieHeure: '', telephone: '', email: '', actif: true });
+  const origineRef = useRef(null);
   const sauvegarder = () => {
     if (consultationMobile) return; // lecture seule mobile
     if (!form.nom || !form.tarifHeure) {
@@ -45,8 +47,14 @@ function Employes({ parametres, setParametres, chantiers, naviguer }) {
     // E3 : le tarif est saisi à l'HEURE ; tarifJour dérivé (× 8, règle 8) pour les moteurs.
     const tarifHeure = parseFloat(form.tarifHeure);
     const empData = { ...form, tarifHeure, tarifJour: tarifHeure * 8, tarifRegieHeure: form.tarifRegieHeure ? parseFloat(form.tarifRegieHeure) : undefined };
-    if (isEdit) setParametres({ ...parametres, employes: (parametres.employes || []).map(e => String(e.id) === String(form.id) ? empData : e) });
-    else setParametres({ ...parametres, employes: [...(parametres.employes || []), { ...empData, id: Date.now() }] });
+    if (isEdit && aEteModifieAilleurs(origineRef.current, (parametres.employes || []).find(e => String(e.id) === String(form.id)))) {
+      afficherNotif?.("Cet employé a été modifié sur un autre appareil. Fermez et rouvrez le formulaire." + conserverBrouillonRefuse('parametres', { employes: [empData] }), 'error');
+      return;
+    }
+    const nouveau = { ...empData, id: Date.now() };
+    setParametres(prev => ({ ...prev, employes: isEdit
+      ? (prev.employes || []).map(e => String(e.id) === String(form.id) ? empData : e)
+      : [...(prev.employes || []), nouveau] }));
     setAjout(false);
     setForm({ nom: '', poste: 'Ouvrier qualifié', tarifHeure: '', tarifRegieHeure: '', telephone: '', email: '', actif: true });
     if (afficherNotif) afficherNotif(isEdit ? 'Employé mis à jour' : 'Employé ajouté à l\'équipe');
@@ -83,7 +91,7 @@ function Employes({ parametres, setParametres, chantiers, naviguer }) {
               <span style={heroMono(10, 0.55)}>· ÉQUIPE / 09</span>
               {!consultationMobile && (
                 <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <button onClick={() => setAjout(!ajout)} style={{ ...heroBtn, background: 'rgba(255,255,255,0.16)', border: '1px solid rgba(255,255,255,0.3)', fontWeight: 700 }}>
+                  <button onClick={() => { origineRef.current = null; setForm({ nom: '', poste: 'Ouvrier qualifié', tarifHeure: '', tarifRegieHeure: '', telephone: '', email: '', actif: true }); setAjout(!ajout); }} style={{ ...heroBtn, background: 'rgba(255,255,255,0.16)', border: '1px solid rgba(255,255,255,0.3)', fontWeight: 700 }}>
                     <Plus size={14} /> Nouvel employé
                   </button>
                 </div>
@@ -157,7 +165,7 @@ function Employes({ parametres, setParametres, chantiers, naviguer }) {
           </div>
           <div style={{ display: 'flex', gap: '10px' }}>
             <button onClick={sauvegarder} style={btnPrimaire}>Sauvegarder</button>
-            <button onClick={() => setAjout(false)} style={DS.btnGhost}>Annuler</button>
+            <button onClick={() => { origineRef.current = null; setForm({ nom: '', poste: 'Ouvrier qualifié', tarifHeure: '', tarifRegieHeure: '', telephone: '', email: '', actif: true }); setAjout(false); }} style={DS.btnGhost}>Annuler</button>
           </div>
         </div>
       )}
@@ -199,7 +207,7 @@ function Employes({ parametres, setParametres, chantiers, naviguer }) {
                   <HardHat size={13} /> Chantiers ({chantiersEmp.length})
                 </button>
                 {!consultationMobile && (
-                  <button onClick={() => { setForm({ ...e, tarifHeure: tarifHoraireEmploye(e) || '' }); setAjout(true); }} style={{ ...DS.btnGhost, padding: '6px 10px' }}><Pencil size={13} /></button>
+                  <button onClick={() => { origineRef.current = copieOrigine(e); setForm({ ...e, tarifHeure: tarifHoraireEmploye(e) || '' }); setAjout(true); }} style={{ ...DS.btnGhost, padding: '6px 10px' }}><Pencil size={13} /></button>
                 )}
                 {!consultationMobile && (
                   <button

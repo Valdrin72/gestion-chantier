@@ -1,3 +1,4 @@
+import useActionConfirmee from '../hooks/useActionConfirmee';
 import React, { useRef, useState, useLayoutEffect } from 'react';
 import {
   FileText, HardHat, Plus, Pencil, Trash2, Archive, Menu,
@@ -38,6 +39,9 @@ const couleurType = (type) => {
 function Clients({ clients, setClients, chantiers, devis = [], factures = [], naviguer }) {
   const { confirmer, afficherNotif, ouvrirMenu, consultationMobile } = useApp();
   const isMobile = useIsMobile();
+  const assocRef = useRef({ chantiers, devis, factures });
+  assocRef.current = { chantiers, devis, factures };
+  const agir = useActionConfirmee(afficherNotif);
   // La page passe en « hero plein écran » (Topbar blanc masqué) comme les autres pages v1.
   useLayoutEffect(() => {
     document.body.classList.add('hero-fullscreen');
@@ -79,18 +83,26 @@ function Clients({ clients, setClients, chantiers, devis = [], factures = [], na
   };
   // Client vierge (aucun chantier/devis/facture) → suppression dure autorisée.
   const supprimer = async (c) => {
+    const origine = copieOrigine(c);
     if (consultationMobile) return;
     if (!await confirmer(`Supprimer ${c.prenom} ${c.nom} ?\n\nCette action est irréversible.`, { labelOui: 'Supprimer' })) return;
-    setClients(clients.filter(cl => String(cl.id) !== String(c.id)));
-    if (afficherNotif) afficherNotif('Client supprimé');
+    agir(setClients, prev => {
+      const actuel = prev.find(item => String(item.id) === String(c.id));
+      const erreur = aEteModifieAilleurs(origine, actuel) ? "Cet élément a été modifié ou supprimé pendant la confirmation. Vérifiez les données puis recommencez." : clientEstReferencé(actuel, assocRef.current);
+      return { erreur, valeur: erreur ? prev : prev.filter(item => String(item.id) !== String(c.id)) };
+    }, 'Client supprimé');
   };
 
   // Client référencé → archivage (soft) : rangé hors de la liste active, rien n'est détruit.
   const archiverClient = async (c) => {
+    const origine = copieOrigine(c);
     if (consultationMobile) return;
     if (!await confirmer(`Archiver ${c.prenom} ${c.nom} ?\n\nIl sera rangé hors de la liste active mais conservé (chantiers, devis, factures, historique).`, { labelOui: 'Archiver' })) return;
-    setClients(clients.map(cl => String(cl.id) === String(c.id) ? archiver(cl) : cl));
-    if (afficherNotif) afficherNotif('Client archivé — visible via « Voir les archivés »');
+    agir(setClients, prev => {
+      const actuel = prev.find(item => String(item.id) === String(c.id));
+      const erreur = aEteModifieAilleurs(origine, actuel) ? "Cet élément a été modifié ou supprimé pendant la confirmation. Vérifiez les données puis recommencez." : null;
+      return { erreur, valeur: erreur ? prev : prev.map(item => String(item.id) === String(c.id) ? archiver(item) : item) };
+    }, 'Client archivé — visible via « Voir les archivés »');
   };
 
   const restaurerClient = (c) => {

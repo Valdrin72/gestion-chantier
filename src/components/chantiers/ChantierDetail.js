@@ -1,4 +1,6 @@
-import React, { useMemo, useState, useLayoutEffect } from 'react';
+import useActionConfirmee from '../../hooks/useActionConfirmee';
+import { copieOrigine, aEteModifieAilleurs } from '../../utils/gardeEdition';
+import React, { useRef, useMemo, useState, useLayoutEffect } from 'react';
 import {
   HardHat, Pencil, Trash2, AlertTriangle, CheckCircle,
   ChevronRight, ChevronDown, ChevronUp, DollarSign, Clock,
@@ -45,6 +47,8 @@ function ChantierDetail({ chantier, detailOnglet, setDetailOnglet, modeCompleter
   const { factures = [], clients, devis = [], parametres, setChantiers, naviguer, ouvrirSaisieHeures, agentState, confirmer, afficherNotif, pointages = [], ouvrirMenu, consultationMobile } = useApp();
   const { etat, couts } = useChantierCalculs(chantier);
   const isMobile = useIsMobile();
+  const facturesRef = useRef(factures); facturesRef.current = factures;
+  const agir = useActionConfirmee(afficherNotif);
   // La fiche passe en « hero plein écran » → le Topbar blanc est masqué (CSS), comme la liste.
   useLayoutEffect(() => {
     document.body.classList.add('hero-fullscreen');
@@ -696,13 +700,20 @@ function ChantierDetail({ chantier, detailOnglet, setDetailOnglet, modeCompleter
           const ajouterExtra = () => sauverExtras([...extras, { id: Date.now(), description: '', mode: 'forfait', montantForfait: '', heures: '', tarifHeure: '', employeId: '', factureId: null, dateCreation: new Date().toISOString().slice(0, 10) }]);
           const modifierExtra = (id, patch) => sauverExtras(extras.map(e => String(e.id) === String(id) ? { ...e, ...patch } : e));
           const supprimerExtra = async (id) => {
+            const origine = copieOrigine(extras.find(e => String(e.id) === String(id)));
             // Un extra déjà facturé garde une trace comptable : il ne se supprime pas.
             if (estFacture(id)) {
               if (afficherNotif) afficherNotif('Cet extra est déjà facturé — il ne peut pas être supprimé, sa trace comptable doit être conservée. Annule la facture si nécessaire.', 'error');
               return;
             }
             if (confirmer && !await confirmer('Supprimer cet extra ?', { labelOui: 'Supprimer' })) return;
-            sauverExtras(extras.filter(e => String(e.id) !== String(id)));
+            agir(setChantiers, prev => {
+              const actuel = prev.find(ch => String(ch.id) === String(c.id));
+              const extra = actuel?.extras?.find(e => String(e.id) === String(id));
+              const erreur = aEteModifieAilleurs(origine, extra) ? "Cet élément a été modifié ou supprimé pendant la confirmation. Vérifiez les données puis recommencez."
+                : facturesRef.current.some(f => String(f.extraId) === String(id) && f.statut !== 'annulee') ? 'Cet extra est déjà facturé ; suppression annulée.' : null;
+              return { erreur, valeur: erreur ? prev : prev.map(ch => String(ch.id) === String(c.id) ? { ...ch, extras: ch.extras.filter(e => String(e.id) !== String(id)) } : ch) };
+            }, 'Extra supprimé');
           };
           const facturerExtra = (extra) => {
             const montant = extra.mode === 'forfait'

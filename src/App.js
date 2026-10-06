@@ -11,7 +11,7 @@ import Finances from './pages/FinancesPage';
 import Login from './Login';
 import useAuth, { DEMO_USER_ID } from './hooks/useAuth';
 import useSupabaseData from './hooks/useSupabaseData';
-import { EcranErreurChargement, BandeauSauvegarde } from './components/EtatSauvegarde';
+import { EcranErreurChargement, EcranChargement, BandeauSauvegarde } from './components/EtatSauvegarde';
 import useAgents from './useAgents';
 import Heures from './Heures';
 import PointagesPage from './pages/PointagesPage';
@@ -198,13 +198,14 @@ function AppInner({ profil, deconnecter, userId, isDemo = false }) {
   const chantiersRef = useRef(chantiers);
   useEffect(() => { chantiersRef.current = chantiers; }, [chantiers]);
   useEffect(() => {
+    if (dataLoading) return;
     const corriges = migrerDevisId(chantiersRef.current, devis);
     const changed = corriges.some((c, i) => c.devisId !== chantiersRef.current[i]?.devisId);
     if (changed) {
       if (process.env.NODE_ENV !== 'production') console.log('[CYNA] Migration devisId appliquée — chantiers mis à jour');
       setChantiers(corriges);
     }
-  }, [devis]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [devis, dataLoading]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Migration Phase 3 — journal → pointages (idempotente via migrationJournalV2Done)
   useEffect(() => {
@@ -359,6 +360,7 @@ function AppInner({ profil, deconnecter, userId, isDemo = false }) {
   if (etatSync.erreurChargement) {
     return <EcranErreurChargement message={etatSync.erreurChargement} onReessayer={reessayerChargement} onDeconnecter={deconnecter} />;
   }
+  if (dataLoading) return <EcranChargement />;
 
   return (
     <AppProvider value={appValue}>

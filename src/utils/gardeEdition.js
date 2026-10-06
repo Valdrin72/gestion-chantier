@@ -26,3 +26,10 @@ export function conserverBrouillonRefuse(liste, brouillon) {
     ? ' Une copie de vos modifications est conservée sur cet appareil.'
     : " La copie locale de vos modifications n'a pas pu être conservée (stockage de l'appareil plein).";
 }
+
+// Contrairement à la garde historique, une absence inchangée est acceptée.
+export function aChangeDepuis(origine, actuel) {
+  if (!origine && !actuel) return false;
+  if (!origine || !actuel) return true;
+  return aEteModifieAilleurs(origine, actuel);
+}

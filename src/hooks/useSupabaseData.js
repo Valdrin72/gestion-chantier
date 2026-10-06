@@ -18,7 +18,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabase';
-import { enregistrerCopieRejetee, nouvelIdCopie } from '../utils/copiesRejetees';
+import { enregistrerCopieRejetee, nouvelIdCopie, PREFIXE_ECHEC, lireCopieEchec, ecrireCopieEchec } from '../utils/copiesRejetees';
 import { donneesInitiales, migrerJournal, migrerStatutsC8, normaliserTarifsEmployes } from '../donnees';
 
 const STORAGE_MARKER = '__cyna_storage__';
@@ -243,6 +243,10 @@ export default function useSupabaseData(userId, isDemo = false) {
   const [syncing,     setSyncing]         = useState(false);
 
   const [etatSync, setEtatSync] = useState({ erreurChargement: null, statut: 'ok', message: null });
+  const episodeRef = useRef(null);
+  const copiesEpisodeRef = useRef(new Set());
+  const copieEpisodeOkRef = useRef(true);
+  const rangementOkRef = useRef(true);
   const versionRef = useRef(0);
   const chargementOkRef = useRef(false);
   const enVolRef = useRef(null);
@@ -273,6 +277,42 @@ export default function useSupabaseData(userId, isDemo = false) {
   });
   const mountedRef  = useRef(true);
   useEffect(() => { mountedRef.current = true; return () => { mountedRef.current = false; }; }, []);
+
+  function messageEchec() {
+    return "Non enregistré. Ne fermez pas l'application tant que ce n'est pas enregistré. "
+      + (copieEpisodeOkRef.current ? 'Une copie de secours est conservée sur cet appareil.' : "Une copie de secours n'a pas pu être conservée sur cet appareil (stockage plein).")
+      + (rangementOkRef.current ? '' : " La copie n'a pas pu être mise à jour ; la copie précédente est conservée.");
+  }
+  function conserverEpisode() {
+    if (!episodeRef.current) {
+      // REV-01 — chaque épisode a SA clé unique et ne touche QU'À ses propres clés
+      // (copiesEpisodeRef). Les copies d'un autre onglet ou d'une session précédente ne sont
+      // jamais rangées, réécrites ni supprimées automatiquement : elles sont seulement signalées.
+      episodeRef.current = PREFIXE_ECHEC + userId + '_' + nouvelIdCopie();
+      copiesEpisodeRef.current = new Set([episodeRef.current]);
+      rangementOkRef.current = true; // F2 — drapeau propre à CET épisode
+    }
+    const contenu = { ...dataRef.current, ...(pendingRef.current || {}), source: 'echec-sauvegarde', date: new Date().toISOString() };
+    copieEpisodeOkRef.current = ecrireCopieEchec(episodeRef.current, contenu);
+    if (!copieEpisodeOkRef.current && lireCopieEchec(episodeRef.current)) {
+      rangementOkRef.current = false;
+      const cle = PREFIXE_ECHEC + userId + '_' + nouvelIdCopie();
+      copieEpisodeOkRef.current = ecrireCopieEchec(cle, contenu);
+      if (copieEpisodeOkRef.current) { episodeRef.current = cle; copiesEpisodeRef.current.add(cle); }
+    }
+    setEtatSync(prev => ({ ...prev, statut: 'echec', message: messageEchec() }));
+  }
+  // Installer pendant une écriture à résoudre et retirer après le succès complet.
+  useEffect(() => {
+    if (modeRef.current !== 'user') return;
+    if (!pendingRef.current && !enVolRef.current && !episodeRef.current && !attentesLocalesRef.current.size) return;
+    const fermer = event => {
+      if (!pendingRef.current && !enVolRef.current && !episodeRef.current && !attentesLocalesRef.current.size) return;
+      event.preventDefault(); event.returnValue = '';
+    };
+    window.addEventListener('beforeunload', fermer);
+    return () => window.removeEventListener('beforeunload', fermer);
+  });
 
   function appliquerData(blobData) {
     const resolved = resolveDataFromBlob(blobData, isDemo);
@@ -477,6 +517,7 @@ export default function useSupabaseData(userId, isDemo = false) {
     if (!chargementOkRef.current) return;
     pendingRef.current = { ...(pendingRef.current || dataRef.current), ...updates };
     dataRef.current = { ...dataRef.current, ...updates };
+    if (episodeRef.current) conserverEpisode();
     clearTimeout(syncTimer.current);
     const generation = recuperationGenRef.current;
     syncTimer.current = setTimeout(() => flush(generation), 800);
@@ -493,7 +534,7 @@ export default function useSupabaseData(userId, isDemo = false) {
     return jeton;
   }
   function messageConflit() {
-    return MESSAGE_CONFLIT + (copieRejetOkRef.current ? MESSAGE_COPIE_OK : MESSAGE_COPIE_KO);
+    return MESSAGE_CONFLIT + (copieRejetOkRef.current ? MESSAGE_COPIE_OK : MESSAGE_COPIE_KO) + (rangementOkRef.current ? "" : " La copie n'a pas pu être mise à jour ; la copie précédente est conservée.");
   }
   // F3 / REV-02 / REV-03 — copie de secours locale du conflit en cours (src/utils/copiesRejetees.js).
   // « Copie conservée » n'est annoncé que si la copie de CE conflit a réellement été écrite.
@@ -527,12 +568,16 @@ export default function useSupabaseData(userId, isDemo = false) {
       recuperationRef.current = false;
       // F2 — un « Réessayer » qui termine une récupération de conflit annonce le conflit.
       if (finDeRecuperation) setEtatSync({ erreurChargement: null, statut: 'conflit', message: messageConflit() });
-      else setEtatSync(prev => ({ ...prev, erreurChargement: null }));
+      else setEtatSync(prev => {
+        const ancienne = Object.keys(localStorage).some(cle => cle.startsWith(PREFIXE_ECHEC + userId) && !copiesEpisodeRef.current.has(cle) && lireCopieEchec(cle));
+        return ancienne && !episodeRef.current
+          ? { erreurChargement: null, statut: 'information', message: "Des modifications non enregistrées d'une session précédente ou d'un autre onglet sont conservées sur cet appareil" }
+          : { ...prev, erreurChargement: null };
+      });
     } catch {
       if (estAnnule()) return;
       chargementOkRef.current = false;
-      if (isDemo) appliquerData({});
-      else setEtatSync(prev => ({ ...prev, erreurChargement: 'Impossible de charger vos données. Réessayez ou déconnectez-vous.' }));
+      setEtatSync(prev => ({ ...prev, erreurChargement: 'Impossible de charger vos données. Réessayez ou déconnectez-vous.' }));
     }
   }
   async function flush(generation = recuperationGenRef.current) {
@@ -540,6 +585,7 @@ export default function useSupabaseData(userId, isDemo = false) {
     while (enVolRef.current) await enVolRef.current;
     if (!mountedRef.current || !chargementOkRef.current || recuperationRef.current || generation !== recuperationGenRef.current || !pendingRef.current) return;
     const payload = pendingRef.current;
+    let reussie = false;
     pendingRef.current = null;
     setSyncing(true);
     const travail = Promise.resolve().then(async () => {
@@ -548,7 +594,8 @@ export default function useSupabaseData(userId, isDemo = false) {
         if (!mountedRef.current) return;
         rowIdRef.current = row.id;
         versionRef.current = Number(row.version) || 0;
-        setEtatSync({ erreurChargement: null, statut: 'ok', message: null });
+        reussie = true;
+        if (!episodeRef.current) setEtatSync(prev => (prev.statut === 'information' ? prev : { erreurChargement: null, statut: 'ok', message: null }));
       } catch (e) {
         if (!mountedRef.current) return;
         if (e instanceof ConflitVersionError) {
@@ -557,7 +604,18 @@ export default function useSupabaseData(userId, isDemo = false) {
           clearTimeout(syncTimer.current);
           rejetRef.current = null;
           rejetIdRef.current = nouvelIdCopie();
+          rangementOkRef.current = true; // F2 — drapeau propre à CE conflit
           conserverRejet({ ...payload, ...(pendingRef.current || {}) });
+          if (episodeRef.current) {
+            if (copieRejetOkRef.current) {
+              try { copiesEpisodeRef.current.forEach(cle => localStorage.removeItem(cle)); } catch { rangementOkRef.current = false; }
+            } else rangementOkRef.current = false;
+            // F1 — l'épisode est TOUJOURS détaché après un conflit : la donnée locale va être
+            // remplacée par celle du serveur, donc la copie d'épisode ne doit plus jamais être
+            // réécrite ni supprimée par cet épisode. Si le transfert a échoué, elle reste en place
+            // (sa clé est conservée) et sera signalée au prochain démarrage (REV-01).
+            copiesEpisodeRef.current.clear(); episodeRef.current = null;
+          }
           pendingRef.current = null;
           setEtatSync({ erreurChargement: null, statut: 'conflit', message: 'Rechargement des données à jour…' });
           try {
@@ -576,18 +634,27 @@ export default function useSupabaseData(userId, isDemo = false) {
         } else {
           pendingRef.current = { ...payload, ...(pendingRef.current || {}) };
           clearTimeout(syncTimer.current);
-          setEtatSync({ erreurChargement: null, statut: 'echec', message: 'Non enregistré. Vos modifications sont conservées ; réessayez.' });
+          conserverEpisode();
         }
       }
     });
     enVolRef.current = travail;
     await travail;
     if (enVolRef.current === travail) enVolRef.current = null;
+    if (reussie && episodeRef.current && !recuperationRef.current && chargementOkRef.current) {
+      if (!pendingRef.current && !enVolRef.current && attentesLocalesRef.current.size === 0) {
+        try { copiesEpisodeRef.current.forEach(cle => localStorage.removeItem(cle)); } catch {}
+        copiesEpisodeRef.current.clear(); episodeRef.current = null;
+        rangementOkRef.current = true; // F2
+        setEtatSync({ erreurChargement: null, statut: 'ok', message: null });
+      } else conserverEpisode();
+    }
     if (mountedRef.current) setSyncing(false);
   }
 
   // ── Setters (état + localStorage + Supabase) ─────────────────────────────
   const setChantiers = useCallback((updater) => {
+    if (modeRef.current === 'user' && !chargementOkRef.current) return;
     const jeton = marquerModificationLocale();
     setChantiersState(prev => {
       attentesLocalesRef.current.delete(jeton);
@@ -603,6 +670,7 @@ export default function useSupabaseData(userId, isDemo = false) {
   }, [userId]);
 
   const setDevis = useCallback((data) => {
+    if (modeRef.current === 'user' && !chargementOkRef.current) return;
     const jeton = marquerModificationLocale();
     setDevisState(prev => {
       attentesLocalesRef.current.delete(jeton);
@@ -616,6 +684,7 @@ export default function useSupabaseData(userId, isDemo = false) {
   }, [userId]);
 
   const setFactures = useCallback((data) => {
+    if (modeRef.current === 'user' && !chargementOkRef.current) return;
     const jeton = marquerModificationLocale();
     setFacturesState(prev => {
       attentesLocalesRef.current.delete(jeton);
@@ -629,6 +698,7 @@ export default function useSupabaseData(userId, isDemo = false) {
   }, [userId]);
 
   const setClients = useCallback((data) => {
+    if (modeRef.current === 'user' && !chargementOkRef.current) return;
     const jeton = marquerModificationLocale();
     setClientsState(prev => {
       attentesLocalesRef.current.delete(jeton);
@@ -642,6 +712,7 @@ export default function useSupabaseData(userId, isDemo = false) {
   }, [userId]);
 
   const setParametres = useCallback((data) => {
+    if (modeRef.current === 'user' && !chargementOkRef.current) return;
     const jeton = marquerModificationLocale();
     setParametresState(prev => {
       attentesLocalesRef.current.delete(jeton);
@@ -655,6 +726,7 @@ export default function useSupabaseData(userId, isDemo = false) {
   }, [userId]);
 
   const setPointages = useCallback((updater) => {
+    if (modeRef.current === 'user' && !chargementOkRef.current) return;
     const jeton = marquerModificationLocale();
     setPointagesState(prev => {
       attentesLocalesRef.current.delete(jeton);

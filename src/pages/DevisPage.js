@@ -1,3 +1,4 @@
+import useActionConfirmee from '../hooks/useActionConfirmee';
 import { aEteModifieAilleurs, conserverBrouillonRefuse, copieOrigine } from '../utils/gardeEdition';
 import React, { useRef, useState, useMemo, useLayoutEffect } from 'react';
 import {
@@ -156,6 +157,9 @@ const PERIODES = [{ id: 'semaine', label: 'Cette semaine' }, { id: 'mois', label
 function Devis() {
   const { devis, setDevis, clients, parametres, naviguer, setChantiers, chantiers, factures, setFactures, contexte = {}, afficherNotif, confirmer, periodeGlobale = 'mois', setPeriodeGlobale = () => {}, ouvrirMenu, consultationMobile } = useApp();
   const isMobile = useIsMobile();
+  const assocRef = useRef({ chantiers, factures });
+  assocRef.current = { chantiers, factures, devis };
+  const agir = useActionConfirmee(afficherNotif);
   const [ajout, setAjout] = useState(false);
   // La page passe en « hero plein écran » (Topbar blanc masqué) comme les autres pages v1.
   useLayoutEffect(() => {
@@ -174,18 +178,26 @@ function Devis() {
 
   // Devis standalone (aucun chantier/facture) → suppression dure autorisée.
   const supprimerDevis = async (d) => {
+    const origine = copieOrigine(d);
     if (consultationMobile) return; // lecture seule mobile
     if (!await confirmer(`Supprimer le devis "${d.numero}" ?\n\nCette action est irréversible.`, { labelOui: 'Supprimer' })) return;
-    setDevis(devis.filter(dv => String(dv.id) !== String(d.id)));
-    if (afficherNotif) afficherNotif('Devis supprimé');
+    agir(setDevis, prev => {
+      const actuel = prev.find(item => String(item.id) === String(d.id));
+      const erreur = aEteModifieAilleurs(origine, actuel) ? "Cet élément a été modifié ou supprimé pendant la confirmation. Vérifiez les données puis recommencez." : devisEstReferencé(actuel, assocRef.current);
+      return { erreur, valeur: erreur ? prev : prev.filter(item => String(item.id) !== String(d.id)) };
+    }, 'Devis supprimé');
   };
 
   // Devis référencé → archivage (soft) : rangé hors de la liste active, rien n'est détruit.
   const archiverDevis = async (d) => {
+    const origine = copieOrigine(d);
     if (consultationMobile) return;
     if (!await confirmer(`Archiver le devis "${d.numero}" ?\n\nIl sera rangé hors de la liste active mais conservé (chantier et/ou factures liés).`, { labelOui: 'Archiver' })) return;
-    setDevis(devis.map(dv => String(dv.id) === String(d.id) ? archiver(dv) : dv));
-    if (afficherNotif) afficherNotif('Devis archivé — visible via « Voir les archivés »');
+    agir(setDevis, prev => {
+      const actuel = prev.find(item => String(item.id) === String(d.id));
+      const erreur = aEteModifieAilleurs(origine, actuel) ? "Cet élément a été modifié ou supprimé pendant la confirmation. Vérifiez les données puis recommencez." : null;
+      return { erreur, valeur: erreur ? prev : prev.map(item => String(item.id) === String(d.id) ? archiver(item) : item) };
+    }, 'Devis archivé — visible via « Voir les archivés »');
   };
 
   const restaurerDevis = (d) => {
@@ -846,13 +858,19 @@ function Devis() {
                             return (
                               <button
                                 onClick={async () => {
+                                  const origine = copieOrigine(d);
+                                  const origineLien = copieOrigine(chantierLie);
                                   if (!chantierLie) {
                                     if (!await confirmer('Ce devis n\'a pas de chantier lié.\nLa facture sera créée sans chantierId — elle n\'apparaîtra pas dans le suivi de facturation des chantiers.\n\nContinuer quand même ?', { labelOui: 'Continuer', danger: false })) return;
                                   }
                                   const tauxTVA = parseFloat(d.tva) || parseFloat(parametres?.parametres?.tauxTVA) || 8.1;
-                                  const nouvelleFacture = creerFactureDepuisDevis(d, chantierLie || null, factures, tauxTVA);
-                                  setFactures([...factures, nouvelleFacture]);
-                                  naviguer('finances');
+                                  agir(setFactures, prev => {
+                                    const actuel = assocRef.current.devis.find(dv => String(dv.id) === String(d.id));
+                                    const lien = assocRef.current.chantiers.find(ch => String(ch.devisId) === String(d.id)) || null;
+                                    const erreur = aEteModifieAilleurs(origine, actuel) || JSON.stringify(copieOrigine(lien)) !== JSON.stringify(origineLien)
+                                      ? "Cet élément a été modifié ou supprimé pendant la confirmation. Vérifiez les données puis recommencez." : prev.some(f => String(f.devisId) === String(d.id) && f.statut !== 'annulee') ? 'Une facture existe déjà pour ce devis ; création annulée.' : null;
+                                    return { erreur, valeur: erreur ? prev : [...prev, creerFactureDepuisDevis(actuel, lien, prev, tauxTVA)] };
+                                  }, 'Facture créée', () => naviguer('finances'));
                                 }}
                                 style={{ background: V1.bleu + '14', color: V1.bleu, border: `1px solid ${V1.bleu}35`, borderRadius: 8, padding: '6px 12px', cursor: 'pointer', fontSize: 12, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 5, fontFamily: 'inherit', transition: 'all 0.15s' }}
                                 title={chantierLie ? 'Créer la facture depuis ce devis' : 'Attention : aucun chantier lié à ce devis'}

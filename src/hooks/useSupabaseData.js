@@ -18,7 +18,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabase';
-import { enregistrerCopieRejetee, nouvelIdCopie, PREFIXE_ECHEC, lireCopieEchec, ecrireCopieEchec, rangerCopieEchec } from '../utils/copiesRejetees';
+import { enregistrerCopieRejetee, nouvelIdCopie, PREFIXE_ECHEC, lireCopieEchec, ecrireCopieEchec } from '../utils/copiesRejetees';
 import { donneesInitiales, migrerJournal, migrerStatutsC8, normaliserTarifsEmployes } from '../donnees';
 
 const STORAGE_MARKER = '__cyna_storage__';
@@ -285,10 +285,12 @@ export default function useSupabaseData(userId, isDemo = false) {
   }
   function conserverEpisode() {
     if (!episodeRef.current) {
-      const cle = PREFIXE_ECHEC + userId;
-      rangementOkRef.current = rangerCopieEchec(cle, 'echec-sauvegarde-precedente');
-      episodeRef.current = rangementOkRef.current ? cle : cle + '_' + nouvelIdCopie();
-      copiesEpisodeRef.current.add(episodeRef.current);
+      // REV-01 — chaque épisode a SA clé unique et ne touche QU'À ses propres clés
+      // (copiesEpisodeRef). Les copies d'un autre onglet ou d'une session précédente ne sont
+      // jamais rangées, réécrites ni supprimées automatiquement : elles sont seulement signalées.
+      episodeRef.current = PREFIXE_ECHEC + userId + '_' + nouvelIdCopie();
+      copiesEpisodeRef.current = new Set([episodeRef.current]);
+      rangementOkRef.current = true; // F2 — drapeau propre à CET épisode
     }
     const contenu = { ...dataRef.current, ...(pendingRef.current || {}), source: 'echec-sauvegarde', date: new Date().toISOString() };
     copieEpisodeOkRef.current = ecrireCopieEchec(episodeRef.current, contenu);
@@ -567,9 +569,9 @@ export default function useSupabaseData(userId, isDemo = false) {
       // F2 — un « Réessayer » qui termine une récupération de conflit annonce le conflit.
       if (finDeRecuperation) setEtatSync({ erreurChargement: null, statut: 'conflit', message: messageConflit() });
       else setEtatSync(prev => {
-        const ancienne = Object.keys(localStorage).some(cle => cle.startsWith(PREFIXE_ECHEC + userId) && lireCopieEchec(cle));
+        const ancienne = Object.keys(localStorage).some(cle => cle.startsWith(PREFIXE_ECHEC + userId) && !copiesEpisodeRef.current.has(cle) && lireCopieEchec(cle));
         return ancienne && !episodeRef.current
-          ? { erreurChargement: null, statut: 'information', message: "Des modifications non enregistrées d'une session précédente sont conservées sur cet appareil" }
+          ? { erreurChargement: null, statut: 'information', message: "Des modifications non enregistrées d'une session précédente ou d'un autre onglet sont conservées sur cet appareil" }
           : { ...prev, erreurChargement: null };
       });
     } catch {
@@ -593,7 +595,7 @@ export default function useSupabaseData(userId, isDemo = false) {
         rowIdRef.current = row.id;
         versionRef.current = Number(row.version) || 0;
         reussie = true;
-        if (!episodeRef.current) setEtatSync({ erreurChargement: null, statut: 'ok', message: null });
+        if (!episodeRef.current) setEtatSync(prev => (prev.statut === 'information' ? prev : { erreurChargement: null, statut: 'ok', message: null }));
       } catch (e) {
         if (!mountedRef.current) return;
         if (e instanceof ConflitVersionError) {
@@ -602,14 +604,17 @@ export default function useSupabaseData(userId, isDemo = false) {
           clearTimeout(syncTimer.current);
           rejetRef.current = null;
           rejetIdRef.current = nouvelIdCopie();
+          rangementOkRef.current = true; // F2 — drapeau propre à CE conflit
           conserverRejet({ ...payload, ...(pendingRef.current || {}) });
           if (episodeRef.current) {
             if (copieRejetOkRef.current) {
-              try {
-                copiesEpisodeRef.current.forEach(cle => localStorage.removeItem(cle));
-                copiesEpisodeRef.current.clear(); episodeRef.current = null;
-              } catch { rangementOkRef.current = false; }
+              try { copiesEpisodeRef.current.forEach(cle => localStorage.removeItem(cle)); } catch { rangementOkRef.current = false; }
             } else rangementOkRef.current = false;
+            // F1 — l'épisode est TOUJOURS détaché après un conflit : la donnée locale va être
+            // remplacée par celle du serveur, donc la copie d'épisode ne doit plus jamais être
+            // réécrite ni supprimée par cet épisode. Si le transfert a échoué, elle reste en place
+            // (sa clé est conservée) et sera signalée au prochain démarrage (REV-01).
+            copiesEpisodeRef.current.clear(); episodeRef.current = null;
           }
           pendingRef.current = null;
           setEtatSync({ erreurChargement: null, statut: 'conflit', message: 'Rechargement des données à jour…' });
@@ -638,10 +643,9 @@ export default function useSupabaseData(userId, isDemo = false) {
     if (enVolRef.current === travail) enVolRef.current = null;
     if (reussie && episodeRef.current && !recuperationRef.current && chargementOkRef.current) {
       if (!pendingRef.current && !enVolRef.current && attentesLocalesRef.current.size === 0) {
-        try {
-          copiesEpisodeRef.current.forEach(cle => localStorage.removeItem(cle));
-          copiesEpisodeRef.current.clear(); episodeRef.current = null;
-        } catch {}
+        try { copiesEpisodeRef.current.forEach(cle => localStorage.removeItem(cle)); } catch {}
+        copiesEpisodeRef.current.clear(); episodeRef.current = null;
+        rangementOkRef.current = true; // F2
         setEtatSync({ erreurChargement: null, statut: 'ok', message: null });
       } else conserverEpisode();
     }

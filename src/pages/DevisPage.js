@@ -185,7 +185,7 @@ function Devis() {
       const actuel = prev.find(item => String(item.id) === String(d.id));
       const erreur = aEteModifieAilleurs(origine, actuel) ? "Cet élément a été modifié ou supprimé pendant la confirmation. Vérifiez les données puis recommencez." : devisEstReferencé(actuel, assocRef.current);
       return { erreur, valeur: erreur ? prev : prev.filter(item => String(item.id) !== String(d.id)) };
-    }, 'Élément supprimé');
+    }, 'Devis supprimé');
   };
 
   // Devis référencé → archivage (soft) : rangé hors de la liste active, rien n'est détruit.
@@ -197,7 +197,7 @@ function Devis() {
       const actuel = prev.find(item => String(item.id) === String(d.id));
       const erreur = aEteModifieAilleurs(origine, actuel) ? "Cet élément a été modifié ou supprimé pendant la confirmation. Vérifiez les données puis recommencez." : null;
       return { erreur, valeur: erreur ? prev : prev.map(item => String(item.id) === String(d.id) ? archiver(item) : item) };
-    }, 'Élément archivé — visible via « Voir les archivés »');
+    }, 'Devis archivé — visible via « Voir les archivés »');
   };
 
   const restaurerDevis = (d) => {

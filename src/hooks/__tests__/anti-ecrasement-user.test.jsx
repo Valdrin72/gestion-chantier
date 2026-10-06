@@ -441,6 +441,9 @@ describe('anti-écrasement user : vrai hook et serveur en mémoire', () => {
   });
 });
 
+const PREFIXE_EP = 'cyna_sauvegarde_en_echec_user_';
+const clesEpisode = () => Object.keys(localStorage).filter(k => k.startsWith(PREFIXE_EP));
+const copieEpisode = () => { const k = clesEpisode().sort().at(-1); return k ? JSON.parse(localStorage.getItem(k)) : null; };
 describe('suivi : chargement et épisode durable', () => {
   it('App démo : erreur bloquante puis reprise sans écran démo trompeur', async () => {
     store.demo = true; store.readError = { message: 'offline' };
@@ -462,7 +465,7 @@ describe('suivi : chargement et épisode durable', () => {
   it('quota à la mise à jour : original intact, nouvelle copie distincte si possible', async () => {
     const h = await boot(); store.writeError = { message: 'offline' };
     act(() => h.result.current.setDevis([{ id: 'premier' }])); await tick();
-    const key = 'cyna_sauvegarde_en_echec_user', origine = localStorage.getItem(key);
+    const [key] = clesEpisode(), origine = localStorage.getItem(key);
     const original = Storage.prototype.setItem;
     const spy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function(k, v) {
       if (k === key) throw new Error('quota');
@@ -471,7 +474,7 @@ describe('suivi : chargement et épisode durable', () => {
     try {
       act(() => h.result.current.setDevis([{ id: 'dernier' }]));
       expect(localStorage.getItem(key)).toBe(origine);
-      const copie = Object.keys(localStorage).find(k => k.startsWith(key + '_'));
+      const copie = clesEpisode().find(k => k !== key);
       expect(JSON.parse(localStorage.getItem(copie)).devis[0].id).toBe('dernier');
       expect(h.result.current.etatSync.message).toContain("copie n'a pas pu être mise à jour");
     } finally { spy.mockRestore(); }
@@ -479,43 +482,38 @@ describe('suivi : chargement et épisode durable', () => {
   it('épisode transféré vers conflit seulement après persistance', async () => {
     const h = await boot(); store.writeError = { message: 'offline' };
     act(() => h.result.current.setPointages([{ id: 'local' }])); await tick();
-    expect(localStorage.getItem('cyna_sauvegarde_en_echec_user')).not.toBeNull();
+    expect(clesEpisode()).toHaveLength(1);
     distant(); store.writeError = null;
     await act(async () => h.result.current.reessayerSauvegarde());
-    expect(localStorage.getItem('cyna_sauvegarde_en_echec_user')).toBeNull();
+    expect(clesEpisode()).toHaveLength(0);
     expect(copies()[0].pointages[0].id).toBe('local');
   });
-  it('six refus ne nettoient pas la copie ; épisode antérieur rangé avant remplacement', async () => {
-    const key = 'cyna_sauvegarde_en_echec_user';
-    localStorage.setItem(key, JSON.stringify({ source: 'echec-sauvegarde', clients: [{ id: 'ancienne' }] }));
+  it("six refus ne nettoient pas la copie ; copie d'une session précédente jamais touchée", async () => {
+    const ancienne = 'cyna_sauvegarde_en_echec_user';
+    const contenuAncien = JSON.stringify({ source: 'echec-sauvegarde', clients: [{ id: 'ancienne' }] });
+    localStorage.setItem(ancienne, contenuAncien);
     const h = await boot(); store.writeError = { message: 'offline' };
     act(() => h.result.current.setClients([{ id: 'nouvelle' }])); await tick();
-    expect(copies().some(c => c.source === 'echec-sauvegarde-precedente' && c.clients[0].id === 'ancienne')).toBe(true);
+    expect(localStorage.getItem(ancienne)).toBe(contenuAncien);
     for (let n = 0; n < 6; n++) conserverBrouillonRefuse('devis', { id: n });
     act(() => h.result.current.setClients([{ id: 'dernière' }]));
-    expect(JSON.parse(localStorage.getItem(key)).clients[0].id).toBe('dernière');
+    expect(copieEpisode().clients[0].id).toBe('dernière');
+    expect(localStorage.getItem(ancienne)).toBe(contenuAncien);
   });
-  it.each(['rangement', 'conflit'])('quota pendant %s : copie origine intacte et message exact', async transfert => {
-    const key = 'cyna_sauvegarde_en_echec_user';
-    let origine;
-    if (transfert === 'rangement') {
-      origine = JSON.stringify({ source: 'echec-sauvegarde', devis: [{ id: 'ancienne' }] });
-      localStorage.setItem(key, origine);
-    }
+  it('quota pendant conflit : copie origine intacte et message exact', async () => {
     const h = await boot(); store.writeError = { message: 'offline' };
-    act(() => h.result.current.setDevis([{ id: 'local' }]));
-    if (transfert === 'conflit') { await tick(); origine = localStorage.getItem(key); distant(); store.writeError = null; }
+    act(() => h.result.current.setDevis([{ id: 'local' }])); await tick();
+    const [key] = clesEpisode(); const origine = localStorage.getItem(key);
+    distant(); store.writeError = null;
     const original = Storage.prototype.setItem;
     const spy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function(k, v) {
       if (k.startsWith('cyna_sauvegarde_rejetee_')) throw new Error('quota');
       return original.call(this, k, v);
     });
     try {
-      if (transfert === 'conflit') await act(async () => h.result.current.reessayerSauvegarde());
-      else await tick();
+      await act(async () => h.result.current.reessayerSauvegarde());
       expect(localStorage.getItem(key)).toBe(origine);
       expect(h.result.current.etatSync.message).toContain("copie n'a pas pu être mise à jour");
-      if (transfert === 'rangement') expect(Object.keys(localStorage).some(k => k.startsWith(key + '_'))).toBe(true);
     } finally { spy.mockRestore(); }
   });
   it('App bloque la navigation pendant la lecture initiale', async () => {
@@ -537,7 +535,7 @@ describe('suivi : chargement et épisode durable', () => {
   it('échec durable : pointages, debounce, vol et succès complet', async () => {
     const h = await boot(); store.writeError = { message: 'offline' };
     act(() => h.result.current.setPointages([{ id: 'P' }])); await tick();
-    const key = 'cyna_sauvegarde_en_echec_user';
+    const [key] = clesEpisode();
     expect(JSON.parse(localStorage.getItem(key)).pointages).toEqual([{ id: 'P' }]);
     expect(h.result.current.etatSync.message).toContain('Ne fermez pas');
     const closing = new Event('beforeunload', { cancelable: true }); window.dispatchEvent(closing);
@@ -557,10 +555,86 @@ describe('suivi : chargement et épisode durable', () => {
     const h = await boot(); store.writeError = { message: 'offline' };
     act(() => h.result.current.setPointages([{ id: 'P' }])); await tick(); h.unmount();
     const next = await boot();
-    expect(JSON.parse(localStorage.getItem('cyna_sauvegarde_en_echec_user')).pointages).toEqual([{ id: 'P' }]);
+    expect(copieEpisode().pointages).toEqual([{ id: 'P' }]);
     expect(next.result.current.etatSync.message).toContain('session précédente');
     act(() => next.result.current.fermerMessageSync());
-    expect(localStorage.getItem('cyna_sauvegarde_en_echec_user')).not.toBeNull();
+    expect(clesEpisode()).toHaveLength(1);
+  });
+  it("F1 : conflit avec stockage plein → la copie d'épisode n'est ni réécrite ni supprimée par la suite", async () => {
+    const h = await boot(); store.writeError = { message: 'offline' };
+    act(() => h.result.current.setDevis([{ id: 'rejet' }])); await tick();
+    const [key] = clesEpisode();
+    expect(JSON.parse(localStorage.getItem(key)).devis).toEqual([{ id: 'rejet' }]);
+    distant(); store.writeError = null;
+    const original = Storage.prototype.setItem;
+    const spy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (k, v) {
+      if (String(k).startsWith('cyna_sauvegarde_rejetee_')) throw new Error('quota');
+      return original.call(this, k, v);
+    });
+    try { await act(async () => h.result.current.reessayerSauvegarde()); } finally { spy.mockRestore(); }
+    expect(h.result.current.etatSync.statut).toBe('conflit');
+    act(() => h.result.current.setClients([{ id: 'apres' }])); await tick(); await settle();
+    expect(store.row.data.clients).toEqual([{ id: 'apres' }]);
+    expect(JSON.parse(localStorage.getItem(key)).devis).toEqual([{ id: 'rejet' }]);
+  });
+  it("F2 : après un incident de stockage, un conflit ordinaire n'affiche plus « la copie n'a pas pu être mise à jour »", async () => {
+    const h = await boot(); store.writeError = { message: 'offline' };
+    act(() => h.result.current.setDevis([{ id: 'rejet' }])); await tick();
+    distant(); store.writeError = null;
+    const original = Storage.prototype.setItem;
+    const spy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (k, v) {
+      if (String(k).startsWith('cyna_sauvegarde_rejetee_')) throw new Error('quota');
+      return original.call(this, k, v);
+    });
+    try { await act(async () => h.result.current.reessayerSauvegarde()); } finally { spy.mockRestore(); }
+    expect(h.result.current.etatSync.message).toContain("copie n'a pas pu être mise à jour");
+    // Conflit ordinaire, stockage disponible.
+    distant(store.row.version + 1);
+    act(() => h.result.current.setDevis([{ id: 'nouveau' }])); await tick(); await settle();
+    expect(h.result.current.etatSync.statut).toBe('conflit');
+    expect(h.result.current.etatSync.message).not.toContain("copie n'a pas pu être mise à jour");
+  });
+  it("REV-01 : les copies d'épisode d'une autre session restent intactes et sont signalées", async () => {
+    const etrangere = 'cyna_sauvegarde_en_echec_user_1700000000000-abc';
+    const contenu = JSON.stringify({ source: 'echec-sauvegarde', devis: [{ id: 'oubliee' }] });
+    localStorage.setItem(etrangere, contenu);
+    const h = await boot();
+    expect(h.result.current.etatSync.message).toContain('session précédente');
+    store.writeError = { message: 'offline' };
+    act(() => h.result.current.setClients([{ id: 'nouvelle' }])); await tick();
+    expect(localStorage.getItem(etrangere)).toBe(contenu);
+    store.writeError = null; await act(async () => h.result.current.reessayerSauvegarde()); await settle();
+    expect(localStorage.getItem(etrangere)).toBe(contenu);
+  });
+  it('REV-01 : deux instances (onglets) partageant le même stockage ne se volent pas leurs copies', async () => {
+    const A = await boot(); const B = await boot();
+    store.writeError = { message: 'offline' };
+    act(() => A.result.current.setDevis([{ id: 'A-non-enregistre' }])); await tick();
+    act(() => B.result.current.setClients([{ id: 'B-non-enregistre' }])); await tick();
+    const lire = () => clesEpisode().map(k => JSON.parse(localStorage.getItem(k)));
+    expect(clesEpisode()).toHaveLength(2);
+    expect(lire().some(c => c.devis?.[0]?.id === 'A-non-enregistre')).toBe(true);
+    expect(lire().some(c => c.clients?.[0]?.id === 'B-non-enregistre')).toBe(true);
+    // A se rétablit et enregistre ; B reste « Non enregistré ».
+    store.writeError = null;
+    await act(async () => A.result.current.reessayerSauvegarde()); await settle();
+    expect(A.result.current.etatSync.statut).not.toBe('echec');
+    expect(clesEpisode()).toHaveLength(1);
+    expect(lire()[0].clients[0].id).toBe('B-non-enregistre');
+    // Une nouvelle modification de A n'écrase pas la copie de B.
+    store.writeError = { message: 'offline' };
+    act(() => A.result.current.setDevis([{ id: 'A2' }])); await tick();
+    expect(lire().some(c => c.clients?.[0]?.id === 'B-non-enregistre')).toBe(true);
+  });
+  it("F3 : une sauvegarde de routine n'efface pas le bandeau « session précédente »", async () => {
+    localStorage.setItem('cyna_sauvegarde_en_echec_user', JSON.stringify({ source: 'echec-sauvegarde', devis: [{ id: 'ancienne' }] }));
+    const h = await boot();
+    expect(h.result.current.etatSync.statut).toBe('information');
+    act(() => h.result.current.setClients([{ id: 'routine' }])); await tick(); await settle();
+    expect(store.row.data.clients).toEqual([{ id: 'routine' }]);
+    expect(h.result.current.etatSync.statut).toBe('information');
+    act(() => h.result.current.fermerMessageSync());
+    expect(h.result.current.etatSync.statut).toBe('ok');
   });
   it('démo : lecture en échec bloque puis Réessayer active les setters', async () => {
     store.readError = { message: 'offline' };

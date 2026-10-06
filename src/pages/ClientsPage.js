@@ -90,7 +90,7 @@ function Clients({ clients, setClients, chantiers, devis = [], factures = [], na
       const actuel = prev.find(item => String(item.id) === String(c.id));
       const erreur = aEteModifieAilleurs(origine, actuel) ? "Cet élément a été modifié ou supprimé pendant la confirmation. Vérifiez les données puis recommencez." : clientEstReferencé(actuel, assocRef.current);
       return { erreur, valeur: erreur ? prev : prev.filter(item => String(item.id) !== String(c.id)) };
-    }, 'Élément supprimé');
+    }, 'Client supprimé');
   };
 
   // Client référencé → archivage (soft) : rangé hors de la liste active, rien n'est détruit.
@@ -102,7 +102,7 @@ function Clients({ clients, setClients, chantiers, devis = [], factures = [], na
       const actuel = prev.find(item => String(item.id) === String(c.id));
       const erreur = aEteModifieAilleurs(origine, actuel) ? "Cet élément a été modifié ou supprimé pendant la confirmation. Vérifiez les données puis recommencez." : null;
       return { erreur, valeur: erreur ? prev : prev.map(item => String(item.id) === String(c.id) ? archiver(item) : item) };
-    }, 'Élément archivé — visible via « Voir les archivés »');
+    }, 'Client archivé — visible via « Voir les archivés »');
   };
 
   const restaurerClient = (c) => {

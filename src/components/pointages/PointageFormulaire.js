@@ -74,6 +74,13 @@ export default function PointageFormulaire({ onSaved, initialDate, initialEmploy
   }));
   const origineRef = useRef(null);
   const origineEnAttenteRef = useRef(false);
+  // REV-02 — accusé de réception : l'enregistrement est considéré comme fait seulement quand
+  // le pointage écrit (même date, employé et modifie_le) apparaît dans la liste.
+  const accuseRef = useRef(null);
+  const formRef = useRef(null);
+  const DELAI_ACCUSE_MS = 3000;
+  useEffect(() => () => clearTimeout(accuseRef.current?.minuteur), []);
+  formRef.current = form;
   const [mode, setMode] = useState('create');
   const [erreurs, setErreurs] = useState([]);
   const [flash, setFlash] = useState(null);
@@ -110,9 +117,39 @@ export default function PointageFormulaire({ onSaved, initialDate, initialEmploy
 
   useEffect(() => {
     if (!origineEnAttenteRef.current) return;
-    origineRef.current = copieOrigine(pointages.find(p => p.date === form.date && String(p.employeId) === String(form.employeId)));
+    const actuel = pointages.find(p => p.date === form.date && String(p.employeId) === String(form.employeId));
+    const accuse = accuseRef.current;
+    if (accuse) {
+      // Origine = l'enregistrement RÉELLEMENT présent dans la liste (pas une reconstruction).
+      if (!actuel || actuel.modifie_le !== accuse.modifie_le) return;
+      clearTimeout(accuse.minuteur);
+      accuseRef.current = null;
+      origineRef.current = copieOrigine(actuel);
+      origineEnAttenteRef.current = false;
+      // IR-02 — si la saisie a changé depuis l'envoi, on garde la NOUVELLE saisie : ni vidage du
+      // formulaire, ni fermeture de la modale. Seul l'enregistrement envoyé est confirmé.
+      if (JSON.stringify(formRef.current) !== accuse.formEnvoye) {
+        if (afficherNotif) afficherNotif(accuse.msg + ' (vos modifications suivantes ne sont pas encore enregistrées)');
+        setErreurs([]);
+        return;
+      }
+      terminerSucces(accuse.msg);
+      return;
+    }
+    origineRef.current = copieOrigine(actuel);
     origineEnAttenteRef.current = false;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pointages, form.date, form.employeId]);
+
+  const terminerSucces = msg => {
+    if (afficherNotif) afficherNotif(msg);
+    setFlash(msg);
+    setTimeout(() => setFlash(null), 3000);
+    setErreurs([]);
+    setMode('create');
+    setForm(prev => ({ ...prev, repartitions: [{ ...REPARTITION_VIDE }], absence: { ...ABSENCE_INITIAL }, deplacement: { ...DEPLACEMENT_INITIAL } }));
+    if (onSaved) onSaved();
+  };
 
   const setDate = useCallback(date => {
     setForm(prev => ({ ...prev, date, repartitions: [{ ...REPARTITION_VIDE }], absence: { ...ABSENCE_INITIAL }, deplacement: { ...DEPLACEMENT_INITIAL } }));
@@ -165,7 +202,11 @@ export default function PointageFormulaire({ onSaved, initialDate, initialEmploy
       saisi_par: 'user',
     };
 
-    if (origineEnAttenteRef.current) return;
+    // F4 — jamais de clic ignoré sans message.
+    if (origineEnAttenteRef.current) {
+      setErreurs(["L'enregistrement précédent est encore en cours de prise en compte. Réessayez dans un instant."]);
+      return;
+    }
     const actuel = pointages.find(p => p.date === form.date && String(p.employeId) === String(form.employeId));
     if (aChangeDepuis(origineRef.current, actuel)) {
       const message = "Ce pointage a été modifié sur un autre appareil. Vérifiez puis rouvrez le formulaire." + conserverBrouillonRefuse('pointages', pointage);
@@ -177,19 +218,26 @@ export default function PointageFormulaire({ onSaved, initialDate, initialEmploy
       return;
     }
 
-    origineEnAttenteRef.current = true;
     const nomChantier = chantiersActifs.find(c => String(c.id) === String(form.repartitions[0]?.chantierId))?.nom;
     const msg = mode === 'edit'
       ? 'Pointage modifié avec succès'
       : `Pointage enregistré${nomChantier ? ` — ${nomChantier}` : ''}`;
-    if (afficherNotif) afficherNotif(msg);
-
-    setFlash(msg);
-    setTimeout(() => setFlash(null), 3000);
-    setErreurs([]);
-    setMode('create');
-    setForm(prev => ({ ...prev, repartitions: [{ ...REPARTITION_VIDE }], absence: { ...ABSENCE_INITIAL }, deplacement: { ...DEPLACEMENT_INITIAL } }));
-    if (onSaved) onSaved();
+    origineEnAttenteRef.current = true;
+    if (res.pointage?.modifie_le) {
+      // REV-02 — attendre l'accusé de réception avant d'annoncer le succès, de vider la saisie
+      // et de fixer l'origine. Sans accusé dans le délai : erreur, saisie conservée.
+      const minuteur = setTimeout(() => {
+        if (accuseRef.current?.minuteur !== minuteur) return;
+        accuseRef.current = null;
+        origineEnAttenteRef.current = false;
+        setErreurs(["Le pointage n'a pas pu être enregistré. Votre saisie est conservée : réessayez."]);
+      }, DELAI_ACCUSE_MS);
+      accuseRef.current = { modifie_le: res.pointage.modifie_le, msg, minuteur, formEnvoye: JSON.stringify(form) };
+      return;
+    }
+    // Sans enregistrement renvoyé (appelant qui ne le fournit pas) : comportement historique,
+    // l'origine est reprise dans la liste au rendu suivant.
+    terminerSucces(msg);
   };
 
   const peutSauvegarder = form.date && form.employeId &&

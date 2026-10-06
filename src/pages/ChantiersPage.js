@@ -142,7 +142,9 @@ function Chantiers() {
   const archiverChantier = async id => {
     const origine = copieOrigine(listesRef.current.chantiers.find(ch => String(ch.id) === String(id)));
     if (!origine || consultationMobile) return;
-    if (!await confirmer(`Archiver le chantier "${origine.nom}" ?`, { labelOui: 'Archiver' })) return;
+    if (!await confirmer(`Archiver le chantier "${origine.nom}" ?
+
+Il sera rangé hors de la liste active mais conservé (heures, factures, historique).`, { labelOui: 'Archiver' })) return;
     agir(setChantiers, prev => {
       const actuel = prev.find(ch => String(ch.id) === String(id));
       const erreur = aEteModifieAilleurs(origine, actuel) ? "Cet élément a été modifié ou supprimé pendant la confirmation. Vérifiez les données puis recommencez." : null;

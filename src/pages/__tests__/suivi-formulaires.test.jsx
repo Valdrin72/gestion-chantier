@@ -111,3 +111,117 @@ it('pointage apparu pendant création : refus et copie', () => {
   fireEvent.click(screen.getByRole('button', { name: /Enregistrer le pointage/ }));
   expect(setPointages).not.toHaveBeenCalled(); expect(copies()[0].pointages).toHaveLength(1);
 });
+
+it("F4 : après un enregistrement que la liste ne reflète pas encore, un nouveau clic n'est jamais ignoré sans message", () => {
+  // setPointages sans effet : simule une liste qui ne change pas après l'enregistrement
+  // (résultat identique, ou barrière temporaire du stockage).
+  const setPointages = vi.fn(), afficherNotif = vi.fn();
+  renderWithApp(<PointageFormulaire initialDate={pointage.date} initialEmployeId={1} initialChantierId="c" />,
+    { chantiers: [{ id: 'c', nom: 'Chantier', statut: 'En cours' }], parametres: { employes: [emp] }, pointages: [], setPointages, afficherNotif });
+  const saisir = () => {
+    fireEvent.change(screen.getByLabelText('Chantier'), { target: { value: 'c' } });
+    fireEvent.change(screen.getByLabelText('Heures'), { target: { value: '5' } });
+    fireEvent.click(screen.getByRole('button', { name: /Enregistrer le pointage|Modifier le pointage/ }));
+  };
+  saisir();
+  expect(setPointages).toHaveBeenCalledTimes(1);
+  afficherNotif.mockClear();
+  saisir();
+  // Soit le second enregistrement part, soit l'utilisateur voit un message — jamais rien.
+  const retour = setPointages.mock.calls.length > 1 || afficherNotif.mock.calls.length > 0
+    || screen.queryAllByText(/en cours de prise en compte|autre appareil/).length > 0;
+  expect(retour).toBe(true);
+});
+
+it('REV-02 : une mise à jour déjà en file avant la sauvegarde ne fait pas refuser la sauvegarde suivante', () => {
+  const afficherNotif = vi.fn();
+  let setRef;
+  function Harness() {
+    const [pointages, setPointages] = useState([{ ...pointage, modifie_le: 'v0' }]);
+    setRef = setPointages;
+    return <AppProvider value={{ chantiers: [{ id: 'c', nom: 'Chantier', statut: 'En cours' }], parametres: { employes: [emp] }, pointages, setPointages, afficherNotif }}><PointageFormulaire initialDate={pointage.date} initialEmployeId={1} initialChantierId="c" /></AppProvider>;
+  }
+  render(<Harness />);
+  const remplir = h => {
+    fireEvent.change(screen.getByLabelText('Chantier'), { target: { value: 'c' } });
+    fireEvent.change(screen.getByLabelText('Heures'), { target: { value: h } });
+  };
+  const bouton = () => screen.getByRole('button', { name: /Enregistrer le pointage|Modifier le pointage/ });
+  remplir('5');
+  // Une mise à jour d'un champ non édité est mise en file, PUIS on enregistre, sans rendu entre les deux.
+  act(() => {
+    setRef(prev => prev.map(p => ({ ...p, note: 'mise en file' })));
+    fireEvent.click(bouton());
+  });
+  expect(afficherNotif).toHaveBeenCalledWith(expect.stringMatching(/Pointage (modifié|enregistré)/));
+  afficherNotif.mockClear();
+  remplir('6');
+  fireEvent.click(bouton());
+  expect(copies()).toHaveLength(0);
+  expect(afficherNotif).not.toHaveBeenCalledWith(expect.stringContaining('autre appareil'), 'error');
+  expect(afficherNotif).toHaveBeenCalledWith(expect.stringMatching(/Pointage (modifié|enregistré)/));
+});
+
+it("REV-02 : écriture qui n'aboutit pas → pas de faux succès, saisie conservée et erreur affichée", () => {
+  vi.useFakeTimers();
+  try {
+    const setPointages = vi.fn(), afficherNotif = vi.fn();
+    renderWithApp(<PointageFormulaire initialDate={pointage.date} initialEmployeId={1} initialChantierId="c" />,
+      { chantiers: [{ id: 'c', nom: 'Chantier', statut: 'En cours' }], parametres: { employes: [emp] }, pointages: [], setPointages, afficherNotif });
+    fireEvent.change(screen.getByLabelText('Chantier'), { target: { value: 'c' } });
+    fireEvent.change(screen.getByLabelText('Heures'), { target: { value: '5' } });
+    fireEvent.click(screen.getByRole('button', { name: /Enregistrer le pointage/ }));
+    expect(afficherNotif).not.toHaveBeenCalledWith(expect.stringMatching(/Pointage enregistré/));
+    act(() => { vi.advanceTimersByTime(3100); });
+    expect(screen.getByText(/n'a pas pu être enregistré/)).toBeInTheDocument();
+    expect(screen.getByLabelText('Heures')).toHaveValue(5);
+    expect(afficherNotif).not.toHaveBeenCalledWith(expect.stringMatching(/Pointage enregistré/));
+  } finally { vi.useRealTimers(); }
+});
+
+it("IR-01 : des heures d'un autre chantier mises en file juste avant l'enregistrement ne sont pas écrasées", () => {
+  const afficherNotif = vi.fn();
+  let setRef, stockes;
+  const chantiersIR = [{ id: 'c', nom: 'Chantier', statut: 'En cours' }, { id: 'c2', nom: 'Autre', statut: 'En cours' }];
+  function Harness() {
+    const [pointages, setPointages] = useState([{ ...pointage, modifie_le: 'v0' }]);
+    setRef = setPointages; stockes = pointages;
+    return <AppProvider value={{ chantiers: chantiersIR, parametres: { employes: [emp] }, pointages, setPointages, afficherNotif }}><PointageFormulaire initialDate={pointage.date} initialEmployeId={1} initialChantierId="c" /></AppProvider>;
+  }
+  render(<Harness />);
+  fireEvent.change(screen.getAllByLabelText('Chantier')[0], { target: { value: 'c' } });
+  fireEvent.change(screen.getAllByLabelText('Heures')[0], { target: { value: '5' } });
+  // Une autre saisie ajoute 3 h sur le chantier c2 au MÊME pointage, mise en file sans rendu
+  // intermédiaire, puis l'utilisateur enregistre.
+  act(() => {
+    setRef(prev => prev.map(p => ({ ...p, repartitions: [...p.repartitions, { chantierId: 'c2', categorie: 'production', heures: 3 }] })));
+    fireEvent.click(screen.getByRole('button', { name: /Enregistrer le pointage|Modifier le pointage/ }));
+  });
+  const enregistre = stockes.find(p => p.date === pointage.date && String(p.employeId) === '1');
+  const heures = Object.fromEntries(enregistre.repartitions.map(r => [r.chantierId, r.heures]));
+  expect(heures.c).toBe(5);
+  expect(heures.c2).toBe(3);
+  expect(stockes.filter(p => p.date === pointage.date && String(p.employeId) === '1')).toHaveLength(1);
+});
+
+it("IR-02 : une saisie modifiée avant l'accusé de réception n'est ni effacée ni fermée", () => {
+  vi.useFakeTimers();
+  try {
+    const afficherNotif = vi.fn(), onSaved = vi.fn();
+    function Harness() {
+      const [pointages, setPointagesReel] = useState([]);
+      // Accusé de réception retardé : l'écriture n'apparaît dans la liste qu'après 1 s.
+      const setPointages = u => { setTimeout(() => setPointagesReel(u), 1000); };
+      return <AppProvider value={{ chantiers: [{ id: 'c', nom: 'Chantier', statut: 'En cours' }], parametres: { employes: [emp] }, pointages, setPointages, afficherNotif }}><PointageFormulaire initialDate={pointage.date} initialEmployeId={1} initialChantierId="c" onSaved={onSaved} /></AppProvider>;
+    }
+    render(<Harness />);
+    fireEvent.change(screen.getByLabelText('Chantier'), { target: { value: 'c' } });
+    fireEvent.change(screen.getByLabelText('Heures'), { target: { value: '5' } });
+    fireEvent.click(screen.getByRole('button', { name: /Enregistrer le pointage/ }));
+    // Avant l'accusé, l'utilisateur corrige déjà la saisie.
+    fireEvent.change(screen.getByLabelText('Heures'), { target: { value: '6' } });
+    act(() => { vi.advanceTimersByTime(1100); });
+    expect(screen.getByLabelText('Heures')).toHaveValue(6);
+    expect(onSaved).not.toHaveBeenCalled();
+  } finally { vi.useRealTimers(); }
+});

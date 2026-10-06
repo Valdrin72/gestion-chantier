@@ -96,7 +96,7 @@ export function usePointages({ pointages, setPointages }) {
   /**
    * Ajoute un nouveau pointage. Génère id, saisi_le et modifie_le automatiquement.
    * @param {Omit<import('../types/pointage').Pointage, 'id'|'saisi_le'|'modifie_le'>} pointage
-   * @returns {{ ok: boolean, error?: string }}
+   * @returns {{ ok: boolean, error?: string, pointage?: object }} pointage = l'enregistrement écrit
    */
   const addPointage = (pointage, canton = 'GE') => {
     for (const r of (pointage.repartitions || [])) {
@@ -116,14 +116,14 @@ export function usePointages({ pointages, setPointages }) {
       modifie_le: now,
     };
     setPointages(prev => [...prev, nouveau]);
-    return { ok: true };
+    return { ok: true, pointage: nouveau };
   };
 
   /**
    * Met à jour les champs d'un pointage existant. Met à jour modifie_le.
    * @param {string} id
    * @param {Partial<import('../types/pointage').Pointage>} changes
-   * @returns {{ ok: boolean, error?: string }}
+   * @returns {{ ok: boolean, error?: string, pointage?: object }} pointage = l'enregistrement écrit
    */
   const updatePointage = (id, changes) => {
     if (changes.repartitions) {
@@ -136,7 +136,8 @@ export function usePointages({ pointages, setPointages }) {
     setPointages(prev => prev.map(p =>
       p.id === id ? { ...p, ...changes, modifie_le } : p
     ));
-    return { ok: true };
+    const avant = pointages.find(p => p.id === id);
+    return { ok: true, pointage: avant ? { ...avant, ...changes, modifie_le } : undefined };
   };
 
   /**
@@ -162,33 +163,48 @@ export function usePointages({ pointages, setPointages }) {
    * @returns {{ ok: boolean, error?: string }}
    */
   const upsertPointage = (pointage, canton = 'GE') => {
-    const existing = pointages.find(p =>
-      p.date === pointage.date && String(p.employeId) === String(pointage.employeId)
-    );
-    if (existing) {
+    for (const r of (pointage.repartitions || [])) {
+      const err = erreurRepartition(r);
+      if (err) return { ok: false, error: err };
+    }
+    const now = new Date().toISOString();
+    const nouvelId = genererIdPointage();
+    // IR-01 — recherche, fusion et ajout se font DANS le setter fonctionnel, sur l'état réellement
+    // à jour (`prev`), et non sur la liste du rendu : une mise à jour déjà en file (autre chantier,
+    // autre champ) n'est jamais écrasée, et un pointage ajouté en file n'est pas dupliqué.
+    setPointages(prev => {
+      const existing = prev.find(p =>
+        p.date === pointage.date && String(p.employeId) === String(pointage.employeId)
+      );
+      if (!existing) {
+        const majoration = pointage.majoration !== undefined
+          ? pointage.majoration
+          : _calculerMajorationPourPointage(pointage, canton);
+        return [...prev, { ...pointage, id: nouvelId, majoration, saisi_le: now, modifie_le: now }];
+      }
       // C1 — FUSION des répartitions (ne JAMAIS écraser les heures des autres chantiers).
-      // Les widgets de saisie n'envoient que la répartition du chantier courant ; sans fusion,
-      // pointer un 2e chantier le même jour effaçait le 1er (perte d'heures silencieuse).
       // Clé d'unicité : (chantierId, categorie). Une répartition entrante MET À JOUR celle de
-      // même (chantier, catégorie) — correction de saisie — et AJOUTE si absente — 2e chantier.
-      // Les répartitions non concernées (autre chantier, absence, atelier…) sont CONSERVÉES.
+      // même (chantier, catégorie) et AJOUTE si absente. Les autres sont CONSERVÉES.
       const cle = r => `${r.chantierId == null ? 'null' : String(r.chantierId)}__${r.categorie}`;
       const parCle = new Map();
       for (const r of (existing.repartitions || [])) parCle.set(cle(r), r);
       for (const r of (pointage.repartitions || [])) parCle.set(cle(r), r); // remplace ou ajoute
       const repartitionsFusion = [...parCle.values()];
-      // Majoration recalculée depuis les répartitions fusionnées (les heures ont changé).
       const majoration = _calculerMajorationPourPointage(
         { ...existing, repartitions: repartitionsFusion }, canton
       );
-      return updatePointage(existing.id, {
+      return prev.map(p => p.id === existing.id ? {
+        ...p,
         repartitions: repartitionsFusion,
-        deplacement: pointage.deplacement ?? existing.deplacement,
-        saisi_par: pointage.saisi_par ?? existing.saisi_par,
+        deplacement: pointage.deplacement ?? p.deplacement,
+        saisi_par: pointage.saisi_par ?? p.saisi_par,
         majoration,
-      });
-    }
-    return addPointage(pointage, canton);
+        modifie_le: now,
+      } : p);
+    });
+    // `modifie_le` sert d'accusé de réception (PointageFormulaire) : l'enregistrement réellement
+    // écrit est celui qui apparaîtra dans la liste avec ce `modifie_le`.
+    return { ok: true, pointage: { ...pointage, modifie_le: now } };
   };
 
   return {

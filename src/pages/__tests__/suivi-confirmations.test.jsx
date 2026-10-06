@@ -121,3 +121,26 @@ describe.each(specs)('file React réelle : $nom', spec => {
     expect(afficherNotif).toHaveBeenCalledWith(expect.stringContaining('pendant la confirmation'), 'error');
   });
 });
+
+describe.each([
+  { nom: 'client', Component: Clients, liste: 'clients', setter: 'setClients', initial: client, ref: { clientId: 1 }, supprime: 'Client supprimé', archive: 'Client archivé — visible via « Voir les archivés »' },
+  { nom: 'devis', Component: Devis, liste: 'devis', setter: 'setDevis', initial: devis, ref: { devisId: 100 }, supprime: 'Devis supprimé', archive: 'Devis archivé — visible via « Voir les archivés »' },
+  { nom: 'chantier', Component: Chantiers, liste: 'chantiers', setter: 'setChantiers', initial: chantier, ref: { chantierId: 10 }, supprime: null, archive: 'Chantier archivé — visible via « Voir les archivés »', explication: 'Il sera rangé hors de la liste active mais conservé (heures, factures, historique).' },
+])('textes rétablis : $nom', spec => {
+  it.each(['suppression', 'archivage'])('%s acceptée → message d’origine', async action => {
+    if (action === 'suppression' && !spec.supprime) return;
+    let current = [spec.initial];
+    const set = vi.fn(updater => { current = typeof updater === 'function' ? updater(current) : updater; });
+    const notifier = vi.fn();
+    const confirmer = vi.fn(() => Promise.resolve(true));
+    const factures = action === 'archivage' ? [{ id: 'f0', ...spec.ref }] : [];
+    const chantiers = action === 'archivage' && spec.nom === 'client' ? [{ id: 'lié', clientId: 1 }] : [];
+    const ctx = { parametres: { employes: [], parametres: {} }, contexte: {}, naviguer: vi.fn(), clients: [], devis: [], chantiers, factures, pointages: [], periodeGlobale: 'tout', confirmer, afficherNotif: notifier, [spec.liste]: current, [spec.setter]: set };
+    render(<AppProvider value={ctx}><spec.Component {...(spec.nom === 'client' ? { clients: current, setClients: set, chantiers, devis: [], factures } : {})} /></AppProvider>);
+    const titre = action === 'archivage' ? 'Archiver' : 'Supprimer';
+    fireEvent.click(screen.getAllByTitle(new RegExp('^' + titre)).find(b => b.title.startsWith(titre)));
+    await act(async () => { await Promise.resolve(); await Promise.resolve(); });
+    if (action === 'archivage' && spec.explication) expect(confirmer.mock.calls[0][0]).toContain(spec.explication);
+    expect(notifier).toHaveBeenCalledWith(action === 'archivage' ? spec.archive : spec.supprime);
+  });
+});

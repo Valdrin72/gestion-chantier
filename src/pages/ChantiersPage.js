@@ -1,3 +1,5 @@
+import useActionConfirmee from '../hooks/useActionConfirmee';
+import { chantierEstReferencé } from '../utils/referenceGuard';
 import React, { useRef, useLayoutEffect, useState } from 'react';
 import { donneesInitiales, heuresEmploye } from '../donnees';
 import { useApp } from '../context/AppContext';
@@ -19,6 +21,9 @@ function Chantiers() {
   const { chantiers, setChantiers, devis = [], factures = [], pointages = [], parametres, naviguer, contexte, afficherNotif, confirmer, consultationMobile } = useApp();
   const { filtre, setFiltre, chantiersFiltres, chantiersArchives, joursParChantier } = useChantierFiltres();
 
+  const listesRef = useRef({ chantiers, factures, pointages });
+  listesRef.current = { chantiers, factures, pointages };
+  const agir = useActionConfirmee(afficherNotif);
   const [vue, setVue] = useState('liste');
   const [selected, setSelected] = useState(null);
   const [detailOnglet, setDetailOnglet] = useState('analyse');
@@ -121,35 +126,28 @@ function Chantiers() {
     setAjout(false); setForm(vide); setErreurs({});
   };
 
-  const supprimer = async (id) => {
-    const c = chantiers.find(ch => ch.id === id);
-    // Option 2 — un chantier avec historique (heures pointées OU factures) ne se supprime jamais :
-    // on conserve toute la donnée et on le passe en Terminé/Annulé. Seule une coquille vide est supprimable.
-    const facturesLiees = factures.filter(f => String(f.chantierId) === String(id));
-    const pointagesLies = (pointages || []).filter(p =>
-      (p.repartitions || []).some(r => String(r.chantierId) === String(id))
-    );
-    if (facturesLiees.length > 0 || pointagesLies.length > 0) {
-      const msgBloque = 'Ce chantier a des heures pointées et/ou des factures. Il ne peut pas être supprimé — passe-le en Terminé ou Annulé pour conserver l\'historique.';
-      if (afficherNotif) afficherNotif(msgBloque); else alert(msgBloque);
-      return;
-    }
-    if (!await confirmer(`Supprimer le chantier "${c?.nom}" ?\n\nCette action est irréversible.`, { labelOui: 'Supprimer' })) return;
-    setChantiers(chantiers.filter(ch => String(ch.id) !== String(id)));
-    setSelected(null);
-    setVue('liste');
+  const supprimer = async (id, copieAvantPremiereConfirmation) => {
+    const origine = copieAvantPremiereConfirmation || copieOrigine(listesRef.current.chantiers.find(ch => String(ch.id) === String(id)));
+    if (!origine || consultationMobile) return;
+    const reference = chantierEstReferencé(origine, listesRef.current);
+    if (reference) { afficherNotif?.(reference, 'error'); return; }
+    if (!await confirmer(`Supprimer le chantier "${origine.nom}" ?\n\nCette action est irréversible.`, { labelOui: 'Supprimer' })) return;
+    agir(setChantiers, prev => {
+      const actuel = prev.find(ch => String(ch.id) === String(id));
+      const erreur = aEteModifieAilleurs(origine, actuel) ? "Cet élément a été modifié ou supprimé pendant la confirmation. Vérifiez les données puis recommencez." : chantierEstReferencé(actuel, listesRef.current);
+      return { erreur, valeur: erreur ? prev : prev.filter(ch => String(ch.id) !== String(id)) };
+    }, 'Chantier supprimé', () => { setSelected(null); setVue('liste'); });
   };
 
-  // Archiver — réservé aux chantiers référencés (heures/factures) : on les range
-  // hors de la vue active sans rien détruire. Restaurable via "Voir les archivés".
-  const archiverChantier = async (id) => {
-    const c = chantiers.find(ch => String(ch.id) === String(id));
-    if (!c) return;
-    if (!await confirmer(`Archiver le chantier "${c.nom}" ?\n\nIl sera rangé hors de la liste active mais conservé (heures, factures, historique).`, { labelOui: 'Archiver' })) return;
-    setChantiers(chantiers.map(ch => String(ch.id) === String(id) ? archiver(ch) : ch));
-    setSelected(null);
-    setVue('liste');
-    if (afficherNotif) afficherNotif('Chantier archivé — visible via « Voir les archivés »');
+  const archiverChantier = async id => {
+    const origine = copieOrigine(listesRef.current.chantiers.find(ch => String(ch.id) === String(id)));
+    if (!origine || consultationMobile) return;
+    if (!await confirmer(`Archiver le chantier "${origine.nom}" ?`, { labelOui: 'Archiver' })) return;
+    agir(setChantiers, prev => {
+      const actuel = prev.find(ch => String(ch.id) === String(id));
+      const erreur = aEteModifieAilleurs(origine, actuel) ? "Cet élément a été modifié ou supprimé pendant la confirmation. Vérifiez les données puis recommencez." : null;
+      return { erreur, valeur: erreur ? prev : prev.map(ch => String(ch.id) === String(id) ? archiver(ch) : ch) };
+    }, 'Chantier archivé — visible via « Voir les archivés »', () => { setSelected(null); setVue('liste'); });
   };
 
   const restaurerChantier = (id) => {

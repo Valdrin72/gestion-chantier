@@ -201,7 +201,7 @@ describe('ClientsPage', () => {
       await waitFor(() => {
         expect(setClients).toHaveBeenCalledTimes(1);
       });
-      const restants = setClients.mock.calls[0][0];
+      const restants = setClients.mock.calls[0][0]([clone(CLIENT_1), clone(CLIENT_2)]);
       expect(restants).toHaveLength(1);
       expect(restants.find(c => c.id === 1)).toBeFalsy(); // Dupont supprimé
       expect(restants.find(c => c.id === 2)).toBeTruthy(); // Martin conservé
@@ -238,7 +238,7 @@ describe('ClientsPage', () => {
       fireEvent.click(archiver[0]);
       await waitFor(() => expect(setClients).toHaveBeenCalled());
       expect(confirmer).toHaveBeenCalled();
-      const after = setClients.mock.calls[0][0];
+      const after = setClients.mock.calls[0][0]([clone(CLIENT_1), clone(CLIENT_2)]);
       const dupont = after.find(c => c.id === 1);
       expect(dupont.archive).toBe(true);
       expect(typeof dupont.dateArchivage).toBe('string');
@@ -284,7 +284,7 @@ describe('ClientsPage', () => {
       expect(supprimer.length).toBe(1); // uniquement Martin (vierge)
       fireEvent.click(supprimer[0]);
       await waitFor(() => expect(setClients).toHaveBeenCalled());
-      const restants = setClients.mock.calls[0][0];
+      const restants = setClients.mock.calls[0][0]([clone(CLIENT_1), clone(CLIENT_2)]);
       expect(restants.find(c => c.id === 2)).toBeFalsy(); // Martin supprimé (dur)
       expect(restants.find(c => c.id === 1)).toBeTruthy(); // Dupont conservé
     });

@@ -107,7 +107,7 @@ describe('FORMULAIRE — création (tarifs préservés)', () => {
     fireEvent.click(screen.getByRole('button', { name: /Sauvegarder/i }));
 
     expect(setParametres).toHaveBeenCalledOnce();
-    const emp = setParametres.mock.calls[0][0].employes.find(e => e.nom === 'Paul Neuf');
+    const emp = setParametres.mock.calls[0][0]({ employes: [EMP] }).employes.find(e => e.nom === 'Paul Neuf');
     expect(emp).toBeTruthy();
     // Tarif horaire conservé + tarifJour dérivé (× 8) — calcul inchangé (money-critical)
     expect(emp.tarifHeure).toBe(50);

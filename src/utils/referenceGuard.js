@@ -32,7 +32,7 @@ export function clientEstReferencé(client, { chantiers = [], devis = [], factur
   const idsCh = new Set(chantiersLies.map(ch => String(ch.id)));
   const idsDevis = new Set(devisLies.map(dv => String(dv.id)));
   const aFactures = factures.some(f =>
-    idsCh.has(String(f.chantierId)) || idsDevis.has(String(f.devisId))
+    String(f.clientId) === id || idsCh.has(String(f.chantierId)) || idsDevis.has(String(f.devisId))
   );
   if (chantiersLies.length > 0 || devisLies.length > 0 || aFactures) {
     return 'Ce client a des chantiers, devis ou factures — il ne peut pas être supprimé, son historique doit être conservé.';

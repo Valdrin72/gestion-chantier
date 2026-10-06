@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import { copieOrigine, aChangeDepuis, conserverBrouillonRefuse } from '../../utils/gardeEdition';
+import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { DS } from '../../ds';
 import { V1 } from '../../design/v1';
 import { useApp } from '../../context/AppContext';
@@ -71,6 +72,8 @@ export default function PointageFormulaire({ onSaved, initialDate, initialEmploy
     absence: { ...ABSENCE_INITIAL },
     deplacement: { ...DEPLACEMENT_INITIAL },
   }));
+  const origineRef = useRef(null);
+  const origineEnAttenteRef = useRef(false);
   const [mode, setMode] = useState('create');
   const [erreurs, setErreurs] = useState([]);
   const [flash, setFlash] = useState(null);
@@ -81,6 +84,8 @@ export default function PointageFormulaire({ onSaved, initialDate, initialEmploy
     const existing = pointages.find(p =>
       p.date === form.date && String(p.employeId) === String(form.employeId)
     );
+    origineRef.current = copieOrigine(existing);
+    origineEnAttenteRef.current = false;
     if (!existing) { setMode('create'); return; }
 
     setMode('edit');
@@ -102,6 +107,12 @@ export default function PointageFormulaire({ onSaved, initialDate, initialEmploy
     }));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [form.date, form.employeId]);
+
+  useEffect(() => {
+    if (!origineEnAttenteRef.current) return;
+    origineRef.current = copieOrigine(pointages.find(p => p.date === form.date && String(p.employeId) === String(form.employeId)));
+    origineEnAttenteRef.current = false;
+  }, [pointages, form.date, form.employeId]);
 
   const setDate = useCallback(date => {
     setForm(prev => ({ ...prev, date, repartitions: [{ ...REPARTITION_VIDE }], absence: { ...ABSENCE_INITIAL }, deplacement: { ...DEPLACEMENT_INITIAL } }));
@@ -154,12 +165,19 @@ export default function PointageFormulaire({ onSaved, initialDate, initialEmploy
       saisi_par: 'user',
     };
 
+    if (origineEnAttenteRef.current) return;
+    const actuel = pointages.find(p => p.date === form.date && String(p.employeId) === String(form.employeId));
+    if (aChangeDepuis(origineRef.current, actuel)) {
+      const message = "Ce pointage a été modifié sur un autre appareil. Vérifiez puis rouvrez le formulaire." + conserverBrouillonRefuse('pointages', pointage);
+      setErreurs([message]); afficherNotif?.(message, 'error'); return;
+    }
     const res = upsertPointage(pointage, canton);
     if (!res.ok) {
       setErreurs([res.error || 'Erreur lors de la sauvegarde.']);
       return;
     }
 
+    origineEnAttenteRef.current = true;
     const nomChantier = chantiersActifs.find(c => String(c.id) === String(form.repartitions[0]?.chantierId))?.nom;
     const msg = mode === 'edit'
       ? 'Pointage modifié avec succès'

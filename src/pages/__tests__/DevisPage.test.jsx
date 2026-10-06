@@ -669,7 +669,7 @@ describe('DevisPage — suppression protégée', () => {
     fireEvent.click(screen.getByTitle('Supprimer'));
     await waitFor(() => expect(ctx.setDevis).toHaveBeenCalledOnce());
 
-    const nouveauxDevis = ctx.setDevis.mock.calls[0][0];
+    const nouveauxDevis = ctx.setDevis.mock.calls[0][0](ctx.devis);
     expect(nouveauxDevis).toHaveLength(0);
     // Pas de cascade — setChantiers et setFactures ne doivent pas être appelés
     expect(ctx.setChantiers).not.toHaveBeenCalled();
@@ -687,7 +687,7 @@ describe('DevisPage — suppression protégée', () => {
     fireEvent.click(screen.getByTitle(/Archiver/));
 
     await waitFor(() => expect(ctx.setDevis).toHaveBeenCalledOnce());
-    const after = ctx.setDevis.mock.calls[0][0];
+    const after = ctx.setDevis.mock.calls[0][0](ctx.devis);
     const dc = after.find(d => d.id === 'dc');
     expect(dc.archive).toBe(true);
     expect(typeof dc.dateArchivage).toBe('string');
@@ -705,7 +705,7 @@ describe('DevisPage — suppression protégée', () => {
     expect(screen.queryByTitle('Supprimer')).toBeNull();
     fireEvent.click(screen.getByTitle(/Archiver/));
     await waitFor(() => expect(ctx.setDevis).toHaveBeenCalledOnce());
-    expect(ctx.setDevis.mock.calls[0][0].find(d => d.id === 'dc').archive).toBe(true);
+    expect(ctx.setDevis.mock.calls[0][0](ctx.devis).find(d => d.id === 'dc').archive).toBe(true);
   });
 
   it('refuser la confirmation d\'archivage → setDevis non appelé', async () => {

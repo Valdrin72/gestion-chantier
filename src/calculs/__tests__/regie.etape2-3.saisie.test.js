@@ -87,7 +87,7 @@ describe('EmployesPage — champ tarifRegieHeure (RTL)', () => {
     fireEvent.click(screen.getByRole('button', { name: /Sauvegarder/i }));
 
     expect(setParametres).toHaveBeenCalledOnce();
-    const appelé = setParametres.mock.calls[0][0];
+    const appelé = setParametres.mock.calls[0][0]({ employes: [] });
     const empSauvé = appelé.employes[0];
     expect(empSauvé.tarifRegieHeure).toBe(95);
     // Étalon règle 8 : tarifJour dérivé automatiquement (43.75 × 8 = 350)
@@ -105,7 +105,7 @@ describe('EmployesPage — champ tarifRegieHeure (RTL)', () => {
     // On ne saisit PAS tarifRegieHeure
     fireEvent.click(screen.getByRole('button', { name: /Sauvegarder/i }));
 
-    const empSauvé = setParametres.mock.calls[0][0].employes[0];
+    const empSauvé = setParametres.mock.calls[0][0]({ employes: [] }).employes[0];
     expect(empSauvé.tarifRegieHeure).toBeUndefined();
   });
 });

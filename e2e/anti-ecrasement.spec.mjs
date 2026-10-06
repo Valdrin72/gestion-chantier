@@ -13,7 +13,7 @@ const ANON = CIBLE.anon;
 
 // Identifiant de passage : rendu unique par worker (un worker est relancé après un échec).
 const RUN = `e2e${Date.now().toString(36)}`;
-const NOMS = { a: `A ${RUN}`, b: `B ${RUN}`, c: `C ${RUN}`, d: `D ${RUN}` };
+const NOMS = { a: `A ${RUN}`, b: `B ${RUN}`, c: `C ${RUN}`, d: `D ${RUN}`, f: `F ${RUN}`, x: `X ${RUN}`, y: `Y ${RUN}`, x2: `X2 ${RUN}` };
 const etiquette = cle => `Test ${NOMS[cle]}`;
 const resultat = msg => console.log(`RÉSULTAT ${msg}`);
 
@@ -239,6 +239,69 @@ test.describe('E2E anti-écrasement — staging, mode user', () => {
     resultat(`(d) ${ecritures.length === 0 && apres.version === avant.version ? 'OK' : 'ÉCHEC'} — écran d'erreur affiché ; écritures REST : ${ecritures.length} ; version ${avant.version} → ${apres.version}`);
     expect(ecritures, 'aucune écriture REST').toEqual([]);
     expect(apres.version, 'version inchangée').toBe(avant.version);
+  });
+
+  test('(e) lecture retardée : écran bloquant puis application utilisable', async ({ browser }) => {
+    const C = await nouvelAppareil(browser);
+    let liberer;
+    const attente = new Promise(resolve => { liberer = resolve; });
+    await C.context.route(/\/rest\/v1\/devis/, async route => {
+      if (route.request().method() === 'GET') await attente;
+      await route.fallback();
+    });
+    try {
+      await connecter(C.page);
+      await expect(C.page.getByRole('status')).toHaveText('Chargement de vos données…');
+      await expect(C.page.getByRole('button', { name: /Nouveau client/ })).toHaveCount(0);
+      await expect(C.page.getByRole('navigation')).toHaveCount(0);
+      liberer();
+      await allerClients(C.page);
+    } finally { liberer(); await C.context.close(); }
+  });
+
+  test('(f) hors ligne puis rechargement sans Réessayer : copie durable', async ({ browser }) => {
+    const C = await nouvelAppareil(browser);
+    try {
+      await connecter(C.page); await allerClients(C.page);
+      await creerClient(C.page, 'f');
+      expect(await attendreServeur(C.page, l => clientServeur(l, 'f'))).toBeTruthy();
+      await C.context.setOffline(true);
+      const texte = `Non enregistré ${RUN}`;
+      await modifierNotes(C.page, 'f', texte);
+      await expect(C.page.getByRole('alert').filter({ hasText: 'Ne fermez pas' })).toBeVisible({ timeout: 20_000 });
+      const lireCopies = () => C.page.evaluate(() => Object.keys(localStorage).filter(k => k.startsWith('cyna_sauvegarde_en_echec_')).map(k => JSON.parse(localStorage.getItem(k))));
+      expect(aCopie(await lireCopies(), 'f', texte)).toBe(true);
+      await C.context.setOffline(false);
+      let fermeture = false;
+      C.page.once('dialog', async dialog => { expect(dialog.type()).toBe('beforeunload'); fermeture = true; await dialog.accept(); });
+      await C.page.reload(); await allerClients(C.page);
+      expect(fermeture).toBe(true);
+      expect(aCopie(await lireCopies(), 'f', texte)).toBe(true);
+      await expect(C.page.getByRole('alert').filter({ hasText: 'session précédente' })).toBeVisible();
+    } finally { await C.context.setOffline(false); await C.context.close(); }
+  });
+
+  test('(g) suppression confirmée : autre client conservé, cible modifiée protégée', async () => {
+    await recharger(A); await recharger(B);
+    for (const cle of ['x', 'y', 'x2']) await creerClient(A.page, cle);
+    expect(await attendreServeur(A.page, l => ['x', 'y', 'x2'].every(k => clientServeur(l, k)))).toBeTruthy();
+    await recharger(B);
+    await ligneClient(A.page, 'x').getByTitle('Supprimer ce client', { exact: true }).click();
+    const texteY = `Y distant ${RUN}`;
+    await modifierNotes(B.page, 'y', texteY);
+    expect(await attendreServeur(B.page, l => clientServeur(l, 'y')?.notes === texteY)).toBeTruthy();
+    await expect(A.page.getByText(texteY, { exact: true })).toBeVisible({ timeout: 20_000 });
+    await A.page.getByRole('button', { name: 'Supprimer', exact: true }).click();
+    expect(await attendreServeur(A.page, l => !clientServeur(l, 'x') && clientServeur(l, 'y')?.notes === texteY)).toBeTruthy();
+    await expect(B.page.getByText(etiquette('x'), { exact: true })).toHaveCount(0, { timeout: 20_000 });
+    await ligneClient(A.page, 'x2').getByTitle('Supprimer ce client', { exact: true }).click();
+    const texteX = `X distant ${RUN}`;
+    await modifierNotes(B.page, 'x2', texteX);
+    expect(await attendreServeur(B.page, l => clientServeur(l, 'x2')?.notes === texteX)).toBeTruthy();
+    await expect(A.page.getByText(texteX, { exact: true })).toBeVisible({ timeout: 20_000 });
+    await A.page.getByRole('button', { name: 'Supprimer', exact: true }).click();
+    await expect(A.page.getByText(/modifié ou supprimé pendant la confirmation/)).toBeVisible();
+    expect(clientServeur(await lireBlob(A.page), 'x2')?.notes).toBe(texteX);
   });
 
   test('état final — colonne version', async () => {

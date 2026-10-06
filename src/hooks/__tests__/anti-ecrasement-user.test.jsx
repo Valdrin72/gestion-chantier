@@ -7,7 +7,7 @@ const store = vi.hoisted(() => ({ row: null, reads: [], writes: [], handlers: []
 const deconnecter = vi.hoisted(() => vi.fn());
 vi.mock('../useAuth', () => ({
   DEMO_USER_ID: 'demo',
-  default: () => ({ session: { user: { id: 'user' } }, profil: { id: 'cyna', nom: 'CYNA', pages: ['dashboard'] }, loading: false, deconnecter }),
+  default: () => ({ session: { user: { id: store.demo ? 'demo' : 'user' } }, profil: { id: 'cyna', nom: 'CYNA', pages: ['dashboard'] }, loading: false, deconnecter }),
 }));
 vi.mock('../../useAgents', () => ({ default: () => ({}) }));
 vi.mock('../../modules/alertes/useAlertBootstrap', () => ({ useAlertBootstrap: () => {} }));
@@ -66,6 +66,7 @@ import { supabase } from '../../lib/supabase';
 import { BandeauSauvegarde, EcranErreurChargement } from '../../components/EtatSauvegarde';
 import App from '../../App';
 import { regenererJournalDepuisPointages } from '../../migration/regenererJournalDepuisPointages';
+import { conserverBrouillonRefuse } from '../../utils/gardeEdition';
 
 const blob = () => ({ chantiers: [], devis: [{ id: 'initial' }], factures: [], clients: [], pointages: [], parametres: { employes: [{ id: 1, tarifJour: 350 }, { id: 2, tarifJour: 450 }] } });
 const row = (version = 0, data = blob()) => ({ id: 'row', numero: '__cyna_storage__', version, data });
@@ -85,7 +86,7 @@ beforeEach(() => {
   window.matchMedia = query => ({ matches: false, media: query, addEventListener() {}, removeEventListener() {} });
   deconnecter.mockClear();
   delete process.env.REACT_APP_STORAGE_MODE;
-  Object.assign(store, { row: row(), reads: [], writes: [], handlers: [], readError: null, writeError: null, deferRead: null, deferWrite: null });
+  Object.assign(store, { row: row(), reads: [], writes: [], handlers: [], readError: null, writeError: null, deferRead: null, deferWrite: null, demo: false });
   Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'visible' });
   vi.useFakeTimers();
 });
@@ -238,6 +239,8 @@ describe('anti-écrasement user : vrai hook et serveur en mémoire', () => {
     const gate = deferred(); store.deferRead = gate.promise;
     const h = await boot();
     act(() => h.result.current.setClients([{ id: 'avant-lecture' }]));
+    expect(h.result.current.clients).toEqual([]);
+    expect(localStorage.getItem('cyna_clients')).toBeNull();
     gate.resolve({ data: store.row }); await settle(); await tick();
     expect(h.result.current.loading).toBe(false); expect(h.result.current.devis).toEqual([{ id: 'initial' }]);
     expect(store.writes).toHaveLength(0);
@@ -435,5 +438,137 @@ describe('anti-écrasement user : vrai hook et serveur en mémoire', () => {
     expect(code).toContain("where numero = '__cyna_storage__'"); expect(code).toContain('having count(*) > 1');
     expect(code.indexOf('having count(*) > 1')).toBeLessThan(code.indexOf('alter table'));
     expect(code).not.toMatch(/delete\s+from|drop\s+table/);
+  });
+});
+
+describe('suivi : chargement et épisode durable', () => {
+  it('App démo : erreur bloquante puis reprise sans écran démo trompeur', async () => {
+    store.demo = true; store.readError = { message: 'offline' };
+    render(<App />); await settle();
+    expect(screen.getByRole('alert')).toHaveTextContent('Impossible de charger');
+    expect(screen.queryByText('Tableau de bord chargé')).toBeNull();
+    store.readError = null; fireEvent.click(screen.getByText('Réessayer')); await settle();
+    expect(screen.getByText('Tableau de bord chargé')).toBeInTheDocument();
+  });
+  it('beforeunload pendant debounce et vol, listener retiré après succès', async () => {
+    const remove = vi.spyOn(window, 'removeEventListener');
+    const h = await boot(); const gate = deferred(); store.deferWrite = gate.promise;
+    const fermeture = () => { const e = new Event('beforeunload', { cancelable: true }); window.dispatchEvent(e); return e.defaultPrevented; };
+    act(() => h.result.current.setDevis([{ id: 'local' }])); expect(fermeture()).toBe(true);
+    await tick(); expect(fermeture()).toBe(true);
+    gate.resolve(); await settle(); expect(fermeture()).toBe(false);
+    expect(remove).toHaveBeenCalledWith('beforeunload', expect.any(Function)); remove.mockRestore();
+  });
+  it('quota à la mise à jour : original intact, nouvelle copie distincte si possible', async () => {
+    const h = await boot(); store.writeError = { message: 'offline' };
+    act(() => h.result.current.setDevis([{ id: 'premier' }])); await tick();
+    const key = 'cyna_sauvegarde_en_echec_user', origine = localStorage.getItem(key);
+    const original = Storage.prototype.setItem;
+    const spy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function(k, v) {
+      if (k === key) throw new Error('quota');
+      return original.call(this, k, v);
+    });
+    try {
+      act(() => h.result.current.setDevis([{ id: 'dernier' }]));
+      expect(localStorage.getItem(key)).toBe(origine);
+      const copie = Object.keys(localStorage).find(k => k.startsWith(key + '_'));
+      expect(JSON.parse(localStorage.getItem(copie)).devis[0].id).toBe('dernier');
+      expect(h.result.current.etatSync.message).toContain("copie n'a pas pu être mise à jour");
+    } finally { spy.mockRestore(); }
+  });
+  it('épisode transféré vers conflit seulement après persistance', async () => {
+    const h = await boot(); store.writeError = { message: 'offline' };
+    act(() => h.result.current.setPointages([{ id: 'local' }])); await tick();
+    expect(localStorage.getItem('cyna_sauvegarde_en_echec_user')).not.toBeNull();
+    distant(); store.writeError = null;
+    await act(async () => h.result.current.reessayerSauvegarde());
+    expect(localStorage.getItem('cyna_sauvegarde_en_echec_user')).toBeNull();
+    expect(copies()[0].pointages[0].id).toBe('local');
+  });
+  it('six refus ne nettoient pas la copie ; épisode antérieur rangé avant remplacement', async () => {
+    const key = 'cyna_sauvegarde_en_echec_user';
+    localStorage.setItem(key, JSON.stringify({ source: 'echec-sauvegarde', clients: [{ id: 'ancienne' }] }));
+    const h = await boot(); store.writeError = { message: 'offline' };
+    act(() => h.result.current.setClients([{ id: 'nouvelle' }])); await tick();
+    expect(copies().some(c => c.source === 'echec-sauvegarde-precedente' && c.clients[0].id === 'ancienne')).toBe(true);
+    for (let n = 0; n < 6; n++) conserverBrouillonRefuse('devis', { id: n });
+    act(() => h.result.current.setClients([{ id: 'dernière' }]));
+    expect(JSON.parse(localStorage.getItem(key)).clients[0].id).toBe('dernière');
+  });
+  it.each(['rangement', 'conflit'])('quota pendant %s : copie origine intacte et message exact', async transfert => {
+    const key = 'cyna_sauvegarde_en_echec_user';
+    let origine;
+    if (transfert === 'rangement') {
+      origine = JSON.stringify({ source: 'echec-sauvegarde', devis: [{ id: 'ancienne' }] });
+      localStorage.setItem(key, origine);
+    }
+    const h = await boot(); store.writeError = { message: 'offline' };
+    act(() => h.result.current.setDevis([{ id: 'local' }]));
+    if (transfert === 'conflit') { await tick(); origine = localStorage.getItem(key); distant(); store.writeError = null; }
+    const original = Storage.prototype.setItem;
+    const spy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function(k, v) {
+      if (k.startsWith('cyna_sauvegarde_rejetee_')) throw new Error('quota');
+      return original.call(this, k, v);
+    });
+    try {
+      if (transfert === 'conflit') await act(async () => h.result.current.reessayerSauvegarde());
+      else await tick();
+      expect(localStorage.getItem(key)).toBe(origine);
+      expect(h.result.current.etatSync.message).toContain("copie n'a pas pu être mise à jour");
+      if (transfert === 'rangement') expect(Object.keys(localStorage).some(k => k.startsWith(key + '_'))).toBe(true);
+    } finally { spy.mockRestore(); }
+  });
+  it('App bloque la navigation pendant la lecture initiale', async () => {
+    const gate = deferred(); store.deferRead = gate.promise;
+    render(<App />); await settle();
+    expect(screen.getByRole('status')).toHaveTextContent('Chargement de vos données…');
+    expect(screen.queryByText('Tableau de bord chargé')).toBeNull();
+    gate.resolve({ data: store.row }); await settle();
+    expect(screen.getByText('Tableau de bord chargé')).toBeInTheDocument();
+  });
+  it('les six setters ignorent leurs updaters et le cache avant lecture', async () => {
+    const gate = deferred(); store.deferRead = gate.promise;
+    const h = await boot(); const update = vi.fn(() => []);
+    act(() => ['Chantiers', 'Devis', 'Factures', 'Clients', 'Parametres', 'Pointages'].forEach(k => h.result.current['set' + k](update)));
+    expect(update).not.toHaveBeenCalled();
+    expect(Object.keys(localStorage).filter(k => k !== 'cyna_onboarding_done')).toEqual([]);
+    gate.resolve({ data: store.row }); await settle();
+  });
+  it('échec durable : pointages, debounce, vol et succès complet', async () => {
+    const h = await boot(); store.writeError = { message: 'offline' };
+    act(() => h.result.current.setPointages([{ id: 'P' }])); await tick();
+    const key = 'cyna_sauvegarde_en_echec_user';
+    expect(JSON.parse(localStorage.getItem(key)).pointages).toEqual([{ id: 'P' }]);
+    expect(h.result.current.etatSync.message).toContain('Ne fermez pas');
+    const closing = new Event('beforeunload', { cancelable: true }); window.dispatchEvent(closing);
+    expect(closing.defaultPrevented).toBe(true);
+    act(() => h.result.current.setClients([{ id: 'Q' }]));
+    expect(JSON.parse(localStorage.getItem(key)).clients).toEqual([{ id: 'Q' }]);
+    store.writeError = null; const gate = deferred(); store.deferWrite = gate.promise;
+    act(() => { h.result.current.reessayerSauvegarde(); }); await settle();
+    act(() => h.result.current.setDevis([{ id: 'R' }]));
+    expect(JSON.parse(localStorage.getItem(key)).devis).toEqual([{ id: 'R' }]);
+    gate.resolve(); await settle(); expect(localStorage.getItem(key)).not.toBeNull();
+    await tick(); expect(localStorage.getItem(key)).toBeNull();
+    const done = new Event('beforeunload', { cancelable: true }); window.dispatchEvent(done);
+    expect(done.defaultPrevented).toBe(false);
+  });
+  it('rechargement garde la copie ; Compris masque seulement le message', async () => {
+    const h = await boot(); store.writeError = { message: 'offline' };
+    act(() => h.result.current.setPointages([{ id: 'P' }])); await tick(); h.unmount();
+    const next = await boot();
+    expect(JSON.parse(localStorage.getItem('cyna_sauvegarde_en_echec_user')).pointages).toEqual([{ id: 'P' }]);
+    expect(next.result.current.etatSync.message).toContain('session précédente');
+    act(() => next.result.current.fermerMessageSync());
+    expect(localStorage.getItem('cyna_sauvegarde_en_echec_user')).not.toBeNull();
+  });
+  it('démo : lecture en échec bloque puis Réessayer active les setters', async () => {
+    store.readError = { message: 'offline' };
+    const h = renderHook(() => useSupabaseData('demo', true)); await settle();
+    expect(h.result.current.etatSync.erreurChargement).toBeTruthy();
+    const updater = vi.fn(() => []); act(() => h.result.current.setClients(updater));
+    expect(updater).not.toHaveBeenCalled();
+    store.readError = null; await act(async () => h.result.current.reessayerChargement());
+    act(() => h.result.current.setClients(updater)); expect(updater).toHaveBeenCalled();
   });
 });

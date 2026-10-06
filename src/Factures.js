@@ -1,3 +1,4 @@
+import { copieOrigine, aEteModifieAilleurs, conserverBrouillonRefuse } from './utils/gardeEdition';
 // ============================================================
 // CYNA — MODULE FACTURES v2
 // clientId obligatoire, chantierId optionnel
@@ -6,7 +7,7 @@
 // statut: 'brouillon' | 'envoyee' | 'partielle' | 'payee' | 'retard' | 'annulee'
 // ============================================================
 
-import React, { useState, useMemo } from 'react';
+import React, { useRef, useState, useMemo } from 'react';
 import { FileDown, Download, HardHat } from 'lucide-react';
 import { DS } from './ds';
 import { mono, RYTHME } from './design/v1';
@@ -123,7 +124,7 @@ function KpiCard({ label, value, couleur, icon, sous }) {
 
 // ── COMPOSANT PRINCIPAL ──────────────────────────────────────
 export default function Factures({ profil, clients = [], chantiers = [], devis = [], factures = [], onSave, naviguer, hideHeader = false, periodeGlobale = 'mois', parametres = null, preRemplir = null, onConsumePreRemplir = null, nouvelleFactureSignal = 0 }) {
-  const { pointages = [], consultationMobile } = useApp();
+  const { pointages = [], consultationMobile, afficherNotif } = useApp();
   const isMobile = useIsMobile();
   const [vue, setVue] = useState('liste');   // 'liste' | 'form' | 'detail'
   const [selected, setSelected] = useState(null);
@@ -133,6 +134,16 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
   const [form, setForm] = useState(null);
   // I3 — taux TVA courant réglable dans Paramètres, appliqué à toute NOUVELLE ligne.
   const tvaDefaut = tauxTVAParam(parametres);
+  const origineFormRef = useRef(null);
+  const originePaiementRef = useRef(null);
+  const origineRappelRef = useRef(null);
+  const refuser = brouillon => {
+    afficherNotif?.("Cette facture a été modifiée sur un autre appareil. Fermez et rouvrez le formulaire." + conserverBrouillonRefuse('factures', brouillon), 'error');
+  };
+  const ouvrirPaiement = facture => {
+    originePaiementRef.current = copieOrigine(factures.find(f => String(f.id) === String(facture.id)));
+    setPaiementModal(facture);
+  };
   const [paiementModal, setPaiementModal] = useState(null); // facture sur laquelle on enregistre
   const [paiementForm, setPaiementForm] = useState({ montant: '', date: new Date().toISOString().slice(0, 10), note: '' });
   const [rappelModal, setRappelModal] = useState(null); // { facture, niveau, contenu }
@@ -143,6 +154,7 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
   // Ouvrir le formulaire pré-rempli depuis FinancesPage (bouton "Créer la situation")
   React.useEffect(() => {
     if (!preRemplir) return;
+    origineFormRef.current = null;
     const dateEmissionDefaut = new Date().toISOString().slice(0, 10);
     const dateEcheanceDefaut = new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10);
     const lignes = preRemplir.lignes || [{ description: '', quantite: 1, prixUnitaire: 0, tva: tvaDefaut }];
@@ -181,9 +193,15 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
   const enregistrerPaiement = () => {
     if (consultationMobile) return; // lecture seule mobile — aucune écriture d'argent
     if (!paiementModal || !paiementForm.montant) return;
-    const f = paiementModal;
+    const f = factures.find(x => String(x.id) === String(paiementModal.id)) || paiementModal;
     const montant = parseFloat(paiementForm.montant) || 0;
     if (montant <= 0) return;
+    if (aEteModifieAilleurs(originePaiementRef.current, factures.find(x => String(x.id) === String(paiementModal.id)))) {
+      const historique = [...(paiementModal.paiementsHistorique || []), { montant, date: paiementForm.date, mode: 'Virement', note: paiementForm.note }];
+      const montantPaye = historique.reduce((s, p) => s + (parseFloat(p.montant) || 0), 0);
+      refuser({ ...paiementModal, paiementsHistorique: historique, montantPaye, statut: montantPaye >= paiementModal.montantTTC - 0.01 ? 'payee' : 'partielle' });
+      return;
+    }
     const restantDu = (f.montantTTC ?? 0) - (f.montantPaye ?? 0);
     if (montant > restantDu + 0.01) {
       alert(`Montant trop élevé. Solde restant : CHF ${restantDu.toFixed(2)}`);
@@ -258,6 +276,7 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
   // ── Ouvrir formulaire ────────────────────────────────────
   const ouvrirForm = (facture = null) => {
     if (consultationMobile) return; // pas de formulaire de facture sur mobile
+    origineFormRef.current = copieOrigine(facture && factures.find(f => String(f.id) === String(facture.id)));
     if (facture) {
       setForm({ ...facture });
     } else {
@@ -362,6 +381,9 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
       }
     }
 
+    if (origineFormRef.current && aEteModifieAilleurs(origineFormRef.current, factures.find(f => String(f.id) === String(data.id)))) {
+      refuser(data); return;
+    }
     const liste = factures.some(f => f.id === data.id)
       ? factures.map(f => f.id === data.id ? data : f)
       : [...factures, data];
@@ -397,6 +419,7 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
   };
 
   const ouvrirRappel = (facture, niveau) => {
+    origineRappelRef.current = copieOrigine(factures.find(f => String(f.id) === String(facture.id)));
     const cli = clients.find(c => String(c.id) === String(facture.clientId));
     const contenu = genererTexteRappel(niveau, facture, cli);
     setRappelModal({ facture, niveau, contenu });
@@ -406,7 +429,9 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
     if (consultationMobile) return;
     if (!rappelModal) return;
     const { facture, niveau } = rappelModal;
-    const factureMAJ = marquerRappelEnvoye(facture, niveau);
+    const actuel = factures.find(f => String(f.id) === String(facture.id));
+    const factureMAJ = marquerRappelEnvoye(actuel || facture, niveau);
+    if (aEteModifieAilleurs(origineRappelRef.current, actuel)) { refuser(factureMAJ); return; }
     onSave(factures.map(x => x.id === facture.id ? factureMAJ : x));
     if (selected?.id === facture.id) setSelected(factureMAJ);
     setRappelModal(null);
@@ -609,7 +634,7 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
                         )}
                         {(f.statut === 'envoyee' || f.statut === 'partielle') && (
                           <button style={{ ...S.btnPrimary, padding: '5px 10px', fontSize: 12 }}
-                            onClick={() => setPaiementModal(f)}>Payer</button>
+                            onClick={() => ouvrirPaiement(f)}>Payer</button>
                         )}
                         {/* Brouillon : suppression autorisée (pas encore émis). */}
                         {canEdit && f.statut === 'brouillon' && (
@@ -755,7 +780,7 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
               )}
               {(f.statut === 'envoyee' || f.statut === 'partielle') && (
                 <>
-                  <button style={S.btnPrimary} onClick={() => setPaiementModal(f)}>Paiement</button>
+                  <button style={S.btnPrimary} onClick={() => ouvrirPaiement(f)}>Paiement</button>
                   <button style={{ ...S.btnGhost, color: '#10b981', borderColor: 'rgba(16,185,129,0.4)' }}
                     onClick={() => { changerStatut(f.id, 'payee'); setSelected({ ...f, statut: 'payee' }); }}>
                     Payée

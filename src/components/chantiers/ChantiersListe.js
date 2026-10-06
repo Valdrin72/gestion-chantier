@@ -1,3 +1,4 @@
+import { copieOrigine } from '../../utils/gardeEdition';
 import React, { useMemo, useState, useEffect, useLayoutEffect } from 'react';
 import {
   X, Pencil, Trash2, Archive, AlertTriangle, ChevronRight, Eye, Download, LayoutList, LayoutGrid, Menu, Bell, MapPin, Building2,
@@ -370,7 +371,7 @@ function ChantiersListe({
                       <button onClick={() => onModifier(c)} style={{ ...DS.iconBtn, width: 44, height: 44 }} title="Modifier"><Pencil size={16} /></button>
                       {estReference(c)
                         ? (onArchiver && <button onClick={() => onArchiver(c.id)} style={{ ...DS.iconBtn, width: 44, height: 44 }} title="Archiver"><Archive size={16} /></button>)
-                        : (onSupprimer && <button onClick={async () => { if (await confirmer(`Supprimer "${c.nom || c.numero}" ?\n\nCette action est irréversible.`, { labelOui: 'Supprimer' })) onSupprimer(c.id); }} style={{ ...DS.iconBtn, width: 44, height: 44, color: V1.danger }} title="Supprimer"><Trash2 size={16} /></button>)}
+                        : (onSupprimer && <button onClick={async () => { const origine = copieOrigine(c); if (await confirmer(`Supprimer "${c.nom || c.numero}" ?\n\nCette action est irréversible.`, { labelOui: 'Supprimer' })) onSupprimer(c.id, origine); }} style={{ ...DS.iconBtn, width: 44, height: 44, color: V1.danger }} title="Supprimer"><Trash2 size={16} /></button>)}
                     </div>
                   )}
                 </div>
@@ -433,7 +434,7 @@ function ChantiersListe({
                             <button onClick={() => onModifier(c)} style={DS.iconBtn} title="Modifier"><Pencil size={14} /></button>
                             {estReference(c)
                               ? (onArchiver && <button onClick={() => onArchiver(c.id)} style={DS.iconBtn} title="Archiver"><Archive size={14} /></button>)
-                              : (onSupprimer && <button onClick={async () => { if (await confirmer(`Supprimer "${c.nom || c.numero}" ?\n\nCette action est irréversible.`, { labelOui: 'Supprimer' })) onSupprimer(c.id); }} style={{ ...DS.iconBtn, color: V1.danger }} title="Supprimer"><Trash2 size={14} /></button>)}
+                              : (onSupprimer && <button onClick={async () => { const origine = copieOrigine(c); if (await confirmer(`Supprimer "${c.nom || c.numero}" ?\n\nCette action est irréversible.`, { labelOui: 'Supprimer' })) onSupprimer(c.id, origine); }} style={{ ...DS.iconBtn, color: V1.danger }} title="Supprimer"><Trash2 size={14} /></button>)}
                           </div>
                         </td>
                       </tr>

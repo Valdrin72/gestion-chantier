@@ -58,7 +58,7 @@ const clone = (o) => JSON.parse(JSON.stringify(o));
 function renderChantiers(ctxOver = {}) {
   const ctx = {
     chantiers: [clone(CHANTIER_EN_COURS), clone(CHANTIER_TERMINE)],
-    setChantiers: vi.fn(),
+    setChantiers: vi.fn(u => { if (typeof u === 'function') u(ctx.chantiers); }),
     clients: CLIENTS,
     setClients: vi.fn(),
     devis: DEVIS,
@@ -158,7 +158,8 @@ describe('ChantiersPage — édition', () => {
     fireEvent.change(statutSelect, { target: { value: 'Suspendu' } });
     fireEvent.click(screen.getByRole('button', { name: /Enregistrer le suivi/i }));
 
-    const arg = ctx.setChantiers.mock.calls.at(-1)[0];
+    const updater = ctx.setChantiers.mock.calls.at(-1)[0];
+    const arg = typeof updater === 'function' ? updater(ctx.chantiers) : updater;
     const maj = arg.find(c => c.id === 1);
     expect(maj.nom).toBe('Bureaux Dupont V2');
     expect(maj.canton).toBe('VD');
@@ -173,7 +174,8 @@ describe('ChantiersPage — édition', () => {
     const nbInput = screen.getByDisplayValue('10');
     fireEvent.change(nbInput, { target: { value: '15' } });
     fireEvent.click(screen.getByRole('button', { name: /Enregistrer le suivi/i }));
-    const arg = ctx.setChantiers.mock.calls.at(-1)[0];
+    const updater = ctx.setChantiers.mock.calls.at(-1)[0];
+    const arg = typeof updater === 'function' ? updater(ctx.chantiers) : updater;
     expect(arg.find(c => c.id === 1).nombreJours).toBe('15');
   });
 
@@ -202,7 +204,8 @@ describe('ChantiersPage — avancement (auto-dérivé, borné)', () => {
     const surActivite = { ...clone(CHANTIER_EN_COURS), nombreJours: 10, journal: journalDeNJours(20) };
     const { ctx } = ouvrirEdition(surActivite);
     fireEvent.click(screen.getByRole('button', { name: /Enregistrer le suivi/i }));
-    const arg = ctx.setChantiers.mock.calls.at(-1)[0];
+    const updater = ctx.setChantiers.mock.calls.at(-1)[0];
+    const arg = typeof updater === 'function' ? updater(ctx.chantiers) : updater;
     const maj = arg.find(c => c.id === surActivite.id);
     expect(maj.avancement).toBe(100); // Math.min(100, 200%) = 100
   });
@@ -211,7 +214,8 @@ describe('ChantiersPage — avancement (auto-dérivé, borné)', () => {
     const sansJournal = { ...clone(CHANTIER_EN_COURS), nombreJours: 10, journal: [] };
     const { ctx } = ouvrirEdition(sansJournal);
     fireEvent.click(screen.getByRole('button', { name: /Enregistrer le suivi/i }));
-    const arg = ctx.setChantiers.mock.calls.at(-1)[0];
+    const updater = ctx.setChantiers.mock.calls.at(-1)[0];
+    const arg = typeof updater === 'function' ? updater(ctx.chantiers) : updater;
     expect(arg.find(c => c.id === sansJournal.id).avancement).toBe(0);
   });
 
@@ -219,7 +223,8 @@ describe('ChantiersPage — avancement (auto-dérivé, borné)', () => {
     const partiel = { ...clone(CHANTIER_EN_COURS), nombreJours: 10, journal: journalDeNJours(3) };
     const { ctx } = ouvrirEdition(partiel);
     fireEvent.click(screen.getByRole('button', { name: /Enregistrer le suivi/i }));
-    const arg = ctx.setChantiers.mock.calls.at(-1)[0];
+    const updater = ctx.setChantiers.mock.calls.at(-1)[0];
+    const arg = typeof updater === 'function' ? updater(ctx.chantiers) : updater;
     expect(arg.find(c => c.id === partiel.id).avancement).toBe(30);
   });
 });
@@ -245,7 +250,8 @@ describe('ChantiersPage — suppression protégée (Option 2)', () => {
   it('coquille vide (sans pointage ni facture) → suppression AUTORISÉE', async () => {
     const { ctx } = supprimer('Bureaux Dupont', { factures: [], pointages: [] });
     await waitFor(() => expect(ctx.setChantiers).toHaveBeenCalled());
-    const arg = ctx.setChantiers.mock.calls.at(-1)[0];
+    const updater = ctx.setChantiers.mock.calls.at(-1)[0];
+    const arg = typeof updater === 'function' ? updater(ctx.chantiers) : updater;
     expect(arg.some(c => String(c.id) === '1')).toBe(false);
     expect(arg.some(c => String(c.id) === '2')).toBe(true);
   });
@@ -283,7 +289,8 @@ describe('ChantiersPage — suppression protégée (Option 2)', () => {
     fireEvent.change(screen.getByDisplayValue('En cours'), { target: { value: 'Terminé' } });
     fireEvent.click(screen.getByRole('button', { name: /Enregistrer le suivi/i }));
     // chantier conservé avec nouveau statut, même id
-    const arg = ctx.setChantiers.mock.calls.at(-1)[0];
+    const updater = ctx.setChantiers.mock.calls.at(-1)[0];
+    const arg = typeof updater === 'function' ? updater(ctx.chantiers) : updater;
     const maj = arg.find(c => c.id === 1);
     expect(maj.statut).toBe('Terminé');
     // rien n'est effacé : ni factures, ni pointages
@@ -312,7 +319,8 @@ describe('ChantiersPage — archivage', () => {
     await waitFor(() => expect(ctx.confirmer).toHaveBeenCalled());
     await waitFor(() => expect(ctx.setChantiers).toHaveBeenCalled());
 
-    const arg = ctx.setChantiers.mock.calls.at(-1)[0];
+    const updater = ctx.setChantiers.mock.calls.at(-1)[0];
+    const arg = typeof updater === 'function' ? updater(ctx.chantiers) : updater;
     const archivé = arg.find(c => c.id === 1);
     expect(archivé.archive).toBe(true);
     expect(archivé.dateArchivage).toBeTruthy();
@@ -351,7 +359,8 @@ describe('ChantiersPage — archivage', () => {
     fireEvent.click(screen.getByRole('button', { name: /Voir 1 chantier archivé/i }));
     fireEvent.click(screen.getByRole('button', { name: /Restaurer/i }));
 
-    const arg = ctx.setChantiers.mock.calls.at(-1)[0];
+    const updater = ctx.setChantiers.mock.calls.at(-1)[0];
+    const arg = typeof updater === 'function' ? updater(ctx.chantiers) : updater;
     const restauré = arg.find(c => c.id === 1);
     expect(restauré.archive).toBe(false);
     expect(restauré.dateArchivage).toBeUndefined();

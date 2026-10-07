@@ -2,6 +2,40 @@ const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY') ?? '';
 const SUPABASE_URL       = Deno.env.get('SUPABASE_URL') ?? '';
 const SUPABASE_ANON_KEY  = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
 
+class ErreurHttp extends Error {
+  constructor(public statut: number, message: string) { super(message); }
+}
+
+async function appelerAnthropic(token: string, init: RequestInit): Promise<Response> {
+  const indisponible = "L'assistant est momentanément indisponible. Réessayez plus tard.";
+  let reservation;
+  try {
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/ia_reserver_appel`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}`, 'apikey': SUPABASE_ANON_KEY, 'Content-Type': 'application/json' },
+      body: '{}',
+    });
+    if (!response.ok) throw new Error(`Réservation HTTP ${response.status}: ${await response.text()}`);
+    reservation = await response.json();
+    if (typeof reservation?.autorise !== 'boolean') throw new Error('Réservation invalide');
+  } catch (err) {
+    console.error('[claude-ia] Réservation', err);
+    throw new ErreurHttp(503, indisponible);
+  }
+  if (!reservation.autorise) {
+    if (reservation.raison === 'plafond_jour') throw new ErreurHttp(429, "Limite d'utilisation de l'assistant atteinte pour aujourd'hui, réessayez demain.");
+    if (reservation.raison === 'plafond_mois') throw new ErreurHttp(429, "Limite mensuelle d'utilisation de l'assistant atteinte, réessayez le mois prochain.");
+    console.error('[claude-ia] Réservation refusée', reservation);
+    throw new ErreurHttp(503, indisponible);
+  }
+  const response = await fetch('https://api.anthropic.com/v1/messages', init);
+  if (!response.ok) {
+    console.error('[claude-ia] Anthropic', response.status, await response.text());
+    throw new ErreurHttp(502, "Le service d'assistant a rencontré une erreur. Réessayez plus tard.");
+  }
+  return response;
+}
+
 // ── CORS : whitelist d'origines (projet-scopée, ADDITIVE, jamais '*') ──────────
 // L'app tourne sur plusieurs domaines Vercel du même projet (gestion-chantier,
 // gestion-chantier-nine, previews …). On autorise UNIQUEMENT ce projet + localhost
@@ -396,12 +430,11 @@ Format de sortie (respecte exactement) :
 
 **Points de vigilance**
 [risques et alertes récurrents identifiés]`;
-      const chatResponse = await fetch('https://api.anthropic.com/v1/messages', {
+      const chatResponse = await appelerAnthropic(token, {
         method: 'POST',
         headers: { 'x-api-key': ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
         body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 1500, system, messages: [{ role: 'user', content: `Mémoire brute à condenser :\n\n${data.memoire}` }] }),
       });
-      if (!chatResponse.ok) throw new Error(`Anthropic API error ${chatResponse.status}: ${await chatResponse.text()}`);
       const r = await chatResponse.json();
       return new Response(JSON.stringify({ texte: r.content?.[0]?.text ?? '' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
@@ -422,12 +455,11 @@ Quand l'utilisateur demande des modifications, retourne TOUJOURS l'email complet
 Format : **Objet :** ... / **Corps :** ... / **Formule de politesse :** ...
 Signature : "Avec nos meilleures salutations, / L'équipe CYNA SÀRL"`;
       if (data.contexte_cyna) system += `\n\nMÉMOIRE CYNA :\n${data.contexte_cyna}`;
-      const chatResponse = await fetch('https://api.anthropic.com/v1/messages', {
+      const chatResponse = await appelerAnthropic(token, {
         method: 'POST',
         headers: { 'x-api-key': ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
         body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 2048, system, messages: data.messages }),
       });
-      if (!chatResponse.ok) throw new Error(`Anthropic API error ${chatResponse.status}: ${await chatResponse.text()}`);
       const r = await chatResponse.json();
       return new Response(JSON.stringify({ texte: r.content?.[0]?.text ?? '' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
@@ -444,12 +476,11 @@ ${data.pdfTexte ?? ''}
 
 Réponds toujours en français, de façon claire et structurée. Si l'utilisateur demande de modifier ou compléter l'analyse, donne une réponse complète.`;
       if (data.contexte_cyna) system += `\n\nMÉMOIRE CYNA :\n${data.contexte_cyna}`;
-      const chatResponse = await fetch('https://api.anthropic.com/v1/messages', {
+      const chatResponse = await appelerAnthropic(token, {
         method: 'POST',
         headers: { 'x-api-key': ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
         body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 2048, system, messages: data.messages }),
       });
-      if (!chatResponse.ok) throw new Error(`Anthropic API error ${chatResponse.status}: ${await chatResponse.text()}`);
       const r = await chatResponse.json();
       return new Response(JSON.stringify({ texte: r.content?.[0]?.text ?? '' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
@@ -458,7 +489,7 @@ Réponds toujours en français, de façon claire et structurée. Si l'utilisateu
     if (action === 'chat_libre') {
       const chatMessages = data.messages ?? [{ role: 'user', content: data.question ?? '' }];
       const systemPrompt = promptChatLibreSystem(data.contexte_cyna);
-      const chatResponse = await fetch('https://api.anthropic.com/v1/messages', {
+      const chatResponse = await appelerAnthropic(token, {
         method: 'POST',
         headers: {
           'x-api-key': ANTHROPIC_API_KEY,
@@ -472,10 +503,6 @@ Réponds toujours en français, de façon claire et structurée. Si l'utilisateu
           messages: chatMessages,
         }),
       });
-      if (!chatResponse.ok) {
-        const errBody = await chatResponse.text();
-        throw new Error(`Anthropic API error ${chatResponse.status}: ${errBody}`);
-      }
       const chatResult = await chatResponse.json();
       return new Response(JSON.stringify({ texte: chatResult.content?.[0]?.text ?? '' }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -503,7 +530,7 @@ Réponds toujours en français, de façon claire et structurée. Si l'utilisateu
     const model = SONNET_ACTIONS.has(action) ? 'claude-sonnet-4-6' : 'claude-haiku-4-5-20251001';
     const maxTokens = SONNET_ACTIONS.has(action) ? 2048 : 1500;
 
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
+    const response = await appelerAnthropic(token, {
       method: 'POST',
       headers: {
         'x-api-key': ANTHROPIC_API_KEY,
@@ -517,18 +544,14 @@ Réponds toujours en français, de façon claire et structurée. Si l'utilisateu
       }),
     });
 
-    if (!response.ok) {
-      const errBody = await response.text();
-      throw new Error(`Anthropic API error ${response.status}: ${errBody}`);
-    }
-
     const result = await response.json();
     return new Response(JSON.stringify({ texte: result.content?.[0]?.text ?? '' }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (err) {
-    return new Response(JSON.stringify({ error: err.message ?? 'Erreur serveur' }), {
-      status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    if (!(err instanceof ErreurHttp)) console.error('[claude-ia] Serveur', err);
+    return new Response(JSON.stringify({ error: err instanceof ErreurHttp ? err.message : "Erreur du serveur de l'assistant. Réessayez plus tard." }), {
+      status: err instanceof ErreurHttp ? err.statut : 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
 });

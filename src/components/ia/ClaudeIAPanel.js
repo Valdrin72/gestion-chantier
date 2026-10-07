@@ -237,7 +237,7 @@ function ConversationSuite({ contexteInitial, memoire, autoSave, placeholder }) 
 
 // ── Panneau mémoire CYNA (global + condenseur) ────────────────
 function PanneauMemoire({ memoire, onSave }) {
-  const { appeler, loading } = useClaudeAI();
+  const { appeler, loading, error } = useClaudeAI();
   const { chantiers = [], clients = [], parametres } = useApp();
   const corr = useMemo(
     () => construireCorrespondance({ chantiers, clients, employes: parametres?.employes || [] }),
@@ -283,6 +283,9 @@ function PanneauMemoire({ memoire, onSave }) {
       <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: 0 }}>
         Claude lit cette mémoire dans <strong>chaque</strong> analyse, email, anticipation et conversation. Elle s'enrichit automatiquement après chaque analyse.
       </p>
+      {error && (
+        <div style={{ padding: '10px 14px', background: BADGES_V1.danger.bg, borderRadius: 10, border: `1px solid ${V1.danger}44`, color: V1.danger, fontSize: 13 }}>{error}</div>
+      )}
       <textarea value={texte} onChange={e => setTexte(e.target.value)} rows={7}
         placeholder={`Exemples :\n- CYNA SÀRL spécialisée en faux-plafonds et faux-planchers à Genève\n- Principaux clients : architectes et promoteurs genevois\n- Tarif journalier moyen : CHF 750 chargé\n- Marge cible : 22% minimum\n- Équipe : 8 employés dont 3 chefs de chantier`}
         style={{ padding: '9px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-main)', fontSize: 12, resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.6 }}

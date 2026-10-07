@@ -16,7 +16,7 @@ const clamp = (v) => Math.max(0, Math.min(100, v));
 // Chargée À LA DEMANDE (bouton). Payload anonymisé (types + canton, aucune donnée nominative).
 // JAMAIS fondue dans l'historique (source A) : bloc séparé, ambre. N'écrit rien dans le devis.
 function RepereMarche({ types, iaActivee }) {
-  const { appeler } = useClaudeAI();
+  const { appeler, error, limiteAtteinte } = useClaudeAI();
   const [statut, setStatut] = React.useState('idle'); // idle | loading | done | error
   const [texte, setTexte] = React.useState('');
 
@@ -45,7 +45,7 @@ function RepereMarche({ types, iaActivee }) {
       ) : statut === 'error' ? (
         <div>
           <div data-testid="aide-marche-erreur" style={{ fontSize: 12.5, color: V1.danger, marginBottom: 8 }}>
-            L'estimation n'a pas pu être obtenue (IA indisponible). Tu peux réessayer plus tard.
+            {limiteAtteinte ? error : "L'estimation n'a pas pu être obtenue (IA indisponible). Tu peux réessayer plus tard."}
           </div>
           <button onClick={estimer} style={{ background: INDIC, color: '#3a2607', border: 'none', borderRadius: 8, padding: '6px 14px', fontWeight: 700, fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>Réessayer</button>
         </div>

@@ -132,7 +132,7 @@ describe('Étape 4 — facturation standalone extra (RTL)', () => {
     fireEvent.click(screen.getByRole('button', { name: /Enregistrer brouillon/i }));
 
     expect(onSave).toHaveBeenCalledOnce();
-    const factures = onSave.mock.calls[0][0];
+    const factures = onSave.mock.calls[0][0]([], {});
     const factureCreee = factures[factures.length - 1];
     expect(factureCreee.extraId).toBe('ex1');
   });

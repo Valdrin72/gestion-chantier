@@ -1,3 +1,4 @@
+import { avecCompteurs } from '../utils/numerotation';
 import { fusionnerIdsSupprimes, donneesImportees } from '../utils/corbeille';
 /**
  * CYNA — Sync données localStorage ↔ Supabase (cloud)
@@ -254,7 +255,13 @@ export default function useSupabaseData(userId, isDemo = false) {
   const { chantiers, devis, factures, clients, parametres, pointages } = donnees;
   const setterEtat = cle => updater => setDonneesState(prev => {
     const next = typeof updater === 'function' ? updater(prev[cle], prev.parametres) : updater;
-    return Object.is(next, prev[cle]) ? prev : { ...prev, [cle]: next };
+    if (Object.is(next, prev[cle])) return prev;
+    const suivant = avecCompteurs(prev, { ...prev, [cle]: next });
+    if (suivant.parametres !== (cle === 'parametres' ? next : prev.parametres)) {
+      sauvegarderLocal('cyna_parametres', suivant.parametres);
+      scheduleSync({ parametres: suivant.parametres });
+    }
+    return suivant;
   });
   const setChantiersState = setterEtat('chantiers');
   const setDevisState = setterEtat('devis');
@@ -676,7 +683,7 @@ export default function useSupabaseData(userId, isDemo = false) {
     const jeton = marquerModificationLocale();
     setChantiersState((prev, parametresActuels) => {
       attentesLocalesRef.current.delete(jeton);
-      const next = typeof updater === 'function' ? updater(prev, parametresActuels.idsSupprimes?.chantiers) : updater;
+      const next = typeof updater === 'function' ? updater(prev, parametresActuels) : updater;
       // REV-01 — rien n'a changé (ex. régénération du journal identique) : aucune sauvegarde,
       // sinon deux appareils ouverts se renverraient indéfiniment des sauvegardes inutiles.
       if (Object.is(next, prev)) return prev;
@@ -692,7 +699,7 @@ export default function useSupabaseData(userId, isDemo = false) {
     const jeton = marquerModificationLocale();
     setDevisState((prev, parametresActuels) => {
       attentesLocalesRef.current.delete(jeton);
-      const next = typeof data === 'function' ? data(prev, parametresActuels.idsSupprimes?.devis) : data;
+      const next = typeof data === 'function' ? data(prev, parametresActuels) : data;
       if (Object.is(next, prev)) return prev;
       sauvegarderLocal('cyna_devis', next);
       scheduleSync({ devis: next });
@@ -704,9 +711,9 @@ export default function useSupabaseData(userId, isDemo = false) {
   const setFactures = useCallback((data) => {
     if (modeRef.current === 'user' && !chargementOkRef.current) return;
     const jeton = marquerModificationLocale();
-    setFacturesState(prev => {
+    setFacturesState((prev, parametresActuels) => {
       attentesLocalesRef.current.delete(jeton);
-      const next = typeof data === 'function' ? data(prev) : data;
+      const next = typeof data === 'function' ? data(prev, parametresActuels) : data;
       if (Object.is(next, prev)) return prev;
       sauvegarderLocal('cyna_factures', next);
       scheduleSync({ factures: next });
@@ -720,7 +727,7 @@ export default function useSupabaseData(userId, isDemo = false) {
     const jeton = marquerModificationLocale();
     setClientsState((prev, parametresActuels) => {
       attentesLocalesRef.current.delete(jeton);
-      const next = typeof data === 'function' ? data(prev, parametresActuels.idsSupprimes?.clients) : data;
+      const next = typeof data === 'function' ? data(prev, parametresActuels) : data;
       if (Object.is(next, prev)) return prev;
       sauvegarderLocal('cyna_clients', next);
       scheduleSync({ clients: next });
@@ -765,8 +772,8 @@ export default function useSupabaseData(userId, isDemo = false) {
       attentesLocalesRef.current.delete(jeton);
       const propose = typeof updater === 'function' ? updater(prev) : updater;
       if (propose === prev) return prev;
-      const next = { ...propose, parametres: { ...propose.parametres,
-        idsSupprimes: fusionnerIdsSupprimes(prev.parametres.idsSupprimes, propose.parametres.idsSupprimes) } };
+      const next = avecCompteurs(prev, { ...propose, parametres: { ...propose.parametres,
+        idsSupprimes: fusionnerIdsSupprimes(prev.parametres.idsSupprimes, propose.parametres.idsSupprimes) } });
       if (modeRef.current === 'org' && estPayloadVide(next)) return prev;
       for (const cle of CLES_CACHE_LOCAL) sauvegarderLocal('cyna_' + cle, next[cle]);
       scheduleSync(next);
@@ -780,7 +787,7 @@ export default function useSupabaseData(userId, isDemo = false) {
     const jeton = marquerModificationLocale();
     setDonneesState(prev => {
       attentesLocalesRef.current.delete(jeton);
-      const next = donneesImportees(prev, data);
+      const next = avecCompteurs(prev, donneesImportees(prev, data));
       for (const cle of CLES_CACHE_LOCAL) sauvegarderLocal('cyna_' + cle, next[cle]);
       scheduleSync(next);
       return next;

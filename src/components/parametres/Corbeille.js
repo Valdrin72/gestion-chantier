@@ -1,3 +1,4 @@
+import { attribuerNumero } from '../../utils/numerotation';
 import React from 'react';
 import { useApp } from '../../context/AppContext';
 import useActionConfirmee from '../../hooks/useActionConfirmee';
@@ -26,8 +27,18 @@ export default function Corbeille() {
     return !estSupprime(actuel) || aEteModifieAilleurs(r.element, actuel);
    })) return { erreur: conflit };
    const next = { ...prev };
-   for (const r of groupe) next[r.type] = next[r.type].map(x => String(x.id) === String(r.element.id) ? restaurerDeLaCorbeille(x) : x);
-   return { valeur: next };
+   const messages = [];
+   for (const r of groupe) {
+    let element = restaurerDeLaCorbeille(next[r.type].find(x => String(x.id) === String(r.element.id)));
+    if (r.type !== 'clients') {
+     const attribution = attribuerNumero(r.type, element, next, prev.parametres?.compteursNumeros, new Date(), { ignorerCompteur: true });
+     if (attribution.erreur) return attribution;
+     element = attribution.element;
+     if (attribution.change) messages.push(`${attribution.change.ancien} a été repris entre-temps : ${r.type === 'devis' ? 'le devis restauré' : 'le chantier restauré'} a reçu ${attribution.change.nouveau}`);
+    }
+    next[r.type] = next[r.type].map(x => String(x.id) === String(r.element.id) ? element : x);
+   }
+   return { valeur: next, message: messages.join(' ; ') || undefined };
   }, 'Élément restauré');
  };
  const detruire = async (type, element) => {

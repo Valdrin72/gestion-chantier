@@ -621,6 +621,7 @@ export default function Finances({
 
   // Wrapper onSave : réintègre les orphelines pour ne pas les écraser silencieusement
   const onSaveFactures = useCallback((nouvellesValides) => {
+    if (typeof nouvellesValides === 'function') { onSave(nouvellesValides); return; }
     const orphelines = factures.filter(f => facturesOrphelines.some(o => o.id === f.id));
     onSave([...orphelines, ...nouvellesValides]);
   }, [factures, facturesOrphelines, onSave]);
@@ -842,6 +843,7 @@ export default function Finances({
       <div style={{ display: onglet === 'factures' ? 'block' : 'none' }}>
         <Factures
           factures={facturesValides}
+          toutesFactures={listesCompletes?.factures || factures}
           onSave={onSaveFactures}
           clients={clients}
           chantiers={chantiers}

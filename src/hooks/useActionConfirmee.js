@@ -19,11 +19,11 @@ export default function useActionConfirmee(afficherNotif) {
   return (setter, transformer, message, apres) => {
     const resultat = { execute: false, message, apres };
     resultats.current.add(resultat);
-    setter(prev => {
-      const decision = transformer(prev);
+    setter((prev, ...contexte) => {
+      const decision = transformer(prev, ...contexte);
       resultat.execute = true;
       resultat.erreur = decision.erreur;
-      resultat.message = decision.erreur || message;
+      resultat.message = decision.erreur || decision.message || message;
       return decision.erreur ? prev : decision.valeur;
     });
     rendre();

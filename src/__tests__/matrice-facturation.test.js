@@ -278,8 +278,8 @@ describe('genererNumeroFacture', () => {
     expect(genererNumeroFacture(factures)).toBe(`F-${annee}-005`);
   });
 
-  it('Préfixe custom respecté', () => {
-    expect(genererNumeroFacture([], 'AV')).toBe(`AV-${annee}-001`);
+  it('Second argument : compteur de la série F', () => {
+    expect(genererNumeroFacture([], { [`F-${annee}`]: 7 })).toBe(`F-${annee}-008`);
   });
 });
 

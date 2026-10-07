@@ -1,3 +1,5 @@
+import { attribuerNumero, messageNumero } from './utils/numerotation';
+import useActionConfirmee from './hooks/useActionConfirmee';
 import { copieOrigine, aEteModifieAilleurs, conserverBrouillonRefuse } from './utils/gardeEdition';
 // ============================================================
 // CYNA — MODULE FACTURES v2
@@ -123,8 +125,9 @@ function KpiCard({ label, value, couleur, icon, sous }) {
 }
 
 // ── COMPOSANT PRINCIPAL ──────────────────────────────────────
-export default function Factures({ profil, clients = [], chantiers = [], devis = [], factures = [], onSave, naviguer, hideHeader = false, periodeGlobale = 'mois', parametres = null, preRemplir = null, onConsumePreRemplir = null, nouvelleFactureSignal = 0 }) {
+export default function Factures({ profil, clients = [], chantiers = [], devis = [], factures = [], toutesFactures = factures, onSave, naviguer, hideHeader = false, periodeGlobale = 'mois', parametres = null, preRemplir = null, onConsumePreRemplir = null, nouvelleFactureSignal = 0 }) {
   const { pointages = [], consultationMobile, afficherNotif } = useApp();
+  const agir = useActionConfirmee(afficherNotif);
   const isMobile = useIsMobile();
   const [vue, setVue] = useState('liste');   // 'liste' | 'form' | 'detail'
   const [selected, setSelected] = useState(null);
@@ -162,7 +165,7 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
     const montantTVA = lignes.reduce((s, l) => s + (l.quantite || 0) * (l.prixUnitaire || 0) * (l.tva || 0) / 100, 0);
     setForm({
       id: `fact_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
-      numero: genererNumeroFacture(factures),
+      numero: genererNumeroFacture(toutesFactures, parametres?.compteursNumeros) || '',
       statut: 'brouillon',
       dateEmission: dateEmissionDefaut,
       dateEcheance: dateEcheanceDefaut,
@@ -284,7 +287,7 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
       const dateEcheanceDefaut = new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10);
       setForm({
         id: `fact_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
-        numero: genererNumeroFacture(factures),
+        numero: genererNumeroFacture(toutesFactures, parametres?.compteursNumeros) || '',
         clientId: '',
         chantierId: '',
         devisId: '',
@@ -384,12 +387,12 @@ export default function Factures({ profil, clients = [], chantiers = [], devis =
     if (origineFormRef.current && aEteModifieAilleurs(origineFormRef.current, factures.find(f => String(f.id) === String(data.id)))) {
       refuser(data); return;
     }
-    const liste = factures.some(f => f.id === data.id)
-      ? factures.map(f => f.id === data.id ? data : f)
-      : [...factures, data];
-    onSave(liste);
-    setVue('liste');
-    setForm(null);
+    agir(onSave, (prev, params = {}) => {
+      if (prev.some(f => String(f.id) === String(data.id))) return { valeur: prev.map(f => String(f.id) === String(data.id) ? data : f) };
+      const attribution = attribuerNumero('factures', data, { factures: prev }, params.compteursNumeros);
+      if (attribution.erreur) return attribution;
+      return { valeur: [...prev, attribution.element], message: messageNumero(attribution.change, 'la facture') };
+    }, null, () => { setVue('liste'); setForm(null); });
   };
 
   const supprimerFacture = (id, returnToListe = false) => {

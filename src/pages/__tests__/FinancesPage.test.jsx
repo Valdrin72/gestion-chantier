@@ -8,8 +8,9 @@ import { renderWithApp } from '../../test-utils/renderWithApp';
 
 // Factures : affiche preRemplir pour vérifier l'orchestration
 vi.mock('../../Factures', () => ({
-  default: ({ preRemplir, onConsumePreRemplir }) => (
+  default: ({ preRemplir, onConsumePreRemplir, onSave }) => (
     <div data-testid="mock-factures">
+      <button onClick={() => onSave(prev => [...prev, {id: 'NUM-new'}])}>NUM-functional-save</button>
       {preRemplir && (
         <>
           <span data-testid="pre-remplir-type">{preRemplir.type}</span>
@@ -690,4 +691,11 @@ describe('FinancesPage — Encaissements prévus (timeline 8 semaines)', () => {
     expect(screen.getByText(/Cette sem\./i)).toBeInTheDocument();
     expect(screen.getByText(/Sem\. proch\./i)).toBeInTheDocument();
   });
+});
+
+it('NUM-relais transmet updater intact et conserve les orphelines actuelles',()=>{
+ let current=[FACTURE_RETARD,FACTURE_ORPHELINE];const onSave=vi.fn(u=>{current=u(current,{});});
+ renderFinances({factures:current,chantiers:[CHANTIER_1],devis:[DEVIS_1],clients:[CLIENT_1]}, {onSave});
+ fireEvent.click(screen.getByRole('button',{name:/^Factures/}));fireEvent.click(screen.getByRole('button',{name:'NUM-functional-save'}));
+ expect(typeof onSave.mock.calls[0][0]).toBe('function');expect(current.map(f=>f.id)).toEqual(['F1','FO1','NUM-new']);
 });

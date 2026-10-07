@@ -99,6 +99,9 @@ function renderDevis(ctxOverrides = {}) {
       ...ctxOverrides,
     },
   );
+  for (const [setter, type] of [[ctx.setDevis, 'devis'], [ctx.setChantiers, 'chantiers'], [ctx.setFactures, 'factures']]) {
+    setter.mockImplementation(u => typeof u === 'function' ? u(ctx[type], type === 'factures' ? ctx.parametres : { complet: ctx[type], parametres: ctx.parametres }) : u);
+  }
   return { ...rest, ctx: { ...ctx, confirmer, setDevis, setChantiers, setFactures, naviguer, afficherNotif } };
 }
 
@@ -237,7 +240,7 @@ describe('DevisPage — création d\'un devis (fix typesTravaux)', () => {
 
     // setDevis doit être appelé avec le nouveau devis
     expect(ctx.setDevis).toHaveBeenCalledOnce();
-    const nouvelleListeDevis = ctx.setDevis.mock.calls[0][0];
+    const nouvelleListeDevis = ctx.setDevis.mock.calls[0][0](ctx.devis);
     expect(nouvelleListeDevis).toHaveLength(1);
     expect(nouvelleListeDevis[0].typesTravaux).toContain('Cloisons vitrées');
     expect(nouvelleListeDevis[0].montantHT).toBe('15000');
@@ -295,7 +298,7 @@ describe('DevisPage — création d\'un devis (fix typesTravaux)', () => {
     fireEvent.click(screen.getByRole('button', { name: /Sauvegarder/i }));
 
     expect(ctx.setDevis).toHaveBeenCalledOnce();
-    const liste = ctx.setDevis.mock.calls[0][0];
+    const liste = ctx.setDevis.mock.calls[0][0](ctx.devis);
     expect(liste[0].typesTravaux).toContain('Cloisons vitrées');
     expect(liste[0].typesTravaux).toContain('Faux plancher');
   });
@@ -873,7 +876,7 @@ describe('DevisPage — compte neuf (PARAMETRES_DEFAUT)', () => {
     fireEvent.click(screen.getByRole('button', { name: /Sauvegarder/i }));
 
     expect(setDevis).toHaveBeenCalledOnce();
-    const liste = setDevis.mock.calls[0][0];
+    const liste = setDevis.mock.calls[0][0]([]);
     expect(liste[0].typesTravaux).toContain('Cloisons vitrées');
     expect(liste[0].montantHT).toBe('30000');
   });

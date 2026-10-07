@@ -1,3 +1,4 @@
+import { numeroSuivant } from './utils/numerotation';
 // =============================================
 // CYNA SÀRL — DONNÉES & CALCULS MÉTIER
 // =============================================
@@ -889,16 +890,7 @@ export const facturesInPeriode = (facture, debut, fin) => {
 
 // ===== FACTURES — UTILITAIRES =====
 
-export const genererNumeroFacture = (factures, prefix = 'F') => {
-  const annee = new Date().getFullYear();
-  const debutAnnee = `${prefix}-${annee}-`;
-  const existants = (factures || [])
-    .map(f => f.numero || '')
-    .filter(n => n.startsWith(debutAnnee))
-    .map(n => parseInt(n.slice(debutAnnee.length)) || 0);
-  const seq = existants.length > 0 ? existants.reduce((a, b) => a > b ? a : b, 0) + 1 : 1;
-  return `${prefix}-${annee}-${String(seq).padStart(3, '0')}`;
-};
+export const genererNumeroFacture = (factures, compteurs = {}) => numeroSuivant('factures', { factures }, compteurs);
 
 export const calculerStatutFacture = (facture) => {
   if (facture.statut === 'annulee' || facture.statut === 'brouillon') return facture.statut;
@@ -979,7 +971,7 @@ export const resumePaiementsFactures = (factures = [], maintenant = new Date()) 
   return { recus, attente, retard };
 };
 
-export const creerFactureDepuisDevis = (devis, chantier, factures, tva = TVA_DEFAUT) => {
+export const creerFactureDepuisDevis = (devis, chantier, factures, tva = TVA_DEFAUT, compteurs = {}) => {
   // Base facturée : soit les lignes détaillées du devis, soit un poste unique au montantHT.
   let lignes;
   if (Array.isArray(devis.lignes) && devis.lignes.length > 0) {
@@ -1019,7 +1011,7 @@ export const creerFactureDepuisDevis = (devis, chantier, factures, tva = TVA_DEF
 
   return {
     id: `fact_${Date.now()}`,
-    numero: genererNumeroFacture(factures),
+    numero: genererNumeroFacture(factures, compteurs) || '',
     clientId: devis.clientId,
     chantierId: chantier ? chantier.id : '',
     devisId: devis.id,

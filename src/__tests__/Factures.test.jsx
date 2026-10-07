@@ -232,7 +232,7 @@ describe('Factures — calcul TTC 8.1% (via sauvegarder)', () => {
     fireEvent.click(screen.getByRole('button', { name: /Enregistrer brouillon/i }));
 
     expect(onSave).toHaveBeenCalledOnce();
-    const saved = onSave.mock.calls[0][0][0];
+    const saved = onSave.mock.calls[0][0]([], {})[0];
     expect(saved.montantHT).toBe(1000);
     expect(saved.montantTVA).toBeCloseTo(81, 5);   // 1000 × 8.1/100 = 81.000 exact
     expect(saved.montantTTC).toBeCloseTo(1081, 5);  // 1000 + 81 = 1081 exact
@@ -252,7 +252,7 @@ describe('Factures — calcul TTC 8.1% (via sauvegarder)', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: /Enregistrer brouillon/i })).toBeInTheDocument());
     fireEvent.click(screen.getByRole('button', { name: /Enregistrer brouillon/i }));
 
-    const saved = onSave.mock.calls[0][0][0];
+    const saved = onSave.mock.calls[0][0]([], {})[0];
     expect(saved.montantTVA).toBeCloseTo(40.5, 4);   // 500 × 0.081 = 40.5
     expect(saved.montantTTC).toBeCloseTo(540.5, 4);
     // Vérification négative : pas le taux 7.7% de l'ancienne TVA
@@ -275,7 +275,7 @@ describe('Factures — calcul TTC 8.1% (via sauvegarder)', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: /Enregistrer brouillon/i })).toBeInTheDocument());
     fireEvent.click(screen.getByRole('button', { name: /Enregistrer brouillon/i }));
 
-    const saved = onSave.mock.calls[0][0][0];
+    const saved = onSave.mock.calls[0][0]([], {})[0];
     expect(saved.montantHT).toBe(2000);
     expect(saved.montantTVA).toBeCloseTo(162, 4);
     expect(saved.montantTTC).toBeCloseTo(2162, 4);
@@ -297,7 +297,7 @@ describe('Factures — calcul TTC 8.1% (via sauvegarder)', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: /Enregistrer brouillon/i })).toBeInTheDocument());
     fireEvent.click(screen.getByRole('button', { name: /Enregistrer brouillon/i }));
 
-    const saved = onSave.mock.calls[0][0][0];
+    const saved = onSave.mock.calls[0][0]([], {})[0];
     expect(saved.montantHT).toBe(1500);
     expect(saved.montantTVA).toBeCloseTo(81, 4);
     expect(saved.montantTTC).toBeCloseTo(1581, 4);
@@ -444,7 +444,7 @@ describe('Factures — formulaire : validation', () => {
     fireEvent.click(screen.getByRole('button', { name: /Émettre la facture/i }));
 
     await waitFor(() => expect(onSave).toHaveBeenCalledOnce());
-    const saved = onSave.mock.calls[0][0][0];
+    const saved = onSave.mock.calls[0][0]([], {})[0];
     expect(saved.statut).toBe('envoyee');
     expect(saved.montantTTC).toBeCloseTo(1081, 4);
   });

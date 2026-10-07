@@ -159,3 +159,73 @@ it('CORB-03 : opérations composées et import ne recopient jamais les pointages
  act(() => h.result.current.importerTout({ ...blob(), clients: [client], pointages: [{ id: 'p2', repartitions: [] }] })); await tick();
  expect(localStorage.getItem('cyna_pointages')).toBeNull(); expect(JSON.parse(localStorage.getItem('cyna_devis'))).toEqual([{ id: 'initial' }]);
 });
+
+// NUM : preuves avec le stockage versionné simulé, sans réseau.
+import { attribuerNumero, numeroSuivant } from '../../utils/numerotation';
+import useActionConfirmee from '../useActionConfirmee';
+const numDate = new Date(2026, 5, 1);
+const fs = n => Array.from({length:n}, (_,i) => ({id:`f${i+1}`, numero:`F-2026-${String(i+1).padStart(3,'0')}`}));
+it('NUM-suppression capture le maximum dans une seule écriture et résiste aux paramètres périmés', async () => {
+ store.row = row(0, {...blob(), factures:fs(5)});
+ const h = await boot(); const perime = h.result.current.parametres;
+ act(() => h.result.current.setFactures(prev => prev.slice(0,4))); await tick();
+ expect(store.writes).toHaveLength(1);
+ expect(store.row.data.parametres.compteursNumeros['F-2026']).toBe(5);
+ expect(numeroSuivant('factures',store.row.data,store.row.data.parametres.compteursNumeros,numDate)).toBe('F-2026-006');
+ act(() => h.result.current.setParametres(perime)); await tick();
+ expect(store.row.data.parametres.compteursNumeros['F-2026']).toBe(5);
+});
+it('NUM-import ancien conserve le maximum avant disparition puis attribue 008', async () => {
+ store.row = row(0, {...blob(),factures:fs(7)}); const h=await boot();
+ act(() => h.result.current.importerTout({...blob(),factures:fs(3),parametres:{compteursNumeros:{'F-2026':3}}})); await tick();
+ expect(store.row.data.parametres.compteursNumeros['F-2026']).toBe(7);
+ act(() => h.result.current.setFactures((prev,params) => [...prev,attribuerNumero('factures',{id:'next',numero:'F-2026-004'},{factures:prev},params.compteursNumeros,numDate).element])); await tick();
+ expect(store.row.data.factures.at(-1).numero).toBe('F-2026-008');
+});
+it('NUM-compteur distant invalide attribution directe puis nettoyage', async () => {
+ store.row = row(0,{...blob(),factures:fs(3),parametres:{compteursNumeros:{'F-2026':1e20}}}); const h=await boot();
+ expect(store.writes).toHaveLength(0);
+ act(() => h.result.current.setFactures((prev,params) => [...prev,attribuerNumero('factures',{id:'next',numero:'F-2026-003'},{factures:prev},params.compteursNumeros,numDate).element])); await tick();
+ expect(store.row.data.factures.at(-1).numero).toBe('F-2026-004');
+ expect(store.row.data.parametres.compteursNumeros['F-2026']).toBe(4); expect(store.writes).toHaveLength(1);
+});
+it('NUM-écriture neutre après capture des compteurs ne sauvegarde rien', async () => {
+ store.row=row(0,{...blob(),factures:fs(5)}); const h=await boot();
+ act(() => h.result.current.setFactures(prev=>prev.slice(0,4))); await tick();
+ expect(h.result.current.parametres.compteursNumeros['F-2026']).toBe(5);
+ const n=store.writes.length;
+ act(() => { h.result.current.setFactures(prev=>prev); h.result.current.setParametres(prev=>prev); h.result.current.setDonneesListes(prev=>prev); }); await tick();
+ expect(store.writes).toHaveLength(n);
+});
+it('NUM-agir transmet le compteur seul et affiche le message après rendu', async () => {
+ store.row=row(0,{...blob(),factures:fs(4),parametres:{compteursNumeros:{'F-2026':5}}});
+ const notif=vi.fn();
+ const h=renderHook(()=>({data:useSupabaseData('user'),agir:useActionConfirmee(notif)})); await settle();
+ act(()=>h.result.current.agir(h.result.current.data.setFactures,(prev,params)=>{
+  const a=attribuerNumero('factures',{id:'next',numero:'F-2026-005'},{factures:prev},params.compteursNumeros,numDate);
+  return {valeur:[...prev,a.element],message:`${a.change.ancien} était déjà utilisé : la facture a reçu ${a.change.nouveau}`};
+ })); await tick();
+ expect(store.row.data.factures.at(-1).numero).toBe('F-2026-006');
+ expect(notif).toHaveBeenCalledWith('F-2026-005 était déjà utilisé : la facture a reçu F-2026-006'); expect(store.writes).toHaveLength(1);
+});
+it('NUM-deux appareils refusent le doublon puis attribuent 002 après rechargement', async () => {
+ store.row=row(0,{...blob(),factures:[]}); const a=await boot(); const b=await boot();
+ const ajouter=h=>h.result.current.setFactures((prev,params)=>[...prev,attribuerNumero('factures',{id:`next${prev.length}`,numero:'F-2026-001'},{factures:prev},params.compteursNumeros,numDate).element]);
+ act(()=>ajouter(a)); await tick();
+ expect(store.row.data.parametres.compteursNumeros['F-2026']).toBe(1);
+ act(()=>ajouter(b)); await tick(); await settle();
+ expect(store.row.data.factures).toHaveLength(1); expect(b.result.current.factures).toHaveLength(1);
+ act(()=>ajouter(b)); await tick();
+ expect(store.row.data.factures.map(f=>f.numero)).toEqual(['F-2026-001','F-2026-002']);
+});
+
+it('NUM-temps réel puis formulaire ouvert via agir reçoit 002 avec message', async()=>{
+ store.row=row(0,{...blob(),factures:[]});const a=await boot();const notif=vi.fn();const b=renderHook(()=>({data:useSupabaseData('user'),agir:useActionConfirmee(notif)}));await settle();
+ act(()=>a.result.current.setFactures((prev,params)=>[...prev,attribuerNumero('factures',{id:'a',numero:'F-2026-001'},{factures:prev},params.compteursNumeros,numDate).element]));await tick();emit();await settle();
+ expect(b.result.current.data.factures).toHaveLength(1);
+ act(()=>b.result.current.agir(b.result.current.data.setFactures,(prev,params)=>{
+ const attribution=attribuerNumero('factures',{id:'b',numero:'F-2026-001'},{factures:prev},params.compteursNumeros,numDate);
+ return {valeur:[...prev,attribution.element],message:`${attribution.change.ancien} était déjà utilisé : la facture a reçu ${attribution.change.nouveau}`};
+ }));await tick();
+ expect(store.row.data.factures.map(f=>f.numero)).toEqual(['F-2026-001','F-2026-002']);expect(notif).toHaveBeenCalledWith('F-2026-001 était déjà utilisé : la facture a reçu F-2026-002');
+});

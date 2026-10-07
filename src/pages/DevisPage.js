@@ -1,3 +1,4 @@
+import { numeroSuivant, attribuerNumero, messageNumero } from '../utils/numerotation';
 import { mettreALaCorbeille } from '../utils/corbeille';
 import useActionConfirmee from '../hooks/useActionConfirmee';
 import { aEteModifieAilleurs, conserverBrouillonRefuse, copieOrigine } from '../utils/gardeEdition';
@@ -156,7 +157,7 @@ const heroFondMobile = {
 const PERIODES = [{ id: 'semaine', label: 'Cette semaine' }, { id: 'mois', label: 'Ce mois' }, { id: 'annee', label: 'Cette année' }];
 
 function Devis() {
-  const { devis, setDevis, clients, parametres, naviguer, setChantiers, chantiers, factures, setFactures, contexte = {}, afficherNotif, confirmer, periodeGlobale = 'mois', setPeriodeGlobale = () => {}, ouvrirMenu, consultationMobile, profil, userId } = useApp();
+  const { listesCompletes, devis, setDevis, clients, parametres, naviguer, setChantiers, chantiers, factures, setFactures, contexte = {}, afficherNotif, confirmer, periodeGlobale = 'mois', setPeriodeGlobale = () => {}, ouvrirMenu, consultationMobile, profil, userId } = useApp();
   const isMobile = useIsMobile();
   const assocRef = useRef({ chantiers, factures });
   assocRef.current = { chantiers, factures, devis };
@@ -210,7 +211,7 @@ function Devis() {
   React.useEffect(() => { setPage(0); }, [filtreDevis, periodeGlobale]);
   const [confirmConversion, setConfirmConversion] = useState(null); // { devis, nomChantier }
   const vide = {
-    numero: `DEV-${new Date().getFullYear()}-${String(Math.max(0, ...devis.map(d => parseInt((d.numero || '').split('-').pop()) || 0)) + 1).padStart(3, '0')}`,
+    numero: numeroSuivant('devis', listesCompletes || { devis }, parametres?.compteursNumeros) || '',
     clientId: '', date: new Date().toISOString().split('T')[0], statut: 'brouillon',
     montantHT: '', dureeEstimee: '', nombrePersonnes: '', avenants: [], heuresRegie: [], notes: '',
   };
@@ -280,7 +281,13 @@ function Devis() {
     if (form.id) {
       setDevis(devis.map(d => d.id === form.id ? form : d));
     } else {
-      setDevis([...devis, { ...form, id: Date.now() }]);
+      const nouveau = { ...form, id: Date.now() };
+      agir(setDevis, (prev, { complet = prev, parametres: params = {} } = {}) => {
+        const attribution = attribuerNumero('devis', nouveau, { devis: complet }, params.compteursNumeros);
+        if (attribution.erreur) return attribution;
+        return { valeur: [...prev, attribution.element], message: messageNumero(attribution.change, 'le devis') };
+      }, 'Devis créé', () => { setAjout(false); setForm(vide); setErreurs({}); });
+      return;
     }
     if (afficherNotif) afficherNotif(form.id ? 'Devis mis à jour' : 'Devis créé');
     setAjout(false); setForm(vide); setErreurs({});
@@ -322,11 +329,12 @@ function Devis() {
     if (!confirmConversion) return;
     const { devis: d, nomChantier } = confirmConversion;
     const newId = Date.now();
-    setChantiers(prev => [...prev, {
+    agir(setChantiers, (prev, { complet = prev, parametres: params = {} } = {}) => {
+      const attribution = attribuerNumero('chantiers', {
       id: newId,
       devisId: d.id,
       nom: nomChantier.trim() || `Chantier ${d.numero}`,
-      numero: `CH-${new Date().getFullYear()}-${String(Math.max(0, ...prev.map(c => parseInt((c.numero || '').split('-').pop()) || 0)) + 1).padStart(3, '0')}`,
+      numero: numeroSuivant('chantiers', { chantiers: complet }, params.compteursNumeros) || '',
       clientId: d.clientId,
       surface: parseFloat(d.surface) || 0,
       statut: 'Planifié', priorite: 'Normale', avancement: 0,
@@ -339,10 +347,14 @@ function Devis() {
       autresCoutsPrevu: '', autresCoutsReels: '', imprevus: [],
       notes: `Créé depuis devis ${d.numero}`,
       journal: [],
-    }]);
+      }, { chantiers: complet }, params.compteursNumeros);
+      if (attribution.erreur) return attribution;
+      return { valeur: [...prev, attribution.element], message: messageNumero(attribution.change, 'le chantier') };
+    }, 'Chantier créé', () => {
     setDevis(prev => prev.map(dv => String(dv.id) === String(d.id) ? { ...dv, statut: 'accepté' } : dv));
     setConfirmConversion(null);
     naviguer('chantiers', { chantierActif: newId, modeCompleter: true });
+    });
   };
 
   return (
@@ -865,12 +877,16 @@ function Devis() {
                                     if (!await confirmer('Ce devis n\'a pas de chantier lié.\nLa facture sera créée sans chantierId — elle n\'apparaîtra pas dans le suivi de facturation des chantiers.\n\nContinuer quand même ?', { labelOui: 'Continuer', danger: false })) return;
                                   }
                                   const tauxTVA = parseFloat(d.tva) || parseFloat(parametres?.parametres?.tauxTVA) || 8.1;
-                                  agir(setFactures, prev => {
+                                  agir(setFactures, (prev, params = {}) => {
                                     const actuel = assocRef.current.devis.find(dv => String(dv.id) === String(d.id));
                                     const lien = assocRef.current.chantiers.find(ch => String(ch.devisId) === String(d.id)) || null;
                                     const erreur = aEteModifieAilleurs(origine, actuel) || JSON.stringify(copieOrigine(lien)) !== JSON.stringify(origineLien)
                                       ? "Cet élément a été modifié ou supprimé pendant la confirmation. Vérifiez les données puis recommencez." : prev.some(f => String(f.devisId) === String(d.id) && f.statut !== 'annulee') ? 'Une facture existe déjà pour ce devis ; création annulée.' : null;
-                                    return { erreur, valeur: erreur ? prev : [...prev, creerFactureDepuisDevis(actuel, lien, prev, tauxTVA)] };
+                                    if (erreur) return { erreur };
+                                    const nouvelle = creerFactureDepuisDevis(actuel, lien, prev, tauxTVA, params.compteursNumeros);
+                                    const attribution = attribuerNumero('factures', nouvelle, { factures: prev }, params.compteursNumeros);
+                                    if (attribution.erreur) return attribution;
+                                    return { valeur: [...prev, attribution.element], message: messageNumero(attribution.change, 'la facture') };
                                   }, 'Facture créée', () => naviguer('finances'));
                                 }}
                                 style={{ background: V1.bleu + '14', color: V1.bleu, border: `1px solid ${V1.bleu}35`, borderRadius: 8, padding: '6px 12px', cursor: 'pointer', fontSize: 12, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 5, fontFamily: 'inherit', transition: 'all 0.15s' }}

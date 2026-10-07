@@ -1,3 +1,4 @@
+import { numeroSuivant, attribuerNumero, messageNumero } from '../utils/numerotation';
 import { mettreALaCorbeille } from '../utils/corbeille';
 import useActionConfirmee from '../hooks/useActionConfirmee';
 import { chantierEstReferencé } from '../utils/referenceGuard';
@@ -19,7 +20,7 @@ const sanitiser = (obj) => {
 };
 
 function Chantiers() {
-  const { chantiers, setChantiers, devis = [], factures = [], pointages = [], parametres, naviguer, contexte, afficherNotif, confirmer, consultationMobile, profil, userId } = useApp();
+  const { listesCompletes, chantiers, setChantiers, devis = [], factures = [], pointages = [], parametres, naviguer, contexte, afficherNotif, confirmer, consultationMobile, profil, userId } = useApp();
   const { filtre, setFiltre, chantiersFiltres, chantiersArchives, joursParChantier } = useChantierFiltres();
 
   const listesRef = useRef({ chantiers, factures, pointages });
@@ -32,7 +33,7 @@ function Chantiers() {
   const [modeCompleter, setModeCompleter] = useState(false);
 
   const vide = {
-    numero: `CH-${new Date().getFullYear()}-${String(Math.max(0, ...chantiers.map(c => parseInt((c.numero || '').split('-').pop()) || 0)) + 1).padStart(3, '0')}`, nom: '', clientId: '', conducteur: '', directeurTravauxId: '', adresse: '', ville: '', canton: '',
+    numero: numeroSuivant('chantiers', listesCompletes || { chantiers }, parametres?.compteursNumeros) || '', nom: '', clientId: '', conducteur: '', directeurTravauxId: '', adresse: '', ville: '', canton: '',
     dateDebut: '', nombreJours: '', nombrePersonnes: '', joursRealises: '', inclusSamedi: false,
     statut: 'En cours', priorite: 'Normale', avancement: 0, typesTravaux: [], surface: '',
     montantDevis: '', avenants: [], montantFacture: 0, equipe: [], employes: [],
@@ -115,7 +116,13 @@ function Chantiers() {
     if (form.id) {
       tableauFinal = chantiers.map(c => c.id === form.id ? chantiersData : c);
     } else {
-      tableauFinal = [...chantiers, { ...chantiersData, id: Date.now() }];
+      const nouveau = { ...chantiersData, id: Date.now() };
+      agir(setChantiers, (prev, { complet = prev, parametres: params = {} } = {}) => {
+        const attribution = attribuerNumero('chantiers', nouveau, { chantiers: complet }, params.compteursNumeros);
+        if (attribution.erreur) return attribution;
+        return { valeur: [...prev, attribution.element], message: messageNumero(attribution.change, 'le chantier') };
+      }, 'Chantier créé', () => { setAjout(false); setForm(vide); setErreurs({}); });
+      return;
     }
     setChantiers(tableauFinal);
     if (afficherNotif) afficherNotif(form.id ? 'Chantier mis à jour' : 'Chantier créé');

@@ -85,9 +85,9 @@ function AppInner({ profil, deconnecter, userId, isDemo = false }) {
   const chantiers = useMemo(() => visibles(chantiersBruts), [chantiersBruts]);
   const devis = useMemo(() => visibles(devisBruts), [devisBruts]);
   const clients = useMemo(() => visibles(clientsBruts), [clientsBruts]);
-  const setChantiers = useCallback(u => setChantiersBruts((prev, ids) => appliquerSurVisibles(prev, u, ids)), [setChantiersBruts]);
-  const setDevis = useCallback(u => setDevisBruts((prev, ids) => appliquerSurVisibles(prev, u, ids)), [setDevisBruts]);
-  const setClients = useCallback(u => setClientsBruts((prev, ids) => appliquerSurVisibles(prev, u, ids)), [setClientsBruts]);
+  const setChantiers = useCallback(u => setChantiersBruts((prev, parametres) => appliquerSurVisibles(prev, actifs => typeof u === 'function' ? u(actifs, { complet: prev, parametres }) : u, parametres.idsSupprimes?.chantiers)), [setChantiersBruts]);
+  const setDevis = useCallback(u => setDevisBruts((prev, parametres) => appliquerSurVisibles(prev, actifs => typeof u === 'function' ? u(actifs, { complet: prev, parametres }) : u, parametres.idsSupprimes?.devis)), [setDevisBruts]);
+  const setClients = useCallback(u => setClientsBruts((prev, parametres) => appliquerSurVisibles(prev, actifs => typeof u === 'function' ? u(actifs, { complet: prev, parametres }) : u, parametres.idsSupprimes?.clients)), [setClientsBruts]);
   const listesCompletes = useMemo(() => ({ chantiers: chantiersBruts, devis: devisBruts, clients: clientsBruts, factures, pointages }), [chantiersBruts, devisBruts, clientsBruts, factures, pointages]);
   useEffect(() => {
     if (dataLoading) return;

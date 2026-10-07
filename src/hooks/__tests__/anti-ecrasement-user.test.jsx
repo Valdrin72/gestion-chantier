@@ -1,4 +1,5 @@
 import React from 'react';
+import { useApp } from '../../context/AppContext';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, render, act, screen, fireEvent } from '@testing-library/react';
 import { readFileSync } from 'node:fs';
@@ -7,11 +8,11 @@ const store = vi.hoisted(() => ({ row: null, reads: [], writes: [], handlers: []
 const deconnecter = vi.hoisted(() => vi.fn());
 vi.mock('../useAuth', () => ({
   DEMO_USER_ID: 'demo',
-  default: () => ({ session: { user: { id: store.demo ? 'demo' : 'user' } }, profil: { id: 'cyna', nom: 'CYNA', pages: ['dashboard'] }, loading: false, deconnecter }),
+  default: () => ({ session: { user: { id: store.demo ? 'demo' : 'user' } }, profil: store.profil || (store.profil = { id: 'cyna', nom: 'CYNA', pages: ['dashboard'] }), loading: false, deconnecter }),
 }));
-vi.mock('../../useAgents', () => ({ default: () => ({}) }));
+vi.mock('../../useAgents', () => ({ default: () => store.agents || (store.agents = {}) }));
 vi.mock('../../modules/alertes/useAlertBootstrap', () => ({ useAlertBootstrap: () => {} }));
-vi.mock('../../pages/Dashboard', () => ({ default: () => <div>Tableau de bord chargé</div> }));
+vi.mock('../../pages/Dashboard', () => ({ default: () => { const app = useApp(); store.app = app; return <div>Tableau de bord chargé<button onClick={() => app.setClients([{ id: 'saisie' }])}>Modifier test</button><button onClick={() => app.deconnecter()}>Déconnexion test</button></div>; } }));
 vi.mock('../../lib/supabase', () => {
   const clone = value => value == null ? value : JSON.parse(JSON.stringify(value));
   function from(table) {
@@ -149,7 +150,8 @@ describe('anti-écrasement user : vrai hook et serveur en mémoire', () => {
     expect(screen.getByRole('alert')).toHaveTextContent('Impossible de charger');
     expect(screen.queryByText('Tableau de bord chargé')).toBeNull();
     expect(store.writes).toHaveLength(0);
-    fireEvent.click(screen.getByText('Se déconnecter')); expect(deconnecter).toHaveBeenCalledOnce();
+    deconnecter.mockResolvedValue({ ok: false });
+    fireEvent.click(screen.getByText('Se déconnecter')); await settle(); expect(deconnecter).toHaveBeenCalledOnce();
     store.readError = null;
     fireEvent.click(screen.getByText('Réessayer')); await settle();
     expect(screen.getByText('Tableau de bord chargé')).toBeInTheDocument();
@@ -646,3 +648,130 @@ describe('suivi : chargement et épisode durable', () => {
     act(() => h.result.current.setClients(updater)); expect(updater).toHaveBeenCalled();
   });
 });
+
+
+describe('securite deconnexion : barriere et dernier envoi', () => {
+  it('envoie immédiatement avant 800 ms', async () => {
+    const h = await boot();
+    act(() => h.result.current.setClients([{ id: 'dernier' }]));
+    let ok; await act(async () => { ok = await h.result.current.terminerSauvegardes(); });
+    expect(ok).toBe(true); expect(store.writes).toHaveLength(1);
+    expect(store.row.data.clients).toEqual([{ id: 'dernier' }]);
+  });
+  it('sans modification : aucune écriture', async () => {
+    const h = await boot(); let ok;
+    await act(async () => { ok = await h.result.current.terminerSauvegardes(); });
+    expect(ok).toBe(true); expect(store.writes).toHaveLength(0);
+  });
+  it('échec réseau : false et modification conservée pour réessayer', async () => {
+    const h = await boot(); store.writeError = { message: 'réseau' };
+    act(() => h.result.current.setClients([{ id: 'dernier' }]));
+    let ok; await act(async () => { ok = await h.result.current.terminerSauvegardes(); });
+    expect(ok).toBe(false); expect(h.result.current.clients).toEqual([{ id: 'dernier' }]);
+    h.result.current.debloquerEcritures(); store.writeError = null;
+    await act(async () => { ok = await h.result.current.terminerSauvegardes(); }); expect(ok).toBe(true);
+  });
+  it('import après le contrôle final : refus sans état ni écriture', async () => {
+    const h = await boot(); await act(async () => { await h.result.current.terminerSauvegardes(); });
+    expect(await h.result.current.importerTout({ ...blob(), clients: [{ id: 'tardif' }] })).toBe(false);
+    await settle(); expect(h.result.current.clients).toEqual([]); expect(store.writes).toHaveLength(0);
+    h.unmount(); expect(await h.result.current.importerTout(blob())).toBe(false);
+  });
+  it('refus avant contrôle final : false, compteur remis à zéro à annulation', async () => {
+    const h = await boot(); h.result.current.bloquerEcritures();
+    for (const key of ['setChantiers','setDevis','setFactures','setClients','setParametres','setPointages','setDonneesListes']) h.result.current[key](() => { throw new Error('écriture interdite'); });
+    let ok; await act(async () => { ok = await h.result.current.terminerSauvegardes(); }); expect(ok).toBe(false);
+    h.result.current.debloquerEcritures();
+    await act(async () => { ok = await h.result.current.terminerSauvegardes(); }); expect(ok).toBe(true);
+  });
+  it.each([false, true])('conflit final, stockage plein=%s : false', async plein => {
+    const h = await boot(); distant();
+    act(() => h.result.current.setClients([{ id: 'rejet' }]));
+    const spy = plein ? vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new Error('plein'); }) : null;
+    let ok; try { await act(async () => { ok = await h.result.current.terminerSauvegardes(); }); } finally { spy?.mockRestore(); }
+    expect(ok).toBe(false); expect(h.result.current.etatSync.statut).toBe('conflit');
+  });
+  it('org : écriture non résolue reste en vol', async () => {
+    localStorage.setItem('cyna_storage_mode', 'org'); const h = await boot();
+    const gate = deferred(); store.deferWrite = gate.promise;
+    act(() => h.result.current.setClients([{ id: 'org' }])); await tick();
+    expect(await h.result.current.terminerSauvegardes()).toBe(false);
+    gate.resolve(); await settle();
+  });
+});
+
+const QUESTION = 'Des modifications ne sont pas enregistrées. Se déconnecter quand même ?';
+describe('App : séquence de déconnexion sûre', () => {
+  it('dernier envoi avant signOut ; double clic unique et application inerte', async () => {
+    render(<App />); await settle(); await tick(); store.writes = [];
+    const gate = deferred(); deconnecter.mockImplementation(() => { expect(store.row.data.clients).toEqual([{ id: 'saisie' }]); return gate.promise; });
+    act(() => { fireEvent.click(screen.getByText('Modifier test'));
+    fireEvent.click(screen.getByText('Déconnexion test')); fireEvent.click(screen.getByText('Déconnexion test')); }); await settle();
+    expect(deconnecter).toHaveBeenCalledOnce(); const app = screen.getByTestId('application');
+    expect(app).toHaveAttribute('inert'); expect(screen.getByRole('status')).toHaveTextContent('Déconnexion…'); expect(app.contains(screen.getByRole('status'))).toBe(false);
+    const avantImport = store.writes.length;
+    expect(await store.app.importerTout({ ...blob(), clients: [{ id: 'import-tardif' }] })).toBe(false); await settle();
+    expect(store.row.data.clients).toEqual([{ id: 'saisie' }]); expect(store.writes).toHaveLength(avantImport);
+    gate.resolve({ ok: false }); await settle(); expect(app).not.toHaveAttribute('inert'); expect(screen.getByText(/La d\u00e9connexion a/)).toHaveTextContent('La déconnexion a échoué. Vérifiez votre connexion et réessayez.');
+    deconnecter.mockResolvedValue({ ok: true }); fireEvent.click(screen.getByText('Déconnexion test')); await settle(); expect(deconnecter).toHaveBeenCalledTimes(2);
+  });
+  it('échec sauvegarde : confirmation externe au conteneur inerte, annulation sans signOut', async () => {
+    render(<App />); await settle(); await tick(); store.writeError = { message: 'offline' };
+    localStorage.setItem('cyna_chat_history', 'secret'); fireEvent.click(screen.getByText('Modifier test')); fireEvent.click(screen.getByText('Déconnexion test')); await settle();
+    expect(screen.getByText(QUESTION)).toBeTruthy(); const app = screen.getByTestId('application'); expect(app).toHaveAttribute('inert'); expect(app.contains(screen.getByRole('dialog'))).toBe(false);
+    expect(screen.queryByText('Déconnexion…')).toBeNull(); fireEvent.click(screen.getByRole('button', { name: 'Annuler' })); await settle();
+    expect(deconnecter).not.toHaveBeenCalled(); expect(app).not.toHaveAttribute('inert'); expect(localStorage.getItem('cyna_chat_history')).toBe('secret'); expect(store.row.data.clients).toEqual([]);
+    store.writeError = null; deconnecter.mockResolvedValue({ ok: true }); fireEvent.click(screen.getByText('Déconnexion test')); await settle(); expect(store.row.data.clients).toEqual([{ id: 'saisie' }]); expect(deconnecter).toHaveBeenCalledOnce();
+  });
+  it('confirmer la perte appelle signOut et garde les copies', async () => {
+    render(<App />); await settle(); await tick(); store.writeError = { message: 'offline' };
+    deconnecter.mockResolvedValue({ ok: true }); fireEvent.click(screen.getByText('Modifier test')); fireEvent.click(screen.getByText('Déconnexion test')); await settle();
+    const keys = Object.keys(localStorage).filter(k => k.startsWith('cyna_sauvegarde_en_echec_')); expect(keys.length).toBeGreaterThan(0);
+    fireEvent.click(screen.getByRole('dialog').querySelector('button:last-child')); await settle(); expect(deconnecter).toHaveBeenCalledOnce(); keys.forEach(k => expect(localStorage.getItem(k)).not.toBeNull());
+  });
+  it('confirmation aussi sur écran erreur après conflit dont le rechargement échoue', async () => {
+    render(<App />); await settle(); await tick(); distant(store.row.version + 1); store.readError = { message: 'offline' };
+    fireEvent.click(screen.getByText('Modifier test')); fireEvent.click(screen.getByText('Déconnexion test')); await settle();
+    expect(screen.getByText(QUESTION)).toBeTruthy(); expect(screen.queryByText('Tableau de bord chargé')).toBeNull();
+    fireEvent.click(screen.getByRole('button',{name:'Annuler'})); await settle(); expect(deconnecter).not.toHaveBeenCalled(); expect(screen.getByTestId('application')).not.toHaveAttribute('inert');
+  });
+});
+
+ describe('round 1 regressions', () => {
+  it('SEC-PERF-01 contexte stable sur notification', async () => {
+    render(<App />); await settle(); await tick(); const avant = store.app;
+    act(() => avant.afficherNotif('test'));
+    expect(store.app).toBe(avant);
+  });
+  it('SEC-PERF-01 fonctions du hook stables', async () => {
+    const h = await boot(); const avant = h.result.current;
+    act(() => h.result.current.setClients([{id:'rendu'}]));
+    for (const cle of ['terminerSauvegardes','bloquerEcritures','debloquerEcritures']) expect(h.result.current[cle]).toBe(avant[cle]);
+  });
+  it('SEC-ORDRE-01 succes avant demontage garde inert et barriere', async () => {
+    deconnecter.mockResolvedValue({ok:true}); render(<App />); await settle(); await tick();
+    fireEvent.click(screen.getByText('Déconnexion test')); await settle();
+    expect(screen.getByTestId('application')).toHaveAttribute('inert');
+    expect(await store.app.importerTout(blob())).toBe(false);
+  });
+  it('SEC-UX-01 echec utilise notification error', async () => {
+    deconnecter.mockResolvedValue({ok:false}); render(<App />); await settle(); await tick();
+    fireEvent.click(screen.getByText('Déconnexion test')); await settle();
+    const message = screen.getByText(/La déconnexion a échoué/);
+    expect(message.style.position).toBe('fixed'); expect(message.style.background).toBe('rgb(239, 68, 68)');
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+  it('SEC-BARRIERE-02 import decide dans updater differe', async () => {
+    const h = await boot(); let promesse;
+    act(() => { h.result.current.setClients([{id:'avant'}]); promesse = h.result.current.importerTout(blob()); h.result.current.bloquerEcritures(); });
+    expect(promesse).toBeInstanceOf(Promise); expect(await promesse).toBe(false);
+    expect(h.result.current.clients).toEqual([]);
+  });
+  it('SEC-BARRIERE-02 normalisation distante bloquee sans cache ni envoi', async () => {
+    const h = renderHook(() => useSupabaseData('demo', true)); await settle(); await tick(); store.writes=[]; h.result.current.bloquerEcritures();
+    store.row = row(1, blob());
+    const cache = vi.spyOn(Storage.prototype,'setItem');
+    await act(async () => h.result.current.reessayerChargement()); await tick();
+    expect(cache).not.toHaveBeenCalled(); expect(store.writes).toHaveLength(0); cache.mockRestore();
+  });
+ });

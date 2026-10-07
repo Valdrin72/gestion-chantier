@@ -1,3 +1,4 @@
+import { fmtCHF, fmtNombre } from './calculs/format';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { calculerDateFinOuvrables, calculerCoutsChantier, calculerCA, heuresEmploye, tauxDocumentFige } from './donnees';
@@ -312,8 +313,8 @@ export const exportFicheChantier = async (chantier, clients, parametres, devis =
         return [
           emp?.nom || '-', emp?.poste || '-', m.role || '-',
           `${m.joursPlannifies}j`, `${joursReelsReel}j`,
-          `CHF ${((emp?.tarifJour || 0) * (m.joursPlannifies || 0)).toLocaleString()}`,
-          `CHF ${((emp?.tarifJour || 0) * joursReelsReel).toLocaleString()}`,
+          `${fmtCHF(((emp?.tarifJour || 0) * (m.joursPlannifies || 0)))}`,
+          `${fmtCHF(((emp?.tarifJour || 0) * joursReelsReel))}`,
         ];
       }),
       headStyles: { fillColor: BLEU, fontSize: 8 },
@@ -330,13 +331,13 @@ export const exportFicheChantier = async (chantier, clients, parametres, devis =
     startY: y,
     head: [['Poste', 'Prévu', 'Réel', 'Écart']],
     body: [
-      ['CA devis', calculerCA(chantier, devis) !== null ? `CHF ${calculerCA(chantier, devis).toLocaleString()}` : 'Aucun devis lié', '-', '-'],
-      ["Main d'œuvre", `CHF ${couts.coutEquipePrevu.toLocaleString()}`, `CHF ${couts.coutEquipeReel.toLocaleString()}`, `${couts.coutEquipeReel > couts.coutEquipePrevu ? '+' : ''}CHF ${(couts.coutEquipeReel - couts.coutEquipePrevu).toLocaleString()}`],
-      ['Matériel', `CHF ${couts.coutMaterielPrevu.toLocaleString()}`, `CHF ${couts.coutMaterielReel.toLocaleString()}`, `${couts.coutMaterielReel > couts.coutMaterielPrevu ? '+' : ''}CHF ${(couts.coutMaterielReel - couts.coutMaterielPrevu).toLocaleString()}`],
-      ['Déplacement', `CHF ${couts.coutDeplacement.toLocaleString()}`, `CHF ${couts.coutDeplacement.toLocaleString()}`, '-'],
-      ['Imprévus', 'CHF 0', `CHF ${couts.coutImprevus.toLocaleString()}`, `+CHF ${couts.coutImprevus.toLocaleString()}`],
-      ['TOTAL COÛTS', `CHF ${couts.totalCoutsPrevu.toLocaleString()}`, `CHF ${couts.totalCoutsReel.toLocaleString()}`, `${couts.totalCoutsReel > couts.totalCoutsPrevu ? '+' : ''}CHF ${(couts.totalCoutsReel - couts.totalCoutsPrevu).toLocaleString()}`],
-      ['MARGE', couts.margePrevu !== null ? `CHF ${Math.round(couts.margePrevu).toLocaleString()} (${couts.margePrevuPct}%)` : '—', couts.margeReel !== null ? `CHF ${Math.round(couts.margeReel).toLocaleString()} (${couts.margeActuellePct ?? '—'}%)` : '—', '-'],
+      ['CA devis', calculerCA(chantier, devis) !== null ? `${fmtCHF(calculerCA(chantier, devis))}` : 'Aucun devis lié', '-', '-'],
+      ["Main d'œuvre", `${fmtCHF(couts.coutEquipePrevu)}`, `${fmtCHF(couts.coutEquipeReel)}`, `${fmtCHF((couts.coutEquipeReel - couts.coutEquipePrevu), { signe: true })}`],
+      ['Matériel', `${fmtCHF(couts.coutMaterielPrevu)}`, `${fmtCHF(couts.coutMaterielReel)}`, `${fmtCHF((couts.coutMaterielReel - couts.coutMaterielPrevu), { signe: true })}`],
+      ['Déplacement', `${fmtCHF(couts.coutDeplacement)}`, `${fmtCHF(couts.coutDeplacement)}`, '-'],
+      ['Imprévus', fmtCHF(0), `${fmtCHF(couts.coutImprevus)}`, `${fmtCHF(couts.coutImprevus, { signe: true })}`],
+      ['TOTAL COÛTS', `${fmtCHF(couts.totalCoutsPrevu)}`, `${fmtCHF(couts.totalCoutsReel)}`, `${fmtCHF((couts.totalCoutsReel - couts.totalCoutsPrevu), { signe: true })}`],
+      ['MARGE', couts.margePrevu !== null ? `${fmtCHF(Math.round(couts.margePrevu))} (${couts.margePrevuPct}%)` : '—', couts.margeReel !== null ? `${fmtCHF(Math.round(couts.margeReel))} (${couts.margeActuellePct ?? '—'}%)` : '—', '-'],
     ],
     headStyles: { fillColor: VERT, fontSize: 8 },
     bodyStyles: { fontSize: 8 },
@@ -457,17 +458,17 @@ export const exportDevis = async (devis, clients, parametres) => {
   const totalCouts = coutMateriel + coutTransport + coutSousTraitance;
   const fraisGen = totalCouts * ((parametres.parametres?.tauxFraisGeneraux || 12) / 100);
   const surface = parseFloat(devis.surface) || 0;
-  const fmtM2 = (val) => surface > 0 ? `CHF ${Math.round(val / surface).toLocaleString()}/m²` : '—';
+  const fmtM2 = (val) => surface > 0 ? `${fmtCHF(Math.round(val / surface))}/m²` : '—';
 
   autoTable(doc, {
     startY: y,
     head: [['Description', 'Montant HT', 'CHF/m²']],
     body: [
-      ['Fournitures et matériaux', `CHF ${coutMateriel.toLocaleString()}`, fmtM2(coutMateriel)],
-      ['Transport et logistique', `CHF ${coutTransport.toLocaleString()}`, fmtM2(coutTransport)],
-      ['Sous-traitance', `CHF ${coutSousTraitance.toLocaleString()}`, fmtM2(coutSousTraitance)],
-      ['Frais généraux', `CHF ${Math.round(fraisGen).toLocaleString()}`, fmtM2(fraisGen)],
-      ['PRIX DE VENTE HT', `CHF ${prixPropose.toLocaleString()}`, fmtM2(prixPropose)],
+      ['Fournitures et matériaux', `${fmtCHF(coutMateriel)}`, fmtM2(coutMateriel)],
+      ['Transport et logistique', `${fmtCHF(coutTransport)}`, fmtM2(coutTransport)],
+      ['Sous-traitance', `${fmtCHF(coutSousTraitance)}`, fmtM2(coutSousTraitance)],
+      ['Frais généraux', `${fmtCHF(Math.round(fraisGen))}`, fmtM2(fraisGen)],
+      ['PRIX DE VENTE HT', `${fmtCHF(prixPropose)}`, fmtM2(prixPropose)],
     ],
     headStyles: { fillColor: VERT, fontSize: 9 },
     bodyStyles: { fontSize: 9 },
@@ -495,9 +496,9 @@ export const exportDevis = async (devis, clients, parametres) => {
   // Taux FIGÉ du devis : le document fait foi, jamais le paramètre courant.
   const tauxDevis = tauxDocumentFige(devis, parametres);
   [
-    [`Prix HT :`, `CHF ${prixPropose.toLocaleString()}`],
-    [`TVA ${tauxDevis}% :`, `CHF ${Math.round(prixPropose * (tauxDevis / 100)).toLocaleString()}`],
-    [`TOTAL TTC :`, `CHF ${Math.round(prixPropose * (1 + tauxDevis / 100)).toLocaleString()}`],
+    [`Prix HT :`, `${fmtCHF(prixPropose)}`],
+    [`TVA ${tauxDevis}% :`, `${fmtCHF(Math.round(prixPropose * (tauxDevis / 100)))}`],
+    [`TOTAL TTC :`, `${fmtCHF(Math.round(prixPropose * (1 + tauxDevis / 100)))}`],
   ].forEach(([label, val], i) => {
     doc.setFont('helvetica', i === 2 ? 'bold' : 'normal');
     doc.setFontSize(i === 2 ? 12 : 10);
@@ -565,9 +566,9 @@ export const exportRapportMensuel = async (chantiers, clients, parametres, mois,
   // KPIs VISUELS
   const kpis = [
     { label: 'Chantiers du mois', val: chantiersMois.length, couleur: BLEU, bg: [227, 242, 253] },
-    { label: "CA signé", val: `CHF ${caTotal.toLocaleString()}`, couleur: VERT, bg: [232, 245, 233] },
-    { label: 'Total coûts', val: `CHF ${coutsTotal.toLocaleString()}`, couleur: ORANGE, bg: [255, 243, 224] },
-    { label: 'Marge nette', val: `CHF ${margeTotal.toLocaleString()} (${margePct}%)`, couleur: margeTotal >= 0 ? VERT : ROUGE, bg: margeTotal >= 0 ? [232, 245, 233] : [255, 235, 238] },
+    { label: "CA signé", val: `${fmtCHF(caTotal)}`, couleur: VERT, bg: [232, 245, 233] },
+    { label: 'Total coûts', val: `${fmtCHF(coutsTotal)}`, couleur: ORANGE, bg: [255, 243, 224] },
+    { label: 'Marge nette', val: `${fmtCHF(margeTotal)} (${margePct}%)`, couleur: margeTotal >= 0 ? VERT : ROUGE, bg: margeTotal >= 0 ? [232, 245, 233] : [255, 235, 238] },
   ];
 
   kpis.forEach((k, i) => {
@@ -592,9 +593,9 @@ export const exportRapportMensuel = async (chantiers, clients, parametres, mois,
     head: [['Indicateur', 'Valeur', 'Statut']],
     body: [
       ['Nombre de chantiers', chantiersMois.length, chantiersMois.length > 0 ? 'Actif' : '—'],
-      ["CA signé", `CHF ${caTotal.toLocaleString()}`, '💰'],
-      ['Total coûts', `CHF ${coutsTotal.toLocaleString()}`, '💸'],
-      ['Marge brute', `CHF ${margeTotal.toLocaleString()}`, margeTotal >= 0 ? 'Positif' : 'Négatif'],
+      ["CA signé", `${fmtCHF(caTotal)}`, '💰'],
+      ['Total coûts', `${fmtCHF(coutsTotal)}`, '💸'],
+      ['Marge brute', `${fmtCHF(margeTotal)}`, margeTotal >= 0 ? 'Positif' : 'Négatif'],
       ['Taux de marge', `${margePct}%`, parseFloat(margePct) >= 20 ? 'Excellent' : parseFloat(margePct) >= 15 ? 'Correct' : 'Faible'],
     ],
     headStyles: { fillColor: BLEU, fontSize: 9 },
@@ -615,10 +616,10 @@ export const exportRapportMensuel = async (chantiers, clients, parametres, mois,
         const couts = calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis, pointages);
         return [
           stripHtml(c.nom), stripHtml(client?.entreprise) || '-', stripHtml(c.ville) || '-', c.statut,
-          couts.montantTotal !== null ? Math.round(couts.montantTotal).toLocaleString() : '—',
-          Math.round(couts.totalCoutsReel).toLocaleString(),
+          couts.montantTotal !== null ? fmtNombre(Math.round(couts.montantTotal), 0) : '—',
+          fmtNombre(Math.round(couts.totalCoutsReel), 0),
           couts.margeActuellePct !== null ? `${couts.margeActuellePct}%` : '—',
-          couts.margeReel !== null ? Math.round(couts.margeReel).toLocaleString() : '—',
+          couts.margeReel !== null ? fmtNombre(Math.round(couts.margeReel), 0) : '—',
         ];
       }),
       headStyles: { fillColor: BLEU, fontSize: 7.5 },
@@ -641,7 +642,7 @@ export const exportRapportMensuel = async (chantiers, clients, parametres, mois,
     if (cs.length === 0) return null;
     const ca = cs.reduce((s, c) => s + calculerCA(c, devis), 0);
     const couts = cs.reduce((s, c) => s + calculerCoutsChantier(c, parametres.employes, parametres.localites, parametres.parametres, devis, pointages).totalCoutsReel, 0);
-    return [t.nom, cs.length, `CHF ${ca.toLocaleString()}`, `CHF ${couts.toLocaleString()}`, `CHF ${(ca - couts).toLocaleString()}`, ca > 0 ? `${Math.round(((ca - couts) / ca) * 1000) / 10}%` : '-'];
+    return [t.nom, cs.length, `${fmtCHF(ca)}`, `${fmtCHF(couts)}`, `${fmtCHF((ca - couts))}`, ca > 0 ? `${Math.round(((ca - couts) / ca) * 1000) / 10}%` : '-'];
   }).filter(Boolean);
 
   if (parType.length > 0) {

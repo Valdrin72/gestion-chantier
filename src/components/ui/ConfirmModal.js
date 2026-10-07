@@ -4,7 +4,7 @@ export default function ConfirmModal({ message, labelOui = 'Confirmer', labelNon
   // Cible tactile ≥44px sur mobile (la modale est transitoire → lecture directe suffit ; PC inchangé).
   const isMobile = typeof window !== 'undefined' && window.innerWidth <= 767;
   useEffect(() => {
-    const onKey = (e) => { if (e.key === 'Escape') onNon(); if (e.key === 'Enter') onOui(); };
+    const onKey = (e) => { if (e.key === 'Escape') onNon(); };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
   }, [onOui, onNon]);

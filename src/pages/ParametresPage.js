@@ -1,3 +1,4 @@
+import FormulaireMotDePasse from '../components/FormulaireMotDePasse';
 import Corbeille from '../components/parametres/Corbeille';
 import React, { useState, useLayoutEffect } from 'react';
 import { ChevronRight, Menu } from 'lucide-react';
@@ -144,8 +145,11 @@ function Parametres({ parametres, setParametres, clients = [], setClients = () =
         }
       }
 
-      if (importerTout) importerTout({ chantiers: data.chantiers, devis: data.devis, factures: data.factures, clients: data.clients, parametres: data.parametres, pointages: pointagesRestaures });
-      else {
+      if (importerTout && await importerTout({ chantiers: data.chantiers, devis: data.devis, factures: data.factures, clients: data.clients, parametres: data.parametres, pointages: pointagesRestaures }) !== true) {
+        alert('Import non effectué (déconnexion en cours). Réessayez.');
+        return;
+      }
+      if (!importerTout) {
         setParametres(data.parametres); setClients(data.clients); setChantiers(data.chantiers);
         setDevis(data.devis); setFactures(data.factures); setPointages(pointagesRestaures);
       }
@@ -167,6 +171,7 @@ function Parametres({ parametres, setParametres, clients = [], setClients = () =
   };
 
   const onglets = [
+    { id: 'compte', label: 'Mon compte', desc: 'Mot de passe' },
     { id: 'corbeille', label: 'Corbeille', desc: 'Restaurer ou supprimer définitivement' },
     { id: 'dashboard', label: 'Réglages tableau de bord', desc: 'Alertes et affichage' },
     { id: 'chantiers', label: 'Légende des statuts', desc: 'Statuts et priorités (lecture seule)' },
@@ -256,6 +261,7 @@ function Parametres({ parametres, setParametres, clients = [], setClients = () =
 
         {/* ── Content panel ── */}
         <div>
+      {onglet === 'compte' && <section style={carteStyle}><h2>Changer mon mot de passe</h2><FormulaireMotDePasse messageErreur="Impossible de modifier le mot de passe. Réessayez." onSucces={() => afficherNotif?.('Mot de passe modifié')} /></section>}
       {onglet === 'corbeille' && <Corbeille />}
       {onglet === 'dashboard' && (
         <div style={carteStyle}>

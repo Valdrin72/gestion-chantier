@@ -2,7 +2,8 @@
 export function exportCSV(nomFichier, entetes, lignes) {
   const echapper = (v) => {
     if (v === null || v === undefined) return '';
-    const s = String(v).replace(/"/g, '""');
+    const valeur = typeof v === 'string' && /^[=+@\-\t\r]/.test(v) ? "'" + v : v;
+    const s = String(valeur).replace(/"/g, '""');
     return /[",\n\r;]/.test(s) ? `"${s}"` : s;
   };
   const lignesCsv = [entetes, ...lignes].map(row => row.map(echapper).join(';')).join('\r\n');

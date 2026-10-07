@@ -1,3 +1,5 @@
+import { flushSync } from 'react-dom';
+import NouveauMotDePasse from './components/NouveauMotDePasse';
 import { visibles, appliquerSurVisibles, aPurger, retirerDefinitivement } from './utils/corbeille';
 import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { HardHat, FileText, Users, ChevronRight, Sparkles } from 'lucide-react';
@@ -52,7 +54,7 @@ const NAV_FALLBACK = {
 };
 
 function App() {
-  const { session, profil: profilAuth, loading: authLoading, deconnecter } = useAuth();
+  const { session, profil: profilAuth, loading: authLoading, deconnecter, recuperationMotDePasse, terminerRecuperation } = useAuth();
 
   if (authLoading) {
     return (
@@ -65,6 +67,8 @@ function App() {
   if (!session) {
     return <Login />;
   }
+
+  if (session && recuperationMotDePasse) return <NouveauMotDePasse terminerRecuperation={terminerRecuperation} deconnecter={deconnecter} />;
 
   return <AppInner key={session.user.id} profil={profilAuth} deconnecter={deconnecter} userId={session.user.id} isDemo={session.user.id === DEMO_USER_ID} />;
 }
@@ -79,6 +83,7 @@ function AppInner({ profil, deconnecter, userId, isDemo = false }) {
     pointages, setPointages,
     setDonneesListes, importerTout, modeStockage,
     loading: dataLoading,
+    terminerSauvegardes, debloquerEcritures,
     syncing, etatSync, reessayerChargement, reessayerSauvegarde, fermerMessageSync,
   } = useSupabaseData(userId, isDemo);
 
@@ -194,6 +199,56 @@ function AppInner({ profil, deconnecter, userId, isDemo = false }) {
       onNon: () => { setConfirmState(null); resolve(false); },
     });
   }), []);
+
+  const [enDeconnexion, setEnDeconnexion] = useState(false);
+  const [questionDeconnexion, setQuestionDeconnexion] = useState(false);
+  const deconnexionRef = useRef(false);
+  const monteRef = useRef(true);
+  useEffect(() => { monteRef.current = true; return () => { monteRef.current = false; }; }, []);
+  const sauvegardesRef = useRef({ terminerSauvegardes, debloquerEcritures });
+  sauvegardesRef.current = { terminerSauvegardes, debloquerEcritures };
+  const deconnecterSur = useCallback(async () => {
+    if (isDemo) return deconnecter();
+    if (deconnexionRef.current) return;
+    deconnexionRef.current = true;
+    // Valider les updaters deja demandes avant que terminerSauvegardes bloque les ecritures.
+    flushSync(() => { setEnDeconnexion(true); });
+    let deconnecte = false;
+    try {
+      const ok = await sauvegardesRef.current.terminerSauvegardes();
+      if (!ok) {
+        setQuestionDeconnexion(true);
+        const accepte = await confirmer('Des modifications ne sont pas enregistrées. Se déconnecter quand même ?', { labelOui: 'Se déconnecter', labelNon: 'Annuler' });
+        setQuestionDeconnexion(false);
+        if (!accepte) return;
+      }
+      const resultat = await deconnecter();
+      deconnecte = resultat?.ok === true;
+      if (!deconnecte && monteRef.current) afficherNotif('La déconnexion a échoué. Vérifiez votre connexion et réessayez.', 'error');
+    } catch (error) {
+      console.error('deconnexion', error);
+      if (monteRef.current) afficherNotif('La déconnexion a échoué. Vérifiez votre connexion et réessayez.', 'error');
+    } finally {
+      if (!deconnecte && monteRef.current) {
+        sauvegardesRef.current.debloquerEcritures(); deconnexionRef.current = false;
+        setEnDeconnexion(false); setQuestionDeconnexion(false);
+      }
+    }
+  }, [isDemo, deconnecter, confirmer, afficherNotif]);
+  const notification = notif && (
+      <div style={{
+        position: 'fixed', bottom: 24, right: 24, zIndex: 9999,
+        background: notif.type === 'success' ? '#10b981' : '#ef4444',
+        color: '#fff', padding: '12px 20px', borderRadius: 10,
+        boxShadow: '0 4px 20px rgba(0,0,0,0.15)', fontSize: 14, fontWeight: 500,
+        display: 'flex', alignItems: 'center', gap: 8,
+      }}>
+        {notif.type === 'success' ? '✓' : '✕'} {notif.message}
+      </div>
+    );
+  const transitionDeconnexion = <>
+    {enDeconnexion && !questionDeconnexion && <div role="status" style={{ position: 'fixed', inset: 0, zIndex: 20000, background: 'rgba(255,255,255,.9)', display: 'grid', placeItems: 'center' }}>Déconnexion…</div>}
+  </>;
 
   const [saisieHeuresCtx, setSaisieHeuresCtx] = useState(null);
   const ouvrirSaisieHeuresApp = useCallback((chantier, date) => {
@@ -364,7 +419,7 @@ function AppInner({ profil, deconnecter, userId, isDemo = false }) {
     logAction, naviguer, contexte, periodeGlobale, setPeriodeGlobale,
     agentState, ouvrirSaisieHeures: ouvrirSaisieHeuresApp,
     ouvrirMenu: () => setSidebarOuvert(true),
-    deconnecter, afficherNotif, confirmer,
+    deconnecter: deconnecterSur, afficherNotif, confirmer,
     isDemo,
     // Lot 0 : point de vérité unique du « mode consultation » mobile. Défini ici,
     // appliqué page par page dans les lots 1-5 (masquage des actions d'écriture).
@@ -372,16 +427,17 @@ function AppInner({ profil, deconnecter, userId, isDemo = false }) {
   }), [ // eslint-disable-line react-hooks/exhaustive-deps
     chantiers, clients, devis, factures, parametres, pointages,
     listesCompletes, setDonneesListes, importerTout, modeStockage, userId,
-    actionsLog, profil, contexte, periodeGlobale, agentState, isDemo, isMobile,
+    actionsLog, profil, contexte, periodeGlobale, agentState, isDemo, isMobile, deconnecterSur,
   ]);
 
   if (etatSync.erreurChargement) {
-    return <EcranErreurChargement message={etatSync.erreurChargement} onReessayer={reessayerChargement} onDeconnecter={deconnecter} />;
+    return <><div data-testid="application" inert={enDeconnexion ? true : undefined}><EcranErreurChargement message={etatSync.erreurChargement} onReessayer={reessayerChargement} onDeconnecter={deconnecterSur} /></div>{transitionDeconnexion}{notification}{confirmState && <ConfirmModal {...confirmState} />}</>;
   }
   if (dataLoading) return <EcranChargement />;
 
   return (
     <AppProvider value={appValue}>
+    <div data-testid="application" inert={enDeconnexion ? true : undefined}>
     <BandeauSauvegarde statut={etatSync.statut} message={etatSync.message} onReessayer={reessayerSauvegarde} onFermer={fermerMessageSync} />
     <div data-theme={darkMode ? 'dark' : 'light'} className="app-layout">
       {/* Mobile : liste filtrée (menuMobile, sans Analyse/Calculs/Paramètres). PC : liste complète, inchangée. */}
@@ -389,14 +445,14 @@ function AppInner({ profil, deconnecter, userId, isDemo = false }) {
         sidebarOuvert={sidebarOuvert} setSidebarOuvert={setSidebarOuvert}
         maisons={isMobile ? maisonsMobile : maisonsAutorisees} page={page} naviguer={naviguer}
         darkMode={darkMode} toggleDarkMode={toggleDarkMode}
-        profil={profil} deconnecter={deconnecter}
+        profil={profil} deconnecter={deconnecterSur}
       />
       <div className="main-area">
         {page !== 'dashboard' && <Topbar
           setSidebarOuvert={setSidebarOuvert} canGoBack={canGoBack} page={page}
           revenirArriere={revenirArriere}
           darkMode={darkMode} toggleDarkMode={toggleDarkMode} profil={profil}
-          deconnecter={deconnecter} naviguer={naviguer}
+          deconnecter={deconnecterSur} naviguer={naviguer}
         />}
         {(dataLoading || syncing) && (
           <div style={{
@@ -473,27 +529,7 @@ function AppInner({ profil, deconnecter, userId, isDemo = false }) {
     </div>
     <OfflineBanner />
     <InstallPWA />
-    {notif && (
-      <div style={{
-        position: 'fixed', bottom: 24, right: 24, zIndex: 9999,
-        background: notif.type === 'success' ? '#10b981' : '#ef4444',
-        color: '#fff', padding: '12px 20px', borderRadius: 10,
-        boxShadow: '0 4px 20px rgba(0,0,0,0.15)', fontSize: 14, fontWeight: 500,
-        display: 'flex', alignItems: 'center', gap: 8,
-      }}>
-        {notif.type === 'success' ? '✓' : '✕'} {notif.message}
-      </div>
-    )}
-    {confirmState && (
-      <ConfirmModal
-        message={confirmState.message}
-        labelOui={confirmState.labelOui}
-        labelNon={confirmState.labelNon}
-        danger={confirmState.danger}
-        onOui={confirmState.onOui}
-        onNon={confirmState.onNon}
-      />
-    )}
+    {notification}
     {showOnboarding && !dataLoading && (
       <div style={{
         position: 'fixed', inset: 0, zIndex: 10000,
@@ -581,6 +617,18 @@ function AppInner({ profil, deconnecter, userId, isDemo = false }) {
           </div>
         </div>
       </div>
+    )}
+    </div>
+    {transitionDeconnexion}
+    {confirmState && (
+      <ConfirmModal
+        message={confirmState.message}
+        labelOui={confirmState.labelOui}
+        labelNon={confirmState.labelNon}
+        danger={confirmState.danger}
+        onOui={confirmState.onOui}
+        onNon={confirmState.onNon}
+      />
     )}
     </AppProvider>
   );

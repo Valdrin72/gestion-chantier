@@ -62,10 +62,9 @@ const PARAMETRES = {
   parametres: { tauxTVA: 8.1, tauxFraisGeneraux: 12 },
 };
 
-// Mêmes formats que le code de production (formatCHF / toLocaleString) :
-// on vérifie le MONTANT calculé, le runtime fournit le séparateur de milliers.
+// Factures : format fr-CH existant. Devis et rapports : format suisse déterministe.
 const chfSuisse = (v) => `CHF ${Math.round(v).toLocaleString('fr-CH')}`;
-const chfDefaut = (v) => `CHF ${Math.round(v).toLocaleString()}`;
+const chfDefaut = (v) => `CHF ${Math.round(v).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, "'")}`;
 
 // ═════════════════════════════════════════════════════════════════════════
 // exportFacture — totaux HT / TVA 8.1% / TTC + solde

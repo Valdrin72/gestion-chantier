@@ -142,7 +142,7 @@ it('setter composé ne sauvegarde rien si neutre et une fois pour restauration g
 });
 it('import remplace corbeille, unit ids et autorise réimport explicite', async () => {
  store.row = row(0, { ...blob(), clients: [{ ...client, supprime_le: '2026-10-01' }], parametres: { idsSupprimes: { clients: ['c', 'local'] } } });
- const h = await boot(); act(() => h.result.current.importerTout({ ...blob(), clients: [client], parametres: { idsSupprimes: { clients: ['import'] } } })); await tick();
+ const h = await boot(); await act(async () => { h.result.current.importerTout({ ...blob(), clients: [client], parametres: { idsSupprimes: { clients: ['import'] } } }); }); await tick();
  expect(store.row.data.clients).toEqual([client]); expect(store.row.data.parametres.idsSupprimes.clients).toEqual(['local', 'import']); expect(store.writes).toHaveLength(1);
 });
 it('org : purge dernier élément ne modifie pas état ni serveur', async () => {
@@ -156,7 +156,7 @@ it('CORB-03 : opérations composées et import ne recopient jamais les pointages
  const h = await boot(); localStorage.removeItem('cyna_pointages');
  act(() => h.result.current.setDonneesListes(prev => ({ ...prev, clients: [client] }))); await tick();
  expect(localStorage.getItem('cyna_pointages')).toBeNull(); expect(JSON.parse(localStorage.getItem('cyna_clients'))).toEqual([client]);
- act(() => h.result.current.importerTout({ ...blob(), clients: [client], pointages: [{ id: 'p2', repartitions: [] }] })); await tick();
+ await act(async () => { h.result.current.importerTout({ ...blob(), clients: [client], pointages: [{ id: 'p2', repartitions: [] }] }); }); await tick();
  expect(localStorage.getItem('cyna_pointages')).toBeNull(); expect(JSON.parse(localStorage.getItem('cyna_devis'))).toEqual([{ id: 'initial' }]);
 });
 
@@ -177,7 +177,7 @@ it('NUM-suppression capture le maximum dans une seule écriture et résiste aux 
 });
 it('NUM-import ancien conserve le maximum avant disparition puis attribue 008', async () => {
  store.row = row(0, {...blob(),factures:fs(7)}); const h=await boot();
- act(() => h.result.current.importerTout({...blob(),factures:fs(3),parametres:{compteursNumeros:{'F-2026':3}}})); await tick();
+ await act(async () => { h.result.current.importerTout({...blob(),factures:fs(3),parametres:{compteursNumeros:{'F-2026':3}}}); }); await tick();
  expect(store.row.data.parametres.compteursNumeros['F-2026']).toBe(7);
  act(() => h.result.current.setFactures((prev,params) => [...prev,attribuerNumero('factures',{id:'next',numero:'F-2026-004'},{factures:prev},params.compteursNumeros,numDate).element])); await tick();
  expect(store.row.data.factures.at(-1).numero).toBe('F-2026-008');

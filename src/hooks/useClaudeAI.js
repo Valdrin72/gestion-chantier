@@ -9,6 +9,7 @@ const CAP_CONTEXTE = 8000;
 export function useClaudeAI() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [limiteAtteinte, setLimiteAtteinte] = useState(false);
   const { parametres, chantiers = [], clients = [] } = useApp();
   // Interrupteur maître : l'Assistant IA est ACTIVÉ par défaut (les données envoyées sont
   // anonymisées). L'utilisateur peut le couper complètement dans Paramètres → Confidentialité :
@@ -16,6 +17,7 @@ export function useClaudeAI() {
   const iaActivee = parametres?.parametres?.iaActivee !== false;
 
   const appeler = useCallback(async (action, data) => {
+    setLimiteAtteinte(false);
     if (!iaActivee) {
       setError('Assistant IA désactivé (Paramètres → Confidentialité). Aucune donnée envoyée.');
       return null; // kill-switch : on ne touche jamais au réseau
@@ -37,7 +39,19 @@ export function useClaudeAI() {
       const { data: result, error: fnError } = await supabase.functions.invoke('claude-ia', {
         body: { action, data: payload },
       });
-      if (fnError) throw new Error(fnError.message ?? 'Erreur Edge Function');
+      if (fnError) {
+        const context = fnError.context;
+        let body;
+        if (typeof context?.status === 'number') {
+          try { body = await context.json(); } catch { /* Corps non JSON : message sûr par défaut. */ }
+        }
+        const limite = context?.status === 429;
+        setLimiteAtteinte(limite);
+        setError(typeof body?.error === 'string' && body.error ? body.error : limite
+          ? "Limite d'utilisation de l'assistant atteinte pour aujourd'hui, réessayez demain."
+          : "L'assistant est momentanément indisponible. Réessayez plus tard.");
+        return null;
+      }
       if (result?.error) throw new Error(result.error);
       // Ré-identification : les pseudonymes de la réponse redeviennent les vrais noms pour l'affichage.
       return reidentifier(result?.texte ?? '', corr);
@@ -50,5 +64,5 @@ export function useClaudeAI() {
     }
   }, [iaActivee, chantiers, clients, parametres]);
 
-  return { appeler, loading, error };
+  return { appeler, loading, error, limiteAtteinte };
 }

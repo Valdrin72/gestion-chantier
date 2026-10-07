@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { numeroSuivant, attribuerNumero, fusionnerCompteurs, numeroDisponible, compteursDepuisListes, lireCompteur, avecCompteurs } from '../numerotation';
+import { messageNumero, numeroSuivant, attribuerNumero, fusionnerCompteurs, numeroDisponible, compteursDepuisListes, lireCompteur, avecCompteurs } from '../numerotation';
 const date = new Date(2026, 5, 1);
 describe('numérotation unique', () => {
  it('U1 inclut corbeille et compteur', () => { expect(numeroSuivant('factures', {factures:[{numero:'F-2026-005',supprime_le:'hier'}]}, {'F-2026':7}, date)).toBe('F-2026-008'); });
@@ -19,7 +19,7 @@ it('R01 compte uniquement le prefixe de sa liste', () => {
 
  expect(numeroSuivant('factures',listes,{},date)).toBe('F-2026-005');
 
- expect(attribuerNumero('devis',{numero:'F-2026-500'},listes,{},date).change).toEqual({ancien:'F-2026-500',nouveau:'DEV-2026-001'});
+ expect(attribuerNumero('devis',{numero:'F-2026-500'},listes,{},date).change).toEqual({ancien:'F-2026-500',nouveau:'DEV-2026-001',raison:'invalide'});
 
 });
 
@@ -72,7 +72,29 @@ it('R06 creation chantier en corbeille et saturation',()=>{
  const listes={chantiers:[{id:1,numero:'CH-2026-004',supprime_le:'hier'}]};
  const a=attribuerNumero('chantiers',{id:2,numero:'CH-2026-004'},listes,{},date);
  expect(a.element.numero).toBe('CH-2026-005');
- expect(a.change).toEqual({ancien:'CH-2026-004',nouveau:'CH-2026-005'});
+ expect(a.change).toEqual({ancien:'CH-2026-004',nouveau:'CH-2026-005',raison:'pris'});
  const refuse=attribuerNumero('chantiers',{id:2,numero:''},listes,{'CH-2026':999999},date);
  expect(refuse.erreur).toBeTruthy();expect(refuse.element).toBeUndefined();
+});
+
+describe('message de numérotation selon la raison (point 1)', () => {
+ const msg = (type, element, listes, compteurs = {}, d = date, nom = 'le devis') => messageNumero(attribuerNumero(type, element, listes, compteurs, d).change, nom);
+ it('numéro réellement pris par un autre élément → « était déjà utilisé »', () => {
+  expect(msg('devis', { id: 2, numero: 'DEV-2026-001' }, { devis: [{ id: 1, numero: 'DEV-2026-001' }] })).toBe('DEV-2026-001 était déjà utilisé : le devis a reçu DEV-2026-002');
+ });
+ it('numéro déjà attribué puis supprimé (compteur) → « était déjà utilisé »', () => {
+  expect(msg('factures', { id: 9, numero: 'F-2026-005' }, { factures: [{ id: 1, numero: 'F-2026-004' }] }, { 'F-2026': 5 }, date, 'la facture')).toBe('F-2026-005 était déjà utilisé : la facture a reçu F-2026-006');
+ });
+ it('numéro hors séquence → message neutre « Numéro invalide »', () => {
+  expect(msg('devis', { id: 2, numero: 'DEV-2026-999999' }, { devis: [{ id: 1, numero: 'DEV-2026-004' }] })).toBe('Numéro invalide : le devis a reçu DEV-2026-005');
+ });
+ it('numéro au format d’un autre type → « Numéro invalide »', () => {
+  expect(msg('devis', { id: 2, numero: 'F-2026-500' }, { devis: [] })).toBe('Numéro invalide : le devis a reçu DEV-2026-001');
+ });
+ it('numéro d’une autre année → « Numéro invalide »', () => {
+  expect(msg('factures', { id: 2, numero: 'F-2026-006' }, { factures: [] }, {}, new Date(2027, 0, 1), 'la facture')).toBe('Numéro invalide : la facture a reçu F-2027-001');
+ });
+ it('champ vidé → « Numéro attribué automatiquement », qui commence correctement', () => {
+  for (const numero of ['', '   ', undefined]) expect(msg('devis', { id: 2, numero }, { devis: [{ id: 1, numero: 'DEV-2026-003' }] })).toBe('Numéro attribué automatiquement : le devis a reçu DEV-2026-004');
+ });
 });

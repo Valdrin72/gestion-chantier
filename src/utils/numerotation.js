@@ -41,11 +41,27 @@ export function attribuerNumero(type, element, listes = {}, compteurs = {}, date
  if (bonneSerie && numeroDisponible(type, element.numero, listes, compteurs, element.id, options)) return { element, change: null };
  const nouveau = numeroSuivant(type, listes, compteurs, date);
  if (!nouveau) return { erreur: `Plus aucun numéro disponible pour la série ${PREFIXES[type]}-${date.getFullYear()}` };
- return { element: {...element, numero:nouveau}, change:{ancien:element.numero || '', nouveau} };
+ return { element: {...element, numero:nouveau}, change:{ancien:texteNumero(element), nouveau, raison:raisonChangement(type, element, listes, compteurs, date)} };
+}
+// Pourquoi le numéro a été remplacé : 'vide' (champ vidé), 'pris' (porté par un autre élément, ou déjà
+// attribué dans la série en cours — numéro inférieur ou égal au dernier attribué), 'invalide' sinon
+// (autre préfixe, autre année, hors séquence). Seul 'pris' justifie « était déjà utilisé ».
+function raisonChangement(type, element, listes, compteurs, date) {
+ const texte = texteNumero(element);
+ if (!texte) return 'vide';
+ if ((listes[type] || []).some(e => e && String(e.id) !== String(element.id) && texteNumero(e) === texte)) return 'pris';
+ const n = lireNumero(texte), serie = `${PREFIXES[type]}-${date.getFullYear()}`;
+ const dernier = Math.max(lireCompteur(compteurs, serie), lireCompteur(compteursDepuisListes({ [type]: listes[type] }), serie));
+ return n && n.serie === serie && n.seq <= dernier ? 'pris' : 'invalide';
 }
 export function avecCompteurs(prev, next) {
  const compteurs = fusionnerCompteurs(prev.parametres?.compteursNumeros, next.parametres?.compteursNumeros, compteursDepuisListes(prev), compteursDepuisListes(next));
  if (compteurs === next.parametres?.compteursNumeros || (!next.parametres?.compteursNumeros && !Object.keys(compteurs).length)) return next;
  return {...next, parametres:{...next.parametres, compteursNumeros:compteurs}};
 }
-export const messageNumero = (change, nom) => change ? `${change.ancien} était déjà utilisé : ${nom} a reçu ${change.nouveau}` : undefined;
+export function messageNumero(change, nom) {
+ if (!change) return undefined;
+ if (change.raison === 'vide' || !change.ancien) return `Numéro attribué automatiquement : ${nom} a reçu ${change.nouveau}`;
+ if (change.raison === 'pris') return `${change.ancien} était déjà utilisé : ${nom} a reçu ${change.nouveau}`;
+ return `Numéro invalide : ${nom} a reçu ${change.nouveau}`;
+}

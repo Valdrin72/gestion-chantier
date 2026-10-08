@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 /**
  * Phase 7c — PREUVE que le PDF client (fiche chantier) reçoit le vrai coût MO.
  * On capture les lignes autoTable et on vérifie que la ligne "Main d'œuvre" (colonne
@@ -74,12 +75,14 @@ describe('Phase 7c — ExportPDF fiche chantier : coût MO réel dans le documen
     await exportFicheChantier(CHANTIER, CLIENTS, PARAMS, DEVIS, POINTAGES);
     const cell = moReel();
     expect(cell).toBeTruthy();
-    expect(cell).not.toBe('CHF 0');
-    expect(cell).toMatch(/2[  ,]?000/); // 2000 formaté (séparateur de milliers selon locale)
+    expect(cell).not.toBe('CHF 0.00');
+    expect(cell).toBe("CHF 2'000.00");
   });
 
   it('🔴 MORDANT : SANS pointages → "Main d\'œuvre" RÉEL = CHF 0 (l\'ancien bug, document client faux)', async () => {
     await exportFicheChantier(CHANTIER, CLIENTS, PARAMS, DEVIS, []);
-    expect(moReel()).toBe('CHF 0');
+    expect(moReel()).toBe('CHF 0.00');
   });
 });
+
+it('aucun format monetaire sans langue', () => { expect(readFileSync('src/ExportPDF.js', 'utf8')).not.toMatch(/\.toLocaleString\(\s*\)/); });

@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '../lib/supabase';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { effacerCachesLocaux } from '../utils/cachesLocaux';
+import { supabase, lienRecuperationMotDePasse } from '../lib/supabase';
 
 const TOUTES_PAGES = [
   'dashboard', 'chantiers', 'clients', 'employes', 'devis', 'heures',
@@ -45,6 +46,9 @@ export default function useAuth() {
   const [session, setSession] = useState(() => isDemoMode() ? DEMO_SESSION : null);
   const [profil, setProfil] = useState(() => isDemoMode() ? ROLE_PAGES['cyna'] : null);
   const [loading, setLoading] = useState(() => !isDemoMode());
+  const deconnexionEnCoursRef = useRef(false);
+  const [recuperationMotDePasse, setRecuperationMotDePasse] = useState(lienRecuperationMotDePasse);
+  const terminerRecuperation = () => setRecuperationMotDePasse(false);
   const [erreur, setErreur] = useState(null);
 
   const resolverProfil = useCallback((user) => {
@@ -70,7 +74,9 @@ export default function useAuth() {
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, s) => {
-      if (isDemoMode()) return; // Demo mode activated
+      if (isDemoMode() || deconnexionEnCoursRef.current) return; // Demo mode activated
+      if (_event === 'PASSWORD_RECOVERY') setRecuperationMotDePasse(true);
+      if (!s) setRecuperationMotDePasse(false);
       setSession(s);
       setProfil(resolverProfil(s?.user));
     });
@@ -99,13 +105,31 @@ export default function useAuth() {
   }, []);
 
   const deconnecter = useCallback(async () => {
-    try { localStorage.removeItem(DEMO_FLAG); } catch {}
-    if (!isDemoMode()) await supabase.auth.signOut();
-    setSession(null);
-    setProfil(null);
+    if (deconnexionEnCoursRef.current) return { ok: false };
+    deconnexionEnCoursRef.current = true;
+    try {
+      if (isDemoMode()) {
+        try { localStorage.removeItem(DEMO_FLAG); } catch {}
+        setDemoActive(false); setSession(null); setProfil(null);
+        setRecuperationMotDePasse(false);
+        return { ok: true };
+      }
+      try {
+        const { error } = await supabase.auth.signOut();
+        if (error) console.error('signOut', error);
+      } catch (error) { console.error('signOut', error); }
+      const { data, error } = await supabase.auth.getSession();
+      if (error || data?.session !== null) return { ok: false };
+      effacerCachesLocaux();
+      setSession(null); setProfil(null); setRecuperationMotDePasse(false);
+      return { ok: true };
+    } catch (error) {
+      console.error('signOut session', error);
+      return { ok: false };
+    } finally { deconnexionEnCoursRef.current = false; }
   }, []);
 
-  return { session, profil, loading, erreur, connecter, connecterDemo, deconnecter };
+  return { session, profil, loading, erreur, recuperationMotDePasse, terminerRecuperation, connecter, connecterDemo, deconnecter };
 }
 
 export { ROLE_PAGES, DEMO_USER_ID };

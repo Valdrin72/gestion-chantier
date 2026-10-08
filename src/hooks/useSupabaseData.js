@@ -273,6 +273,22 @@ export default function useSupabaseData(userId, isDemo = false) {
   const [syncing,     setSyncing]         = useState(false);
 
   const [etatSync, setEtatSync] = useState({ erreurChargement: null, statut: 'ok', message: null });
+  const erreurChargementRef = useRef(etatSync.erreurChargement);
+  erreurChargementRef.current = etatSync.erreurChargement;
+  const ecrituresBloqueesRef = useRef(false);
+  const ecrituresRefuseesRef = useRef(0);
+  const conflitsRef = useRef(0);
+  const ecrituresOrgEnVolRef = useRef(0);
+  // Le plan impose une identite de callback liee au compte (AppInner remonte par userId).
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const bloquerEcritures = useCallback(() => { ecrituresBloqueesRef.current = true; }, [userId]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const debloquerEcritures = useCallback(() => { ecrituresBloqueesRef.current = false; ecrituresRefuseesRef.current = 0; }, [userId]);
+  function ecritureRefusee() {
+    if (!mountedRef.current) return true;
+    if (ecrituresBloqueesRef.current) { ecrituresRefuseesRef.current += 1; return true; }
+    return false;
+  }
   const episodeRef = useRef(null);
   const copiesEpisodeRef = useRef(new Set());
   const copieEpisodeOkRef = useRef(true);
@@ -351,7 +367,7 @@ export default function useSupabaseData(userId, isDemo = false) {
     setDonneesState({ chantiers: ch, devis: dv, factures: fa, clients: cl, parametres: pa, pointages: pt });
     dataRef.current = { chantiers: ch, devis: dv, factures: fa, clients: cl, parametres: pa, pointages: pt };
 
-    if (needsSync) {
+    if (needsSync && !ecrituresBloqueesRef.current) {
       sauvegarderLocal('cyna_chantiers',  ch);
       sauvegarderLocal('cyna_devis',      dv);
       sauvegarderLocal('cyna_factures',   fa);
@@ -522,15 +538,18 @@ export default function useSupabaseData(userId, isDemo = false) {
       if (syncTimer.current) clearTimeout(syncTimer.current);
       syncTimer.current = setTimeout(async () => {
         if (!mountedRef.current) return;
+        syncTimer.current = null;
         const p = pendingRef.current;
         pendingRef.current = null;
         setSyncing(true);
+        ecrituresOrgEnVolRef.current += 1;
         try {
           // VERROU 3 — UPSERT by org_id (jamais un insert aveugle).
           await ecrireRowOrg(orgIdRef.current, p, userId);
         } catch (e) {
           if (process.env.NODE_ENV !== 'production') console.warn('[Sync org]', e.message);
         } finally {
+          ecrituresOrgEnVolRef.current -= 1;
           if (mountedRef.current) setSyncing(false);
         }
       }, 800);
@@ -624,6 +643,7 @@ export default function useSupabaseData(userId, isDemo = false) {
       } catch (e) {
         if (!mountedRef.current) return;
         if (e instanceof ConflitVersionError) {
+          conflitsRef.current += 1;
           recuperationRef.current = true;
           recuperationGenRef.current += 1;
           clearTimeout(syncTimer.current);
@@ -678,11 +698,29 @@ export default function useSupabaseData(userId, isDemo = false) {
   }
 
   // ── Setters (état + localStorage + Supabase) ─────────────────────────────
+  const terminerSauvegardes = useCallback(async () => {
+    bloquerEcritures();
+    const conflitsAvant = conflitsRef.current;
+    if (modeRef.current === 'org') {
+      return !pendingRef.current && !syncTimer.current && !ecrituresOrgEnVolRef.current && !ecrituresRefuseesRef.current;
+    }
+    clearTimeout(syncTimer.current);
+    syncTimer.current = null;
+    await flush();
+    const vide = !pendingRef.current && !enVolRef.current && !episodeRef.current
+      && !attentesLocalesRef.current.size && !recuperationRef.current;
+    return vide && (chargementOkRef.current || !!erreurChargementRef.current)
+      && conflitsRef.current === conflitsAvant && ecrituresRefuseesRef.current === 0;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId]);
+
   const setChantiers = useCallback((updater) => {
-    if (modeRef.current === 'user' && !chargementOkRef.current) return;
+    if (ecritureRefusee()) return false;
+    if (modeRef.current === 'user' && !chargementOkRef.current) return false;
     const jeton = marquerModificationLocale();
     setChantiersState((prev, parametresActuels) => {
       attentesLocalesRef.current.delete(jeton);
+      if (ecritureRefusee()) return prev;
       const next = typeof updater === 'function' ? updater(prev, parametresActuels) : updater;
       // REV-01 — rien n'a changé (ex. régénération du journal identique) : aucune sauvegarde,
       // sinon deux appareils ouverts se renverraient indéfiniment des sauvegardes inutiles.
@@ -695,10 +733,12 @@ export default function useSupabaseData(userId, isDemo = false) {
   }, [userId]);
 
   const setDevis = useCallback((data) => {
-    if (modeRef.current === 'user' && !chargementOkRef.current) return;
+    if (ecritureRefusee()) return false;
+    if (modeRef.current === 'user' && !chargementOkRef.current) return false;
     const jeton = marquerModificationLocale();
     setDevisState((prev, parametresActuels) => {
       attentesLocalesRef.current.delete(jeton);
+      if (ecritureRefusee()) return prev;
       const next = typeof data === 'function' ? data(prev, parametresActuels) : data;
       if (Object.is(next, prev)) return prev;
       sauvegarderLocal('cyna_devis', next);
@@ -709,10 +749,12 @@ export default function useSupabaseData(userId, isDemo = false) {
   }, [userId]);
 
   const setFactures = useCallback((data) => {
-    if (modeRef.current === 'user' && !chargementOkRef.current) return;
+    if (ecritureRefusee()) return false;
+    if (modeRef.current === 'user' && !chargementOkRef.current) return false;
     const jeton = marquerModificationLocale();
     setFacturesState((prev, parametresActuels) => {
       attentesLocalesRef.current.delete(jeton);
+      if (ecritureRefusee()) return prev;
       const next = typeof data === 'function' ? data(prev, parametresActuels) : data;
       if (Object.is(next, prev)) return prev;
       sauvegarderLocal('cyna_factures', next);
@@ -723,10 +765,12 @@ export default function useSupabaseData(userId, isDemo = false) {
   }, [userId]);
 
   const setClients = useCallback((data) => {
-    if (modeRef.current === 'user' && !chargementOkRef.current) return;
+    if (ecritureRefusee()) return false;
+    if (modeRef.current === 'user' && !chargementOkRef.current) return false;
     const jeton = marquerModificationLocale();
     setClientsState((prev, parametresActuels) => {
       attentesLocalesRef.current.delete(jeton);
+      if (ecritureRefusee()) return prev;
       const next = typeof data === 'function' ? data(prev, parametresActuels) : data;
       if (Object.is(next, prev)) return prev;
       sauvegarderLocal('cyna_clients', next);
@@ -737,10 +781,12 @@ export default function useSupabaseData(userId, isDemo = false) {
   }, [userId]);
 
   const setParametres = useCallback((data) => {
-    if (modeRef.current === 'user' && !chargementOkRef.current) return;
+    if (ecritureRefusee()) return false;
+    if (modeRef.current === 'user' && !chargementOkRef.current) return false;
     const jeton = marquerModificationLocale();
     setParametresState(prev => {
       attentesLocalesRef.current.delete(jeton);
+      if (ecritureRefusee()) return prev;
       const propose = typeof data === 'function' ? data(prev) : data;
       const next = propose === prev ? prev : { ...propose, idsSupprimes: fusionnerIdsSupprimes(prev.idsSupprimes, propose.idsSupprimes) };
       if (Object.is(next, prev)) return prev;
@@ -752,10 +798,12 @@ export default function useSupabaseData(userId, isDemo = false) {
   }, [userId]);
 
   const setPointages = useCallback((updater) => {
-    if (modeRef.current === 'user' && !chargementOkRef.current) return;
+    if (ecritureRefusee()) return false;
+    if (modeRef.current === 'user' && !chargementOkRef.current) return false;
     const jeton = marquerModificationLocale();
     setPointagesState(prev => {
       attentesLocalesRef.current.delete(jeton);
+      if (ecritureRefusee()) return prev;
       const next = typeof updater === 'function' ? updater(prev) : updater;
       if (Object.is(next, prev)) return prev;
       scheduleSync({ pointages: next });
@@ -765,11 +813,13 @@ export default function useSupabaseData(userId, isDemo = false) {
   }, [userId]);
 
   const setDonneesListes = useCallback(updater => {
-    if (modeRef.current === 'user' && !chargementOkRef.current) return;
-    if (modeRef.current === 'org' && !orgChargeeRef.current) return;
+    if (ecritureRefusee()) return false;
+    if (modeRef.current === 'user' && !chargementOkRef.current) return false;
+    if (modeRef.current === 'org' && !orgChargeeRef.current) return false;
     const jeton = marquerModificationLocale();
     setDonneesState(prev => {
       attentesLocalesRef.current.delete(jeton);
+      if (ecritureRefusee()) return prev;
       const propose = typeof updater === 'function' ? updater(prev) : updater;
       if (propose === prev) return prev;
       const next = avecCompteurs(prev, { ...propose, parametres: { ...propose.parametres,
@@ -782,15 +832,20 @@ export default function useSupabaseData(userId, isDemo = false) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
   const importerTout = useCallback(data => {
-    if (modeRef.current === 'user' && !chargementOkRef.current) return;
-    if (modeRef.current === 'org' && !orgChargeeRef.current) return;
+    if (ecritureRefusee()) return Promise.resolve(false);
+    if (modeRef.current === 'user' && !chargementOkRef.current) return Promise.resolve(false);
+    if (modeRef.current === 'org' && !orgChargeeRef.current) return Promise.resolve(false);
     const jeton = marquerModificationLocale();
-    setDonneesState(prev => {
-      attentesLocalesRef.current.delete(jeton);
-      const next = avecCompteurs(prev, donneesImportees(prev, data));
-      for (const cle of CLES_CACHE_LOCAL) sauvegarderLocal('cyna_' + cle, next[cle]);
-      scheduleSync(next);
-      return next;
+    return new Promise(resolve => {
+      setDonneesState(prev => {
+        attentesLocalesRef.current.delete(jeton);
+        if (ecritureRefusee()) { resolve(false); return prev; }
+        const next = avecCompteurs(prev, donneesImportees(prev, data));
+        for (const cle of CLES_CACHE_LOCAL) sauvegarderLocal('cyna_' + cle, next[cle]);
+        scheduleSync(next);
+        resolve(true);
+        return next;
+      });
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
@@ -802,6 +857,7 @@ export default function useSupabaseData(userId, isDemo = false) {
     clients, setClients,
     parametres, setParametres,
     pointages, setPointages,
+    terminerSauvegardes, bloquerEcritures, debloquerEcritures,
     setDonneesListes, importerTout, modeStockage: modeRef.current,
     loading, syncing, etatSync,
     reessayerChargement: async () => {

@@ -27,28 +27,30 @@ function trimMemoire(texte) {
   return premier >= 0 ? coupe.slice(premier + 1) : coupe;
 }
 
-// ── Mémoire CYNA partagée (localStorage) ──────────────────────
+// ── Mémoire CYNA partagée (serveur ; localStorage en démo) ────
 // La mémoire est stockée DÉJÀ PSEUDONYMISÉE (aucun nom identifiant sur le disque local),
 // et ré-identifiée uniquement pour l'affichage (memoireLisible).
-function useMemoire() {
-  const { chantiers = [], clients = [], parametres } = useApp();
+export function useMemoire() {
+  const { chantiers = [], clients = [], parametres, isDemo, memoireIA, setMemoireIA } = useApp();
   const corr = useMemo(
     () => construireCorrespondance({ chantiers, clients, employes: parametres?.employes || [] }),
     [chantiers, clients, parametres]
   );
-  const [memoire, setMemoireState] = useState(() => localStorage.getItem('cyna_ia_memoire') || '');
-  const ecrire = (v) => { localStorage.setItem('cyna_ia_memoire', v); return v; };
+  const [memoireDemo, setMemoireDemo] = useState(() => isDemo ? localStorage.getItem('cyna_ia_memoire') || '' : '');
+  const memoire = isDemo ? memoireDemo : (memoireIA || '');
+  const setMemoireState = isDemo ? setMemoireDemo : setMemoireIA;
+  const ecrire = useCallback(v => { if (isDemo) localStorage.setItem('cyna_ia_memoire', v); return v; }, [isDemo]);
 
   const setMemoire = useCallback((texte) => {
-    setMemoireState(ecrire(pseudonymiserTexte(texte, corr)));
-  }, [corr]);
+    setMemoireState(ecrire(trimMemoire(pseudonymiserTexte(texte, corr))));
+  }, [corr, ecrire, setMemoireState]);
 
   // Sauvegarde explicite (PanneauMemoire)
   const sauvegarder = useCallback((extrait) => {
     const date = new Date().toLocaleDateString('fr-CH');
     const ligne = pseudonymiserTexte(`[${date}] ${extrait.slice(0, 400)}`, corr);
     setMemoireState(prev => ecrire(trimMemoire(prev ? `${prev}\n${ligne}` : ligne)));
-  }, [corr]);
+  }, [corr, ecrire, setMemoireState]);
 
   // Auto-save : extrait compact (1-2 phrases max) ajouté automatiquement, pseudonymisé.
   const autoSave = useCallback((contexte, reponse) => {
@@ -56,7 +58,7 @@ function useMemoire() {
     const apercu = reponse.replace(/\n+/g, ' ').replace(/\*\*/g, '').slice(0, 200);
     const ligne = pseudonymiserTexte(`[${date}][${contexte}] ${apercu}`, corr);
     setMemoireState(prev => ecrire(trimMemoire(prev ? `${prev}\n${ligne}` : ligne)));
-  }, [corr]);
+  }, [corr, ecrire, setMemoireState]);
 
   // Version lisible (vrais noms) pour l'affichage uniquement — jamais stockée ni envoyée.
   const memoireLisible = useMemo(() => reidentifier(memoire, corr), [memoire, corr]);

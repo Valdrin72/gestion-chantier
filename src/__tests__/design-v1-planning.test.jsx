@@ -44,7 +44,7 @@ function renderPlanning(over = {}) {
       clients={[CLIENT]} devis={[]} factures={over.factures || []}
       parametres={{ employes: [EMPLOYE] }} naviguer={vi.fn()}
     />,
-    { pointages: [], ouvrirMenu: over.ouvrirMenu || vi.fn() },
+    { isDemo: true, pointages: [], ouvrirMenu: over.ouvrirMenu || vi.fn() },
   );
 }
 

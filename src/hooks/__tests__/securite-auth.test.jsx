@@ -82,7 +82,7 @@ it.each([false,true])('mot de passe erreur exception=%s : message générique', 
 it('chat tardif après nettoyage et démontage ne réécrit pas historique', async () => {
   let resolve; auth.appeler.mockReturnValue(new Promise(r => { resolve = r; }));
   Element.prototype.scrollIntoView = vi.fn();
-  function Harness() { const h = useAuth(); return h.session ? <><button onClick={h.deconnecter}>Quitter test</button><AppProvider value={{parametres:{parametres:{iaConsentement:true}},chantiers:[],devis:[],clients:[],factures:[],pointages:[],setParametres:vi.fn()}}><ClaudeIAPanel /></AppProvider></> : <div>Session fermée</div>; }
+  function Harness() { const h = useAuth(); return h.session ? <><button onClick={h.deconnecter}>Quitter test</button><AppProvider value={{setMemoireIA:vi.fn(),parametres:{parametres:{iaConsentement:true}},chantiers:[],devis:[],clients:[],factures:[],pointages:[],setParametres:vi.fn()}}><ClaudeIAPanel /></AppProvider></> : <div>Session fermée</div>; }
   render(<Harness />); await screen.findByText('Quitter test');
   fireEvent.click(screen.getByTestId('ia-menu').querySelector('button:nth-of-type(6)'));
   const input = screen.getByPlaceholderText(/Posez votre question/); fireEvent.change(input,{target:{value:'question'}}); fireEvent.keyDown(input,{key:'Enter'});

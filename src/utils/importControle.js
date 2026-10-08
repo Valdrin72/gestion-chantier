@@ -2,6 +2,7 @@ import { totalHeuresPointages } from './importGuard';
 
 export const LIMITE_IMPORT = 20 * 1024 * 1024;
 export const LISTES_IMPORT = ['chantiers', 'devis', 'factures', 'clients'];
+export const CLES_DONNEES_SERVEUR = ['objectifs', 'evenementsCalendrier', 'memoireIA'];
 const objet = v => v !== null && typeof v === 'object' && !Array.isArray(v);
 const vide = v => v === undefined || v === null || v === '';
 const numerique = v => vide(v) || (typeof v === 'number' && Number.isFinite(v)) ||
@@ -18,6 +19,37 @@ const CHAMPS_NUMERIQUES_PLAN = {
   factures: ['montantHT', 'montantTVA', 'montantTTC', 'montantPaye'],
   chantiers: ['montantDevis', 'montantFacture'],
 };
+export function verifierValeurServeur(cle, valeur) {
+  const erreurs = [];
+  if (cle === 'objectifs') {
+    if (valeur !== null && !objet(valeur)) erreurs.push('objectifs doit être un objet ou null');
+    else if (valeur !== null) for (const champ of ['caAnnuel', 'margeCible', 'nbChantiers']) {
+      const v = valeur[champ];
+      if (numerique(v)) continue;
+      const texte = JSON.stringify(v) ?? String(v);
+      erreurs.push(typeof v === 'string' && v.includes(',')
+        ? `objectifs : ${champ} ${texte} utilise une virgule ; utilisez un point (${v.replace(',', '.')})`
+        : `objectifs : ${champ} ${texte} n’est pas un nombre fini`);
+    }
+  } else if (cle === 'memoireIA') {
+    if (typeof valeur !== 'string' || valeur.length > 200000) erreurs.push('memoireIA doit être un texte de 200 000 caractères maximum');
+  } else {
+    if (!Array.isArray(valeur)) { erreurs.push('evenementsCalendrier doit être une liste'); return erreurs; }
+    const ids = new Set();
+    valeur.forEach((e, i) => {
+      const lieu = `Événement n° ${i + 1}`;
+      if (!objet(e)) { erreurs.push(`${lieu} doit être un objet non nul`); return; }
+      if (!['string', 'number'].includes(typeof e.id) || vide(e.id) || (typeof e.id === 'number' && !Number.isFinite(e.id))) erreurs.push(`${lieu} : id manquant ou invalide`);
+      else if (ids.has(String(e.id))) erreurs.push(`${lieu} : id en double`);
+      ids.add(String(e.id));
+      // Actual calendar consumers render label/sub and use bg/color as CSS values.
+      for (const champ of ['date', 'label', 'bg', 'color', 'sub', 'titre', 'categorie']) {
+        if (e[champ] !== undefined && typeof e[champ] !== 'string') erreurs.push(`${lieu} : ${champ} doit être un texte`);
+      }
+    });
+  }
+  return erreurs;
+}
 export function verifierSauvegarde(data, { tailleOctets = 0 } = {}) {
   const erreurs = [], anomalies = [], ignorees = [], donnees = {};
   const resultat = { erreurs, anomalies, ignorees, donnees };
@@ -112,13 +144,19 @@ export function verifierSauvegarde(data, { tailleOctets = 0 } = {}) {
       if (!vide(e[champ]) && !(donnees[cible] || []).some(x => objet(x) && String(x.id) === String(e[champ]))) anomalies.push(`${liste} (id ${e.id}) : ${champ} ${e[champ]} absent de ${cible}`);
     }
   }
-  ignorees.push(...Object.keys(data).filter(k => ![...LISTES_IMPORT, 'parametres', 'pointages', 'meta'].includes(k)));
+  for (const cle of CLES_DONNEES_SERVEUR) {
+    if (!Object.prototype.hasOwnProperty.call(data, cle)) continue;
+    donnees[cle] = data[cle];
+    erreurs.push(...verifierValeurServeur(cle, data[cle]));
+  }
+  ignorees.push(...Object.keys(data).filter(k => ![...LISTES_IMPORT, ...CLES_DONNEES_SERVEUR, 'parametres', 'pointages', 'meta'].includes(k)));
   return resultat;
 }
 export function instantaneComplet(etat, maintenant = new Date()) {
   const listes = etat.listesCompletes || etat;
   return { meta: { date: new Date(maintenant).toISOString(), version: 1, app: 'CYNA', source: 'avant-import' },
-    ...Object.fromEntries(LISTES_IMPORT.map(k => [k, listes[k] || []])), parametres: etat.parametres, pointages: etat.pointages || [] };
+    ...Object.fromEntries(LISTES_IMPORT.map(k => [k, listes[k] || []])), parametres: etat.parametres, pointages: etat.pointages || [],
+    ...Object.fromEntries(CLES_DONNEES_SERVEUR.filter(k => etat[k] !== undefined).map(k => [k, etat[k]])) };
 }
 export function resumerImport(actuel, donnees) {
   const avant = actuel.listesCompletes || actuel;
@@ -128,7 +166,14 @@ export function resumerImport(actuel, donnees) {
   return { date: donnees.meta?.date || donnees.date || 'date inconnue', ancienFormat, heuresActuelles, heuresImportees,
     lignes: [...LISTES_IMPORT.map(k => ({label:({chantiers:'Chantiers',devis:'Devis',factures:'Factures',clients:'Clients'})[k], actuel:(avant[k] || []).length, sauvegarde:donnees[k].length})),
       {label:'Pointages', actuel:(actuel.pointages || []).length, sauvegarde:ancienFormat ? (actuel.pointages || []).length : donnees.pointages.length},
-      {label:'Heures', actuel:heuresActuelles, sauvegarde:heuresImportees}, {label:'Corbeille', actuel:corbeille(avant), sauvegarde:corbeille(donnees)}] };
+      {label:'Heures', actuel:heuresActuelles, sauvegarde:heuresImportees}, {label:'Corbeille', actuel:corbeille(avant), sauvegarde:corbeille(donnees)},
+      ...CLES_DONNEES_SERVEUR.map(cle => ({
+        label: ({objectifs:'Objectifs', evenementsCalendrier:'Événements', memoireIA:'Mémoire IA'})[cle],
+        actuel: cle === 'evenementsCalendrier' ? (actuel[cle] || []).length : '—',
+        sauvegarde: !Object.prototype.hasOwnProperty.call(donnees, cle)
+          ? (cle === 'memoireIA' ? 'conservée (absente de la sauvegarde)' : 'conservés (absents de la sauvegarde)')
+          : cle === 'evenementsCalendrier' ? donnees[cle].length : cle === 'memoireIA' ? 'remplacée' : 'remplacés',
+      }))] };
 }
 export function telechargerTexte(texte, nom) {
   const blob = new Blob([texte], { type: 'application/json' });

@@ -10,6 +10,7 @@ export default function CopiesSecours({ userId, restaurer }) {
       <h3>{c.type} — {c.date}</h3><p>{c.cle}</p>
       {!c.contenu ? <p>Copie illisible</p> : <p>{Object.entries(c.comptes).map(([k,n]) => `${k} : ${n}`).join(' · ')}</p>}
       {c.contenu && !c.complete && <p>Copie partielle (un élément) : téléchargez-la pour la consulter</p>}
+      {c.type === 'reprise locale' && <details><summary>Voir le contenu exact</summary><pre style={{whiteSpace:'pre-wrap',overflowWrap:'anywhere'}}>{c.texte}</pre></details>}
       <div style={{display:"flex",gap:12,flexWrap:"wrap"}}><button onClick={() => { try { telechargerTexte(c.texte, `${c.cle}-${c.date.replace(/[^0-9A-Za-z-]/g,'-')}.json`); } catch { window.alert('Téléchargement impossible. La copie est conservée.'); } }}>Télécharger</button>
       {c.complete && <button onClick={() => restaurer(c.contenu, new Blob([c.texte]).size)}>Restaurer</button>}
       </div>

@@ -10,7 +10,7 @@ import ClaudeIAPanel from '../../components/ia/ClaudeIAPanel';
 import AideDevisPanel from '../../components/devis/AideDevisPanel';
 const limite = "Limite d'utilisation de l'assistant atteinte pour aujourd'hui, réessayez demain.";
 const generic = "L'assistant est momentanément indisponible. Réessayez plus tard.";
-const value = { parametres: { parametres: { iaConsentement: true }, employes: [] }, chantiers: [{ id: 1, nom: "Test", statut: "En cours" }], clients: [], devis: [], factures: [], pointages: [], agentState: { alertes: [] } };
+const value = { isDemo: true, parametres: { parametres: { iaConsentement: true }, employes: [] }, chantiers: [{ id: 1, nom: "Test", statut: "En cours" }], clients: [], devis: [], factures: [], pointages: [], agentState: { alertes: [] } };
 const wrapper = ({ children }) => <AppProvider value={value}>{children}</AppProvider>;
 function refusal(status, body) { supabase.functions.invoke.mockResolvedValue({ error: { message: 'Edge Function returned a non-2xx status code', context: { status, json: async () => { if (body === null) throw new SyntaxError('bad JSON'); return body; } } } }); }
 beforeEach(() => { Element.prototype.scrollIntoView = vi.fn(); window.matchMedia = () => ({ matches: false, addEventListener() {}, removeEventListener() {} }); cleanup(); localStorage.clear(); vi.clearAllMocks(); });

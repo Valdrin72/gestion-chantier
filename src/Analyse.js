@@ -45,7 +45,7 @@ function SectionAnalyse({ titre }) {
 }
 
 export default function Analyse({ chantiers, clients, devis = [], parametres, setParametres, factures = [], periodeGlobale = 'annee' }) {
-  const { pointages = [] } = useApp();
+  const { pointages = [], isDemo, objectifs: objectifsServeur, setObjectifs: setObjectifsServeur } = useApp();
   const [vue, setVue] = useState('v_rentabilite');
   const sousVue = (VUES_ANALYSE.find(v => v.id === vue) || VUES_ANALYSE[0]).sous;
   const montre = (id) => sousVue.some(s => s.id === id);
@@ -206,12 +206,14 @@ export default function Analyse({ chantiers, clients, devis = [], parametres, se
   const chargerObjectifs = () => {
     try { const d = localStorage.getItem('cyna_objectifs'); return d ? JSON.parse(d) : null; } catch { return null; }
   };
-  const [objectifs, setObjectifsState] = useState(() => chargerObjectifs() || {
+  const [objectifsDemo, setObjectifsState] = useState(() => (isDemo ? chargerObjectifs() : null) || {
     caAnnuel: Math.round(caTotal * 1.15) || 500000,
     margeCible: 20,
     nbChantiers: chantiers.length + 5 || 20,
   });
+  const objectifs = isDemo ? objectifsDemo : (objectifsServeur ?? { caAnnuel: Math.round(caTotal * 1.15) || 500000, margeCible: 20, nbChantiers: chantiers.length + 5 || 20 });
   const setObjectifs = (data) => {
+    if (!isDemo) { setObjectifsServeur(data); return; }
     setObjectifsState(data);
     try { localStorage.setItem('cyna_objectifs', JSON.stringify(data)); } catch {}
   };

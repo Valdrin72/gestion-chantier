@@ -1,3 +1,7 @@
+import ResumeImport from '../components/parametres/ResumeImport';
+import CopiesSecours from '../components/parametres/CopiesSecours';
+import { verifierSauvegarde, instantaneComplet, resumerImport, telechargerTexte, LIMITE_IMPORT } from '../utils/importControle';
+import { ecrireCopieAvantImport } from '../utils/copiesRejetees';
 import FormulaireMotDePasse from '../components/FormulaireMotDePasse';
 import Corbeille from '../components/parametres/Corbeille';
 import React, { useState, useLayoutEffect } from 'react';
@@ -6,7 +10,7 @@ import { C } from '../donnees';
 import { DS } from '../ds';
 import { V1, mono, carteV1, heroFond, heroMono } from '../design/v1';
 import { useApp } from '../context/AppContext';
-import { pointagesApresRestauration, totalHeuresPointages } from '../utils/importGuard';
+import { pointagesApresRestauration } from '../utils/importGuard';
 import SimulateurScenarios from '../demo/SimulateurScenarios';
 
 // Bouton translucide du hero bleu nuit (mêmes tokens que les autres pages v1).
@@ -73,7 +77,13 @@ function Parametres({ parametres, setParametres, clients = [], setClients = () =
   const [saved, setSaved] = useState(false);
   const timerSaved = React.useRef(null);
   const importRef = React.useRef(null);
-  const { confirmer, afficherNotif, ouvrirMenu, listesCompletes, importerTout } = useApp();
+  const { confirmer, afficherNotif, ouvrirMenu, listesCompletes, importerTout, userId, etatEnregistrement, envoyerMaintenant } = useApp();
+  const [projetImport, setProjetImport] = useState(null);
+  const [messageImport, setMessageImport] = useState(null);
+  const messageImportRef = React.useRef(null);
+  useLayoutEffect(() => { messageImportRef.current?.scrollIntoView?.({ block: "nearest" }); }, [messageImport]);
+  const [occupeImport, setOccupeImport] = useState(false);
+  const verrouImport = React.useRef(false);
   const [memoireVidee, setMemoireVidee] = useState(false);
 
   const iaActivee = parametres.parametres?.iaActivee !== false; // activé par défaut
@@ -89,78 +99,62 @@ function Parametres({ parametres, setParametres, clients = [], setClients = () =
     if (afficherNotif) afficherNotif('Mémoire IA effacée');
   };
 
+  const etatActuel = () => ({ chantiers, devis, factures, clients, parametres, pointages, listesCompletes });
+  const refusEnregistrement = 'Des modifications ne sont pas encore enregistrées. Attendez l’enregistrement (ou téléchargez la copie de secours) avant d’importer.';
+  const propre = () => !etatEnregistrement || etatEnregistrement().propre;
   const exporterDonnees = () => {
-    const date = new Date().toISOString().slice(0, 10);
-    const blob = new Blob(
-      [JSON.stringify({ meta: { date, version: 1, app: 'CYNA' }, chantiers, devis, factures, clients, parametres, pointages, ...listesCompletes }, null, 2)],
-      { type: 'application/json' }
-    );
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `cyna-backup-${date}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
+    const instantane = instantaneComplet(etatActuel());
+    delete instantane.meta.source;
+    telechargerTexte(JSON.stringify(instantane, null, 2), `cyna-backup-${instantane.meta.date.slice(0,10)}.json`);
   };
-
-  const importerDonnees = async (e) => {
+  const preparerImport = (data, tailleOctets) => {
+    setMessageImport(null);
+    if (!propre()) { setMessageImport({ texte: refusEnregistrement }); return; }
+    const controle = verifierSauvegarde(data, { tailleOctets });
+    if (controle.erreurs.length) {
+      setMessageImport({ texte: controle.erreurs.slice(0,10).join('\n') + (controle.erreurs.length > 10 ? `\n… et ${controle.erreurs.length - 10} autres` : '') }); return;
+    }
+    setProjetImport({ ...controle, meta: data.meta, date: data.date });
+  };
+  const importerDonnees = async e => {
     const fichier = e.target.files?.[0];
     if (!fichier) return;
     e.target.value = '';
+    if (fichier.size > LIMITE_IMPORT) { setMessageImport({texte:'Le fichier dépasse 20 Mo.'}); return; }
+    try { preparerImport(JSON.parse(await fichier.text()), fichier.size); }
+    catch { setMessageImport({texte:'JSON invalide : impossible de lire la sauvegarde.'}); }
+  };
+  const confirmerImport = async () => {
+    if (verrouImport.current) return;
+    verrouImport.current = true;
+    setOccupeImport(true);
     try {
-      const texte = await fichier.text();
-      const data = JSON.parse(texte);
-      if (!data.parametres || !Array.isArray(data.chantiers) ||
-          !Array.isArray(data.devis) || !Array.isArray(data.factures) || !Array.isArray(data.clients)) {
-        alert('Fichier de sauvegarde invalide — structure incorrecte (chantiers, devis, factures ou clients manquants).');
-        return;
+      if (!propre()) { setMessageImport({texte:refusEnregistrement}); setProjetImport(null); return; }
+      const instantane = instantaneComplet(etatActuel());
+      const nom = `avant-import-${instantane.meta.date.slice(0,19).replace('T','_').replace(/:/g,'-')}.json`;
+      try { telechargerTexte(JSON.stringify(instantane, null, 2), nom); }
+      catch { setMessageImport({texte:"Copie de sécurité impossible : import annulé. Aucune donnée n'a été modifiée."}); setProjetImport(null); return; }
+      const copie = ecrireCopieAvantImport(userId, instantane);
+      if (!copie.ok) {
+        setMessageImport({texte:copie.stockagePlein
+          ? `Import annulé : le stockage de cet appareil est plein, la copie de sécurité locale n'a pas pu être enregistrée. Vos données n'ont pas été modifiées. Le fichier ${nom} a bien été téléchargé. Téléchargez vos copies de secours pour les garder en lieu sûr.`
+          : "Copie de sécurité locale impossible : import annulé. Vos données n'ont pas été modifiées.", copies:copie.stockagePlein});
+        setProjetImport(null); return;
       }
-      // C3 — décision sur les pointages selon le format du backup (jamais d'écrasement à [] silencieux).
-      const { ancienFormat, pointages: pointagesRestaures } = pointagesApresRestauration(data, pointages);
-      const heuresActuelles = totalHeuresPointages(pointages);
-      const heuresBackup = ancienFormat ? 0 : totalHeuresPointages(data.pointages);
-
-      const ok = window.confirm(
-        `Restaurer la sauvegarde du ${data.meta?.date || 'date inconnue'} ?\n\n` +
-        `Cette action remplacera les données actuelles ; la corbeille actuelle sera remplacée par celle de la sauvegarde :\n` +
-        `• ${(data.chantiers || []).length} chantiers\n` +
-        `• ${(data.devis || []).length} devis\n` +
-        `• ${(data.factures || []).length} factures\n` +
-        `• ${(data.clients || []).length} clients\n` +
-        (ancienFormat
-          ? `• Pointages : backup ANCIEN FORMAT (aucun pointage) → vos ${heuresActuelles}h pointées actuelles sont CONSERVÉES.`
-          : `• Pointages : ${heuresBackup}h du backup remplaceront vos ${heuresActuelles}h actuelles (confirmation requise).`)
-      );
-      if (!ok) return;
-
-      // C3 — remplacement d'heures pointées = confirmation TYPÉE (l'utilisateur écrit un mot).
-      if (!ancienFormat && heuresActuelles > 0) {
-        const saisie = window.prompt(
-          `⚠️ Ce backup va REMPLACER ${heuresActuelles}h pointées actuelles par ${heuresBackup}h du backup.\n\n` +
-          `Cette action est irréversible. Pour confirmer, tapez REMPLACER (en majuscules) :`
-        );
-        if (saisie !== 'REMPLACER') {
-          alert('Import annulé — le remplacement des heures pointées n\'a pas été confirmé.');
-          return;
-        }
-      }
-
-      if (importerTout && await importerTout({ chantiers: data.chantiers, devis: data.devis, factures: data.factures, clients: data.clients, parametres: data.parametres, pointages: pointagesRestaures }) !== true) {
-        alert('Import non effectué (déconnexion en cours). Réessayez.');
-        return;
-      }
-      if (!importerTout) {
-        setParametres(data.parametres); setClients(data.clients); setChantiers(data.chantiers);
-        setDevis(data.devis); setFactures(data.factures); setPointages(pointagesRestaures);
-      }
-      if (ancienFormat) {
-        alert(`Sauvegarde restaurée. Backup ancien format sans pointages → vos ${heuresActuelles}h pointées ont été CONSERVÉES (non écrasées).`);
+      const data = { ...projetImport.donnees, pointages: pointagesApresRestauration(projetImport.donnees, pointages).pointages };
+      if (importerTout) {
+        if (await importerTout(data) !== true) { setMessageImport({texte:!propre() ? refusEnregistrement : "Import non effectué. Vos données n'ont pas été modifiées. La copie de sécurité est conservée."}); setProjetImport(null); return; }
       } else {
-        alert('Sauvegarde restaurée avec succès — chantiers, devis, factures, clients, paramètres et pointages.');
+        setParametres(data.parametres); setClients(data.clients); setChantiers(data.chantiers);
+        setDevis(data.devis); setFactures(data.factures); setPointages(data.pointages);
       }
-    } catch {
-      alert('Erreur lors de la lecture du fichier. Assurez-vous que c\'est un fichier backup CYNA valide.');
-    }
+      const resultat = envoyerMaintenant ? await envoyerMaintenant() : { ok:false };
+      setProjetImport(null);
+      if (resultat.ok) setMessageImport({texte:`Sauvegarde restaurée et enregistrée. Copie de sécurité : ${nom} (téléchargé) et copie locale conservée.`});
+      else if (resultat.conflit) {
+        if (resultat.rechargementOk) setMessageImport({texte:"Import refusé : les données ont changé sur un autre appareil. Les données à jour ont été rechargées ; rien n'a été remplacé. Vos copies de sécurité sont conservées."});
+      } else setMessageImport({texte:"Import appliqué sur cet appareil mais pas encore enregistré. Ne fermez pas l'application ; il sera réenvoyé dès que possible (voir le bandeau)."});
+    } finally { verrouImport.current = false; setOccupeImport(false); }
   };
 
   const sauv = (data) => {
@@ -172,6 +166,7 @@ function Parametres({ parametres, setParametres, clients = [], setClients = () =
 
   const onglets = [
     { id: 'compte', label: 'Mon compte', desc: 'Mot de passe' },
+    { id: 'copies', label: 'Copies de secours', desc: 'Télécharger ou restaurer' },
     { id: 'corbeille', label: 'Corbeille', desc: 'Restaurer ou supprimer définitivement' },
     { id: 'dashboard', label: 'Réglages tableau de bord', desc: 'Alertes et affichage' },
     { id: 'chantiers', label: 'Légende des statuts', desc: 'Statuts et priorités (lecture seule)' },
@@ -202,6 +197,12 @@ function Parametres({ parametres, setParametres, clients = [], setClients = () =
 
   return (
     <div>
+      {messageImport && <div ref={messageImportRef} role="alert" data-testid="message-import" style={{whiteSpace:'pre-line',padding:16}}>{messageImport.texte}
+        {messageImport.copies && <button onClick={() => setOnglet('copies')}>Voir les copies de secours</button>}
+      </div>}
+      {projetImport && <ResumeImport resume={resumerImport(etatActuel(), {...projetImport.donnees, meta:projetImport.meta, date:projetImport.date})}
+        anomalies={projetImport.anomalies} ignorees={projetImport.ignorees} confirmer={confirmerImport}
+        fermer={() => setProjetImport(null)} occupe={occupeImport} />}
       {/* ── Toast de confirmation ── */}
       {saved && (
         <div style={{
@@ -262,6 +263,7 @@ function Parametres({ parametres, setParametres, clients = [], setClients = () =
         {/* ── Content panel ── */}
         <div>
       {onglet === 'compte' && <section style={carteStyle}><h2>Changer mon mot de passe</h2><FormulaireMotDePasse messageErreur="Impossible de modifier le mot de passe. Réessayez." onSucces={() => afficherNotif?.('Mot de passe modifié')} /></section>}
+      {onglet === 'copies' && <CopiesSecours userId={userId} restaurer={preparerImport} />}
       {onglet === 'corbeille' && <Corbeille />}
       {onglet === 'dashboard' && (
         <div style={carteStyle}>

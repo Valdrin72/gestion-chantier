@@ -66,11 +66,22 @@ const makeFile = (obj) =>
   new File([typeof obj === 'string' ? obj : JSON.stringify(obj)], 'backup.json', { type: 'application/json' });
 const getFileInput = (container) => container.querySelector('input[type="file"]');
 
+async function confirmerResume() {
+  const dialog = await screen.findByRole('dialog', { name: 'Résumé de l’import' });
+  const mot = within(dialog).queryByLabelText('Tapez REMPLACER');
+  if (mot) fireEvent.change(mot, { target: { value: 'REMPLACER' } });
+  fireEvent.click(within(dialog).getByRole('button', { name: 'Importer', exact: true }));
+}
+
 // ── Setup : mock window.confirm + window.alert ────────────────────────────────
 let confirmSpy;
 let alertSpy;
 
 beforeEach(() => {
+  localStorage.clear();
+  URL.createObjectURL = vi.fn(() => 'blob:test');
+  URL.revokeObjectURL = vi.fn();
+  vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
   confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
   alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
   // jsdom n'implémente pas Blob.text()/File.text() → polyfill via FileReader
@@ -366,11 +377,12 @@ describe('Parametres — IMPORT backup', () => {
     // pas de clé pointages
   };
 
-  it('import valide + confirm=true → ÉCRASE toutes les données (replace, pas merge)', async () => {
+  it('import valide + confirmation du résumé → ÉCRASE toutes les données (replace, pas merge)', async () => {
     confirmSpy.mockReturnValue(true);
     const { container, props } = renderParametres({ chantiers: [{ id: 'OLD_C' }], clients: [{ id: 'OLD_CL' }] });
     fireEvent.change(getFileInput(container), { target: { files: [makeFile(BACKUP_VALIDE)] } });
 
+    await confirmerResume();
     await waitFor(() => expect(props.setChantiers).toHaveBeenCalled());
     expect(props.setChantiers).toHaveBeenCalledWith([{ id: 'NEW_C' }]);
     expect(props.setDevis).toHaveBeenCalledWith([{ id: 'NEW_D' }]);
@@ -383,6 +395,7 @@ describe('Parametres — IMPORT backup', () => {
     confirmSpy.mockReturnValue(true);
     const { container, props } = renderParametres();
     fireEvent.change(getFileInput(container), { target: { files: [makeFile(BACKUP_VALIDE)] } });
+    await confirmerResume();
     await waitFor(() => expect(props.setPointages).toHaveBeenCalled());
     expect(props.setPointages).toHaveBeenCalledWith([{ id: 'NEW_P', date: '2026-01-01', employeId: 1, repartitions: [] }]);
   });
@@ -408,6 +421,7 @@ describe('Parametres — IMPORT backup', () => {
     confirmSpy.mockReturnValue(true);
     const second = renderParametres({ chantiers: [], devis: [], factures: [], clients: [], pointages: [] });
     fireEvent.change(getFileInput(second.container), { target: { files: [makeFile(exported)] } });
+    await confirmerResume();
     await waitFor(() => expect(second.props.setChantiers).toHaveBeenCalled());
 
     expect(second.props.setChantiers).toHaveBeenCalledWith(exportData.chantiers);
@@ -422,28 +436,28 @@ describe('Parametres — IMPORT backup', () => {
     const fixture = clone(POINTAGES_FIXTURE);
     const { container, props } = renderParametres({ pointages: fixture });
     fireEvent.change(getFileInput(container), { target: { files: [makeFile(BACKUP_ANCIEN)] } });
+    expect(await screen.findByRole('dialog')).toHaveTextContent('vos 15.5 h sont conservées');
+    await confirmerResume();
     await waitFor(() => expect(props.setChantiers).toHaveBeenCalled());
     // C3 — les heures actuelles sont CONSERVÉES (l'ancien code faisait setPointages([]) → perte).
     expect(props.setPointages).toHaveBeenCalledWith(fixture);
     expect(props.setPointages).not.toHaveBeenCalledWith([]);
     // Avertissement explicite de conservation
-    expect(alertSpy).toHaveBeenCalledWith(expect.stringMatching(/conserv/i));
+    expect(alertSpy).not.toHaveBeenCalled();
   });
 
-  it('rétrocompat : data.pointages non-array (malformé) → traité comme absent, setPointages([])', async () => {
-    confirmSpy.mockReturnValue(true);
-    const backupMalformed = { ...BACKUP_ANCIEN, pointages: 'pas un tableau' };
+  it('pointages non-array : refus contrôlé, aucun remplacement', async () => {
     const { container, props } = renderParametres();
-    fireEvent.change(getFileInput(container), { target: { files: [makeFile(backupMalformed)] } });
-    await waitFor(() => expect(props.setChantiers).toHaveBeenCalled());
-    // Non-array → garde identique à absent → pas de crash
-    expect(props.setPointages).toHaveBeenCalledWith([]);
+    fireEvent.change(getFileInput(container), { target: { files: [makeFile({ ...BACKUP_ANCIEN, pointages: 'pas un tableau' })] } });
+    await waitFor(() => expect(screen.getByTestId('message-import')).toHaveTextContent('pointages doit être une liste'));
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(props.setChantiers).not.toHaveBeenCalled(); expect(props.setPointages).not.toHaveBeenCalled();
   });
 
   it('import JSON malformé → alerte + AUCUN écrasement', async () => {
     const { container, props } = renderParametres({ chantiers: [{ id: 'OLD' }] });
     fireEvent.change(getFileInput(container), { target: { files: [makeFile('{ ceci nest pas du json')] } });
-    await waitFor(() => expect(alertSpy).toHaveBeenCalled());
+    await waitFor(() => expect(screen.getByTestId('message-import')).toBeInTheDocument());
     expect(props.setChantiers).not.toHaveBeenCalled();
     expect(props.setParametres).not.toHaveBeenCalled();
     expect(props.setClients).not.toHaveBeenCalled();
@@ -453,7 +467,7 @@ describe('Parametres — IMPORT backup', () => {
     const mauvais = { parametres: {}, chantiers: 'pas un tableau', devis: [], factures: [], clients: [] };
     const { container, props } = renderParametres({ chantiers: [{ id: 'OLD' }] });
     fireEvent.change(getFileInput(container), { target: { files: [makeFile(mauvais)] } });
-    await waitFor(() => expect(alertSpy).toHaveBeenCalledWith(expect.stringContaining('invalide')));
+    await waitFor(() => expect(screen.getByTestId('message-import')).toHaveTextContent('chantiers doit être une liste'));
     expect(props.setChantiers).not.toHaveBeenCalled();
     expect(props.setParametres).not.toHaveBeenCalled();
   });
@@ -462,15 +476,17 @@ describe('Parametres — IMPORT backup', () => {
     const partiel = { chantiers: [], devis: [], factures: [], clients: [] };
     const { container, props } = renderParametres({ chantiers: [{ id: 'OLD' }] });
     fireEvent.change(getFileInput(container), { target: { files: [makeFile(partiel)] } });
-    await waitFor(() => expect(alertSpy).toHaveBeenCalled());
+    await waitFor(() => expect(screen.getByTestId('message-import')).toBeInTheDocument());
     expect(props.setChantiers).not.toHaveBeenCalled();
   });
 
-  it('import valide mais confirm=false → AUCUN écrasement (annulation utilisateur)', async () => {
+  it('import valide puis Annuler dans le résumé → AUCUN écrasement (annulation utilisateur)', async () => {
     confirmSpy.mockReturnValue(false);
     const { container, props } = renderParametres({ chantiers: [{ id: 'OLD' }] });
     fireEvent.change(getFileInput(container), { target: { files: [makeFile(BACKUP_VALIDE)] } });
-    await waitFor(() => expect(confirmSpy).toHaveBeenCalled());
+    const dialog = await screen.findByRole('dialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Annuler' }));
+    expect(confirmSpy).not.toHaveBeenCalled();
     expect(props.setChantiers).not.toHaveBeenCalled();
     expect(props.setParametres).not.toHaveBeenCalled();
   });

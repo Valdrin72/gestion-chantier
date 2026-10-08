@@ -20,7 +20,7 @@ export function nouvelIdCopie() {
  * s'applique aux AUTRES copies (REV-01).
  * @returns {boolean} true seulement si la copie de CE refus existe réellement après rétention.
  */
-export function enregistrerCopieRejetee(id, contenu) {
+export function enregistrerCopieRejetee(id, contenu, { sansRetention = false } = {}) {
   const cleCopie = `${PREFIXE_COPIE_REJETEE}${id}`;
   const entree = { id, date: new Date().toISOString(), ...contenu };
   try {
@@ -30,13 +30,16 @@ export function enregistrerCopieRejetee(id, contenu) {
   }
   try {
     const horodatage = cle => parseInt(cle.slice(PREFIXE_COPIE_REJETEE.length), 10) || 0;
-    Object.keys(localStorage)
+    if (!sansRetention) Object.keys(localStorage)
       .filter(cle => cle.startsWith(PREFIXE_COPIE_REJETEE) && cle !== cleCopie)
       .sort((a, b) => horodatage(b) - horodatage(a))
       .slice(NB_COPIES_REJETEES - 1)
       .forEach(cle => localStorage.removeItem(cle));
   } catch {}
-  try { localStorage.setItem('cyna_sauvegarde_rejetee', JSON.stringify(entree)); } catch {}
+  // Pendant un import, même la copie historique sans suffixe reste intacte.
+  try {
+    if (!sansRetention || localStorage.getItem('cyna_sauvegarde_rejetee') === null) localStorage.setItem('cyna_sauvegarde_rejetee', JSON.stringify(entree));
+  } catch {}
   try { return localStorage.getItem(cleCopie) !== null; } catch { return false; }
 }
 
@@ -59,4 +62,35 @@ export function rangerCopieEchec(cle, source) {
   const id = nouvelIdCopie();
   if (!enregistrerCopieRejetee(id, { ...copie, source }) || !localStorage.getItem(PREFIXE_COPIE_REJETEE + id)) return false;
   try { localStorage.removeItem(cle); return true; } catch { return false; }
+}
+
+export const PREFIXE_AVANT_IMPORT = 'cyna_sauvegarde_avant_import_';
+export function ecrireCopieAvantImport(userId, instantane) {
+  const cle = `${PREFIXE_AVANT_IMPORT}${userId}_${nouvelIdCopie()}`;
+  try {
+    const texte = JSON.stringify(instantane);
+    localStorage.setItem(cle, texte);
+    return { ok: localStorage.getItem(cle) === texte, cle };
+  } catch (erreur) {
+    const stockagePlein = ['QuotaExceededError', 'NS_ERROR_DOM_QUOTA_REACHED'].includes(erreur?.name) || [22, 1014].includes(erreur?.code);
+    return { ok: false, cle, stockagePlein };
+  }
+}
+export function listerCopies(stockage, userId) {
+  const copies = [];
+  for (let i = 0; i < stockage.length; i++) {
+    const cle = stockage.key(i);
+    const type = cle.startsWith(PREFIXE_ECHEC + userId + '_') ? 'échec' :
+      cle.startsWith(PREFIXE_AVANT_IMPORT + userId + '_') ? 'avant import' :
+      cle === 'cyna_sauvegarde_rejetee' || cle.startsWith(PREFIXE_COPIE_REJETEE) ? 'refus' : null;
+    if (!type) continue;
+    const texte = stockage.getItem(cle);
+    let contenu = null;
+    try { contenu = JSON.parse(texte); } catch {}
+    const complete = contenu && ['chantiers','devis','factures','clients'].every(k => Array.isArray(contenu[k])) && contenu.parametres && typeof contenu.parametres === 'object' && !Array.isArray(contenu.parametres);
+    const date = contenu?.date || contenu?.meta?.date;
+    copies.push({ cle, type, texte, contenu, complete: !!complete, date: typeof date === 'string' ? date : 'date inconnue',
+      comptes: Object.fromEntries(['chantiers','devis','factures','clients','pointages'].map(k => [k, Array.isArray(contenu?.[k]) ? contenu[k].length : 0])) });
+  }
+  return copies.sort((a,b) => (Date.parse(b.date) || 0) - (Date.parse(a.date) || 0) || a.cle.localeCompare(b.cle));
 }

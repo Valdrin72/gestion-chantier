@@ -278,6 +278,8 @@ export default function useSupabaseData(userId, isDemo = false) {
   const ecrituresBloqueesRef = useRef(false);
   const ecrituresRefuseesRef = useRef(0);
   const conflitsRef = useRef(0);
+  const importEnCoursRef = useRef(false);
+  const importEcritureRef = useRef(null);
   const ecrituresOrgEnVolRef = useRef(0);
   // Le plan impose une identite de callback liee au compte (AppInner remonte par userId).
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -584,7 +586,7 @@ export default function useSupabaseData(userId, isDemo = false) {
   // « Copie conservée » n'est annoncé que si la copie de CE conflit a réellement été écrite.
   function conserverRejet(updates) {
     rejetRef.current = { ...(rejetRef.current || {}), ...updates };
-    copieRejetOkRef.current = enregistrerCopieRejetee(rejetIdRef.current, rejetRef.current);
+    copieRejetOkRef.current = enregistrerCopieRejetee(rejetIdRef.current, rejetRef.current, { sansRetention: importEnCoursRef.current });
   }
   function appliquerOpportuniste(row) {
     if (!row?.data || !(Number(row.version) > versionRef.current)) return;
@@ -611,6 +613,7 @@ export default function useSupabaseData(userId, isDemo = false) {
       }
       recuperationRef.current = false;
       // F2 — un « Réessayer » qui termine une récupération de conflit annonce le conflit.
+      if (finDeRecuperation) { importEnCoursRef.current = false; importEcritureRef.current = null; }
       if (finDeRecuperation) setEtatSync({ erreurChargement: null, statut: 'conflit', message: messageConflit() });
       else setEtatSync(prev => {
         const ancienne = Object.keys(localStorage).some(cle => cle.startsWith(PREFIXE_ECHEC + userId) && !copiesEpisodeRef.current.has(cle) && lireCopieEchec(cle));
@@ -629,6 +632,7 @@ export default function useSupabaseData(userId, isDemo = false) {
     while (enVolRef.current) await enVolRef.current;
     if (!mountedRef.current || !chargementOkRef.current || recuperationRef.current || generation !== recuperationGenRef.current || !pendingRef.current) return;
     const payload = pendingRef.current;
+    const generationEcriture = generationRef.current;
     let reussie = false;
     pendingRef.current = null;
     setSyncing(true);
@@ -639,6 +643,11 @@ export default function useSupabaseData(userId, isDemo = false) {
         rowIdRef.current = row.id;
         versionRef.current = Number(row.version) || 0;
         reussie = true;
+        if (importEcritureRef.current && generationEcriture >= importEcritureRef.current.generation) {
+          importEcritureRef.current.ok = true;
+          importEcritureRef.current = null;
+          importEnCoursRef.current = false;
+        }
         if (!episodeRef.current) setEtatSync(prev => (prev.statut === 'information' ? prev : { erreurChargement: null, statut: 'ok', message: null }));
       } catch (e) {
         if (!mountedRef.current) return;
@@ -671,6 +680,8 @@ export default function useSupabaseData(userId, isDemo = false) {
             versionRef.current = Number(row.version) || 0;
             appliquerData(row.data);
             recuperationRef.current = false;
+            importEnCoursRef.current = false;
+            importEcritureRef.current = null;
             setEtatSync({ erreurChargement: null, statut: 'conflit', message: messageConflit() });
           } catch {
             chargementOkRef.current = false;
@@ -831,7 +842,29 @@ export default function useSupabaseData(userId, isDemo = false) {
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
+  const etatEnregistrement = useCallback(() => ({
+    propre: !pendingRef.current && !enVolRef.current && !episodeRef.current && !recuperationRef.current
+      && !attentesLocalesRef.current.size && !ecrituresOrgEnVolRef.current
+      && (modeRef.current === 'org' ? orgChargeeRef.current : chargementOkRef.current),
+  }), []);
+  const envoyerMaintenant = useCallback(async () => {
+    const conflitsAvant = conflitsRef.current;
+    const importEcriture = importEcritureRef.current;
+    try {
+      if (modeRef.current === 'org') return { ok: etatEnregistrement().propre && ecrituresRefuseesRef.current === 0 };
+      clearTimeout(syncTimer.current);
+      syncTimer.current = null;
+      await flush();
+      return { ok: (importEcriture ? importEcriture.ok : etatEnregistrement().propre) && conflitsRef.current === conflitsAvant && ecrituresRefuseesRef.current === 0,
+        conflit: conflitsRef.current !== conflitsAvant,
+        rechargementOk: chargementOkRef.current && !recuperationRef.current };
+    } finally {
+      if (!importEnCoursRef.current) importEcritureRef.current = null;
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId, etatEnregistrement]);
   const importerTout = useCallback(data => {
+    if (!etatEnregistrement().propre) return Promise.resolve(false);
     if (ecritureRefusee()) return Promise.resolve(false);
     if (modeRef.current === 'user' && !chargementOkRef.current) return Promise.resolve(false);
     if (modeRef.current === 'org' && !orgChargeeRef.current) return Promise.resolve(false);
@@ -840,15 +873,18 @@ export default function useSupabaseData(userId, isDemo = false) {
       setDonneesState(prev => {
         attentesLocalesRef.current.delete(jeton);
         if (ecritureRefusee()) { resolve(false); return prev; }
+        if (!etatEnregistrement().propre) { resolve(false); return prev; }
+        importEnCoursRef.current = true;
         const next = avecCompteurs(prev, donneesImportees(prev, data));
         for (const cle of CLES_CACHE_LOCAL) sauvegarderLocal('cyna_' + cle, next[cle]);
         scheduleSync(next);
+        importEcritureRef.current = { generation: generationRef.current, ok: false };
         resolve(true);
         return next;
       });
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId]);
+  }, [userId, etatEnregistrement]);
 
   return {
     chantiers, setChantiers,
@@ -858,7 +894,7 @@ export default function useSupabaseData(userId, isDemo = false) {
     parametres, setParametres,
     pointages, setPointages,
     terminerSauvegardes, bloquerEcritures, debloquerEcritures,
-    setDonneesListes, importerTout, modeStockage: modeRef.current,
+    setDonneesListes, importerTout, etatEnregistrement, envoyerMaintenant, modeStockage: modeRef.current,
     loading, syncing, etatSync,
     reessayerChargement: async () => {
       if (modeRef.current !== 'user') return;

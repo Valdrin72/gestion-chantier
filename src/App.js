@@ -81,7 +81,7 @@ function AppInner({ profil, deconnecter, userId, isDemo = false }) {
     clients: clientsBruts, setClients: setClientsBruts,
     parametres, setParametres,
     pointages, setPointages,
-    setDonneesListes, importerTout, modeStockage,
+    setDonneesListes, importerTout, etatEnregistrement, envoyerMaintenant, modeStockage,
     loading: dataLoading,
     terminerSauvegardes, debloquerEcritures,
     syncing, etatSync, reessayerChargement, reessayerSauvegarde, fermerMessageSync,
@@ -415,7 +415,7 @@ function AppInner({ profil, deconnecter, userId, isDemo = false }) {
     chantiers, setChantiers, clients, setClients, devis, setDevis,
     factures, setFactures, parametres, setParametres,
     pointages, setPointages,
-    actionsLog, profil, userId, listesCompletes, setDonneesListes, importerTout, modeStockage,
+    actionsLog, profil, userId, listesCompletes, setDonneesListes, importerTout, etatEnregistrement, envoyerMaintenant, modeStockage,
     logAction, naviguer, contexte, periodeGlobale, setPeriodeGlobale,
     agentState, ouvrirSaisieHeures: ouvrirSaisieHeuresApp,
     ouvrirMenu: () => setSidebarOuvert(true),
@@ -426,7 +426,7 @@ function AppInner({ profil, deconnecter, userId, isDemo = false }) {
     consultationMobile: isMobile,
   }), [ // eslint-disable-line react-hooks/exhaustive-deps
     chantiers, clients, devis, factures, parametres, pointages,
-    listesCompletes, setDonneesListes, importerTout, modeStockage, userId,
+    listesCompletes, setDonneesListes, importerTout, etatEnregistrement, envoyerMaintenant, modeStockage, userId,
     actionsLog, profil, contexte, periodeGlobale, agentState, isDemo, isMobile, deconnecterSur,
   ]);
 

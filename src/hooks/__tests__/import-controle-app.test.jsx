@@ -314,3 +314,45 @@ it('INS1-NUM-01 export réel puis import des trois formats',async()=>{
  await ouvrir(JSON.parse(texte));await confirmerImport();expect(screen.getByTestId('message-import')).toHaveTextContent('restaurée et enregistrée');
  expect(store.row.data.devis.map(d=>d.montantHT)).toEqual(['45000.','.5','1e3']);
 });
+
+
+it('INS2-RET-02 refus de formulaire pendant import ouvert puis retention reprend', async()=>{
+ const h=await boot();const avant={};for(let i=1;i<=5;i++){const k=`cyna_sauvegarde_rejetee_${i}`;avant[k]='ancien';localStorage.setItem(k,avant[k]);}
+ store.writeError={message:'offline'};let resultat;act(()=>{resultat=h.result.current.importerTout(blob());});expect(await resultat).toBe(true);
+ await act(async()=>h.result.current.envoyerMaintenant());await settle();
+ conserverBrouillonRefuse('clients',{id:'brouillon'});
+ for(const [k,v] of Object.entries(avant))expect(localStorage.getItem(k)).toBe(v);
+ store.writeError=null;await act(async()=>h.result.current.envoyerMaintenant());await settle();
+ conserverBrouillonRefuse('clients',{id:'apres'});
+ expect(Object.keys(localStorage).filter(k=>k.startsWith('cyna_sauvegarde_rejetee_'))).toHaveLength(5);
+});
+it('INS2-SYNC-03 exception de calcul libere import et permet la reprise',async()=>{
+ const h=await boot();const erreur=vi.spyOn(console,'error').mockImplementation(()=>{});
+ const data=blob();Object.defineProperty(data,'parametres',{get(){throw new Error('calcul impossible');}});
+ let resultat;act(()=>{resultat=h.result.current.importerTout(data);});await settle();
+ expect(await resultat).toBe(false);expect(erreur).toHaveBeenCalled();expect(h.result.current.etatEnregistrement().propre).toBe(true);
+ const copies=await import('../../utils/copiesRejetees');expect(copies.retentionSuspendue?.()).toBe(false);
+ act(()=>{resultat=h.result.current.importerTout(blob());});expect(await resultat).toBe(true);
+ await act(async()=>h.result.current.envoyerMaintenant());await settle();expect(copies.retentionSuspendue()).toBe(false);
+});
+it('INS2-SYNC-03 org ne suspend jamais la retention',async()=>{
+ localStorage.setItem('cyna_storage_mode','org');const h=await boot();let resultat;
+ act(()=>{resultat=h.result.current.importerTout(blob());});await settle();expect(await resultat).toBe(true);
+ const copies=await import('../../utils/copiesRejetees');expect(copies.retentionSuspendue?.()).toBe(false);
+ await act(async()=>h.result.current.envoyerMaintenant());expect(copies.retentionSuspendue()).toBe(false);
+});
+it('INS2-MSG-04 ecriture entre controle et updater affiche le refus',async()=>{
+ await app();await ouvrir();download.mockImplementation(()=>capture.ctx.setClients([{id:'tardif'}]));
+ await confirmerImport();expect(screen.getByTestId('message-import')).toHaveTextContent('Des modifications ne sont pas encore enregistrées');
+ expect(screen.queryByRole('dialog')).toBeNull();expect(capture.ctx.clients).toEqual([{id:'tardif'}]);
+});
+
+it('INS2-SYNC-03 exception libere la fenetre Enregistrement',async()=>{
+ await app();await ouvrir();
+ const numerotation=await import('../../utils/numerotation');
+ vi.spyOn(numerotation,'avecCompteurs').mockImplementation(()=>{throw new Error('calcul impossible');});
+ vi.spyOn(console,'error').mockImplementation(()=>{});
+ await confirmerImport();expect(screen.queryByRole('dialog')).toBeNull();
+ expect(screen.getByTestId('message-import')).toHaveTextContent('Import non effectué');
+ expect(capture.ctx.etatEnregistrement().propre).toBe(true);
+});

@@ -112,7 +112,7 @@ export function verifierSauvegarde(data, { tailleOctets = 0 } = {}) {
       if (!vide(e[champ]) && !(donnees[cible] || []).some(x => objet(x) && String(x.id) === String(e[champ]))) anomalies.push(`${liste} (id ${e.id}) : ${champ} ${e[champ]} absent de ${cible}`);
     }
   }
-  ignorees.push(...Object.keys(data).filter(k => ![...LISTES_IMPORT, 'parametres', 'pointages'].includes(k)));
+  ignorees.push(...Object.keys(data).filter(k => ![...LISTES_IMPORT, 'parametres', 'pointages', 'meta'].includes(k)));
   return resultat;
 }
 export function instantaneComplet(etat, maintenant = new Date()) {

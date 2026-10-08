@@ -9,6 +9,10 @@
 export const PREFIXE_COPIE_REJETEE = 'cyna_sauvegarde_rejetee_';
 export const NB_COPIES_REJETEES = 5;
 
+let retentionEnSuspens = false;
+export function suspendreRetention(suspendue) { retentionEnSuspens = !!suspendue; }
+export function retentionSuspendue() { return retentionEnSuspens; }
+
 export function nouvelIdCopie() {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
@@ -21,6 +25,7 @@ export function nouvelIdCopie() {
  * @returns {boolean} true seulement si la copie de CE refus existe réellement après rétention.
  */
 export function enregistrerCopieRejetee(id, contenu, { sansRetention = false } = {}) {
+  sansRetention = sansRetention || retentionSuspendue();
   const cleCopie = `${PREFIXE_COPIE_REJETEE}${id}`;
   const entree = { id, date: new Date().toISOString(), ...contenu };
   try {

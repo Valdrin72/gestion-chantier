@@ -48,7 +48,7 @@ it('références incohérentes avertissent, corbeille et référence vide accept
 });
 it('ancien format, inconnues exclues seulement au premier niveau et limite de taille',()=>{
  const data={...base(),meta:{date:'2026'},extra:42};delete data.pointages;data.parametres.extra=42;
- const r=verifierSauvegarde(data);expect(r.anomalies.join()).toContain('conservées');expect(r.ignorees).toEqual(['meta','extra']);expect(r.donnees.meta).toBeUndefined();expect(r.donnees.parametres.extra).toBe(42);
+ const r=verifierSauvegarde(data);expect(r.anomalies.join()).toContain('conservées');expect(r.ignorees).toEqual(['extra']);expect(r.donnees.meta).toBeUndefined();expect(r.donnees.parametres.extra).toBe(42);
  expect(verifierSauvegarde(base(),{tailleOctets:20*1024*1024}).erreurs).toEqual([]);expect(verifierSauvegarde(base(),{tailleOctets:20*1024*1024+1}).erreurs.join()).toContain('20 Mo');
 });
 it('instantané complet exact et résumé incluant heures et corbeille',()=>{
@@ -84,4 +84,11 @@ it('INS1-HORS-06 types de travaux primitifs et déplacement avertissent, formes 
  const r=verifierSauvegarde({...base(),parametres:{typesTravaux:['Peinture']},chantiers:[{id:'c',employes:42,journal:[{employesPresents:42}]}],pointages:[{id:'p',date:'2026-10-08',repartitions:[],deplacement:42}]});
  expect(r.erreurs).toEqual([]);expect(r.anomalies).toHaveLength(4);
  for(const parametres of [{typesTravaux:42},{typesTravaux:[null]}])expect(verifierSauvegarde({...base(),parametres}).erreurs.join()).toContain('typesTravaux');
+});
+
+it('INS2-META export reel sans cle ignoree et extra seul ignore',()=>{
+ const exportReel=instantaneComplet(base(),'2026-10-08T10:20:30Z');
+ expect(verifierSauvegarde(exportReel).ignorees).toEqual([]);
+ expect(verifierSauvegarde({...exportReel,extra:42}).ignorees).toEqual(['extra']);
+ expect(verifierSauvegarde(exportReel).donnees.meta).toBeUndefined();
 });

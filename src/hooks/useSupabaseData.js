@@ -20,7 +20,7 @@ import { fusionnerIdsSupprimes, donneesImportees } from '../utils/corbeille';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabase';
-import { enregistrerCopieRejetee, nouvelIdCopie, PREFIXE_ECHEC, lireCopieEchec, ecrireCopieEchec } from '../utils/copiesRejetees';
+import { suspendreRetention, enregistrerCopieRejetee, nouvelIdCopie, PREFIXE_ECHEC, lireCopieEchec, ecrireCopieEchec } from '../utils/copiesRejetees';
 import { donneesInitiales, migrerJournal, migrerStatutsC8, normaliserTarifsEmployes } from '../donnees';
 
 const STORAGE_MARKER = '__cyna_storage__';
@@ -324,7 +324,7 @@ export default function useSupabaseData(userId, isDemo = false) {
     pointages:  [],
   });
   const mountedRef  = useRef(true);
-  useEffect(() => { mountedRef.current = true; return () => { mountedRef.current = false; }; }, []);
+  useEffect(() => { mountedRef.current = true; return () => { mountedRef.current = false; if (importEnCoursRef.current) { importEnCoursRef.current = false; importEcritureRef.current = null; suspendreRetention(false); } }; }, []);
 
   function messageEchec() {
     return "Non enregistré. Ne fermez pas l'application tant que ce n'est pas enregistré. "
@@ -613,7 +613,7 @@ export default function useSupabaseData(userId, isDemo = false) {
       }
       recuperationRef.current = false;
       // F2 — un « Réessayer » qui termine une récupération de conflit annonce le conflit.
-      if (finDeRecuperation) { importEnCoursRef.current = false; importEcritureRef.current = null; }
+      if (finDeRecuperation) { importEnCoursRef.current = false; suspendreRetention(false); importEcritureRef.current = null; }
       if (finDeRecuperation) setEtatSync({ erreurChargement: null, statut: 'conflit', message: messageConflit() });
       else setEtatSync(prev => {
         const ancienne = Object.keys(localStorage).some(cle => cle.startsWith(PREFIXE_ECHEC + userId) && !copiesEpisodeRef.current.has(cle) && lireCopieEchec(cle));
@@ -646,7 +646,7 @@ export default function useSupabaseData(userId, isDemo = false) {
         if (importEcritureRef.current && generationEcriture >= importEcritureRef.current.generation) {
           importEcritureRef.current.ok = true;
           importEcritureRef.current = null;
-          importEnCoursRef.current = false;
+          importEnCoursRef.current = false; suspendreRetention(false);
         }
         if (!episodeRef.current) setEtatSync(prev => (prev.statut === 'information' ? prev : { erreurChargement: null, statut: 'ok', message: null }));
       } catch (e) {
@@ -680,7 +680,7 @@ export default function useSupabaseData(userId, isDemo = false) {
             versionRef.current = Number(row.version) || 0;
             appliquerData(row.data);
             recuperationRef.current = false;
-            importEnCoursRef.current = false;
+            importEnCoursRef.current = false; suspendreRetention(false);
             importEcritureRef.current = null;
             setEtatSync({ erreurChargement: null, statut: 'conflit', message: messageConflit() });
           } catch {
@@ -874,11 +874,16 @@ export default function useSupabaseData(userId, isDemo = false) {
         attentesLocalesRef.current.delete(jeton);
         if (ecritureRefusee()) { resolve(false); return prev; }
         if (!etatEnregistrement().propre) { resolve(false); return prev; }
-        importEnCoursRef.current = true;
-        const next = avecCompteurs(prev, donneesImportees(prev, data));
+        let next;
+        try { next = avecCompteurs(prev, donneesImportees(prev, data)); }
+        catch (erreur) { console.error(erreur); resolve(false); return prev; }
+        if (modeRef.current !== 'org') {
+          importEnCoursRef.current = true;
+          suspendreRetention(true);
+        }
         for (const cle of CLES_CACHE_LOCAL) sauvegarderLocal('cyna_' + cle, next[cle]);
         scheduleSync(next);
-        importEcritureRef.current = { generation: generationRef.current, ok: false };
+        if (modeRef.current !== 'org') importEcritureRef.current = { generation: generationRef.current, ok: false };
         resolve(true);
         return next;
       });

@@ -143,7 +143,7 @@ function Parametres({ parametres, setParametres, clients = [], setClients = () =
       }
       const data = { ...projetImport.donnees, pointages: pointagesApresRestauration(projetImport.donnees, pointages).pointages };
       if (importerTout) {
-        if (await importerTout(data) !== true) { setMessageImport({texte:"Import non effectué. Vos données n'ont pas été modifiées. La copie de sécurité est conservée."}); setProjetImport(null); return; }
+        if (await importerTout(data) !== true) { setMessageImport({texte:!propre() ? refusEnregistrement : "Import non effectué. Vos données n'ont pas été modifiées. La copie de sécurité est conservée."}); setProjetImport(null); return; }
       } else {
         setParametres(data.parametres); setClients(data.clients); setChantiers(data.chantiers);
         setDevis(data.devis); setFactures(data.factures); setPointages(data.pointages);

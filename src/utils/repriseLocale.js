@@ -54,3 +54,19 @@ export function copierReprise(userId, cle, capture) {
     return localStorage.getItem(nom) === texte;
   } catch { return false; }
 }
+
+// Lot 2b — une copie « reprise locale » lisible et valide peut être restaurée, pour sa seule clé.
+export const LIBELLES_REPRISE = { objectifs: 'les objectifs', evenementsCalendrier: 'le calendrier', memoireIA: "la mémoire de l'Assistant IA" };
+export function donneeRestaurable(contenu) {
+  if (!contenu || typeof contenu !== 'object' || contenu.source !== 'reprise-locale') return null;
+  const cle = contenu.cle;
+  if (!Object.prototype.hasOwnProperty.call(CLES_REPRISE, cle) || !Object.prototype.hasOwnProperty.call(contenu, cle)) return null;
+  const valeur = contenu[cle];
+  return verifierValeurServeur(cle, valeur).length === 0 ? { cle, valeur } : null;
+}
+export function resumerDonnee(cle, valeur) {
+  if (valeur === undefined) return 'aucune';
+  if (cle === 'objectifs') return valeur === null ? 'aucun objectif' : `CA annuel ${valeur.caAnnuel ?? '—'}, marge ${valeur.margeCible ?? '—'} %, ${valeur.nbChantiers ?? '—'} chantiers`;
+  if (cle === 'evenementsCalendrier') return `${valeur.length} événement(s)`;
+  return `${String(valeur).length} caractères`;
+}

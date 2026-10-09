@@ -180,8 +180,8 @@ it('reprise updater differe avant envoyerMaintenant generation propre',async()=>
  await settle();await act(async()=>await decision);expect(store.row.data.memoireIA).toBe('capturee');expect(store.writes).toHaveLength(1);expect(JSON.parse(localStorage.getItem('cyna_reprise_serveur_user')).memoireIA).toBeTruthy();
 });
 it('demo puis compte B confirmation refus copie sans serveur',async()=>{
- const demo=renderHook(()=>useSupabaseData('demo',true));await settle();localStorage.setItem('cyna_cal_events','[{"id":1}]');demo.unmount();store.writes=[];
- const h=await boot();expect(h.result.current.repriseLocale.propositions.evenementsCalendrier.valeur).toEqual([{id:1}]);let decision;act(()=>{decision=h.result.current.deciderRepriseLocale(false);});await settle();await act(async()=>await decision);
+ const demo=renderHook(()=>useSupabaseData('demo',true));await settle();localStorage.setItem('cyna_cal_events','[{"id":1,"date":"2026-10-08","label":"rdv"}]');demo.unmount();store.writes=[];
+ const h=await boot();expect(h.result.current.repriseLocale.propositions.evenementsCalendrier.valeur).toEqual([{id:1,date:'2026-10-08',label:'rdv'}]);let decision;act(()=>{decision=h.result.current.deciderRepriseLocale(false);});await settle();await act(async()=>await decision);
  expect(store.writes).toHaveLength(0);expect(localStorage.getItem(cles().find(k=>k.startsWith('cyna_sauvegarde_reprise_user_')))).toContain('evenementsCalendrier');
 });
 it('memoire Parametres Annuler puis Effacer confirmation serveur',async()=>{
@@ -239,10 +239,11 @@ it.each(['offline', 'conflit'])('LOC-02 dialogue explique echec %s et repropose 
  store.writeError = scenario === 'conflit' ? { code: 'P0409' } : { message: 'offline' };
  let decision; act(() => { decision = h.result.current.deciderRepriseLocale(true); });
  await settle(); await act(async () => { expect(await decision).toBe(false); });
- expect(h.result.current.repriseLocale?.erreur).toMatch(/non enregistrées/i);
+ const attendu = scenario === 'conflit' ? /non enregistrées/i : /Envoi en attente.*Réessayer/i;
+ expect(h.result.current.repriseLocale?.erreur).toMatch(attendu);
  expect(JSON.parse(localStorage.getItem('cyna_reprise_serveur_user') || '{}').memoireIA).toBeUndefined();
  render(<AppProvider value={h.result.current}><RepriseLocale projet={h.result.current.repriseLocale} decider={vi.fn()} fermer={vi.fn()} /></AppProvider>);
- expect(screen.getByRole('alert')).toHaveTextContent(/non enregistrées/i);
+ expect(screen.getByRole('alert')).toHaveTextContent(attendu);
  h.unmount(); store.writeError = null; const suivant = await boot();
  expect(suivant.result.current.repriseLocale.propositions.memoireIA.valeur).toBe('ancienne');
 });
@@ -263,4 +264,182 @@ it.each(['effacement', 'reprise'])('LOC-04 %s hors ligne sans suspension de rete
  await settle(); if (scenario === 'effacement') await act(async () => h.result.current.envoyerMaintenant());
  await act(async () => { await operation; }); expect(retentionSuspendue()).toBe(false);
  h.unmount(); expect(retentionSuspendue()).toBe(false);
+});
+
+// ── Lot 2b « finition reprise locale » ─────────────────────────────────────────
+const copieReprise = (cle, valeur, id = 'x1') => localStorage.setItem(`cyna_sauvegarde_reprise_user_${id}`,
+  JSON.stringify({ source: 'reprise-locale', date: '2026-10-09T18:50:18.557Z', cle, texteBrut: cle === 'memoireIA' ? valeur : JSON.stringify(valeur), [cle]: valeur }));
+const reprises = () => Object.keys(localStorage).filter(k => k.startsWith('cyna_sauvegarde_reprise_user_')).map(k => JSON.parse(localStorage.getItem(k)));
+
+it('LOT2B restaurer la mémoire IA depuis une copie reprise : Annuler ne fait rien, Restaurer écrit version + 1 et garde les copies', async () => {
+ copieReprise('memoireIA', 'memoire copiee');
+ await app({ ...blob(), memoireIA: 'actuelle' });
+ fireEvent.click(screen.getByText('Copies de secours', { exact: true }));
+ expect(screen.getByText("Contenu : la mémoire de l'Assistant IA")).toBeTruthy();
+ fireEvent.click(screen.getByRole('button', { name: 'Restaurer cette donnée' }));
+ expect(screen.getByRole('dialog')).toHaveTextContent('Valeur actuelle : 8 caractères');
+ expect(screen.getByRole('dialog')).toHaveTextContent('Valeur de la copie : 14 caractères');
+ fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Annuler' })); await settle();
+ expect(store.writes).toHaveLength(0); expect(store.row.data.memoireIA).toBe('actuelle'); expect(reprises()).toHaveLength(1);
+ fireEvent.click(screen.getByRole('button', { name: 'Restaurer cette donnée' }));
+ fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Restaurer', exact: true })); await settle();
+ expect(store.row.data.memoireIA).toBe('memoire copiee'); expect(store.row.version).toBe(5); expect(store.writes).toHaveLength(1);
+ expect(store.writes[0].payload.data).toMatchObject({ devis: [{ id: 'initial' }] });
+ const apres = reprises();
+ expect(apres).toHaveLength(2);
+ expect(apres.map(c => c.memoireIA).sort()).toEqual(['actuelle', 'memoire copiee']);
+});
+
+it('LOT2B copie reprise invalide ou illisible : pas de bouton Restaurer cette donnée', async () => {
+ copieReprise('objectifs', { caAnnuel: 'abc' }, 'inv');
+ localStorage.setItem('cyna_sauvegarde_reprise_user_brute', JSON.stringify({ source: 'reprise-locale', date: '2026-10-09T18:50:18.557Z', cle: 'evenementsCalendrier', texteBrut: '{bad' }));
+ await app();
+ fireEvent.click(screen.getByText('Copies de secours', { exact: true }));
+ expect(screen.getAllByRole('button', { name: 'Télécharger' }).length).toBeGreaterThanOrEqual(2);
+ expect(screen.queryByRole('button', { name: 'Restaurer cette donnée' })).toBeNull();
+});
+
+it('LOT2B restaurer des objectifs absents du serveur : écriture directe, aucune copie de la valeur actuelle', async () => {
+ copieReprise('objectifs', { caAnnuel: 1000000, margeCible: 20, nbChantiers: 9 });
+ await app();
+ fireEvent.click(screen.getByText('Copies de secours', { exact: true }));
+ fireEvent.click(screen.getByRole('button', { name: 'Restaurer cette donnée' }));
+ expect(screen.getByRole('dialog')).toHaveTextContent('Valeur actuelle : aucune');
+ fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Restaurer', exact: true })); await settle();
+ expect(store.row.data.objectifs).toEqual({ caAnnuel: 1000000, margeCible: 20, nbChantiers: 9 });
+ expect(reprises()).toHaveLength(1);
+});
+
+it('LOT2B fenêtre de reprise : boutons ≥ 44 px, principal bleu, refus confirmé', async () => {
+ const decider = vi.fn(async () => true);
+ render(<RepriseLocale email="a@b.ch" projet={{ propositions: { memoireIA: { valeur: 'x' } } }} decider={decider} fermer={vi.fn()} />);
+ const ajouter = screen.getByRole('button', { name: 'Ajouter à mon compte' });
+ expect(ajouter.style.minHeight).toBe('44px'); expect(ajouter.style.background).toMatch(/rgb\(13, 61, 110\)|#0D3D6E/i);
+ expect(screen.getByRole('button', { name: 'Fermer' }).style.height).toBe('44px');
+ expect(ajouter.parentElement.style.gap).toBe('12px');
+ fireEvent.click(screen.getByRole('button', { name: 'Ne pas ajouter' })); expect(decider).not.toHaveBeenCalled();
+ await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Oui, ne pas ajouter' })));
+ expect(decider).toHaveBeenCalledWith(false);
+});
+
+it('INS2-01 une confirmation d’import terminée ne fausse pas un envoi ultérieur hors ligne', async () => {
+ const h = await boot(); let p, r;
+ const attendre = async () => { await settle(); await act(async () => { r = await p; }); return r; };
+ store.writeError = { message: 'offline' };
+ act(() => { p = h.result.current.importerTout(blob()); }); expect(await attendre()).toBe(true);
+ act(() => { p = h.result.current.envoyerMaintenant(); }); expect((await attendre()).ok).toBe(false);
+ store.writeError = null;
+ // Le succès arrive par l'envoi automatique (minuteur), pas par envoyerMaintenant : la confirmation d'import reste « ok ».
+ act(() => h.result.current.setClients([{ id: 'retour-reseau' }])); await tick(); expect(store.row.data.clients).toEqual([{ id: 'retour-reseau' }]);
+ store.writeError = { message: 'offline' };
+ act(() => h.result.current.setClients([{ id: 'apres-import' }]));
+ act(() => { p = h.result.current.envoyerMaintenant(); }); expect((await attendre()).ok).toBe(false);
+});
+
+it('INS2-04 « Ne pas ajouter » après un échec partiel ne recopie pas la clé déjà copiée', async () => {
+ localStorage.setItem('cyna_cal_events', '[{"id":1,"date":"2026-10-08","label":"a"}]');
+ localStorage.setItem('cyna_ia_memoire', 'memoire');
+ const original = Storage.prototype.setItem; let echecs = 1;
+ vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (k, v) {
+  if (k.startsWith('cyna_sauvegarde_reprise_') && String(v).includes('"cle":"memoireIA"') && echecs-- > 0) throw new DOMException('plein', 'QuotaExceededError');
+  return original.call(this, k, v);
+ });
+ const h = await boot();
+ let d1; await act(async () => { d1 = await h.result.current.deciderRepriseLocale(false); }); expect(d1).toBe(false);
+ let d2; await act(async () => { d2 = await h.result.current.deciderRepriseLocale(false); }); expect(d2).toBe(true);
+ const r = reprises();
+ expect(r.filter(c => c.cle === 'evenementsCalendrier')).toHaveLength(1);
+ expect(r.filter(c => c.cle === 'memoireIA')).toHaveLength(1);
+ expect(store.writes).toHaveLength(0);
+});
+
+it('INS2-03 l’avis « stockage plein » n’est pas écrasé par l’avis des anciennes copies', async () => {
+ localStorage.setItem('cyna_objectifs', '{bad');
+ localStorage.setItem('cyna_sauvegarde_en_echec_user_ancienne', JSON.stringify({ date: '2026-10-01', clients: [] }));
+ const original = Storage.prototype.setItem;
+ vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (k, v) {
+  if (k.startsWith('cyna_sauvegarde_reprise_')) throw new DOMException('plein', 'QuotaExceededError');
+  return original.call(this, k, v);
+ });
+ const h = await boot();
+ expect(h.result.current.etatSync.statut).toBe('information');
+ expect(h.result.current.etatSync.message).toMatch(/stockage plein/);
+ expect(h.result.current.etatSync.message).toMatch(/session précédente/);
+});
+
+it('LOT2B restauration : une valeur arrivée d’un autre appareil pendant la confirmation est copiée, pas écrasée en silence', async () => {
+ const h = await boot();
+ act(() => h.result.current.setMemoireIA('ancienne')); await tick(); store.writes = [];
+ // Un autre appareil a écrit une valeur plus récente, appliquée par le temps réel.
+ store.row = { ...store.row, data: { ...store.row.data, memoireIA: 'plus recente' }, version: store.row.version + 1 }; emit(); await settle();
+ expect(h.result.current.memoireIA).toBe('plus recente');
+ let p, ok; act(() => { p = h.result.current.ecrireEtConfirmer('memoireIA', 'restauree', { copierAvant: true }); }); await settle();
+ await act(async () => { ok = await p; }); expect(ok).toBe(true);
+ await act(async () => { await h.result.current.envoyerMaintenant(); });
+ expect(store.row.data.memoireIA).toBe('restauree');
+ expect(reprises().map(c => c.memoireIA)).toEqual(['plus recente']);
+});
+
+it('LOT2B restauration refusée (copie de la valeur actuelle impossible) : rien n’est écrit', async () => {
+ const h = await boot();
+ act(() => h.result.current.setMemoireIA('actuelle')); await tick(); store.writes = [];
+ const original = Storage.prototype.setItem;
+ vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (k, v) {
+  if (k.startsWith('cyna_sauvegarde_reprise_')) throw new DOMException('plein', 'QuotaExceededError');
+  return original.call(this, k, v);
+ });
+ let p, ok; act(() => { p = h.result.current.ecrireEtConfirmer('memoireIA', 'restauree', { copierAvant: true }); }); await settle();
+ await act(async () => { ok = await p; }); expect(ok).toBe(false);
+ await tick(); expect(store.writes).toHaveLength(0); expect(h.result.current.memoireIA).toBe('actuelle');
+});
+
+it('INS2-04 StrictMode : « Ajouter » sur une valeur différente du serveur ne crée qu’une seule copie', async () => {
+ localStorage.setItem('cyna_ia_memoire', 'locale');
+ const hook = renderHook(() => useSupabaseData('user'), { wrapper: ({ children }) => <React.StrictMode>{children}</React.StrictMode> });
+ await settle();
+ expect(hook.result.current.repriseLocale.propositions.memoireIA.valeur).toBe('locale');
+ // Le serveur reçoit une autre valeur pendant que la fenêtre est ouverte.
+ store.row = { ...store.row, data: { ...store.row.data, memoireIA: 'serveur' }, version: store.row.version + 1 }; emit(); await settle();
+ let d; act(() => { d = hook.result.current.deciderRepriseLocale(true); }); await settle(); await act(async () => { await d; });
+ expect(reprises().filter(c => c.cle === 'memoireIA')).toHaveLength(1);
+ expect(store.row.data.memoireIA).toBe('serveur');
+});
+
+it('LOT2B restauration en conflit : message dédié et bouton de confirmation non rouge', async () => {
+ copieReprise('memoireIA', 'memoire copiee');
+ await app({ ...blob(), memoireIA: 'actuelle' });
+ fireEvent.click(screen.getByText('Copies de secours', { exact: true }));
+ fireEvent.click(screen.getByRole('button', { name: 'Restaurer cette donnée' }));
+ const bouton = within(screen.getByRole('dialog')).getByRole('button', { name: 'Restaurer', exact: true });
+ expect(bouton.style.background).not.toMatch(/239, 68, 68|#ef4444/i);
+ store.row = { ...store.row, version: store.row.version + 1 }; // un autre appareil a écrit entre-temps
+ fireEvent.click(bouton); await settle(); await tick();
+ expect(screen.getByText(/Restauration non appliquée : le compte a été modifié ailleurs/)).toBeTruthy();
+ expect(reprises().map(c => c.memoireIA)).toContain('memoire copiee');
+});
+
+it('Codex PR #209 — « Ne pas ajouter » : copie réussie mais marqueur en échec, le clic suivant ne recrée pas la copie', async () => {
+ localStorage.setItem('cyna_ia_memoire', 'memoire');
+ const original = Storage.prototype.setItem; let echecs = 1;
+ vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (k, v) {
+  if (k === 'cyna_reprise_serveur_user' && String(v).includes('memoireIA') && echecs-- > 0) throw new DOMException('plein', 'QuotaExceededError');
+  return original.call(this, k, v);
+ });
+ const h = await boot();
+ let d1; await act(async () => { d1 = await h.result.current.deciderRepriseLocale(false); }); expect(d1).toBe(false);
+ expect(reprises().filter(c => c.cle === 'memoireIA')).toHaveLength(1);
+ let d2; await act(async () => { d2 = await h.result.current.deciderRepriseLocale(false); }); expect(d2).toBe(true);
+ expect(reprises().filter(c => c.cle === 'memoireIA')).toHaveLength(1);
+ expect(JSON.parse(localStorage.getItem('cyna_reprise_serveur_user')).memoireIA).toBeTruthy();
+});
+
+it('Codex PR #209 — un événement sans date valide ou sans label n’est ni restaurable ni importable', async () => {
+ const { donneeRestaurable } = await import('../../utils/repriseLocale');
+ const copie = v => ({ source: 'reprise-locale', cle: 'evenementsCalendrier', evenementsCalendrier: v });
+ expect(donneeRestaurable(copie([{ id: 1 }]))).toBeNull();
+ expect(donneeRestaurable(copie([{ id: 1, date: '2026-13-40', label: 'x' }]))).toBeNull();
+ expect(donneeRestaurable(copie([{ id: 1, date: '2026-10-08' }]))).toBeNull();
+ expect(donneeRestaurable(copie([{ id: 1, date: '2026-10-08', label: '   ' }]))).toBeNull();
+ expect(donneeRestaurable(copie([{ id: 1, date: '2026-10-08', label: 'Réunion' }]))).toEqual({ cle: 'evenementsCalendrier', valeur: [{ id: 1, date: '2026-10-08', label: 'Réunion' }] });
+ expect(verifierSauvegarde({ ...blob(), evenementsCalendrier: [{ id: 1 }] }).erreurs.join(' ')).toMatch(/date .* invalide/);
 });

@@ -2,6 +2,7 @@ import ResumeImport from '../components/parametres/ResumeImport';
 import CopiesSecours from '../components/parametres/CopiesSecours';
 import { verifierSauvegarde, instantaneComplet, resumerImport, telechargerTexte, LIMITE_IMPORT } from '../utils/importControle';
 import { ecrireCopieAvantImport } from '../utils/copiesRejetees';
+import { canonique, LIBELLES_REPRISE, resumerDonnee } from '../utils/repriseLocale';
 import FormulaireMotDePasse from '../components/FormulaireMotDePasse';
 import Corbeille from '../components/parametres/Corbeille';
 import React, { useState, useLayoutEffect } from 'react';
@@ -104,6 +105,24 @@ function Parametres({ parametres, setParametres, clients = [], setClients = () =
     const resultat = isDemo ? { ok: true } : await envoyerMaintenant();
     setMemoireVidee(resultat.ok);
     if (afficherNotif) afficherNotif(resultat.ok ? 'Mémoire IA effacée' : 'Effacement enregistré sur cet appareil, en attente d’envoi (voir le bandeau)');
+  };
+
+  // Lot 2b — restaurer UNE donnée depuis une copie « reprise locale », par le chemin normal (version + 1).
+  // La valeur actuelle est d'abord rangée en copie de secours ; la copie restaurée n'est jamais supprimée.
+  const restaurerDonnee = async (cle, valeur) => {
+    if (isDemo || !ecrireEtConfirmer) return;
+    const actuelle = { objectifs, evenementsCalendrier, memoireIA }[cle];
+    if (actuelle !== undefined && canonique(actuelle) === canonique(valeur)) { afficherNotif?.('Cette valeur est déjà celle de votre compte.'); return; }
+    if (confirmer && !await confirmer(`Restaurer ${LIBELLES_REPRISE[cle]} depuis cette copie ?\n\nValeur actuelle : ${resumerDonnee(cle, actuelle)}\nValeur de la copie : ${resumerDonnee(cle, valeur)}\n\nLa valeur actuelle sera d'abord gardée dans une copie de secours.`, { labelOui: 'Restaurer', danger: false })) return;
+    // La copie de la valeur actuelle est faite dans l'écriture elle-même (copierAvant), sur la valeur la plus récente.
+    if (!await ecrireEtConfirmer(cle, valeur, { copierAvant: true })) {
+      afficherNotif?.("Restauration impossible pour l'instant (modifications en cours d'enregistrement, ou copie de la valeur actuelle impossible). Réessayez."); return;
+    }
+    const resultat = await envoyerMaintenant();
+    afficherNotif?.(resultat.ok ? 'Donnée restaurée et enregistrée.'
+      : resultat.conflit ? 'Restauration non appliquée : le compte a été modifié ailleurs. La copie reste disponible ; réessayez.'
+      : resultat.refusee ? 'Restauration non envoyée : envoi refusé (déconnexion en cours). La copie reste disponible ; réessayez après reconnexion.'
+      : 'Restauration enregistrée sur cet appareil, en attente d’envoi (voir le bandeau).');
   };
 
   const etatActuel = () => ({ chantiers, devis, factures, clients, parametres, pointages, listesCompletes, objectifs, evenementsCalendrier, memoireIA });
@@ -270,7 +289,7 @@ function Parametres({ parametres, setParametres, clients = [], setClients = () =
         {/* ── Content panel ── */}
         <div>
       {onglet === 'compte' && <section style={carteStyle}><h2>Changer mon mot de passe</h2><FormulaireMotDePasse messageErreur="Impossible de modifier le mot de passe. Réessayez." onSucces={() => afficherNotif?.('Mot de passe modifié')} /></section>}
-      {onglet === 'copies' && <CopiesSecours userId={userId} restaurer={preparerImport} />}
+      {onglet === 'copies' && <CopiesSecours userId={userId} restaurer={preparerImport} restaurerDonnee={isDemo ? null : restaurerDonnee} />}
       {onglet === 'corbeille' && <Corbeille />}
       {onglet === 'dashboard' && (
         <div style={carteStyle}>

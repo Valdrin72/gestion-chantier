@@ -1,4 +1,4 @@
-import { CLES_REPRISE, lireValeurLocale, planifierReprise, lireMarqueur, marquerReprise, copierReprise, canonique } from '../utils/repriseLocale';
+import { CLES_REPRISE, lireValeurLocale, planifierReprise, lireMarqueur, marquerReprise, copierReprise, copieRepriseExiste, canonique, empreinte } from '../utils/repriseLocale';
 import { avecCompteurs } from '../utils/numerotation';
 import { fusionnerIdsSupprimes, donneesImportees } from '../utils/corbeille';
 /**
@@ -626,8 +626,11 @@ export default function useSupabaseData(userId, isDemo = false) {
       if (finDeRecuperation) setEtatSync({ erreurChargement: null, statut: 'conflit', message: messageConflit() });
       else setEtatSync(prev => {
         const ancienne = Object.keys(localStorage).some(cle => cle.startsWith(PREFIXE_ECHEC + userId) && !copiesEpisodeRef.current.has(cle) && lireCopieEchec(cle));
+        const messageAncienne = "Des modifications non enregistrées d'une session précédente ou d'un autre onglet sont conservées sur cet appareil";
+        // INS2-03 — un avis déjà affiché (ex. copie de reprise impossible, stockage plein) n'est pas écrasé : les deux sont gardés.
+        const avisPrecedent = prev.statut === 'information' && prev.message && prev.message !== messageAncienne ? prev.message + ' ' : '';
         return ancienne && !episodeRef.current
-          ? { erreurChargement: null, statut: 'information', message: "Des modifications non enregistrées d'une session précédente ou d'un autre onglet sont conservées sur cet appareil" }
+          ? { erreurChargement: null, statut: 'information', message: avisPrecedent + messageAncienne }
           : { ...prev, erreurChargement: null };
       });
     } catch {
@@ -906,7 +909,9 @@ export default function useSupabaseData(userId, isDemo = false) {
   const envoyerMaintenant = useCallback(async () => {
     const conflitsAvant = conflitsRef.current;
     const confirmationEcriture = confirmationEcritureRef.current;
-    const importEcriture = importEcritureRef.current;
+    // INS2-01 — une confirmation d'import n'est prise en compte que si un import est réellement en cours :
+    // une référence restée « ok » après un import hors ligne terminé ne peut plus fausser un envoi ultérieur.
+    const importEcriture = importEnCoursRef.current ? importEcritureRef.current : null;
     try {
       if (modeRef.current === 'org') return { ok: etatEnregistrement().propre && ecrituresRefuseesRef.current === 0 };
       clearTimeout(syncTimer.current);
@@ -914,6 +919,7 @@ export default function useSupabaseData(userId, isDemo = false) {
       await flush();
       return { ok: (confirmationEcriture ? confirmationEcriture.ok : importEcriture ? importEcriture.ok : etatEnregistrement().propre) && conflitsRef.current === conflitsAvant && ecrituresRefuseesRef.current === 0,
         conflit: conflitsRef.current !== conflitsAvant,
+        refusee: ecrituresRefuseesRef.current !== 0,
         rechargementOk: chargementOkRef.current && !recuperationRef.current };
     } finally {
       if (confirmationEcritureRef.current === confirmationEcriture) confirmationEcritureRef.current = null;
@@ -971,9 +977,13 @@ export default function useSupabaseData(userId, isDemo = false) {
       message: "Des données de ce navigateur n'ont pas pu être mises en copie de secours (stockage plein) ; elles restent sur cet appareil." });
   }
   // The promise resolves inside the React updater, after scheduling and recording its generation.
-  const ecrireOperation = useCallback((valeurs, captures) => {
+  // options.copierAvant (lot 2b, restauration) : la valeur ACTUELLE de chaque clé est copiée DANS l'updater,
+  // à partir de prev (et non d'une valeur lue avant la confirmation) ; si la copie échoue, rien n'est écrit.
+  const ecrireOperation = useCallback((valeurs, captures, options = {}) => {
     if (!etatEnregistrement().propre || ecritureRefusee() || isDemo || modeRef.current !== 'user') return Promise.resolve(false);
     const jeton = marquerModificationLocale();
+    // INS2-04 — un rejeu de l'updater (StrictMode) ne doit pas créer de copie en double.
+    const dejaCopiees = new Set();
     return new Promise(resolve => {
       setDonneesState(prev => {
         attentesLocalesRef.current.delete(jeton);
@@ -983,9 +993,19 @@ export default function useSupabaseData(userId, isDemo = false) {
           if (!Object.prototype.hasOwnProperty.call(CLES_REPRISE, cle)) { resolve(false); return prev; }
           if (captures && prev[cle] !== undefined) {
             const capture = captures[cle];
-            if (canonique(prev[cle]) !== canonique(capture.valeur) && !copierReprise(userId, cle, capture)) { resolve(false); return prev; }
+            if (canonique(prev[cle]) !== canonique(capture.valeur) && !dejaCopiees.has(cle)) {
+              if (!copierReprise(userId, cle, capture)) { resolve(false); return prev; }
+              dejaCopiees.add(cle);
+            }
             marquerReprise(userId, cle, capture);
-          } else { updates[cle] = valeur; envoyees.push(cle); }
+          } else {
+            if (options.copierAvant && prev[cle] !== undefined && canonique(prev[cle]) !== canonique(valeur) && !dejaCopiees.has(cle)) {
+              const texteBrut = cle === 'memoireIA' ? String(prev[cle]) : JSON.stringify(prev[cle]);
+              if (!copierReprise(userId, cle, { texteBrut, empreinte: empreinte(texteBrut), valeur: prev[cle] })) { resolve(false); return prev; }
+              dejaCopiees.add(cle);
+            }
+            updates[cle] = valeur; envoyees.push(cle);
+          }
         }
         if (envoyees.length) {
           scheduleSync(updates);
@@ -997,7 +1017,7 @@ export default function useSupabaseData(userId, isDemo = false) {
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId, isDemo, etatEnregistrement]);
-  const ecrireEtConfirmer = useCallback((cle, valeur) => ecrireOperation({ [cle]: valeur }), [ecrireOperation]);
+  const ecrireEtConfirmer = useCallback((cle, valeur, options) => ecrireOperation({ [cle]: valeur }, undefined, options), [ecrireOperation]);
   const reprendreDonneesLocales = useCallback((valeurs, captures) => ecrireOperation(valeurs, captures ||
     Object.fromEntries(Object.entries(valeurs).map(([cle, valeur]) => [cle, { ...lireValeurLocale(cle, cle === 'memoireIA' ? valeur : JSON.stringify(valeur)), valeur }]))), [ecrireOperation]);
   const deciderRepriseLocale = async ajouter => {
@@ -1006,8 +1026,12 @@ export default function useSupabaseData(userId, isDemo = false) {
     const captures = repriseLocale.propositions;
     try {
       if (!ajouter) {
+        const marqueur = lireMarqueur(userId);
         for (const [cle, capture] of Object.entries(captures)) {
-          if (!copierReprise(userId, cle, capture) || !marquerReprise(userId, cle, capture)) {
+          // INS2-04 — après un échec partiel, une clé déjà copiée et marquée n'est pas recopiée.
+          if (marqueur[cle] === capture.empreinte) continue;
+          const dejaCopiee = copieRepriseExiste(userId, cle, capture.texteBrut);
+          if ((!dejaCopiee && !copierReprise(userId, cle, capture)) || !marquerReprise(userId, cle, capture)) {
             setRepriseLocale(prev => ({ ...prev, erreur: 'Copie impossible : données locales conservées. Réessayez.' })); return false;
           }
         }
@@ -1018,7 +1042,9 @@ export default function useSupabaseData(userId, isDemo = false) {
         if (!resultat.ok) {
           setRepriseLocale(prev => ({ ...prev, erreur: resultat.conflit
             ? 'Données non enregistrées : le compte a été modifié ailleurs. Les données locales restent sur cet appareil et seront réévaluées au prochain chargement.'
-            : 'Données non enregistrées : connexion indisponible ou envoi refusé. Les données locales restent sur cet appareil et seront réévaluées au prochain chargement.' }));
+            : resultat.refusee
+              ? 'Données non enregistrées : envoi refusé (déconnexion en cours). Les données locales restent sur cet appareil et seront réévaluées au prochain chargement.'
+              : "Envoi en attente : la connexion est indisponible. Vos données sont gardées sur cet appareil ; quand le réseau revient, utilisez « Réessayer » dans le bandeau (ou faites une autre modification). Si l'app est fermée avant, la question sera reposée au prochain chargement." }));
           return false;
         }
         for (const cle of operation.envoyees) marquerReprise(userId, cle, captures[cle]);

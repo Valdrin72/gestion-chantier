@@ -42,8 +42,11 @@ export function verifierValeurServeur(cle, valeur) {
       if (!['string', 'number'].includes(typeof e.id) || vide(e.id) || (typeof e.id === 'number' && !Number.isFinite(e.id))) erreurs.push(`${lieu} : id manquant ou invalide`);
       else if (ids.has(String(e.id))) erreurs.push(`${lieu} : id en double`);
       ids.add(String(e.id));
+      // Le calendrier lit new Date(e.date) et affiche e.label : sans eux, l'événement est invisible (revue Codex PR #209).
+      if (!dateValide(e.date)) erreurs.push(`${lieu} : date ${JSON.stringify(e.date)} invalide (attendu AAAA-MM-JJ)`);
+      if (typeof e.label !== 'string' || !e.label.trim()) erreurs.push(`${lieu} : label manquant ou vide`);
       // Actual calendar consumers render label/sub and use bg/color as CSS values.
-      for (const champ of ['date', 'label', 'bg', 'color', 'sub', 'titre', 'categorie']) {
+      for (const champ of ['bg', 'color', 'sub', 'titre', 'categorie']) {
         if (e[champ] !== undefined && typeof e[champ] !== 'string') erreurs.push(`${lieu} : ${champ} doit être un texte`);
       }
     });

@@ -12,7 +12,7 @@ it.each([
  const { planifierReprise, lireValeurLocale } = await moduleReprise();
  const raw = cle === 'memoireIA' ? valeur : JSON.stringify(valeur);
  expect(planifierReprise({}, {[cle]: lireValeurLocale(cle,raw)})[cle].action).toBe('copie-brute');
- const valide = cle === 'objectifs' ? {caAnnuel:'45000.'} : cle === 'memoireIA' ? 'memoire' : [{id:1,label:'rdv'}];
+ const valide = cle === 'objectifs' ? {caAnnuel:'45000.'} : cle === 'memoireIA' ? 'memoire' : [{id:1,date:'2026-10-08',label:'rdv'}];
  const capture = lireValeurLocale(cle, cle === 'memoireIA' ? valide : JSON.stringify(valide));
  expect(capture.illisible).toBe(false);
  expect(verifierSauvegarde(instantaneComplet({parametres:{},[cle]:capture.valeur})).erreurs).toEqual([]);

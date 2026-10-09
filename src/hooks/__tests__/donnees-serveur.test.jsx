@@ -239,7 +239,7 @@ it.each(['offline', 'conflit'])('LOC-02 dialogue explique echec %s et repropose 
  store.writeError = scenario === 'conflit' ? { code: 'P0409' } : { message: 'offline' };
  let decision; act(() => { decision = h.result.current.deciderRepriseLocale(true); });
  await settle(); await act(async () => { expect(await decision).toBe(false); });
- const attendu = scenario === 'conflit' ? /non enregistrées/i : /Envoi en attente.*retour du réseau/i;
+ const attendu = scenario === 'conflit' ? /non enregistrées/i : /Envoi en attente.*Réessayer/i;
  expect(h.result.current.repriseLocale?.erreur).toMatch(attendu);
  expect(JSON.parse(localStorage.getItem('cyna_reprise_serveur_user') || '{}').memoireIA).toBeUndefined();
  render(<AppProvider value={h.result.current}><RepriseLocale projet={h.result.current.repriseLocale} decider={vi.fn()} fermer={vi.fn()} /></AppProvider>);
@@ -365,4 +365,42 @@ it('INS2-03 l’avis « stockage plein » n’est pas écrasé par l’avis des 
  expect(h.result.current.etatSync.statut).toBe('information');
  expect(h.result.current.etatSync.message).toMatch(/stockage plein/);
  expect(h.result.current.etatSync.message).toMatch(/session précédente/);
+});
+
+it('LOT2B restauration : une valeur arrivée d’un autre appareil pendant la confirmation est copiée, pas écrasée en silence', async () => {
+ const h = await boot();
+ act(() => h.result.current.setMemoireIA('ancienne')); await tick(); store.writes = [];
+ // Un autre appareil a écrit une valeur plus récente, appliquée par le temps réel.
+ store.row = { ...store.row, data: { ...store.row.data, memoireIA: 'plus recente' }, version: store.row.version + 1 }; emit(); await settle();
+ expect(h.result.current.memoireIA).toBe('plus recente');
+ let p, ok; act(() => { p = h.result.current.ecrireEtConfirmer('memoireIA', 'restauree', { copierAvant: true }); }); await settle();
+ await act(async () => { ok = await p; }); expect(ok).toBe(true);
+ await act(async () => { await h.result.current.envoyerMaintenant(); });
+ expect(store.row.data.memoireIA).toBe('restauree');
+ expect(reprises().map(c => c.memoireIA)).toEqual(['plus recente']);
+});
+
+it('LOT2B restauration refusée (copie de la valeur actuelle impossible) : rien n’est écrit', async () => {
+ const h = await boot();
+ act(() => h.result.current.setMemoireIA('actuelle')); await tick(); store.writes = [];
+ const original = Storage.prototype.setItem;
+ vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (k, v) {
+  if (k.startsWith('cyna_sauvegarde_reprise_')) throw new DOMException('plein', 'QuotaExceededError');
+  return original.call(this, k, v);
+ });
+ let p, ok; act(() => { p = h.result.current.ecrireEtConfirmer('memoireIA', 'restauree', { copierAvant: true }); }); await settle();
+ await act(async () => { ok = await p; }); expect(ok).toBe(false);
+ await tick(); expect(store.writes).toHaveLength(0); expect(h.result.current.memoireIA).toBe('actuelle');
+});
+
+it('INS2-04 StrictMode : « Ajouter » sur une valeur différente du serveur ne crée qu’une seule copie', async () => {
+ localStorage.setItem('cyna_ia_memoire', 'locale');
+ const hook = renderHook(() => useSupabaseData('user'), { wrapper: ({ children }) => <React.StrictMode>{children}</React.StrictMode> });
+ await settle();
+ expect(hook.result.current.repriseLocale.propositions.memoireIA.valeur).toBe('locale');
+ // Le serveur reçoit une autre valeur pendant que la fenêtre est ouverte.
+ store.row = { ...store.row, data: { ...store.row.data, memoireIA: 'serveur' }, version: store.row.version + 1 }; emit(); await settle();
+ let d; act(() => { d = hook.result.current.deciderRepriseLocale(true); }); await settle(); await act(async () => { await d; });
+ expect(reprises().filter(c => c.cle === 'memoireIA')).toHaveLength(1);
+ expect(store.row.data.memoireIA).toBe('serveur');
 });

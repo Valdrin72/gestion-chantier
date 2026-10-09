@@ -1,4 +1,4 @@
-import { CLES_REPRISE, lireValeurLocale, planifierReprise, lireMarqueur, marquerReprise, copierReprise, canonique } from '../utils/repriseLocale';
+import { CLES_REPRISE, lireValeurLocale, planifierReprise, lireMarqueur, marquerReprise, copierReprise, canonique, empreinte } from '../utils/repriseLocale';
 import { avecCompteurs } from '../utils/numerotation';
 import { fusionnerIdsSupprimes, donneesImportees } from '../utils/corbeille';
 /**
@@ -977,7 +977,9 @@ export default function useSupabaseData(userId, isDemo = false) {
       message: "Des données de ce navigateur n'ont pas pu être mises en copie de secours (stockage plein) ; elles restent sur cet appareil." });
   }
   // The promise resolves inside the React updater, after scheduling and recording its generation.
-  const ecrireOperation = useCallback((valeurs, captures) => {
+  // options.copierAvant (lot 2b, restauration) : la valeur ACTUELLE de chaque clé est copiée DANS l'updater,
+  // à partir de prev (et non d'une valeur lue avant la confirmation) ; si la copie échoue, rien n'est écrit.
+  const ecrireOperation = useCallback((valeurs, captures, options = {}) => {
     if (!etatEnregistrement().propre || ecritureRefusee() || isDemo || modeRef.current !== 'user') return Promise.resolve(false);
     const jeton = marquerModificationLocale();
     // INS2-04 — un rejeu de l'updater (StrictMode) ne doit pas créer de copie en double.
@@ -996,7 +998,14 @@ export default function useSupabaseData(userId, isDemo = false) {
               dejaCopiees.add(cle);
             }
             marquerReprise(userId, cle, capture);
-          } else { updates[cle] = valeur; envoyees.push(cle); }
+          } else {
+            if (options.copierAvant && prev[cle] !== undefined && canonique(prev[cle]) !== canonique(valeur) && !dejaCopiees.has(cle)) {
+              const texteBrut = cle === 'memoireIA' ? String(prev[cle]) : JSON.stringify(prev[cle]);
+              if (!copierReprise(userId, cle, { texteBrut, empreinte: empreinte(texteBrut), valeur: prev[cle] })) { resolve(false); return prev; }
+              dejaCopiees.add(cle);
+            }
+            updates[cle] = valeur; envoyees.push(cle);
+          }
         }
         if (envoyees.length) {
           scheduleSync(updates);
@@ -1008,7 +1017,7 @@ export default function useSupabaseData(userId, isDemo = false) {
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId, isDemo, etatEnregistrement]);
-  const ecrireEtConfirmer = useCallback((cle, valeur) => ecrireOperation({ [cle]: valeur }), [ecrireOperation]);
+  const ecrireEtConfirmer = useCallback((cle, valeur, options) => ecrireOperation({ [cle]: valeur }, undefined, options), [ecrireOperation]);
   const reprendreDonneesLocales = useCallback((valeurs, captures) => ecrireOperation(valeurs, captures ||
     Object.fromEntries(Object.entries(valeurs).map(([cle, valeur]) => [cle, { ...lireValeurLocale(cle, cle === 'memoireIA' ? valeur : JSON.stringify(valeur)), valeur }]))), [ecrireOperation]);
   const deciderRepriseLocale = async ajouter => {
@@ -1034,7 +1043,7 @@ export default function useSupabaseData(userId, isDemo = false) {
             ? 'Données non enregistrées : le compte a été modifié ailleurs. Les données locales restent sur cet appareil et seront réévaluées au prochain chargement.'
             : resultat.refusee
               ? 'Données non enregistrées : envoi refusé (déconnexion en cours). Les données locales restent sur cet appareil et seront réévaluées au prochain chargement.'
-              : "Envoi en attente : la connexion est indisponible. Vos données sont gardées et partiront automatiquement dès le retour du réseau ; vous pouvez fermer cette fenêtre (si l'app est fermée avant, la question sera reposée au prochain chargement)." }));
+              : "Envoi en attente : la connexion est indisponible. Vos données sont gardées sur cet appareil ; quand le réseau revient, utilisez « Réessayer » dans le bandeau (ou faites une autre modification). Si l'app est fermée avant, la question sera reposée au prochain chargement." }));
           return false;
         }
         for (const cle of operation.envoyees) marquerReprise(userId, cle, captures[cle]);

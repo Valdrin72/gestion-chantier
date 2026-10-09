@@ -2,7 +2,7 @@ import ResumeImport from '../components/parametres/ResumeImport';
 import CopiesSecours from '../components/parametres/CopiesSecours';
 import { verifierSauvegarde, instantaneComplet, resumerImport, telechargerTexte, LIMITE_IMPORT } from '../utils/importControle';
 import { ecrireCopieAvantImport } from '../utils/copiesRejetees';
-import { copierReprise, canonique, empreinte, LIBELLES_REPRISE, resumerDonnee } from '../utils/repriseLocale';
+import { canonique, LIBELLES_REPRISE, resumerDonnee } from '../utils/repriseLocale';
 import FormulaireMotDePasse from '../components/FormulaireMotDePasse';
 import Corbeille from '../components/parametres/Corbeille';
 import React, { useState, useLayoutEffect } from 'react';
@@ -113,18 +113,15 @@ function Parametres({ parametres, setParametres, clients = [], setClients = () =
     if (isDemo || !ecrireEtConfirmer) return;
     const actuelle = { objectifs, evenementsCalendrier, memoireIA }[cle];
     if (actuelle !== undefined && canonique(actuelle) === canonique(valeur)) { afficherNotif?.('Cette valeur est déjà celle de votre compte.'); return; }
-    if (confirmer && !await confirmer(`Restaurer ${LIBELLES_REPRISE[cle]} depuis cette copie ?\n\nValeur actuelle : ${resumerDonnee(cle, actuelle)}\nValeur de la copie : ${resumerDonnee(cle, valeur)}\n\nLa valeur actuelle sera d'abord gardée dans une copie de secours.`, { labelOui: 'Restaurer' })) return;
-    if (actuelle !== undefined) {
-      const texteBrut = cle === 'memoireIA' ? actuelle : JSON.stringify(actuelle);
-      if (!copierReprise(userId, cle, { texteBrut, empreinte: empreinte(texteBrut), valeur: actuelle })) {
-        afficherNotif?.('Restauration annulée : impossible de mettre la valeur actuelle en copie de secours (stockage plein ?).'); return;
-      }
-    }
-    if (!await ecrireEtConfirmer(cle, valeur)) {
-      afficherNotif?.("Restauration impossible pour l'instant (modifications en cours d'enregistrement). Réessayez."); return;
+    if (confirmer && !await confirmer(`Restaurer ${LIBELLES_REPRISE[cle]} depuis cette copie ?\n\nValeur actuelle : ${resumerDonnee(cle, actuelle)}\nValeur de la copie : ${resumerDonnee(cle, valeur)}\n\nLa valeur actuelle sera d'abord gardée dans une copie de secours.`, { labelOui: 'Restaurer', danger: false })) return;
+    // La copie de la valeur actuelle est faite dans l'écriture elle-même (copierAvant), sur la valeur la plus récente.
+    if (!await ecrireEtConfirmer(cle, valeur, { copierAvant: true })) {
+      afficherNotif?.("Restauration impossible pour l'instant (modifications en cours d'enregistrement, ou copie de la valeur actuelle impossible). Réessayez."); return;
     }
     const resultat = await envoyerMaintenant();
-    afficherNotif?.(resultat.ok ? 'Donnée restaurée et enregistrée.' : 'Restauration enregistrée sur cet appareil, en attente d’envoi (voir le bandeau).');
+    afficherNotif?.(resultat.ok ? 'Donnée restaurée et enregistrée.'
+      : resultat.conflit ? 'Restauration non appliquée : le compte a été modifié ailleurs. La copie reste disponible ; réessayez.'
+      : 'Restauration enregistrée sur cet appareil, en attente d’envoi (voir le bandeau).');
   };
 
   const etatActuel = () => ({ chantiers, devis, factures, clients, parametres, pointages, listesCompletes, objectifs, evenementsCalendrier, memoireIA });

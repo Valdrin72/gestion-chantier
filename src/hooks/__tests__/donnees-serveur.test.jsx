@@ -439,6 +439,7 @@ it('Codex PR #209 — un événement sans date valide ou sans label n’est ni r
  expect(donneeRestaurable(copie([{ id: 1 }]))).toBeNull();
  expect(donneeRestaurable(copie([{ id: 1, date: '2026-13-40', label: 'x' }]))).toBeNull();
  expect(donneeRestaurable(copie([{ id: 1, date: '2026-10-08' }]))).toBeNull();
+ expect(donneeRestaurable(copie([{ id: 1, date: '2026-10-08', label: '   ' }]))).toBeNull();
  expect(donneeRestaurable(copie([{ id: 1, date: '2026-10-08', label: 'Réunion' }]))).toEqual({ cle: 'evenementsCalendrier', valeur: [{ id: 1, date: '2026-10-08', label: 'Réunion' }] });
  expect(verifierSauvegarde({ ...blob(), evenementsCalendrier: [{ id: 1 }] }).erreurs.join(' ')).toMatch(/date .* invalide/);
 });

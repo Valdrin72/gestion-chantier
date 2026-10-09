@@ -50,7 +50,7 @@ function renderClaude(over = {}) {
   const res = renderWithApp(<CentreIA />, {
     chantiers: over.chantiers || [CHANTIER], devis: [], factures: [], clients: [],
     parametres: over.parametres || PARAMS_CONSENTI,
-    agentState: { alertes: [] }, ouvrirMenu: vi.fn(), pointages: [],
+    isDemo: true, agentState: { alertes: [] }, ouvrirMenu: vi.fn(), pointages: [],
     setParametres: over.setParametres || vi.fn(), ...over.ctx,
   });
   fireEvent.click(within(screen.getByTestId('hero-ia')).getByRole('button', { name: /Claude AI/i }));

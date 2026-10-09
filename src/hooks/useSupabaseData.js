@@ -1,3 +1,4 @@
+import { CLES_REPRISE, lireValeurLocale, planifierReprise, lireMarqueur, marquerReprise, copierReprise, canonique } from '../utils/repriseLocale';
 import { avecCompteurs } from '../utils/numerotation';
 import { fusionnerIdsSupprimes, donneesImportees } from '../utils/corbeille';
 /**
@@ -223,7 +224,7 @@ export function resolveDataFromBlob(rawBlob, isDemo) {
   // needsSync uniquement pour la démo périmée/vide (plus aucun « nettoyage » runtime de factures)
   const needsSync = isDemo && (outdated || c.length === 0 || dv.length === 0 || !storedParams.employes?.length);
 
-  return { chantiers, devis, factures, clients, parametres, pointages: d.pointages || [], needsSync };
+  return { chantiers, devis, factures, clients, parametres, pointages: d.pointages || [], objectifs: d.objectifs, evenementsCalendrier: d.evenementsCalendrier, memoireIA: d.memoireIA, needsSync };
 }
 
 // Données démo précalculées une seule fois (hors du composant — stable)
@@ -250,9 +251,9 @@ export default function useSupabaseData(userId, isDemo = false) {
   const [donnees, setDonneesState] = useState(() => ({
     chantiers: isDemo ? _initChantiers : [], devis: isDemo ? _initDevis : [],
     factures: isDemo ? _initFactures : [], clients: isDemo ? _initClients : [],
-    parametres: isDemo ? donneesInitiales : PARAMETRES_DEFAUT, pointages: [],
+    parametres: isDemo ? donneesInitiales : PARAMETRES_DEFAUT, pointages: [], objectifs: undefined, evenementsCalendrier: undefined, memoireIA: undefined,
   }));
-  const { chantiers, devis, factures, clients, parametres, pointages } = donnees;
+  const { chantiers, devis, factures, clients, parametres, pointages, objectifs, evenementsCalendrier, memoireIA } = donnees;
   const setterEtat = cle => updater => setDonneesState(prev => {
     const next = typeof updater === 'function' ? updater(prev[cle], prev.parametres) : updater;
     if (Object.is(next, prev[cle])) return prev;
@@ -269,6 +270,12 @@ export default function useSupabaseData(userId, isDemo = false) {
   const setClientsState = setterEtat('clients');
   const setParametresState = setterEtat('parametres');
   const setPointagesState = setterEtat('pointages');
+  const setObjectifsState = setterEtat('objectifs');
+  const setEvenementsCalendrierState = setterEtat('evenementsCalendrier');
+  const setMemoireIAState = setterEtat('memoireIA');
+  const [repriseLocale, setRepriseLocale] = useState(null);
+  const reprisePrepareeRef = useRef(false);
+  const decisionRepriseRef = useRef(false);
   const [loading,     setLoading]         = useState(true);
   const [syncing,     setSyncing]         = useState(false);
 
@@ -280,6 +287,7 @@ export default function useSupabaseData(userId, isDemo = false) {
   const conflitsRef = useRef(0);
   const importEnCoursRef = useRef(false);
   const importEcritureRef = useRef(null);
+  const confirmationEcritureRef = useRef(null);
   const ecrituresOrgEnVolRef = useRef(0);
   // Le plan impose une identite de callback liee au compte (AppInner remonte par userId).
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -321,7 +329,7 @@ export default function useSupabaseData(userId, isDemo = false) {
     factures:   isDemo ? _initFactures : [],
     clients:    isDemo ? _initClients : [],
     parametres: isDemo ? donneesInitiales : PARAMETRES_DEFAUT,
-    pointages:  [],
+    pointages:  [], objectifs: undefined, evenementsCalendrier: undefined, memoireIA: undefined,
   });
   const mountedRef  = useRef(true);
   useEffect(() => { mountedRef.current = true; return () => { mountedRef.current = false; if (importEnCoursRef.current) { importEnCoursRef.current = false; importEcritureRef.current = null; suspendreRetention(false); } }; }, []);
@@ -364,10 +372,10 @@ export default function useSupabaseData(userId, isDemo = false) {
 
   function appliquerData(blobData) {
     const resolved = resolveDataFromBlob(blobData, isDemo);
-    const { chantiers: ch, devis: dv, factures: fa, clients: cl, parametres: pa, pointages: pt, needsSync } = resolved;
+    const { chantiers: ch, devis: dv, factures: fa, clients: cl, parametres: pa, pointages: pt, objectifs: ob, evenementsCalendrier: ec, memoireIA: mi, needsSync } = resolved;
 
-    setDonneesState({ chantiers: ch, devis: dv, factures: fa, clients: cl, parametres: pa, pointages: pt });
-    dataRef.current = { chantiers: ch, devis: dv, factures: fa, clients: cl, parametres: pa, pointages: pt };
+    setDonneesState({ chantiers: ch, devis: dv, factures: fa, clients: cl, parametres: pa, pointages: pt, objectifs: ob, evenementsCalendrier: ec, memoireIA: mi });
+    dataRef.current = { chantiers: ch, devis: dv, factures: fa, clients: cl, parametres: pa, pointages: pt, objectifs: ob, evenementsCalendrier: ec, memoireIA: mi };
 
     if (needsSync && !ecrituresBloqueesRef.current) {
       sauvegarderLocal('cyna_chantiers',  ch);
@@ -375,7 +383,7 @@ export default function useSupabaseData(userId, isDemo = false) {
       sauvegarderLocal('cyna_factures',   fa);
       sauvegarderLocal('cyna_clients',    cl);
       sauvegarderLocal('cyna_parametres', pa);
-      scheduleSync({ chantiers: ch, devis: dv, factures: fa, clients: cl, parametres: pa, pointages: pt });
+      scheduleSync({ chantiers: ch, devis: dv, factures: fa, clients: cl, parametres: pa, pointages: pt, objectifs: ob, evenementsCalendrier: ec, memoireIA: mi });
     }
   }
 
@@ -612,6 +620,7 @@ export default function useSupabaseData(userId, isDemo = false) {
         flush(recuperationGenRef.current);
       }
       recuperationRef.current = false;
+      preparerRepriseLocale();
       // F2 — un « Réessayer » qui termine une récupération de conflit annonce le conflit.
       if (finDeRecuperation) { importEnCoursRef.current = false; suspendreRetention(false); importEcritureRef.current = null; }
       if (finDeRecuperation) setEtatSync({ erreurChargement: null, statut: 'conflit', message: messageConflit() });
@@ -643,9 +652,11 @@ export default function useSupabaseData(userId, isDemo = false) {
         rowIdRef.current = row.id;
         versionRef.current = Number(row.version) || 0;
         reussie = true;
+        if (confirmationEcritureRef.current && generationEcriture >= confirmationEcritureRef.current.generation) {
+          confirmationEcritureRef.current.ok = true;
+        }
         if (importEcritureRef.current && generationEcriture >= importEcritureRef.current.generation) {
           importEcritureRef.current.ok = true;
-          importEcritureRef.current = null;
           importEnCoursRef.current = false; suspendreRetention(false);
         }
         if (!episodeRef.current) setEtatSync(prev => (prev.statut === 'information' ? prev : { erreurChargement: null, statut: 'ok', message: null }));
@@ -823,6 +834,51 @@ export default function useSupabaseData(userId, isDemo = false) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
 
+  const setObjectifs = useCallback((updater) => {
+    if (ecritureRefusee()) return false;
+    if (modeRef.current === 'user' && !chargementOkRef.current) return false;
+    const jeton = marquerModificationLocale();
+    setObjectifsState(prev => {
+      attentesLocalesRef.current.delete(jeton);
+      if (ecritureRefusee()) return prev;
+      const next = typeof updater === 'function' ? updater(prev) : updater;
+      if (Object.is(next, prev)) return prev;
+      scheduleSync({ objectifs: next });
+      return next;
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId]);
+
+  const setEvenementsCalendrier = useCallback((updater) => {
+    if (ecritureRefusee()) return false;
+    if (modeRef.current === 'user' && !chargementOkRef.current) return false;
+    const jeton = marquerModificationLocale();
+    setEvenementsCalendrierState(prev => {
+      attentesLocalesRef.current.delete(jeton);
+      if (ecritureRefusee()) return prev;
+      const next = typeof updater === 'function' ? updater(prev) : updater;
+      if (Object.is(next, prev)) return prev;
+      scheduleSync({ evenementsCalendrier: next });
+      return next;
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId]);
+
+  const setMemoireIA = useCallback((updater) => {
+    if (ecritureRefusee()) return false;
+    if (modeRef.current === 'user' && !chargementOkRef.current) return false;
+    const jeton = marquerModificationLocale();
+    setMemoireIAState(prev => {
+      attentesLocalesRef.current.delete(jeton);
+      if (ecritureRefusee()) return prev;
+      const next = typeof updater === 'function' ? updater(prev) : updater;
+      if (Object.is(next, prev)) return prev;
+      scheduleSync({ memoireIA: next });
+      return next;
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId]);
+
   const setDonneesListes = useCallback(updater => {
     if (ecritureRefusee()) return false;
     if (modeRef.current === 'user' && !chargementOkRef.current) return false;
@@ -849,16 +905,18 @@ export default function useSupabaseData(userId, isDemo = false) {
   }), []);
   const envoyerMaintenant = useCallback(async () => {
     const conflitsAvant = conflitsRef.current;
+    const confirmationEcriture = confirmationEcritureRef.current;
     const importEcriture = importEcritureRef.current;
     try {
       if (modeRef.current === 'org') return { ok: etatEnregistrement().propre && ecrituresRefuseesRef.current === 0 };
       clearTimeout(syncTimer.current);
       syncTimer.current = null;
       await flush();
-      return { ok: (importEcriture ? importEcriture.ok : etatEnregistrement().propre) && conflitsRef.current === conflitsAvant && ecrituresRefuseesRef.current === 0,
+      return { ok: (confirmationEcriture ? confirmationEcriture.ok : importEcriture ? importEcriture.ok : etatEnregistrement().propre) && conflitsRef.current === conflitsAvant && ecrituresRefuseesRef.current === 0,
         conflit: conflitsRef.current !== conflitsAvant,
         rechargementOk: chargementOkRef.current && !recuperationRef.current };
     } finally {
+      if (confirmationEcritureRef.current === confirmationEcriture) confirmationEcritureRef.current = null;
       if (!importEnCoursRef.current) importEcritureRef.current = null;
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -891,6 +949,83 @@ export default function useSupabaseData(userId, isDemo = false) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId, etatEnregistrement]);
 
+
+  function preparerRepriseLocale() {
+    if (isDemo || modeRef.current !== 'user' || reprisePrepareeRef.current || ecritureRefusee()) return;
+    reprisePrepareeRef.current = true;
+    const marqueur = lireMarqueur(userId);
+    const local = {};
+    try { for (const [cle, nom] of Object.entries(CLES_REPRISE)) local[cle] = lireValeurLocale(cle, localStorage.getItem(nom)); }
+    catch { return; } // A failed read is never treated as absence.
+    const plan = planifierReprise(dataRef.current, local);
+    const propositions = {};
+    let copieImpossible = false;
+    for (const [cle, capture] of Object.entries(plan)) {
+      if (marqueur[cle] === capture.empreinte) continue;
+      if (capture.action === 'proposer') propositions[cle] = capture;
+      else if (capture.action === 'rien' || copierReprise(userId, cle, capture)) marquerReprise(userId, cle, capture);
+      else copieImpossible = true;
+    }
+    if (Object.keys(propositions).length) setRepriseLocale({ propositions, erreur: copieImpossible ? 'Une copie locale est impossible. La donnée originale est conservée.' : null });
+    else if (copieImpossible) setEtatSync({ erreurChargement: null, statut: 'information',
+      message: "Des données de ce navigateur n'ont pas pu être mises en copie de secours (stockage plein) ; elles restent sur cet appareil." });
+  }
+  // The promise resolves inside the React updater, after scheduling and recording its generation.
+  const ecrireOperation = useCallback((valeurs, captures) => {
+    if (!etatEnregistrement().propre || ecritureRefusee() || isDemo || modeRef.current !== 'user') return Promise.resolve(false);
+    const jeton = marquerModificationLocale();
+    return new Promise(resolve => {
+      setDonneesState(prev => {
+        attentesLocalesRef.current.delete(jeton);
+        if (ecritureRefusee() || !etatEnregistrement().propre) { resolve(false); return prev; }
+        const updates = {}, envoyees = [];
+        for (const [cle, valeur] of Object.entries(valeurs)) {
+          if (!Object.prototype.hasOwnProperty.call(CLES_REPRISE, cle)) { resolve(false); return prev; }
+          if (captures && prev[cle] !== undefined) {
+            const capture = captures[cle];
+            if (canonique(prev[cle]) !== canonique(capture.valeur) && !copierReprise(userId, cle, capture)) { resolve(false); return prev; }
+            marquerReprise(userId, cle, capture);
+          } else { updates[cle] = valeur; envoyees.push(cle); }
+        }
+        if (envoyees.length) {
+          scheduleSync(updates);
+          confirmationEcritureRef.current = { generation: generationRef.current, ok: false };
+        }
+        resolve(captures ? { envoyees } : true);
+        return envoyees.length ? { ...prev, ...updates } : prev;
+      });
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId, isDemo, etatEnregistrement]);
+  const ecrireEtConfirmer = useCallback((cle, valeur) => ecrireOperation({ [cle]: valeur }), [ecrireOperation]);
+  const reprendreDonneesLocales = useCallback((valeurs, captures) => ecrireOperation(valeurs, captures ||
+    Object.fromEntries(Object.entries(valeurs).map(([cle, valeur]) => [cle, { ...lireValeurLocale(cle, cle === 'memoireIA' ? valeur : JSON.stringify(valeur)), valeur }]))), [ecrireOperation]);
+  const deciderRepriseLocale = async ajouter => {
+    if (!repriseLocale || decisionRepriseRef.current || ecritureRefusee()) return false;
+    decisionRepriseRef.current = true;
+    const captures = repriseLocale.propositions;
+    try {
+      if (!ajouter) {
+        for (const [cle, capture] of Object.entries(captures)) {
+          if (!copierReprise(userId, cle, capture) || !marquerReprise(userId, cle, capture)) {
+            setRepriseLocale(prev => ({ ...prev, erreur: 'Copie impossible : données locales conservées. Réessayez.' })); return false;
+          }
+        }
+      } else {
+        const operation = await reprendreDonneesLocales(Object.fromEntries(Object.entries(captures).map(([cle, capture]) => [cle, capture.valeur])), captures);
+        if (!operation) { setRepriseLocale(prev => ({ ...prev, erreur: "Reprise impossible pour l'instant. Attendez l'enregistrement et réessayez." })); return false; }
+        const resultat = operation.envoyees.length ? await envoyerMaintenant() : { ok: true };
+        if (!resultat.ok) {
+          setRepriseLocale(prev => ({ ...prev, erreur: resultat.conflit
+            ? 'Données non enregistrées : le compte a été modifié ailleurs. Les données locales restent sur cet appareil et seront réévaluées au prochain chargement.'
+            : 'Données non enregistrées : connexion indisponible ou envoi refusé. Les données locales restent sur cet appareil et seront réévaluées au prochain chargement.' }));
+          return false;
+        }
+        for (const cle of operation.envoyees) marquerReprise(userId, cle, captures[cle]);
+      }
+      setRepriseLocale(null); return true;
+    } finally { decisionRepriseRef.current = false; }
+  };
   return {
     chantiers, setChantiers,
     devis, setDevis,
@@ -898,6 +1033,9 @@ export default function useSupabaseData(userId, isDemo = false) {
     clients, setClients,
     parametres, setParametres,
     pointages, setPointages,
+    objectifs, setObjectifs, evenementsCalendrier, setEvenementsCalendrier, memoireIA, setMemoireIA,
+    repriseLocale, deciderRepriseLocale, fermerRepriseLocale: () => setRepriseLocale(null),
+    ecrireEtConfirmer, reprendreDonneesLocales,
     terminerSauvegardes, bloquerEcritures, debloquerEcritures,
     setDonneesListes, importerTout, etatEnregistrement, envoyerMaintenant, modeStockage: modeRef.current,
     loading, syncing, etatSync,

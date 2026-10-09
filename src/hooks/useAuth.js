@@ -46,6 +46,8 @@ export default function useAuth() {
   const [session, setSession] = useState(() => isDemoMode() ? DEMO_SESSION : null);
   const [profil, setProfil] = useState(() => isDemoMode() ? ROLE_PAGES['cyna'] : null);
   const [loading, setLoading] = useState(() => !isDemoMode());
+  const sessionRef = useRef(session);
+  sessionRef.current = session;
   const deconnexionEnCoursRef = useRef(false);
   const [recuperationMotDePasse, setRecuperationMotDePasse] = useState(lienRecuperationMotDePasse);
   const terminerRecuperation = () => setRecuperationMotDePasse(false);
@@ -120,7 +122,7 @@ export default function useAuth() {
       } catch (error) { console.error('signOut', error); }
       const { data, error } = await supabase.auth.getSession();
       if (error || data?.session !== null) return { ok: false };
-      effacerCachesLocaux();
+      effacerCachesLocaux(sessionRef.current?.user?.id);
       setSession(null); setProfil(null); setRecuperationMotDePasse(false);
       return { ok: true };
     } catch (error) {

@@ -165,7 +165,7 @@ function saveMemoire(memoire) {
   try { localStorage.setItem(MEMOIRE_KEY, JSON.stringify(memoire)); } catch {}
 }
 
-export default function useAgents({ chantiers, devis, factures, clients, parametres, pointages = [] }) {
+export default function useAgents({ chantiers, devis, factures, clients, parametres, pointages = [], objectifs, isDemo = false }) {
   // Lecture localStorage unique au mount — partagée entre tous les useState initialiseurs
   const _initStateRef = useRef(undefined);
   const _getInitState = () => {
@@ -204,7 +204,7 @@ export default function useAgents({ chantiers, devis, factures, clients, paramet
         dernierRapport,
         agentsActifs,
         memoire: memoireRef.current,
-        pointages: pointages || [],
+        pointages: pointages || [], objectifs, isDemo,
       });
 
       const now = Date.now();
@@ -268,7 +268,7 @@ export default function useAgents({ chantiers, devis, factures, clients, paramet
     } finally {
       setRunning(false);
     }
-  }, [chantiers, devis, factures, clients, parametres, agentsActifs, dernierRapport, rapports, running, pointages]);
+  }, [chantiers, devis, factures, clients, parametres, agentsActifs, dernierRapport, rapports, running, pointages, objectifs, isDemo]);
 
   // Référence à executer toujours à jour (évite le stale-closure dans setInterval)
   const executerRef = useRef(executer);

@@ -22,14 +22,17 @@ export default function Calendrier({
   viewDate: viewDateProp, nouvelEvenementSignal = 0,
 }) {
   const isMobile = useIsMobile();
-  const { consultationMobile } = useApp();
+  const { consultationMobile, isDemo, evenementsCalendrier, setEvenementsCalendrier } = useApp();
   const today = new Date();
   // Le mois affiché est piloté par le hero de PlanningPage ; fallback interne : mois courant.
   const [viewDateInterne] = useState(() => new Date(today.getFullYear(), today.getMonth(), 1));
   const viewDate = viewDateProp ?? viewDateInterne;
-  const [customEvents, setCustomEvents] = useState(() => {
+  const [eventsDemo, setEventsDemo] = useState(() => {
+    if (!isDemo) return [];
     try { return JSON.parse(localStorage.getItem('cyna_cal_events') || '[]'); } catch { return []; }
   });
+  const customEvents = useMemo(() => isDemo ? eventsDemo : (evenementsCalendrier || []), [isDemo, eventsDemo, evenementsCalendrier]);
+  const setCustomEvents = isDemo ? setEventsDemo : setEvenementsCalendrier;
   const [modal, setModal] = useState(null); // null | { form }
 
   // Ouverture de la modale « Nouvel événement » demandée depuis le hero.
@@ -51,7 +54,7 @@ export default function Calendrier({
     if (!modal.form.titre.trim() || !modal.form.date) return;
     const cat = CATEGORIES.find(c => c.id === modal.form.categorie);
     setCustomEvents(prev => {
-      const next = [...prev, {
+      const next = [...(prev ?? []), {
         id: Date.now(),
         label: modal.form.titre.trim(),
         date: modal.form.date,
@@ -59,7 +62,7 @@ export default function Calendrier({
         color: cat.color,
         sub: cat.label,
       }];
-      try { localStorage.setItem('cyna_cal_events', JSON.stringify(next)); } catch {}
+      try { if (isDemo) localStorage.setItem('cyna_cal_events', JSON.stringify(next)); } catch {}
       return next;
     });
     setModal(null);
@@ -68,8 +71,8 @@ export default function Calendrier({
   const supprimerEvent = (id) => {
     if (consultationMobile) return; // Mode consultation mobile : suppression d'événement bloquée.
     setCustomEvents(prev => {
-      const next = prev.filter(e => e.id !== id);
-      try { localStorage.setItem('cyna_cal_events', JSON.stringify(next)); } catch {}
+      const next = (prev ?? []).filter(e => e.id !== id);
+      try { if (isDemo) localStorage.setItem('cyna_cal_events', JSON.stringify(next)); } catch {}
       return next;
     });
   };

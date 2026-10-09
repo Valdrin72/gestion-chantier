@@ -1014,7 +1014,7 @@ export function runSanteClient({ chantiers, clients, devis, factures, parametres
 }
 
 // ─── T2-A13 : ProjectionAnnuelle ──────────────────────────────
-export function runProjectionAnnuelle({ chantiers, factures, devis, parametres, agentContext, memoire = {}, getCouts }) {
+export function runProjectionAnnuelle({ objectifs, isDemo = false, chantiers, factures, devis, parametres, agentContext, memoire = {}, getCouts }) {
   try {
     const now = new Date();
     const annee = now.getFullYear();
@@ -1041,7 +1041,8 @@ export function runProjectionAnnuelle({ chantiers, factures, devis, parametres, 
 
     // Chargement objectif depuis localStorage
     let objectifCA = null;
-    try { const obj = JSON.parse(localStorage.getItem('cyna_objectifs') || '{}'); objectifCA = obj.caAnnuel || null; } catch {}
+    if (isDemo) { try { const obj = JSON.parse(localStorage.getItem('cyna_objectifs') || '{}'); objectifCA = obj.caAnnuel || null; } catch {} }
+    else objectifCA = objectifs?.caAnnuel || null;
     const txAtteinte = objectifCA && objectifCA > 0 ? Math.round((caProjecte / objectifCA) * 100) : null;
 
     const alertes = [];
@@ -2158,7 +2159,7 @@ export function runSentinelAgent({ agentContext, violations = [], agentsStatuts 
 // ═══════════════════════════════════════════════════════════════
 // ORCHESTRATEUR — 3 tiers, communication inter-agents
 // ═══════════════════════════════════════════════════════════════
-export function runAllAgents({ chantiers, devis, factures, clients, parametres, dernierRapport, agentsActifs, memoire = {}, pointages = [] }) {
+export function runAllAgents({ objectifs, isDemo = false, chantiers, devis, factures, clients, parametres, dernierRapport, agentsActifs, memoire = {}, pointages = [] }) {
   const enabled = agentsActifs || {};
   const isEnabled = (name) => enabled[name] !== false; // actif par défaut
 
@@ -2239,7 +2240,7 @@ export function runAllAgents({ chantiers, devis, factures, clients, parametres, 
   runAgent('PlanningCoherence',    (m) => runPlanningCoherence({ chantiers, devis, parametres }));
   runAgent('ApprentissageMarge',   (m) => runApprentissageMarge({ chantiers, devis, parametres, agentContext, memoire: m, getCouts }));
   runAgent('SanteClient',          (m) => runSanteClient({ chantiers, clients, devis, factures, parametres, agentContext, getCouts }));
-  runAgent('ProjectionAnnuelle',   (m) => runProjectionAnnuelle({ chantiers, factures, devis, parametres, agentContext, memoire: m, getCouts }));
+  runAgent('ProjectionAnnuelle',   (m) => runProjectionAnnuelle({ objectifs, isDemo, chantiers, factures, devis, parametres, agentContext, memoire: m, getCouts }));
   runAgent('BenchmarkTypeTravaux', (m) => runBenchmarkTypeTravaux({ chantiers, devis, parametres, agentContext, getCouts }));
   runAgent('ConformiteBTP',        (m) => runConformiteBTP({ chantiers, parametres, agentContext }));
   runAgent('DerivePredictor',      (m) => runDerivePredictor({ chantiers, devis, parametres, agentContext, getCouts }));

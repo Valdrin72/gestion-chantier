@@ -66,5 +66,5 @@ export function donneesImportees(prev, data) {
   const presents = new Set((data[type] || []).map(x => String(x.id)));
   if (ids[type]) ids[type] = ids[type].filter(id => !presents.has(String(id)));
  }
- return { ...data, parametres: { ...data.parametres, idsSupprimes: ids } };
+ return { ...prev, ...data, parametres: { ...data.parametres, idsSupprimes: ids } };
 }

@@ -85,7 +85,7 @@ export function listerCopies(stockage, userId) {
   const copies = [];
   for (let i = 0; i < stockage.length; i++) {
     const cle = stockage.key(i);
-    const type = cle.startsWith(PREFIXE_ECHEC + userId + '_') ? 'échec' :
+    const type = cle.startsWith('cyna_sauvegarde_reprise_' + userId + '_') ? 'reprise locale' : cle.startsWith(PREFIXE_ECHEC + userId + '_') ? 'échec' :
       cle.startsWith(PREFIXE_AVANT_IMPORT + userId + '_') ? 'avant import' :
       cle === 'cyna_sauvegarde_rejetee' || cle.startsWith(PREFIXE_COPIE_REJETEE) ? 'refus' : null;
     if (!type) continue;

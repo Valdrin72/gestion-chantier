@@ -77,7 +77,8 @@ function Parametres({ parametres, setParametres, clients = [], setClients = () =
   const [saved, setSaved] = useState(false);
   const timerSaved = React.useRef(null);
   const importRef = React.useRef(null);
-  const { confirmer, afficherNotif, ouvrirMenu, listesCompletes, importerTout, userId, etatEnregistrement, envoyerMaintenant } = useApp();
+  const { confirmer, afficherNotif, ouvrirMenu, listesCompletes, importerTout, userId, etatEnregistrement, envoyerMaintenant,
+    objectifs, evenementsCalendrier, memoireIA, ecrireEtConfirmer, isDemo } = useApp();
   const [projetImport, setProjetImport] = useState(null);
   const [messageImport, setMessageImport] = useState(null);
   const messageImportRef = React.useRef(null);
@@ -93,13 +94,19 @@ function Parametres({ parametres, setParametres, clients = [], setClients = () =
     sauv({ ...parametres, parametres: { ...parametres.parametres, iaActivee: valeur, iaConsentement: valeur ? parametres.parametres?.iaConsentement : false } });
   };
   const effacerMemoireIA = async () => {
-    if (confirmer && !await confirmer('Effacer la mémoire de l\'Assistant IA ?\n\nLes insights accumulés (localStorage) seront supprimés. Aucune donnée métier n\'est touchée.', { labelOui: 'Effacer' })) return;
+    if (confirmer && !await confirmer(isDemo
+      ? 'Effacer la mémoire de l\'Assistant IA ?\n\nLes insights accumulés (localStorage) seront supprimés. Aucune donnée métier n\'est touchée.'
+      : 'La mémoire de l\'Assistant IA sera effacée sur tous vos appareils. Aucune donnée métier n\'est touchée.', { labelOui: 'Effacer' })) return;
+    if (!isDemo && (!ecrireEtConfirmer || !await ecrireEtConfirmer('memoireIA', ''))) {
+      afficherNotif?.("Effacement impossible pour l'instant (modifications en cours d'enregistrement). Réessayez."); return;
+    }
     localStorage.removeItem('cyna_ia_memoire');
-    setMemoireVidee(true);
-    if (afficherNotif) afficherNotif('Mémoire IA effacée');
+    const resultat = isDemo ? { ok: true } : await envoyerMaintenant();
+    setMemoireVidee(resultat.ok);
+    if (afficherNotif) afficherNotif(resultat.ok ? 'Mémoire IA effacée' : 'Effacement enregistré sur cet appareil, en attente d’envoi (voir le bandeau)');
   };
 
-  const etatActuel = () => ({ chantiers, devis, factures, clients, parametres, pointages, listesCompletes });
+  const etatActuel = () => ({ chantiers, devis, factures, clients, parametres, pointages, listesCompletes, objectifs, evenementsCalendrier, memoireIA });
   const refusEnregistrement = 'Des modifications ne sont pas encore enregistrées. Attendez l’enregistrement (ou téléchargez la copie de secours) avant d’importer.';
   const propre = () => !etatEnregistrement || etatEnregistrement().propre;
   const exporterDonnees = () => {
@@ -475,7 +482,7 @@ function Parametres({ parametres, setParametres, clients = [], setClients = () =
                 Effacer la mémoire IA
               </button>
               <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-                {memoireVidee ? 'Mémoire IA effacée.' : 'Supprime les insights accumulés localement (localStorage). N\'affecte aucune donnée métier.'}
+                {memoireVidee ? 'Mémoire IA effacée.' : isDemo ? 'Supprime les insights accumulés localement (localStorage). N\'affecte aucune donnée métier.' : 'Efface la mémoire de l’Assistant IA sur tous vos appareils. Aucune donnée métier n’est touchée.'}
               </span>
             </div>
           </div>

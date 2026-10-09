@@ -13,6 +13,7 @@ import { calculerMajorationDate } from './calculs/majorations';
 import Finances from './pages/FinancesPage';
 import Login from './Login';
 import useAuth, { DEMO_USER_ID } from './hooks/useAuth';
+import RepriseLocale from './components/RepriseLocale';
 import useSupabaseData from './hooks/useSupabaseData';
 import { EcranErreurChargement, EcranChargement, BandeauSauvegarde } from './components/EtatSauvegarde';
 import useAgents from './useAgents';
@@ -70,10 +71,10 @@ function App() {
 
   if (session && recuperationMotDePasse) return <NouveauMotDePasse terminerRecuperation={terminerRecuperation} deconnecter={deconnecter} />;
 
-  return <AppInner key={session.user.id} profil={profilAuth} deconnecter={deconnecter} userId={session.user.id} isDemo={session.user.id === DEMO_USER_ID} />;
+  return <AppInner key={session.user.id} profil={profilAuth} deconnecter={deconnecter} userId={session.user.id} isDemo={session.user.id === DEMO_USER_ID} userEmail={session.user.email} />;
 }
 
-function AppInner({ profil, deconnecter, userId, isDemo = false }) {
+function AppInner({ profil, deconnecter, userId, isDemo = false, userEmail }) {
   const {
     chantiers: chantiersBruts, setChantiers: setChantiersBruts,
     devis: devisBruts, setDevis: setDevisBruts,
@@ -81,7 +82,9 @@ function AppInner({ profil, deconnecter, userId, isDemo = false }) {
     clients: clientsBruts, setClients: setClientsBruts,
     parametres, setParametres,
     pointages, setPointages,
+    objectifs, setObjectifs, evenementsCalendrier, setEvenementsCalendrier, memoireIA, setMemoireIA, ecrireEtConfirmer,
     setDonneesListes, importerTout, etatEnregistrement, envoyerMaintenant, modeStockage,
+    repriseLocale, deciderRepriseLocale, fermerRepriseLocale,
     loading: dataLoading,
     terminerSauvegardes, debloquerEcritures,
     syncing, etatSync, reessayerChargement, reessayerSauvegarde, fermerMessageSync,
@@ -376,7 +379,7 @@ function AppInner({ profil, deconnecter, userId, isDemo = false }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dataLoading, pointages, chantiers]);
 
-  const agentState = useAgents({ chantiers, devis, factures, clients, parametres, pointages });
+  const agentState = useAgents({ chantiers, devis, factures, clients, parametres, pointages, objectifs, isDemo });
 
   // Moteur d'alertes — évaluation automatique toutes les 5 min
   useAlertBootstrap({ chantiers, devis, factures, clients, parametres, pointages });
@@ -415,6 +418,7 @@ function AppInner({ profil, deconnecter, userId, isDemo = false }) {
     chantiers, setChantiers, clients, setClients, devis, setDevis,
     factures, setFactures, parametres, setParametres,
     pointages, setPointages,
+    objectifs, setObjectifs, evenementsCalendrier, setEvenementsCalendrier, memoireIA, setMemoireIA, ecrireEtConfirmer,
     actionsLog, profil, userId, listesCompletes, setDonneesListes, importerTout, etatEnregistrement, envoyerMaintenant, modeStockage,
     logAction, naviguer, contexte, periodeGlobale, setPeriodeGlobale,
     agentState, ouvrirSaisieHeures: ouvrirSaisieHeuresApp,
@@ -425,7 +429,7 @@ function AppInner({ profil, deconnecter, userId, isDemo = false }) {
     // appliqué page par page dans les lots 1-5 (masquage des actions d'écriture).
     consultationMobile: isMobile,
   }), [ // eslint-disable-line react-hooks/exhaustive-deps
-    chantiers, clients, devis, factures, parametres, pointages,
+    chantiers, clients, devis, factures, parametres, pointages, objectifs, evenementsCalendrier, memoireIA, ecrireEtConfirmer,
     listesCompletes, setDonneesListes, importerTout, etatEnregistrement, envoyerMaintenant, modeStockage, userId,
     actionsLog, profil, contexte, periodeGlobale, agentState, isDemo, isMobile, deconnecterSur,
   ]);
@@ -438,6 +442,7 @@ function AppInner({ profil, deconnecter, userId, isDemo = false }) {
   return (
     <AppProvider value={appValue}>
     <div data-testid="application" inert={enDeconnexion ? true : undefined}>
+    {repriseLocale && <RepriseLocale projet={repriseLocale} email={userEmail} decider={deciderRepriseLocale} fermer={fermerRepriseLocale} />}
     <BandeauSauvegarde statut={etatSync.statut} message={etatSync.message} onReessayer={reessayerSauvegarde} onFermer={fermerMessageSync} />
     <div data-theme={darkMode ? 'dark' : 'light'} className="app-layout">
       {/* Mobile : liste filtrée (menuMobile, sans Analyse/Calculs/Paramètres). PC : liste complète, inchangée. */}

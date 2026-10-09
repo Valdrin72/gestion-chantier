@@ -404,3 +404,16 @@ it('INS2-04 StrictMode : « Ajouter » sur une valeur différente du serveur ne 
  expect(reprises().filter(c => c.cle === 'memoireIA')).toHaveLength(1);
  expect(store.row.data.memoireIA).toBe('serveur');
 });
+
+it('LOT2B restauration en conflit : message dédié et bouton de confirmation non rouge', async () => {
+ copieReprise('memoireIA', 'memoire copiee');
+ await app({ ...blob(), memoireIA: 'actuelle' });
+ fireEvent.click(screen.getByText('Copies de secours', { exact: true }));
+ fireEvent.click(screen.getByRole('button', { name: 'Restaurer cette donnée' }));
+ const bouton = within(screen.getByRole('dialog')).getByRole('button', { name: 'Restaurer', exact: true });
+ expect(bouton.style.background).not.toMatch(/239, 68, 68|#ef4444/i);
+ store.row = { ...store.row, version: store.row.version + 1 }; // un autre appareil a écrit entre-temps
+ fireEvent.click(bouton); await settle(); await tick();
+ expect(screen.getByText(/Restauration non appliquée : le compte a été modifié ailleurs/)).toBeTruthy();
+ expect(reprises().map(c => c.memoireIA)).toContain('memoire copiee');
+});

@@ -121,6 +121,7 @@ function Parametres({ parametres, setParametres, clients = [], setClients = () =
     const resultat = await envoyerMaintenant();
     afficherNotif?.(resultat.ok ? 'Donnée restaurée et enregistrée.'
       : resultat.conflit ? 'Restauration non appliquée : le compte a été modifié ailleurs. La copie reste disponible ; réessayez.'
+      : resultat.refusee ? 'Restauration non envoyée : envoi refusé (déconnexion en cours). La copie reste disponible ; réessayez après reconnexion.'
       : 'Restauration enregistrée sur cet appareil, en attente d’envoi (voir le bandeau).');
   };
 

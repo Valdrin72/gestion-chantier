@@ -180,8 +180,8 @@ it('reprise updater differe avant envoyerMaintenant generation propre',async()=>
  await settle();await act(async()=>await decision);expect(store.row.data.memoireIA).toBe('capturee');expect(store.writes).toHaveLength(1);expect(JSON.parse(localStorage.getItem('cyna_reprise_serveur_user')).memoireIA).toBeTruthy();
 });
 it('demo puis compte B confirmation refus copie sans serveur',async()=>{
- const demo=renderHook(()=>useSupabaseData('demo',true));await settle();localStorage.setItem('cyna_cal_events','[{"id":1}]');demo.unmount();store.writes=[];
- const h=await boot();expect(h.result.current.repriseLocale.propositions.evenementsCalendrier.valeur).toEqual([{id:1}]);let decision;act(()=>{decision=h.result.current.deciderRepriseLocale(false);});await settle();await act(async()=>await decision);
+ const demo=renderHook(()=>useSupabaseData('demo',true));await settle();localStorage.setItem('cyna_cal_events','[{"id":1,"date":"2026-10-08","label":"rdv"}]');demo.unmount();store.writes=[];
+ const h=await boot();expect(h.result.current.repriseLocale.propositions.evenementsCalendrier.valeur).toEqual([{id:1,date:'2026-10-08',label:'rdv'}]);let decision;act(()=>{decision=h.result.current.deciderRepriseLocale(false);});await settle();await act(async()=>await decision);
  expect(store.writes).toHaveLength(0);expect(localStorage.getItem(cles().find(k=>k.startsWith('cyna_sauvegarde_reprise_user_')))).toContain('evenementsCalendrier');
 });
 it('memoire Parametres Annuler puis Effacer confirmation serveur',async()=>{
@@ -416,4 +416,29 @@ it('LOT2B restauration en conflit : message dédié et bouton de confirmation no
  fireEvent.click(bouton); await settle(); await tick();
  expect(screen.getByText(/Restauration non appliquée : le compte a été modifié ailleurs/)).toBeTruthy();
  expect(reprises().map(c => c.memoireIA)).toContain('memoire copiee');
+});
+
+it('Codex PR #209 — « Ne pas ajouter » : copie réussie mais marqueur en échec, le clic suivant ne recrée pas la copie', async () => {
+ localStorage.setItem('cyna_ia_memoire', 'memoire');
+ const original = Storage.prototype.setItem; let echecs = 1;
+ vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (k, v) {
+  if (k === 'cyna_reprise_serveur_user' && String(v).includes('memoireIA') && echecs-- > 0) throw new DOMException('plein', 'QuotaExceededError');
+  return original.call(this, k, v);
+ });
+ const h = await boot();
+ let d1; await act(async () => { d1 = await h.result.current.deciderRepriseLocale(false); }); expect(d1).toBe(false);
+ expect(reprises().filter(c => c.cle === 'memoireIA')).toHaveLength(1);
+ let d2; await act(async () => { d2 = await h.result.current.deciderRepriseLocale(false); }); expect(d2).toBe(true);
+ expect(reprises().filter(c => c.cle === 'memoireIA')).toHaveLength(1);
+ expect(JSON.parse(localStorage.getItem('cyna_reprise_serveur_user')).memoireIA).toBeTruthy();
+});
+
+it('Codex PR #209 — un événement sans date valide ou sans label n’est ni restaurable ni importable', async () => {
+ const { donneeRestaurable } = await import('../../utils/repriseLocale');
+ const copie = v => ({ source: 'reprise-locale', cle: 'evenementsCalendrier', evenementsCalendrier: v });
+ expect(donneeRestaurable(copie([{ id: 1 }]))).toBeNull();
+ expect(donneeRestaurable(copie([{ id: 1, date: '2026-13-40', label: 'x' }]))).toBeNull();
+ expect(donneeRestaurable(copie([{ id: 1, date: '2026-10-08' }]))).toBeNull();
+ expect(donneeRestaurable(copie([{ id: 1, date: '2026-10-08', label: 'Réunion' }]))).toEqual({ cle: 'evenementsCalendrier', valeur: [{ id: 1, date: '2026-10-08', label: 'Réunion' }] });
+ expect(verifierSauvegarde({ ...blob(), evenementsCalendrier: [{ id: 1 }] }).erreurs.join(' ')).toMatch(/date .* invalide/);
 });

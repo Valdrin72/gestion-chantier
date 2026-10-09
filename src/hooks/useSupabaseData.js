@@ -1,4 +1,4 @@
-import { CLES_REPRISE, lireValeurLocale, planifierReprise, lireMarqueur, marquerReprise, copierReprise, canonique, empreinte } from '../utils/repriseLocale';
+import { CLES_REPRISE, lireValeurLocale, planifierReprise, lireMarqueur, marquerReprise, copierReprise, copieRepriseExiste, canonique, empreinte } from '../utils/repriseLocale';
 import { avecCompteurs } from '../utils/numerotation';
 import { fusionnerIdsSupprimes, donneesImportees } from '../utils/corbeille';
 /**
@@ -1030,7 +1030,8 @@ export default function useSupabaseData(userId, isDemo = false) {
         for (const [cle, capture] of Object.entries(captures)) {
           // INS2-04 — après un échec partiel, une clé déjà copiée et marquée n'est pas recopiée.
           if (marqueur[cle] === capture.empreinte) continue;
-          if (!copierReprise(userId, cle, capture) || !marquerReprise(userId, cle, capture)) {
+          const dejaCopiee = copieRepriseExiste(userId, cle, capture.texteBrut);
+          if ((!dejaCopiee && !copierReprise(userId, cle, capture)) || !marquerReprise(userId, cle, capture)) {
             setRepriseLocale(prev => ({ ...prev, erreur: 'Copie impossible : données locales conservées. Réessayez.' })); return false;
           }
         }

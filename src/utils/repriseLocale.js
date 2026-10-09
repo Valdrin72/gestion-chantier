@@ -70,3 +70,14 @@ export function resumerDonnee(cle, valeur) {
   if (cle === 'evenementsCalendrier') return `${valeur.length} événement(s)`;
   return `${String(valeur).length} caractères`;
 }
+// Revue Codex PR #209 — une copie déjà écrite pour ce texte exact n'est pas recréée (ex. marqueur en échec au clic précédent).
+export function copieRepriseExiste(userId, cle, texteBrut) {
+  try {
+    const prefixe = 'cyna_sauvegarde_reprise_' + userId + '_';
+    return Object.keys(localStorage).some(nom => {
+      if (!nom.startsWith(prefixe)) return false;
+      try { const c = JSON.parse(localStorage.getItem(nom)); return c?.source === 'reprise-locale' && c.cle === cle && c.texteBrut === texteBrut; }
+      catch { return false; }
+    });
+  } catch { return false; }
+}

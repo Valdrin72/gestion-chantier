@@ -10,6 +10,7 @@ import { construireCorrespondance, pseudonymiserTexte, reidentifier } from '../.
 import { calculerCoutsChantier } from '../../donnees';
 import { joursReelsChantier } from '../../calculs/pointagesHelper';
 import { V1, BADGES_V1, mono, carteV1 } from '../../design/v1';
+import useIsMobile from '../../hooks/useIsMobile';
 
 // Bouton d'action v1 — bleu CYNA plein (mêmes proportions que l'ancien bouton primaire).
 const btnV1 = {
@@ -1069,6 +1070,17 @@ function IAConsentement({ onAccept }) {
 // onInsights : remonte le compteur d'insights au hero partagé de CentreIA (affichage seul).
 export default function ClaudeIAPanel({ onInsights }) {
   const [feature, setFeature] = useState('anticiper');
+  const isMobile = useIsMobile();
+  // Rangée de pilules mobile : recentre la pilule active dans le défilement horizontal
+  // (sans jamais faire défiler la page — on ne touche que scrollLeft de la rangée).
+  const pillsRowRef = useRef(null);
+  const pillRefs = useRef({});
+  useEffect(() => {
+    if (!isMobile) return;
+    const row = pillsRowRef.current;
+    const el = pillRefs.current[feature];
+    if (row && el) row.scrollLeft = el.offsetLeft - (row.clientWidth - el.clientWidth) / 2;
+  }, [feature, isMobile]);
   const { parametres, setParametres } = useApp();
   const iaActivee = parametres?.parametres?.iaActivee !== false; // activé par défaut
   const iaConsentement = parametres?.parametres?.iaConsentement === true;
@@ -1111,32 +1123,61 @@ export default function ClaudeIAPanel({ onInsights }) {
     // Grille responsive : menu latéral 200px / panneau — sur mobile le menu passe
     // en déroulant pleine largeur au-dessus du panneau (var CSS --g-ia).
     <div style={{ display: 'grid', gridTemplateColumns: 'var(--g-ia, 200px 1fr)', gap: 20, alignItems: 'start' }}>
-      {/* Menu latéral — carte v1, item actif en bleu CYNA plein */}
-      <div style={{ ...carteV1, padding: 0, overflow: 'hidden' }} data-testid="ia-menu">
-        {/* Indicateur mémoire */}
-        <div style={{ padding: '10px 14px', borderBottom: `1px solid ${V1.separation}`, display: 'flex', alignItems: 'center', gap: 6, ...mono(11, nb > 0 ? V1.bleu : V1.texteMuted, 600) }}>
-          <Brain size={11} />
-          {nb > 0 ? `${nb} insight${nb > 1 ? 's' : ''} mémorisé${nb > 1 ? 's' : ''}` : 'Mémoire vide'}
+      {/* Menu — mobile : rangée de pilules horizontale, collante ; desktop : colonne verticale (inchangé) */}
+      {isMobile ? (
+        <div ref={pillsRowRef} data-testid="ia-menu"
+          style={{
+            display: 'flex', gap: 8, overflowX: 'auto', overflowY: 'hidden',
+            scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch',
+            position: 'sticky', top: 0, zIndex: 5, background: V1.page,
+            padding: '8px 0 10px', margin: '0 -2px',
+          }}>
+          {FEATURES.map(f => {
+            const isActive = f.id === feature;
+            return (
+              <button key={f.id} ref={el => { pillRefs.current[f.id] = el; }} onClick={() => setFeature(f.id)}
+                style={{
+                  flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 7,
+                  minHeight: 44, padding: '0 16px', borderRadius: 999,
+                  background: isActive ? '#0D3D6E' : '#fff',
+                  color: isActive ? '#fff' : '#475569',
+                  border: `1px solid ${isActive ? '#0D3D6E' : '#E2E8F0'}`,
+                  cursor: 'pointer', fontSize: 13, fontWeight: isActive ? 700 : 500,
+                  fontFamily: 'inherit', whiteSpace: 'nowrap', transition: 'all 0.15s',
+                }}>
+                <f.Icon size={14} style={{ flexShrink: 0 }} />
+                <span>{f.label}</span>
+              </button>
+            );
+          })}
         </div>
-        {FEATURES.map(f => {
-          const isActive = f.id === feature;
-          return (
-            <button key={f.id} onClick={() => setFeature(f.id)}
-              style={{
-                width: '100%', display: 'flex', alignItems: 'center', gap: 10,
-                padding: '12px 14px', background: isActive ? V1.bleu : 'transparent',
-                color: isActive ? '#fff' : V1.texteMuted,
-                border: 'none',
-                cursor: 'pointer', fontSize: 13, fontWeight: isActive ? 700 : 500,
-                fontFamily: 'inherit', textAlign: 'left', transition: 'all 0.15s',
-              }}>
-              <f.Icon size={14} style={{ flexShrink: 0 }} />
-              <span style={{ flex: 1 }}>{f.label}</span>
-              {isActive && <ChevronRight size={12} />}
-            </button>
-          );
-        })}
-      </div>
+      ) : (
+        <div style={{ ...carteV1, padding: 0, overflow: 'hidden' }} data-testid="ia-menu">
+          {/* Indicateur mémoire */}
+          <div style={{ padding: '10px 14px', borderBottom: `1px solid ${V1.separation}`, display: 'flex', alignItems: 'center', gap: 6, ...mono(11, nb > 0 ? V1.bleu : V1.texteMuted, 600) }}>
+            <Brain size={11} />
+            {nb > 0 ? `${nb} insight${nb > 1 ? 's' : ''} mémorisé${nb > 1 ? 's' : ''}` : 'Mémoire vide'}
+          </div>
+          {FEATURES.map(f => {
+            const isActive = f.id === feature;
+            return (
+              <button key={f.id} onClick={() => setFeature(f.id)}
+                style={{
+                  width: '100%', display: 'flex', alignItems: 'center', gap: 10,
+                  padding: '12px 14px', background: isActive ? V1.bleu : 'transparent',
+                  color: isActive ? '#fff' : V1.texteMuted,
+                  border: 'none',
+                  cursor: 'pointer', fontSize: 13, fontWeight: isActive ? 700 : 500,
+                  fontFamily: 'inherit', textAlign: 'left', transition: 'all 0.15s',
+                }}>
+                <f.Icon size={14} style={{ flexShrink: 0 }} />
+                <span style={{ flex: 1 }}>{f.label}</span>
+                {isActive && <ChevronRight size={12} />}
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {/* Contenu — panneau carte v1 */}
       <div style={{ ...carteV1, padding: '20px 22px' }} data-testid="ia-panneau">

@@ -184,3 +184,82 @@ describe('App : bouton « Télécharger mes modifications refusées »', () => {
     alerte.mockRestore();
   });
 });
+
+describe('refus sans copie locale : jamais perdus en silence', () => {
+  it('R7 : deux conflits de suite, stockage plein → le premier refus est joint au téléchargement', async () => {
+    const h = await boot();
+    await conflit(h, { plein: true });
+    expect(h.result.current.refusNonSauve).toBe(true);
+    store.row = row(2, { ...blob(), devis: [{ id: 'distant2' }] });
+    const spy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new Error('plein'); });
+    try { act(() => h.result.current.setClients([{ id: 'second' }])); await tick(); await settle(); }
+    finally { spy.mockRestore(); }
+    expect(h.result.current.devis).toEqual([{ id: 'distant2' }]);
+    act(() => { h.result.current.telechargerRefus(); });
+    const f = fichier();
+    expect(f.clients).toEqual([{ id: 'second' }]);
+    expect(f.refusPrecedents).toHaveLength(1);
+    expect(f.refusPrecedents[0].donnees.clients).toEqual([{ id: 'refuse', nom: 'Client refusé' }]);
+    expect(h.result.current.refusNonSauve).toBe(false);
+    const { verifierSauvegarde } = await import('../../utils/importControle');
+    expect(verifierSauvegarde(f).erreurs).toEqual([]);
+  });
+  it('R8 : copie locale réussie → rien à forcer ; stockage plein → fermeture de page et déconnexion avertissent', async () => {
+    const h = await boot();
+    await conflit(h);
+    expect(h.result.current.refusNonSauve).toBe(false);
+    store.row = row(2, { ...blob(), devis: [{ id: 'distant2' }] });
+    const spy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new Error('plein'); });
+    try { act(() => h.result.current.setClients([{ id: 'second' }])); await tick(); await settle(); }
+    finally { spy.mockRestore(); }
+    expect(h.result.current.refusNonSauve).toBe(true);
+    const evt = new Event('beforeunload', { cancelable: true });
+    window.dispatchEvent(evt);
+    expect(evt.defaultPrevented).toBe(true);
+    let ok; await act(async () => { ok = await h.result.current.terminerSauvegardes(); });
+    expect(ok).toBe(false);
+    act(() => { h.result.current.abandonnerRefus(); });
+    expect(h.result.current.refusNonSauve).toBe(false);
+  });
+  it('R9 : App — « Compris » remplacé tant que non téléchargé ; bandeau maintenu ; téléchargement puis fermeture', async () => {
+    render(<App />); await settle(); await tick();
+    distant(store.row.version + 1);
+    const spy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new Error('plein'); });
+    try { fireEvent.click(screen.getByText('Modifier test')); await tick(); await settle(); }
+    finally { spy.mockRestore(); }
+    expect(screen.queryByRole('button', { name: 'Compris' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Télécharger mes modifications refusées' }));
+    expect(fichier().clients).toEqual([{ id: 'saisie' }]);
+    fireEvent.click(screen.getByRole('button', { name: 'Compris' }));
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+  it('R10 : App — après « Compris » impossible, l\'abandon demande confirmation ; « Garder » conserve le bandeau', async () => {
+    render(<App />); await settle(); await tick();
+    distant(store.row.version + 1);
+    const spy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new Error('plein'); });
+    try { fireEvent.click(screen.getByText('Modifier test')); await tick(); await settle(); }
+    finally { spy.mockRestore(); }
+    fireEvent.click(screen.getByRole('button', { name: 'Abandonner ces modifications' })); await settle();
+    fireEvent.click(screen.getByRole('button', { name: 'Garder' })); await settle();
+    expect(screen.getByRole('button', { name: 'Télécharger mes modifications refusées' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Abandonner ces modifications' })); await settle();
+    fireEvent.click(screen.getByRole('button', { name: 'Abandonner' })); await settle();
+    expect(screen.queryByRole('button', { name: 'Abandonner ces modifications' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Compris' }));
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(telechargements.appels).toHaveLength(0);
+  });
+  it('R11 : App — un enregistrement réussi ensuite ne fait pas disparaître le téléchargement', async () => {
+    render(<App />); await settle(); await tick();
+    distant(store.row.version + 1);
+    const spy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new Error('plein'); });
+    try { fireEvent.click(screen.getByText('Modifier test')); await tick(); await settle(); }
+    finally { spy.mockRestore(); }
+    act(() => store.app.setClients([{ id: 'apres' }])); await tick(); await settle();
+    expect(store.row.data.clients).toEqual([{ id: 'apres' }]);
+    expect(screen.getByRole('alert')).toHaveTextContent("Des modifications refusées n'ont pas pu être copiées");
+    fireEvent.click(screen.getByRole('button', { name: 'Télécharger mes modifications refusées' }));
+    expect(fichier().clients).toEqual([{ id: 'saisie' }]);
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+});

@@ -20,15 +20,21 @@ export function EcranErreurChargement({ message, onReessayer, onDeconnecter, onT
   );
 }
 
-export function BandeauSauvegarde({ statut, message, onReessayer, onFermer, onTelechargerRefus }) {
-  if (!['echec', 'conflit', 'information'].includes(statut)) return null;
+export const MESSAGE_REFUS_NON_SAUVE = "Des modifications refusées n'ont pas pu être copiées sur cet appareil. Téléchargez-les pour ne pas les perdre.";
+
+// refusNonSauve : des modifications refusées sans copie locale n'ont pas encore été téléchargées.
+// Le bandeau reste alors affiché (avec le téléchargement) jusqu'au téléchargement ou à un abandon confirmé.
+export function BandeauSauvegarde({ statut, message, onReessayer, onFermer, onTelechargerRefus, refusNonSauve = false, onAbandonnerRefus }) {
+  const actif = ['echec', 'conflit', 'information'].includes(statut);
+  if (!actif && !refusNonSauve) return null;
   return (
     <div role="alert" style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 10000, background: '#fff3cd', color: '#513c06', padding: '12px 20px', boxShadow: '0 2px 8px #0003' }}>
-      <span>{message || 'Non enregistré'}</span>{' '}
-      {statut === 'conflit' && onTelechargerRefus && <><button style={bouton} onClick={onTelechargerRefus}>{LIBELLE_TELECHARGER_REFUS}</button>{' '}</>}
-      {statut === 'echec'
-        ? <button style={bouton} onClick={onReessayer}>Réessayer</button>
-        : <button style={bouton} onClick={onFermer}>Compris</button>}
+      <span>{(actif && message) || (refusNonSauve ? MESSAGE_REFUS_NON_SAUVE : 'Non enregistré')}</span>{' '}
+      {statut === 'echec' && <><button style={bouton} onClick={onReessayer}>Réessayer</button>{' '}</>}
+      {(statut === 'conflit' || refusNonSauve) && onTelechargerRefus && <><button style={bouton} onClick={onTelechargerRefus}>{LIBELLE_TELECHARGER_REFUS}</button>{' '}</>}
+      {refusNonSauve
+        ? onAbandonnerRefus && <button style={bouton} onClick={onAbandonnerRefus}>Abandonner ces modifications</button>
+        : actif && statut !== 'echec' && <button style={bouton} onClick={onFermer}>Compris</button>}
     </div>
   );
 }

@@ -87,7 +87,7 @@ function AppInner({ profil, deconnecter, userId, isDemo = false, userEmail }) {
     repriseLocale, deciderRepriseLocale, fermerRepriseLocale,
     loading: dataLoading,
     terminerSauvegardes, debloquerEcritures,
-    syncing, etatSync, reessayerChargement, reessayerSauvegarde, fermerMessageSync, refusDisponible, telechargerRefus,
+    syncing, etatSync, reessayerChargement, reessayerSauvegarde, fermerMessageSync, refusDisponible, telechargerRefus, refusNonSauve, abandonnerRefus,
   } = useSupabaseData(userId, isDemo);
   const telechargerRefusAvecAlerte = refusDisponible
     ? () => { if (!telechargerRefus()) window.alert('Téléchargement impossible. Vos modifications refusées restent gardées tant que cette page reste ouverte : réessayez.'); }
@@ -205,6 +205,9 @@ function AppInner({ profil, deconnecter, userId, isDemo = false, userEmail }) {
       onNon: () => { setConfirmState(null); resolve(false); },
     });
   }), []);
+  const abandonnerRefusConfirme = async () => {
+    if (await confirmer("Abandonner définitivement ces modifications refusées ? Elles n'ont pas de copie sur cet appareil et ne pourront plus être récupérées.", { labelOui: 'Abandonner', labelNon: 'Garder' })) abandonnerRefus();
+  };
 
   const [enDeconnexion, setEnDeconnexion] = useState(false);
   const [questionDeconnexion, setQuestionDeconnexion] = useState(false);
@@ -446,7 +449,7 @@ function AppInner({ profil, deconnecter, userId, isDemo = false, userEmail }) {
     <AppProvider value={appValue}>
     <div data-testid="application" inert={enDeconnexion ? true : undefined}>
     {repriseLocale && <RepriseLocale projet={repriseLocale} email={userEmail} decider={deciderRepriseLocale} fermer={fermerRepriseLocale} />}
-    <BandeauSauvegarde statut={etatSync.statut} message={etatSync.message} onReessayer={reessayerSauvegarde} onFermer={fermerMessageSync} onTelechargerRefus={telechargerRefusAvecAlerte} />
+    <BandeauSauvegarde statut={etatSync.statut} message={etatSync.message} onReessayer={reessayerSauvegarde} onFermer={fermerMessageSync} onTelechargerRefus={telechargerRefusAvecAlerte} refusNonSauve={refusNonSauve} onAbandonnerRefus={abandonnerRefusConfirme} />
     <div data-theme={darkMode ? 'dark' : 'light'} className="app-layout">
       {/* Mobile : liste filtrée (menuMobile, sans Analyse/Calculs/Paramètres). PC : liste complète, inchangée. */}
       <Sidebar

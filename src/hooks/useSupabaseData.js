@@ -324,6 +324,19 @@ export default function useSupabaseData(userId, isDemo = false) {
   // Lot « modifications refusées » — vrai dès qu'un conflit a mis des modifications de côté
   // (rejetRef) : elles peuvent alors être téléchargées, même si la copie locale a échoué.
   const [refusDisponible, setRefusDisponible] = useState(false);
+  // Refus SANS copie locale et pas encore téléchargés : ils ne doivent jamais disparaître en silence.
+  // refusCourantRef décrit le refus en cours (rejetRef) ; refusEnAttenteRef garde les refus
+  // précédents sans copie, remplacés par un nouveau conflit avant d'avoir été téléchargés.
+  const refusCourantRef = useRef(null);
+  const refusEnAttenteRef = useRef([]);
+  const [refusNonSauve, setRefusNonSauve] = useState(false);
+  const refusNonSauveRef = useRef(false);
+  function majRefusNonSauve() {
+    const courant = refusCourantRef.current;
+    const valeur = refusEnAttenteRef.current.length > 0 || !!(courant && !courant.copieOk && !courant.traite);
+    refusNonSauveRef.current = valeur;
+    if (mountedRef.current) setRefusNonSauve(valeur);
+  }
   // F1 — modifications locales demandées mais dont l'updater React n'a pas encore tourné
   // (React peut différer un updater jusqu'au rendu suivant). Marquées SYNCHRONEMENT dans
   // chaque setter : tant que l'ensemble n'est pas vide, aucune donnée distante n'est appliquée.
@@ -372,9 +385,9 @@ export default function useSupabaseData(userId, isDemo = false) {
   }
   // Installer pendant une écriture à résoudre et retirer après le succès complet.
   useEffect(() => {
-    if (!pendingRef.current && !enVolRef.current && !episodeRef.current && !attentesLocalesRef.current.size) return;
+    if (!pendingRef.current && !enVolRef.current && !episodeRef.current && !attentesLocalesRef.current.size && !refusNonSauveRef.current) return;
     const fermer = event => {
-      if (!pendingRef.current && !enVolRef.current && !episodeRef.current && !attentesLocalesRef.current.size) return;
+      if (!pendingRef.current && !enVolRef.current && !episodeRef.current && !attentesLocalesRef.current.size && !refusNonSauveRef.current) return;
       event.preventDefault(); event.returnValue = '';
     };
     window.addEventListener('beforeunload', fermer);
@@ -539,6 +552,7 @@ export default function useSupabaseData(userId, isDemo = false) {
   function conserverRejet(updates) {
     rejetRef.current = { ...(rejetRef.current || {}), ...updates };
     copieRejetOkRef.current = enregistrerCopieRejetee(rejetIdRef.current, rejetRef.current, { sansRetention: importEnCoursRef.current });
+    if (refusCourantRef.current) { refusCourantRef.current.copieOk = copieRejetOkRef.current; majRefusNonSauve(); }
   }
   function appliquerOpportuniste(row) {
     if (!row?.data || !(Number(row.version) > versionRef.current)) return;
@@ -628,6 +642,12 @@ export default function useSupabaseData(userId, isDemo = false) {
           recuperationRef.current = true;
           recuperationGenRef.current += 1;
           clearTimeout(syncTimer.current);
+          // Un refus précédent sans copie locale, pas encore téléchargé, est gardé (jamais écrasé).
+          const precedent = refusCourantRef.current;
+          if (rejetRef.current && precedent && !precedent.copieOk && !precedent.traite) {
+            refusEnAttenteRef.current = [...refusEnAttenteRef.current, { date: precedent.date, donnees: rejetRef.current }];
+          }
+          refusCourantRef.current = { date: new Date().toISOString(), copieOk: true, traite: false };
           rejetRef.current = null;
           rejetIdRef.current = nouvelIdCopie();
           rangementOkRef.current = true; // F2 — drapeau propre à CE conflit
@@ -691,7 +711,8 @@ export default function useSupabaseData(userId, isDemo = false) {
     const vide = !pendingRef.current && !enVolRef.current && !episodeRef.current
       && !attentesLocalesRef.current.size && !recuperationRef.current;
     return vide && (chargementOkRef.current || !!erreurChargementRef.current)
-      && conflitsRef.current === conflitsAvant && ecrituresRefuseesRef.current === 0;
+      && conflitsRef.current === conflitsAvant && ecrituresRefuseesRef.current === 0
+      && !refusNonSauveRef.current;
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
 
@@ -981,15 +1002,30 @@ export default function useSupabaseData(userId, isDemo = false) {
   }, [userId, isDemo, etatEnregistrement]);
   // Télécharge les modifications refusées au dernier conflit, au format d'une sauvegarde
   // (relisible avec « Restaurer backup », qui affiche un aperçu avant tout remplacement).
+  // Le dernier refus est à la racine (relisible tel quel) ; les refus précédents sans copie locale
+  // sont joints dans « refusPrecedents » (ignorés par la restauration, mais conservés dans le fichier).
   const telechargerRefus = useCallback(() => {
     const refus = rejetRef.current;
     if (!refus) return false;
     const date = new Date().toISOString();
+    const precedents = refusEnAttenteRef.current;
+    const contenu = { ...refus, meta: { date, version: 1, app: 'CYNA', source: 'modifications-refusees' } };
+    if (precedents.length) contenu.refusPrecedents = precedents;
     try {
-      telechargerTexte(JSON.stringify({ ...refus, meta: { date, version: 1, app: 'CYNA', source: 'modifications-refusees' } }, null, 2),
-        `cyna-modifications-refusees-${date.slice(0, 19).replace(/[^0-9T]/g, '-')}.json`);
-      return true;
+      telechargerTexte(JSON.stringify(contenu, null, 2), `cyna-modifications-refusees-${date.slice(0, 19).replace(/[^0-9T]/g, '-')}.json`);
     } catch { return false; }
+    refusEnAttenteRef.current = refusEnAttenteRef.current.filter(r => !precedents.includes(r));
+    if (refusCourantRef.current) refusCourantRef.current.traite = true;
+    majRefusNonSauve();
+    return true;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  // Abandon volontaire (après confirmation dans l'interface) des refus non sauvegardés.
+  const abandonnerRefus = useCallback(() => {
+    refusEnAttenteRef.current = [];
+    if (refusCourantRef.current) refusCourantRef.current.traite = true;
+    majRefusNonSauve();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const ecrireEtConfirmer = useCallback((cle, valeur, options) => ecrireOperation({ [cle]: valeur }, undefined, options), [ecrireOperation]);
   const reprendreDonneesLocales = useCallback((valeurs, captures) => ecrireOperation(valeurs, captures ||
@@ -1038,7 +1074,7 @@ export default function useSupabaseData(userId, isDemo = false) {
     ecrireEtConfirmer, reprendreDonneesLocales,
     terminerSauvegardes, bloquerEcritures, debloquerEcritures,
     setDonneesListes, importerTout, etatEnregistrement, envoyerMaintenant, modeStockage: modeRef.current,
-    loading, syncing, etatSync, refusDisponible, telechargerRefus,
+    loading, syncing, etatSync, refusDisponible, telechargerRefus, refusNonSauve, abandonnerRefus,
     reessayerChargement: async () => {
       setLoading(true);
       await chargerUser(() => !mountedRef.current, true);

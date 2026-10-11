@@ -79,9 +79,10 @@ async function ecrireRowUser(userId, rowId, payload, version) {
 }
 
 // ════════════════════════════════════════════════════════════════════════════
-// LOT 4a — Bascule vers le coffre organisation (org_storage). LECTURE SEULE.
-// Défaut 'user' → comportement historique STRICTEMENT inchangé. Aucune écriture
-// n'est émise en mode 'org' à ce stade (l'écriture arrive au Lot 4b).
+// Coffre organisation (org_storage). Défaut 'user' → comportement historique inchangé.
+// E1 — le mode 'org' emprunte EXACTEMENT le chemin versionné du mode user (chargement,
+// écriture, conflit, copie de secours, temps réel) ; seules la ligne lue et la ligne
+// écrite changent (coffre de l'entreprise au lieu de la ligne du compte).
 // ════════════════════════════════════════════════════════════════════════════
 
 /**
@@ -101,7 +102,7 @@ export function resolveMode(isDemo) {
 
 /**
  * Décide quoi faire d'une ligne org_storage lue. Fonction PURE (exportée pour tests).
- * NE renvoie JAMAIS « creer » : la création du blob vient du seed (Lot 3), pas du client.
+ * NE renvoie JAMAIS « creer » : le coffre est créé par l'administrateur, pas par le client.
  *   - 'utiliser'           : la ligne existe et son data n'est pas vide → charger tel quel.
  *   - 'vide-sans-ecriture' : ligne absente ou data vide → état vide sûr, AUCUNE écriture.
  * @returns {'utiliser'|'vide-sans-ecriture'}
@@ -112,36 +113,57 @@ export function deciderChargementOrg(rowOrg) {
   return 'vide-sans-ecriture';
 }
 
+// E1 — coffre de l'entreprise indisponible (aucune entreprise, plusieurs, ou coffre vide) :
+// le chargement est refusé avec un message clair et AUCUNE écriture n'est possible.
+export class CoffreIndisponibleError extends Error {}
+export const MESSAGE_SANS_ENTREPRISE = "Ce compte n'est rattaché à aucune entreprise. Contactez l'administrateur de l'application.";
+export const MESSAGE_PLUSIEURS_ENTREPRISES = "Ce compte est rattaché à plusieurs entreprises. Contactez l'administrateur de l'application.";
+export const MESSAGE_COFFRE_VIDE = "Les données de l'entreprise ne sont pas encore disponibles. Rien n'a été modifié. Réessayez plus tard ou contactez l'administrateur.";
+
 /**
- * org_id du user courant (CYNA = 1 org → première ligne). Ne throw jamais : renvoie null
- * en cas d'erreur/absence (→ le boot appliquera un état vide sûr, sans écriture).
+ * org_id du user courant. Une erreur de lecture est propagée (→ écran « Réessayer »,
+ * jamais un état vide) ; aucune entreprise ou plusieurs → CoffreIndisponibleError.
  */
 async function getMonOrgId(userId) {
-  try {
-    const { data, error } = await supabase
-      .from('membres')
-      .select('org_id')
-      .eq('user_id', userId)
-      .limit(1);
-    if (error || !data || data.length === 0) return null;
-    return data[0].org_id ?? null;
-  } catch {
-    return null;
-  }
+  const { data, error } = await supabase
+    .from('membres')
+    .select('org_id')
+    .eq('user_id', userId)
+    .limit(2);
+  if (error) throw error;
+  if (!data || data.length === 0 || !data[0].org_id) throw new CoffreIndisponibleError(MESSAGE_SANS_ENTREPRISE);
+  if (data.length > 1) throw new CoffreIndisponibleError(MESSAGE_PLUSIEURS_ENTREPRISES);
+  return data[0].org_id;
 }
 
-/** Lit la ligne de coffre d'une org (SELECT data FROM org_storage WHERE org_id). */
+/** Lit le coffre d'une org au même format que la ligne user : { id: org_id, data, version }. */
 async function lireRowOrg(orgId) {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from(ORG_TABLE)
-    .select('data')
+    .select('org_id, data, version')
     .eq('org_id', orgId)
     .maybeSingle();
-  return data ?? null;
+  if (error) throw error;
+  return data ? { id: data.org_id, data: data.data, version: data.version } : null;
 }
 
 /**
- * VERROU 2 (anti-effacement) — fonction PURE (exportée pour tests).
+ * E1 — même contrat que ecrireRowUser : UPDATE conditionné à la version lue, version + 1.
+ * Le trigger org_storage_version_garde refuse tout autre numéro (P0409). Jamais d'insert ni
+ * d'upsert : le coffre est créé par l'administrateur, jamais par l'application.
+ */
+async function ecrireRowOrg(orgId, payload, version) {
+  const { data, error } = await supabase.from(ORG_TABLE)
+    .update({ data: payload, version: version + 1 })
+    .eq('org_id', orgId).eq('version', version).select('org_id, version');
+  if (error?.code === 'P0409') throw new ConflitVersionError();
+  if (error) throw error;
+  if (!data?.length) throw new ConflitVersionError();
+  return { id: data[0].org_id, version: data[0].version };
+}
+
+/**
+ * VERROU anti-effacement — fonction PURE (exportée pour tests).
  * TRUE si le blob à écrire est « vide » : les 5 listes métier (chantiers, devis,
  * factures, pointages, clients) sont toutes absentes ou de longueur 0.
  * (parametres, objet toujours présent, n'entre pas dans le test.)
@@ -150,20 +172,6 @@ export function estPayloadVide(payload) {
   if (!payload || typeof payload !== 'object') return true;
   return ['chantiers', 'devis', 'factures', 'pointages', 'clients']
     .every(k => !Array.isArray(payload[k]) || payload[k].length === 0);
-}
-
-/**
- * VERROU 3 — Écriture dans le coffre org : UPSERT par org_id (jamais un insert
- * aveugle qui doublerait). Met à jour data + updated_at + updated_by (le user courant).
- */
-async function ecrireRowOrg(orgId, payload, userId) {
-  const { error } = await supabase
-    .from(ORG_TABLE)
-    .upsert(
-      { org_id: orgId, data: payload, updated_at: new Date().toISOString(), updated_by: userId ?? null },
-      { onConflict: 'org_id' }
-    );
-  if (error) throw error;
 }
 
 /**
@@ -239,12 +247,9 @@ const _initClients   = donneesInitiales.clients;
 // pour les copies de secours.
 const CLES_CACHE_LOCAL = ['chantiers', 'devis', 'factures', 'clients', 'parametres'];
 
-// CORB-02 — LIMITE CONNUE DU MODE ORG (le mode 'user', utilisé en production, n'est pas concerné) :
-// en mode org, l'écriture est un upsert « dernier qui écrit gagne », sans contrôle de version, et
-// le chargement distant n'applique pas idsSupprimes. Un appareil qui n'a pas encore reçu une mise
-// à la corbeille ou une suppression définitive peut donc renvoyer l'élément et le faire
-// réapparaître. La garantie « aucune réapparition » de la corbeille ne vaut qu'en mode user.
-// À traiter avant toute activation du mode org en production.
+// CORB-02 — levée par E1 : en mode org, l'écriture est versionnée comme en mode user (un appareil
+// en retard est refusé et recharge avant de pouvoir renvoyer quoi que ce soit), donc la garantie
+// « aucune réapparition » de la corbeille vaut dans les deux modes.
 export default function useSupabaseData(userId, isDemo = false) {
   // État initial : données démo en mode démo, vide pour un vrai compte.
   // AppInner est monté avec key={userId} → remonte si l'utilisateur change.
@@ -288,7 +293,6 @@ export default function useSupabaseData(userId, isDemo = false) {
   const importEnCoursRef = useRef(false);
   const importEcritureRef = useRef(null);
   const confirmationEcritureRef = useRef(null);
-  const ecrituresOrgEnVolRef = useRef(0);
   // Le plan impose une identite de callback liee au compte (AppInner remonte par userId).
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const bloquerEcritures = useCallback(() => { ecrituresBloqueesRef.current = true; }, [userId]);
@@ -322,7 +326,6 @@ export default function useSupabaseData(userId, isDemo = false) {
   // Lot 4a — mode figé au montage (AppInner remonte via key={userId} si le user change).
   const modeRef     = useRef(resolveMode(isDemo));
   const orgIdRef    = useRef(null);   // org_id du user courant en mode 'org' (sinon null)
-  const orgChargeeRef = useRef(false); // true seulement si une ligne org non vide a été chargée
   const dataRef     = useRef({
     chantiers:  isDemo ? _initChantiers : [],
     devis:      isDemo ? _initDevis : [],
@@ -360,7 +363,6 @@ export default function useSupabaseData(userId, isDemo = false) {
   }
   // Installer pendant une écriture à résoudre et retirer après le succès complet.
   useEffect(() => {
-    if (modeRef.current !== 'user') return;
     if (!pendingRef.current && !enVolRef.current && !episodeRef.current && !attentesLocalesRef.current.size) return;
     const fermer = event => {
       if (!pendingRef.current && !enVolRef.current && !episodeRef.current && !attentesLocalesRef.current.size) return;
@@ -395,65 +397,33 @@ export default function useSupabaseData(userId, isDemo = false) {
     async function charger() {
       setLoading(true);
       try {
-        // ── Lot 4a — MODE ORG : lecture seule du coffre org_storage, AUCUNE écriture ──
-        if (modeRef.current === 'org') {
-          const orgId = await getMonOrgId(userId);
-          if (cancelled) return;
-          orgIdRef.current = orgId;
-          if (!orgId) {
-            // D2 : user sans org → état vide sûr, lecture seule, aucune création.
-            appliquerData({});
-            orgChargeeRef.current = false;
-            if (process.env.NODE_ENV !== 'production') console.warn('[Sync org] Aucune org pour ce user — état vide, aucune écriture.');
-            return;
-          }
-          const rowOrg = await lireRowOrg(orgId);
-          if (cancelled) return;
-          const decision = deciderChargementOrg(rowOrg);
-          if (decision === 'utiliser') {
-            appliquerData(rowOrg.data);
-            orgChargeeRef.current = true;
-          } else {
-            // 'vide-sans-ecriture' : le blob doit venir du seed (Lot 3). On n'écrit RIEN.
-            appliquerData({});
-            orgChargeeRef.current = false;
-            if (process.env.NODE_ENV !== 'production') console.warn('[Sync org] org_storage vide — état vide, aucune écriture (seed attendu au Lot 3).');
-          }
-          // ── Lot 4c — TEMPS RÉEL ORG : les membres voient les changements des autres ──
-          // Abonné une fois l'orgId connu (même si le coffre est encore vide : on recevra le seed).
-          // L'event applique la data à l'état (LECTURE-ONLY) → jamais de ré-écriture, aucune boucle.
-          if (!cancelled) {
-            try {
-              channel = supabase
-                .channel(`cyna_org_${orgId}`)
-                .on('postgres_changes', {
-                  event: '*', schema: 'public', table: ORG_TABLE,
-                  filter: `org_id=eq.${orgId}`,
-                }, (payload) => {
-                  const rowRT = payload.new || payload.record;
-                  if (!rowRT || !rowRT.data) return;
-                  // ANTI-ECHO : ignorer ma propre écriture (updated_by = moi) et ne pas écraser
-                  // une édition locale en attente de sync.
-                  if (rowRT.updated_by === userId) return;
-                  if (pendingRef.current) return;
-                  appliquerData(rowRT.data);
-                  orgChargeeRef.current = true; // une ligne org non vide distante est arrivée
-                })
-                .subscribe((status) => {
-                  if (status === 'CHANNEL_ERROR' && channel) {
-                    supabase.removeChannel(channel);
-                    channel = null;
-                  }
-                });
-            } catch { /* temps réel indisponible → l'app reste fonctionnelle (resync à la visibilité) */ }
-          }
-          return;
-        }
-
         await chargerUser(() => cancelled);
+        // E1 — temps réel du coffre de l'entreprise, une fois l'org connue (même règle que le
+        // mode user : seule une version PLUS RÉCENTE est appliquée, jamais par-dessus une
+        // modification locale ; ma propre écriture a la même version → ignorée).
+        if (modeRef.current === 'org' && !cancelled && orgIdRef.current && !channel) {
+          const orgId = orgIdRef.current;
+          try {
+            channel = supabase
+              .channel(`cyna_org_${orgId}`)
+              .on('postgres_changes', {
+                event: '*', schema: 'public', table: ORG_TABLE,
+                filter: `org_id=eq.${orgId}`,
+              }, (payload) => {
+                const r = payload.new || payload.record;
+                if (!r || deciderChargementOrg(r) !== 'utiliser') return;
+                if (chargementOkRef.current && aucuneModificationLocale()) appliquerOpportuniste({ id: r.org_id, data: r.data, version: r.version });
+              })
+              .subscribe((status) => {
+                if (status === 'CHANNEL_ERROR' && channel) {
+                  supabase.removeChannel(channel);
+                  channel = null;
+                }
+              });
+          } catch { /* temps réel indisponible → resynchronisation au retour sur l'app */ }
+        }
       } catch (e) {
-        if (process.env.NODE_ENV !== 'production') console.warn('[Sync] Chargement Supabase échoué, fallback:', e.message);
-        if (modeRef.current === 'org' && !cancelled) appliquerData({});
+        if (process.env.NODE_ENV !== 'production') console.warn('[Sync] Chargement Supabase échoué:', e.message);
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -469,24 +439,10 @@ export default function useSupabaseData(userId, isDemo = false) {
       if (cancelled) return;
       // Si des données locales sont en attente de sync, ne pas écraser
       if (pendingRef.current) return;
-      // ── Lot 4c — MODE ORG : relire la ligne org (lecture-only), aucune écriture ──
-      if (modeRef.current === 'org') {
-        const orgId = orgIdRef.current;
-        if (!orgId) return;
-        try {
-          const rowOrg = await lireRowOrg(orgId);
-          if (cancelled) return;
-          if (deciderChargementOrg(rowOrg) === 'utiliser') {
-            appliquerData(rowOrg.data);
-            orgChargeeRef.current = true;
-          }
-        } catch {}
-        return;
-      }
       if (!chargementOkRef.current || !aucuneModificationLocale()) return;
       const generation = generationRef.current;
       try {
-        const row = await lireRowUser(userId);
+        const row = await lireRow();
         if (cancelled || !aucuneModificationLocale() || generation !== generationRef.current) return;
         appliquerOpportuniste(row);
       } catch {}
@@ -494,7 +450,7 @@ export default function useSupabaseData(userId, isDemo = false) {
     document.addEventListener('visibilitychange', resyncSiVisible);
 
     // Real-time MODE USER : écoute changements depuis d'autres appareils (le canal ORG,
-    // filtre org_id, est monté dans charger() une fois l'orgId connu — Lot 4c).
+    // filtre org_id, est monté dans charger() une fois l'orgId connu).
     try {
       if (modeRef.current === 'user') channel = supabase
         .channel(`cyna_${userId}`)
@@ -529,43 +485,11 @@ export default function useSupabaseData(userId, isDemo = false) {
       if (process.env.NODE_ENV !== 'production') console.warn('[Sync] updater non résolu ignoré:', cle);
       return false;
     }));
-    // ── Lot 4b — MODE ORG : écriture SÛRE dans org_storage, protégée par 3 verrous ──
-    if (modeRef.current === 'org') {
-      // VERROU 1 — jamais d'écriture tant qu'on n'a pas chargé une ligne org NON vide
-      // (orgChargee=false = pas d'org, ou coffre vide au boot → on n'amorce/n'écrase JAMAIS côté client).
-      if (!orgIdRef.current || !orgChargeeRef.current) {
-        if (process.env.NODE_ENV !== 'production') console.warn('[Sync org] écriture ignorée — coffre org non chargé (verrou 1).');
-        return;
-      }
-      const payloadOrg = { ...(pendingRef.current || dataRef.current), ...updates };
-      // VERROU 2 — jamais un blob « vide » sur un coffre qui contenait des données (anti-effacement).
-      if (estPayloadVide(payloadOrg)) {
-        if (process.env.NODE_ENV !== 'production') console.warn('[Sync org] écriture ignorée — payload vide sur coffre non vide (verrou 2, anti-effacement).');
-        return;
-      }
-      pendingRef.current = payloadOrg;
-      dataRef.current    = payloadOrg;
-      if (syncTimer.current) clearTimeout(syncTimer.current);
-      syncTimer.current = setTimeout(async () => {
-        if (!mountedRef.current) return;
-        syncTimer.current = null;
-        const p = pendingRef.current;
-        pendingRef.current = null;
-        setSyncing(true);
-        ecrituresOrgEnVolRef.current += 1;
-        try {
-          // VERROU 3 — UPSERT by org_id (jamais un insert aveugle).
-          await ecrireRowOrg(orgIdRef.current, p, userId);
-        } catch (e) {
-          if (process.env.NODE_ENV !== 'production') console.warn('[Sync org]', e.message);
-        } finally {
-          ecrituresOrgEnVolRef.current -= 1;
-          if (mountedRef.current) setSyncing(false);
-        }
-      }, 800);
+    // VERROU anti-effacement (mode org) — jamais un coffre d'entreprise sans aucune liste métier.
+    if (modeRef.current === 'org' && estPayloadVide({ ...(pendingRef.current || dataRef.current), ...updates })) {
+      if (process.env.NODE_ENV !== 'production') console.warn('[Sync org] écriture ignorée — coffre vidé (anti-effacement).');
       return;
     }
-
     generationRef.current += 1;
     if (recuperationRef.current) { conserverRejet(updates); return; }
     if (!chargementOkRef.current) return;
@@ -602,11 +526,23 @@ export default function useSupabaseData(userId, isDemo = false) {
     versionRef.current = Number(row.version) || 0;
     appliquerData(row.data);
   }
+  // E1 — lecture / écriture de LA ligne de stockage du mode courant (compte ou entreprise).
+  async function lireRow() {
+    if (modeRef.current !== 'org') return lireRowUser(userId);
+    if (!orgIdRef.current) orgIdRef.current = await getMonOrgId(userId);
+    const row = await lireRowOrg(orgIdRef.current);
+    if (deciderChargementOrg(row) !== 'utiliser') throw new CoffreIndisponibleError(MESSAGE_COFFRE_VIDE);
+    return row;
+  }
+  function ecrireRow(payload) {
+    if (modeRef.current === 'org') return ecrireRowOrg(orgIdRef.current, payload, versionRef.current);
+    return ecrireRowUser(userId, rowIdRef.current, payload, versionRef.current);
+  }
   async function chargerUser(estAnnule = () => !mountedRef.current, verifierGeneration = false) {
     const generation = generationRef.current;
     const finDeRecuperation = recuperationRef.current;
     try {
-      const row = await lireRowUser(userId);
+      const row = await lireRow();
       if (estAnnule() || (verifierGeneration && generation !== generationRef.current)) return;
       rowIdRef.current = row?.id ?? null;
       versionRef.current = Number(row?.version) || 0;
@@ -633,10 +569,11 @@ export default function useSupabaseData(userId, isDemo = false) {
           ? { erreurChargement: null, statut: 'information', message: avisPrecedent + messageAncienne }
           : { ...prev, erreurChargement: null };
       });
-    } catch {
+    } catch (e) {
       if (estAnnule()) return;
       chargementOkRef.current = false;
-      setEtatSync(prev => ({ ...prev, erreurChargement: 'Impossible de charger vos données. Réessayez ou déconnectez-vous.' }));
+      const message = e instanceof CoffreIndisponibleError ? e.message : 'Impossible de charger vos données. Réessayez ou déconnectez-vous.';
+      setEtatSync(prev => ({ ...prev, erreurChargement: message }));
     }
   }
   async function flush(generation = recuperationGenRef.current) {
@@ -650,7 +587,7 @@ export default function useSupabaseData(userId, isDemo = false) {
     setSyncing(true);
     const travail = Promise.resolve().then(async () => {
       try {
-        const row = await ecrireRowUser(userId, rowIdRef.current, payload, versionRef.current);
+        const row = await ecrireRow(payload);
         if (!mountedRef.current) return;
         rowIdRef.current = row.id;
         versionRef.current = Number(row.version) || 0;
@@ -687,7 +624,7 @@ export default function useSupabaseData(userId, isDemo = false) {
           pendingRef.current = null;
           setEtatSync({ erreurChargement: null, statut: 'conflit', message: 'Rechargement des données à jour…' });
           try {
-            const row = await lireRowUser(userId);
+            const row = await lireRow();
             if (!mountedRef.current) return;
             if (!row?.data) throw new Error('Ligne de stockage absente');
             rowIdRef.current = row.id;
@@ -726,9 +663,6 @@ export default function useSupabaseData(userId, isDemo = false) {
   const terminerSauvegardes = useCallback(async () => {
     bloquerEcritures();
     const conflitsAvant = conflitsRef.current;
-    if (modeRef.current === 'org') {
-      return !pendingRef.current && !syncTimer.current && !ecrituresOrgEnVolRef.current && !ecrituresRefuseesRef.current;
-    }
     clearTimeout(syncTimer.current);
     syncTimer.current = null;
     await flush();
@@ -741,7 +675,7 @@ export default function useSupabaseData(userId, isDemo = false) {
 
   const setChantiers = useCallback((updater) => {
     if (ecritureRefusee()) return false;
-    if (modeRef.current === 'user' && !chargementOkRef.current) return false;
+    if (!chargementOkRef.current) return false;
     const jeton = marquerModificationLocale();
     setChantiersState((prev, parametresActuels) => {
       attentesLocalesRef.current.delete(jeton);
@@ -759,7 +693,7 @@ export default function useSupabaseData(userId, isDemo = false) {
 
   const setDevis = useCallback((data) => {
     if (ecritureRefusee()) return false;
-    if (modeRef.current === 'user' && !chargementOkRef.current) return false;
+    if (!chargementOkRef.current) return false;
     const jeton = marquerModificationLocale();
     setDevisState((prev, parametresActuels) => {
       attentesLocalesRef.current.delete(jeton);
@@ -775,7 +709,7 @@ export default function useSupabaseData(userId, isDemo = false) {
 
   const setFactures = useCallback((data) => {
     if (ecritureRefusee()) return false;
-    if (modeRef.current === 'user' && !chargementOkRef.current) return false;
+    if (!chargementOkRef.current) return false;
     const jeton = marquerModificationLocale();
     setFacturesState((prev, parametresActuels) => {
       attentesLocalesRef.current.delete(jeton);
@@ -791,7 +725,7 @@ export default function useSupabaseData(userId, isDemo = false) {
 
   const setClients = useCallback((data) => {
     if (ecritureRefusee()) return false;
-    if (modeRef.current === 'user' && !chargementOkRef.current) return false;
+    if (!chargementOkRef.current) return false;
     const jeton = marquerModificationLocale();
     setClientsState((prev, parametresActuels) => {
       attentesLocalesRef.current.delete(jeton);
@@ -807,7 +741,7 @@ export default function useSupabaseData(userId, isDemo = false) {
 
   const setParametres = useCallback((data) => {
     if (ecritureRefusee()) return false;
-    if (modeRef.current === 'user' && !chargementOkRef.current) return false;
+    if (!chargementOkRef.current) return false;
     const jeton = marquerModificationLocale();
     setParametresState(prev => {
       attentesLocalesRef.current.delete(jeton);
@@ -824,7 +758,7 @@ export default function useSupabaseData(userId, isDemo = false) {
 
   const setPointages = useCallback((updater) => {
     if (ecritureRefusee()) return false;
-    if (modeRef.current === 'user' && !chargementOkRef.current) return false;
+    if (!chargementOkRef.current) return false;
     const jeton = marquerModificationLocale();
     setPointagesState(prev => {
       attentesLocalesRef.current.delete(jeton);
@@ -839,7 +773,7 @@ export default function useSupabaseData(userId, isDemo = false) {
 
   const setObjectifs = useCallback((updater) => {
     if (ecritureRefusee()) return false;
-    if (modeRef.current === 'user' && !chargementOkRef.current) return false;
+    if (!chargementOkRef.current) return false;
     const jeton = marquerModificationLocale();
     setObjectifsState(prev => {
       attentesLocalesRef.current.delete(jeton);
@@ -854,7 +788,7 @@ export default function useSupabaseData(userId, isDemo = false) {
 
   const setEvenementsCalendrier = useCallback((updater) => {
     if (ecritureRefusee()) return false;
-    if (modeRef.current === 'user' && !chargementOkRef.current) return false;
+    if (!chargementOkRef.current) return false;
     const jeton = marquerModificationLocale();
     setEvenementsCalendrierState(prev => {
       attentesLocalesRef.current.delete(jeton);
@@ -869,7 +803,7 @@ export default function useSupabaseData(userId, isDemo = false) {
 
   const setMemoireIA = useCallback((updater) => {
     if (ecritureRefusee()) return false;
-    if (modeRef.current === 'user' && !chargementOkRef.current) return false;
+    if (!chargementOkRef.current) return false;
     const jeton = marquerModificationLocale();
     setMemoireIAState(prev => {
       attentesLocalesRef.current.delete(jeton);
@@ -884,8 +818,7 @@ export default function useSupabaseData(userId, isDemo = false) {
 
   const setDonneesListes = useCallback(updater => {
     if (ecritureRefusee()) return false;
-    if (modeRef.current === 'user' && !chargementOkRef.current) return false;
-    if (modeRef.current === 'org' && !orgChargeeRef.current) return false;
+    if (!chargementOkRef.current) return false;
     const jeton = marquerModificationLocale();
     setDonneesState(prev => {
       attentesLocalesRef.current.delete(jeton);
@@ -903,8 +836,7 @@ export default function useSupabaseData(userId, isDemo = false) {
   }, [userId]);
   const etatEnregistrement = useCallback(() => ({
     propre: !pendingRef.current && !enVolRef.current && !episodeRef.current && !recuperationRef.current
-      && !attentesLocalesRef.current.size && !ecrituresOrgEnVolRef.current
-      && (modeRef.current === 'org' ? orgChargeeRef.current : chargementOkRef.current),
+      && !attentesLocalesRef.current.size && chargementOkRef.current,
   }), []);
   const envoyerMaintenant = useCallback(async () => {
     const conflitsAvant = conflitsRef.current;
@@ -913,7 +845,6 @@ export default function useSupabaseData(userId, isDemo = false) {
     // une référence restée « ok » après un import hors ligne terminé ne peut plus fausser un envoi ultérieur.
     const importEcriture = importEnCoursRef.current ? importEcritureRef.current : null;
     try {
-      if (modeRef.current === 'org') return { ok: etatEnregistrement().propre && ecrituresRefuseesRef.current === 0 };
       clearTimeout(syncTimer.current);
       syncTimer.current = null;
       await flush();
@@ -930,8 +861,7 @@ export default function useSupabaseData(userId, isDemo = false) {
   const importerTout = useCallback(data => {
     if (!etatEnregistrement().propre) return Promise.resolve(false);
     if (ecritureRefusee()) return Promise.resolve(false);
-    if (modeRef.current === 'user' && !chargementOkRef.current) return Promise.resolve(false);
-    if (modeRef.current === 'org' && !orgChargeeRef.current) return Promise.resolve(false);
+    if (!chargementOkRef.current) return Promise.resolve(false);
     const jeton = marquerModificationLocale();
     return new Promise(resolve => {
       setDonneesState(prev => {
@@ -941,13 +871,13 @@ export default function useSupabaseData(userId, isDemo = false) {
         let next;
         try { next = avecCompteurs(prev, donneesImportees(prev, data)); }
         catch (erreur) { console.error(erreur); resolve(false); return prev; }
-        if (modeRef.current !== 'org') {
-          importEnCoursRef.current = true;
-          suspendreRetention(true);
-        }
+        // VERROU anti-effacement (mode org) : un import sans aucune liste métier est refusé.
+        if (modeRef.current === 'org' && estPayloadVide(next)) { resolve(false); return prev; }
+        importEnCoursRef.current = true;
+        suspendreRetention(true);
         for (const cle of CLES_CACHE_LOCAL) sauvegarderLocal('cyna_' + cle, next[cle]);
         scheduleSync(next);
-        if (modeRef.current !== 'org') importEcritureRef.current = { generation: generationRef.current, ok: false };
+        importEcritureRef.current = { generation: generationRef.current, ok: false };
         resolve(true);
         return next;
       });
@@ -1066,7 +996,6 @@ export default function useSupabaseData(userId, isDemo = false) {
     setDonneesListes, importerTout, etatEnregistrement, envoyerMaintenant, modeStockage: modeRef.current,
     loading, syncing, etatSync,
     reessayerChargement: async () => {
-      if (modeRef.current !== 'user') return;
       setLoading(true);
       await chargerUser(() => !mountedRef.current, true);
       if (mountedRef.current) setLoading(false);

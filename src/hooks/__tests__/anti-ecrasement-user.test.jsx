@@ -30,10 +30,12 @@ vi.mock('../../lib/supabase', () => {
         store.row = { id: 'row', numero: '__cyna_storage__', data: clone(payload.data), version: 0 };
         return { data: { id: 'row', version: 0 }, error: null };
       }
-      if (!store.row || filters.id !== store.row.id || (filters.version !== undefined && filters.version !== store.row.version)) return { data: [], error: null };
+      // E1 — le coffre org (org_storage) est la même ligne en mémoire, ciblée par org_id = 'ORG'.
+      const cible = table === 'org_storage' ? filters.org_id === 'ORG' : filters.id === store.row?.id;
+      if (!store.row || !cible || (filters.version !== undefined && filters.version !== store.row.version)) return { data: [], error: null };
       if (payload.version !== store.row.version + 1) return { error: { code: 'P0409' } };
       store.row = { ...store.row, data: clone(payload.data), version: payload.version };
-      return { data: [{ id: store.row.id, version: store.row.version }], error: null };
+      return { data: [table === 'org_storage' ? { org_id: 'ORG', version: store.row.version } : { id: store.row.id, version: store.row.version }], error: null };
     };
     const b = {
       eq(k, v) { filters[k] = v; return b; },
@@ -41,7 +43,7 @@ vi.mock('../../lib/supabase', () => {
       limit() { return Promise.resolve({ data: [{ org_id: 'ORG' }], error: null }); },
       async maybeSingle() {
         store.reads.push(table);
-        const snapshot = clone(store.row);
+        const snapshot = table === 'org_storage' && store.row ? { ...clone(store.row), org_id: 'ORG' } : clone(store.row);
         const gate = store.deferRead;
         store.deferRead = null;
         if (gate) return await gate;
@@ -691,12 +693,15 @@ describe('securite deconnexion : barriere et dernier envoi', () => {
     let ok; try { await act(async () => { ok = await h.result.current.terminerSauvegardes(); }); } finally { spy?.mockRestore(); }
     expect(ok).toBe(false); expect(h.result.current.etatSync.statut).toBe('conflit');
   });
-  it('org : écriture non résolue reste en vol', async () => {
+  it('E1 org : la déconnexion attend l\'écriture du coffre en vol, puis la confirme', async () => {
     localStorage.setItem('cyna_storage_mode', 'org'); const h = await boot();
     const gate = deferred(); store.deferWrite = gate.promise;
     act(() => h.result.current.setClients([{ id: 'org' }])); await tick();
-    expect(await h.result.current.terminerSauvegardes()).toBe(false);
-    gate.resolve(); await settle();
+    let fini = false; const promesse = h.result.current.terminerSauvegardes().then(ok => { fini = true; return ok; });
+    await settle(); expect(fini).toBe(false);
+    gate.resolve(); expect(await promesse).toBe(true);
+    expect(store.row.data.clients).toEqual([{ id: 'org' }]);
+    expect(store.writes.map(w => [w.table, w.op])).toEqual([['org_storage', 'update']]);
   });
 });
 

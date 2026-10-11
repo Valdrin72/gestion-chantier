@@ -37,10 +37,12 @@ vi.mock('../../lib/supabase', () => {
         store.row = { id: 'row', numero: '__cyna_storage__', data: clone(payload.data), version: 0 };
         return { data: { id: 'row', version: 0 }, error: null };
       }
-      if (!store.row || filters.id !== store.row.id || (filters.version !== undefined && filters.version !== store.row.version)) return { data: [], error: null };
+      // E1 — le coffre org (org_storage) est la même ligne en mémoire, ciblée par org_id = 'ORG'.
+      const cible = table === 'org_storage' ? filters.org_id === 'ORG' : filters.id === store.row?.id;
+      if (!store.row || !cible || (filters.version !== undefined && filters.version !== store.row.version)) return { data: [], error: null };
       if (payload.version !== store.row.version + 1) return { error: { code: 'P0409' } };
       store.row = { ...store.row, data: clone(payload.data), version: payload.version };
-      return { data: [{ id: store.row.id, version: store.row.version }], error: null };
+      return { data: [table === 'org_storage' ? { org_id: 'ORG', version: store.row.version } : { id: store.row.id, version: store.row.version }], error: null };
     };
     const b = {
       eq(k, v) { filters[k] = v; return b; },
@@ -48,7 +50,7 @@ vi.mock('../../lib/supabase', () => {
       limit() { return Promise.resolve({ data: [{ org_id: 'ORG' }], error: null }); },
       async maybeSingle() {
         store.reads.push(table);
-        const snapshot = clone(store.row);
+        const snapshot = table === 'org_storage' && store.row ? { ...clone(store.row), org_id: 'ORG' } : clone(store.row);
         const gate = store.deferRead;
         store.deferRead = null;
         if (gate) return await gate;
@@ -268,9 +270,14 @@ it('hook refuse import avec updater local en file puis écriture en attente et e
  act(()=>h.result.current.bloquerEcritures());act(()=>expect(h.result.current.setClients([])).toBe(false));expect((await h.result.current.envoyerMaintenant()).ok).toBe(false);
  act(()=>h.result.current.debloquerEcritures());expect((await h.result.current.envoyerMaintenant()).ok).toBe(true);
 });
-it('org : import appliqué mais écriture encore en attente ne promet pas de succès',async()=>{
+it('E1 org : import envoyé par le chemin versionné du coffre, confirmé seulement après écriture',async()=>{
  localStorage.setItem('cyna_storage_mode','org');const h=await boot();let promesse;act(()=>{promesse=h.result.current.importerTout({...blob(),clients:[{id:'org'}]});});await settle();expect(await promesse).toBe(true);
- expect(await h.result.current.envoyerMaintenant()).toEqual({ok:false});expect(h.result.current.clients).toEqual([{id:'org'}]);
+ const gate=deferred();store.deferWrite=gate.promise;let envoi;act(()=>{envoi=h.result.current.envoyerMaintenant();});await settle();
+ let fini=false;envoi.then(()=>{fini=true;});await settle();expect(fini).toBe(false);
+ gate.resolve();const resultat=await envoi;expect(resultat.ok).toBe(true);
+ expect(store.writes.at(-1)).toMatchObject({op:'update',table:'org_storage',filters:{org_id:'ORG',version:0}});
+ expect(store.writes.some(w=>w.table==='devis'||w.op==='upsert'||w.op==='insert')).toBe(false);
+ expect(store.row.data.clients).toEqual([{id:'org'}]);expect(store.row.version).toBe(1);
 });
 it('erreurs : dix visibles et décompte des autres, aucune copie',async()=>{
  await app();await ouvrir({...blob(),clients:Array.from({length:13},()=>({}))});expect(screen.getByTestId('message-import')).toHaveTextContent('… et 3 autres');expect(screen.queryByRole('dialog')).toBeNull();expect(download).not.toHaveBeenCalled();expect(store.writes).toEqual([]);
@@ -335,11 +342,17 @@ it('INS2-SYNC-03 exception de calcul libere import et permet la reprise',async()
  act(()=>{resultat=h.result.current.importerTout(blob());});expect(await resultat).toBe(true);
  await act(async()=>h.result.current.envoyerMaintenant());await settle();expect(copies.retentionSuspendue()).toBe(false);
 });
-it('INS2-SYNC-03 org ne suspend jamais la retention',async()=>{
+it('INS2-SYNC-03 / E1 org : rétention suspendue pendant l\'import puis rendue après l\'envoi (comme le mode user)',async()=>{
  localStorage.setItem('cyna_storage_mode','org');const h=await boot();let resultat;
  act(()=>{resultat=h.result.current.importerTout(blob());});await settle();expect(await resultat).toBe(true);
- const copies=await import('../../utils/copiesRejetees');expect(copies.retentionSuspendue?.()).toBe(false);
+ const copies=await import('../../utils/copiesRejetees');expect(copies.retentionSuspendue()).toBe(true);
  await act(async()=>h.result.current.envoyerMaintenant());expect(copies.retentionSuspendue()).toBe(false);
+});
+it('E1 org : un import qui viderait toutes les listes du coffre est refusé',async()=>{
+ localStorage.setItem('cyna_storage_mode','org');const h=await boot();let resultat;
+ act(()=>{resultat=h.result.current.importerTout({...blob(),devis:[],chantiers:[],clients:[],factures:[],pointages:[]});});await settle();
+ expect(await resultat).toBe(false);await tick(1500);expect(store.writes).toHaveLength(0);
+ const copies=await import('../../utils/copiesRejetees');expect(copies.retentionSuspendue()).toBe(false);
 });
 it('INS2-MSG-04 ecriture entre controle et updater affiche le refus',async()=>{
  await app();await ouvrir();download.mockImplementation(()=>capture.ctx.setClients([{id:'tardif'}]));

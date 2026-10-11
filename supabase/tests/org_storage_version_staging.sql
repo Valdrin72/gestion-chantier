@@ -73,9 +73,11 @@ BEGIN
   EXCEPTION WHEN SQLSTATE 'P0409' THEN NULL; END;
 
   -- Création et suppression interdites à l'application.
+  -- Dans org2, l'associé est membre et aucun coffre n'existe : seule la protection E1
+  -- (politique INSERT retirée + droit INSERT révoqué) peut refuser cette création.
   BEGIN
-    INSERT INTO public.org_storage (org_id, data) VALUES (gen_random_uuid(), base);
-    RAISE EXCEPTION 'ÉCHEC 7 : insert accepté';
+    INSERT INTO public.org_storage (org_id, data) VALUES (org2, base);
+    RAISE EXCEPTION 'ÉCHEC 7 : création du coffre par l''application acceptée';
   EXCEPTION WHEN insufficient_privilege THEN NULL; END;
   BEGIN
     DELETE FROM public.org_storage WHERE org_id = org;
@@ -125,6 +127,12 @@ BEGIN
   PERFORM set_config('role', 'postgres', true);
   SELECT version, data -> 'devis' ->> 0 INTO v, etat FROM public.org_storage WHERE org_id = org;
   IF v <> 2 THEN RAISE EXCEPTION 'ÉCHEC 19 : version finale % au lieu de 2', v; END IF;
+
+  -- Temps réel : le coffre doit être publié pour que les associés voient les enregistrements des autres.
+  IF NOT EXISTS (SELECT 1 FROM pg_publication_tables
+                  WHERE pubname = 'supabase_realtime' AND schemaname = 'public' AND tablename = 'org_storage') THEN
+    RAISE EXCEPTION 'ÉCHEC 20 : org_storage absente de la publication supabase_realtime';
+  END IF;
 
   RAISE NOTICE 'TOUS LES TESTS OK';
 END;

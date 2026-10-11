@@ -304,6 +304,24 @@ describe('E1 · anti-effacement et échec réseau', () => {
   });
 });
 
+describe('E1 · opérations unitaires (restauration d\'une donnée, mémoire IA)', () => {
+  it('E1-13 ecrireEtConfirmer passe par le coffre versionné et copie l\'ancienne valeur avant restauration', async () => {
+    store.org = { org_id: 'ORG', data: blob({ memoireIA: 'ancienne mémoire' }), version: 2 };
+    const h = await boot();
+    let p;
+    act(() => { p = h.result.current.ecrireEtConfirmer('memoireIA', 'mémoire restaurée', { copierAvant: true }); });
+    await settle();
+    expect(await p).toBe(true);
+    let resultat;
+    await act(async () => { resultat = await h.result.current.envoyerMaintenant(); });
+    expect(resultat).toMatchObject({ ok: true, conflit: false });
+    expect(store.writes).toEqual([expect.objectContaining({ op: 'update', table: 'org_storage', filters: { org_id: 'ORG', version: 2 } })]);
+    expect(store.org.data.memoireIA).toBe('mémoire restaurée'); expect(store.org.version).toBe(3);
+    expect(store.org.data.clients).toEqual([{ id: 'K1' }]);
+    expect(Object.keys(localStorage).some(k => localStorage.getItem(k)?.includes('ancienne mémoire'))).toBe(true);
+  });
+});
+
 describe('E1 · temps réel : abonnement et non-régression user', () => {
   it('abonnement au coffre filtré par org_id, retiré au démontage', async () => {
     const h = await boot();

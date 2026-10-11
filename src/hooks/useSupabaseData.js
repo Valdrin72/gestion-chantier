@@ -82,9 +82,8 @@ async function ecrireRowUser(userId, rowId, payload, version) {
 // Coffre organisation (org_storage). Défaut 'user' → comportement historique inchangé.
 // E1 — le mode 'org' emprunte le chemin versionné du mode user (chargement, écriture, conflit,
 // copie de secours, temps réel, déconnexion sûre, import) ; seules la ligne lue et la ligne
-// écrite changent (coffre de l'entreprise au lieu de la ligne du compte). Restent réservées au
-// mode user : la reprise des données locales et ecrireOperation (restauration d'une donnée,
-// effacement de la mémoire IA) — refusées en mode org avec un message, sans perte.
+// écrite changent (coffre de l'entreprise au lieu de la ligne du compte). Seule la reprise des
+// données locales de ce navigateur reste réservée au mode user (données d'un ancien compte).
 // ════════════════════════════════════════════════════════════════════════════
 
 /**
@@ -937,7 +936,8 @@ export default function useSupabaseData(userId, isDemo = false) {
   // options.copierAvant (lot 2b, restauration) : la valeur ACTUELLE de chaque clé est copiée DANS l'updater,
   // à partir de prev (et non d'une valeur lue avant la confirmation) ; si la copie échoue, rien n'est écrit.
   const ecrireOperation = useCallback((valeurs, captures, options = {}) => {
-    if (!etatEnregistrement().propre || ecritureRefusee() || isDemo || modeRef.current !== 'user') return Promise.resolve(false);
+    // E1 — aussi en mode org (restauration d'une donnée, effacement de la mémoire IA) : même scheduleSync versionné.
+    if (!etatEnregistrement().propre || ecritureRefusee() || isDemo) return Promise.resolve(false);
     const jeton = marquerModificationLocale();
     // INS2-04 — un rejeu de l'updater (StrictMode) ne doit pas créer de copie en double.
     const dejaCopiees = new Set();

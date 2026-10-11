@@ -19,7 +19,9 @@
 --      (étape E2, copie des données). Un coffre absent n'est donc jamais « amorcé » vide.
 --   3. public.org_storage_historique : copie de l'ANCIENNE version du coffre, même règle
 --      que devis_historique (suppression → toujours ; mise à jour → si la dernière copie a
---      plus de 5 min OU si une liste perd des éléments / un identifiant). Rétention 90 jours.
+--      plus de 5 min OU si une liste perd des éléments / un identifiant). Les copies de plus de
+--      90 jours sont purgées à chaque écriture du coffre (pas de pg_cron : une entreprise qui
+--      n'écrit plus garde ses anciennes copies, ce qui ne fait perdre aucune donnée).
 --      Lecture réservée aux membres de l'organisation ; aucune écriture par les utilisateurs.
 --   4. Temps réel : org_storage ajoutée à la publication supabase_realtime (si absente),
 --      pour que les associés voient les enregistrements des autres sans recharger.
@@ -69,7 +71,7 @@ CREATE TABLE IF NOT EXISTS public.org_storage_historique (
 );
 
 COMMENT ON TABLE public.org_storage_historique IS
-  'CYNA — copies des anciennes versions du coffre org_storage. Écrites uniquement par le trigger org_storage_historique_apres_ecriture. Lecture par les membres de l''organisation. Rétention 90 jours.';
+  'CYNA — copies des anciennes versions du coffre org_storage. Écrites uniquement par le trigger org_storage_historique_apres_ecriture. Lecture par les membres de l''organisation. Copies de plus de 90 jours purgées à chaque écriture.';
 
 CREATE INDEX IF NOT EXISTS org_storage_historique_org_sauve_le
   ON public.org_storage_historique (org_id, sauve_le);

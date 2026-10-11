@@ -552,7 +552,9 @@ export default function useSupabaseData(userId, isDemo = false) {
   function conserverRejet(updates) {
     rejetRef.current = { ...(rejetRef.current || {}), ...updates };
     copieRejetOkRef.current = enregistrerCopieRejetee(rejetIdRef.current, rejetRef.current, { sansRetention: importEnCoursRef.current });
-    if (refusCourantRef.current) { refusCourantRef.current.copieOk = copieRejetOkRef.current; majRefusNonSauve(); }
+    // Toute modification ajoutée au refus le rend de nouveau « à sauver », même s'il avait déjà été
+    // téléchargé ou abandonné : le fichier précédent ne la contient pas.
+    if (refusCourantRef.current) { refusCourantRef.current.copieOk = copieRejetOkRef.current; refusCourantRef.current.traite = false; majRefusNonSauve(); }
   }
   function appliquerOpportuniste(row) {
     if (!row?.data || !(Number(row.version) > versionRef.current)) return;

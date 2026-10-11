@@ -262,4 +262,24 @@ describe('refus sans copie locale : jamais perdus en silence', () => {
     expect(fichier().clients).toEqual([{ id: 'saisie' }]);
     expect(screen.queryByRole('alert')).toBeNull();
   });
+  it('R12 : une modification ajoutée au refus après son téléchargement le rend de nouveau à sauver', async () => {
+    const h = await boot();
+    distant();
+    const lecture = deferred(); store.deferRead = lecture.promise;
+    const spy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new Error('plein'); });
+    try {
+      act(() => h.result.current.setClients([{ id: 'refuse' }])); await tick(); await settle();
+      expect(h.result.current.refusNonSauve).toBe(true);
+      act(() => { h.result.current.telechargerRefus(); });
+      expect(h.result.current.refusNonSauve).toBe(false);
+      act(() => h.result.current.setDevis([{ id: 'pendant-rechargement' }])); await settle();
+      expect(h.result.current.refusNonSauve).toBe(true);
+    } finally { spy.mockRestore(); }
+    lecture.resolve({ data: store.row }); await settle();
+    act(() => { h.result.current.telechargerRefus(); });
+    const f = fichier(1);
+    expect(f.clients).toEqual([{ id: 'refuse' }]);
+    expect(f.devis).toEqual([{ id: 'pendant-rechargement' }]);
+    expect(h.result.current.refusNonSauve).toBe(false);
+  });
 });

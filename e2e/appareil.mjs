@@ -13,7 +13,8 @@ export function verifierPasDArret() {
 }
 function poserArret() { const f = fichierArret(); if (f) { try { writeFileSync(f, 'connexion échouée'); } catch {} } }
 
-export async function nouvelAppareil(browser, { baseURL } = {}) {
+// mode : 'user' (production, par défaut) ou 'org' (coffre de l'entreprise, lot E1).
+export async function nouvelAppareil(browser, { baseURL, mode = 'user' } = {}) {
   const context = await browser.newContext(baseURL ? { baseURL } : {});
   // Garde-fou n°2 : le navigateur ne peut joindre QUE l'app locale et la base staging,
   // en HTTP comme en WebSocket (temps réel). Toute autre base Supabase est notée et bloquée.
@@ -28,12 +29,12 @@ export async function nouvelAppareil(browser, { baseURL } = {}) {
     if (destinationAutorisee(ws.url())) { ws.connectToServer(); return; }
     noter(ws.url()); ws.close();
   });
-  await context.addInitScript(() => {
+  await context.addInitScript(modeStockage => {
     try {
       localStorage.setItem('cyna_onboarding_done', '1');
-      localStorage.setItem('cyna_storage_mode', 'user');
+      localStorage.setItem('cyna_storage_mode', modeStockage);
     } catch {}
-  });
+  }, mode === 'org' ? 'org' : 'user');
   const page = await context.newPage();
   // Diagnostic temps réel : statut d'abonnement postgres_changes et nombre d'événements reçus.
   const realtime = { statuts: [], evenements: 0 };

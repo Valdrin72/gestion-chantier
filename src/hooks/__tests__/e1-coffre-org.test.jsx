@@ -88,7 +88,7 @@ vi.mock('../../lib/supabase', () => {
 
 import useSupabaseData, {
   resolveMode, deciderChargementOrg, estPayloadVide,
-  MESSAGE_COFFRE_VIDE, MESSAGE_SANS_ENTREPRISE, MESSAGE_PLUSIEURS_ENTREPRISES,
+  MESSAGE_COFFRE_VIDE, MESSAGE_SANS_ENTREPRISE, MESSAGE_PLUSIEURS_ENTREPRISES, MESSAGE_VIDAGE_REFUSE,
 } from '../useSupabaseData';
 import { PREFIXE_ECHEC } from '../../utils/copiesRejetees';
 
@@ -123,7 +123,7 @@ describe('E1 · fonctions pures conservées', () => {
   });
   it('deciderChargementOrg : utiliser seulement un coffre non vide, jamais « creer »', () => {
     expect(deciderChargementOrg({ data: { chantiers: [{ id: 1 }] } })).toBe('utiliser');
-    for (const v of [null, undefined, { data: null }, { data: {} }]) expect(deciderChargementOrg(v)).toBe('vide-sans-ecriture');
+    for (const v of [null, undefined, { data: null }, { data: {} }, { data: { parametres: { a: 1 }, clients: [] } }]) expect(deciderChargementOrg(v)).toBe('vide-sans-ecriture');
   });
   it('estPayloadVide : vrai seulement si les 5 listes métier sont vides ou absentes', () => {
     expect(estPayloadVide({ parametres: { a: 1 }, chantiers: [] })).toBe(true);
@@ -216,6 +216,7 @@ describe('E1 · coffre indisponible : message clair, aucune écriture', () => {
   it.each([
     ['coffre vide', () => { store.org = { org_id: 'ORG', data: {}, version: 0 }; }, MESSAGE_COFFRE_VIDE],
     ['coffre absent', () => { store.org = null; }, MESSAGE_COFFRE_VIDE],
+    ['coffre sans aucune liste métier (paramètres seuls)', () => { store.org = { org_id: 'ORG', data: { parametres: { a: 1 } }, version: 0 }; }, MESSAGE_COFFRE_VIDE],
     ['aucune entreprise', () => { store.membres = {}; }, MESSAGE_SANS_ENTREPRISE],
     ['plusieurs entreprises', () => { store.membres = { u1: [{ org_id: 'ORG' }, { org_id: 'AUTRE' }] }; }, MESSAGE_PLUSIEURS_ENTREPRISES],
     ['lecture des membres en erreur', () => { store.membresError = { message: 'JWT' }; }, 'Impossible de charger vos données. Réessayez ou déconnectez-vous.'],
@@ -233,6 +234,8 @@ describe('E1 · coffre indisponible : message clair, aucune écriture', () => {
     await tick(2000);
     expect(store.writes).toHaveLength(0);
     expect(h.result.current.etatEnregistrement().propre).toBe(false);
+    expect((await h.result.current.envoyerMaintenant()).ok).toBe(false);
+    expect(store.channels.some(c => c.config?.table === 'org_storage')).toBe(false);
   });
   it('E1-09 « Réessayer » après mise en place du coffre par l\'administrateur charge et autorise l\'écriture', async () => {
     store.org = null; store.membresError = { message: 'JWT' };
@@ -241,6 +244,7 @@ describe('E1 · coffre indisponible : message clair, aucune écriture', () => {
     store.membresError = null;
     await act(async () => h.result.current.reessayerChargement());
     expect(h.result.current.etatSync.erreurChargement).toBe(MESSAGE_COFFRE_VIDE);
+    expect(store.channels).toHaveLength(0);
     store.org = { org_id: 'ORG', data: blob(), version: 7 };
     await act(async () => h.result.current.reessayerChargement());
     expect(h.result.current.etatSync.erreurChargement).toBeNull();
@@ -248,17 +252,29 @@ describe('E1 · coffre indisponible : message clair, aucune écriture', () => {
     act(() => h.result.current.setClients([{ id: 'ok' }])); await tick();
     expect(store.writes).toEqual([expect.objectContaining({ op: 'update', table: 'org_storage', filters: { org_id: 'ORG', version: 7 } })]);
     expect(store.org.version).toBe(8);
+    // Le temps réel est ouvert après le chargement réussi par « Réessayer ».
+    expect(store.channels.filter(c => c.name === 'cyna_org_ORG')).toHaveLength(1);
+    emettre({ org_id: 'ORG', version: 9, data: blob({ clients: [{ id: 'associe' }] }) });
+    expect(h.result.current.clients).toEqual([{ id: 'associe' }]);
   });
 });
 
 describe('E1 · anti-effacement et échec réseau', () => {
-  it('E1-10 vider toutes les listes du coffre n\'est jamais envoyé', async () => {
+  it('E1-10 vider toutes les listes du coffre est refusé : rien d\'envoyé, écran inchangé, message visible', async () => {
     store.org = { org_id: 'ORG', data: { clients: [{ id: 'seul' }], parametres: {} }, version: 0 };
     const h = await boot();
     act(() => h.result.current.setClients([])); await tick();
+    expect(h.result.current.clients).toEqual([{ id: 'seul' }]);
+    expect(h.result.current.etatSync.message).toBe(MESSAGE_VIDAGE_REFUSE);
+    act(() => h.result.current.fermerMessageSync());
     act(() => h.result.current.setDonneesListes(prev => ({ ...prev, clients: [], devis: [], chantiers: [], factures: [], pointages: [] }))); await tick();
+    expect(h.result.current.clients).toEqual([{ id: 'seul' }]);
+    expect(h.result.current.etatSync.message).toBe(MESSAGE_VIDAGE_REFUSE);
     expect(store.writes).toHaveLength(0);
-    expect(store.org.data.clients).toEqual([{ id: 'seul' }]);
+    expect(h.result.current.etatEnregistrement().propre).toBe(true);
+    // Une modification suivante part de ce que l'écran montre (aucune divergence écran / coffre).
+    act(() => h.result.current.setParametres(prev => ({ ...prev, nomEntreprise: 'CYNA' }))); await tick();
+    expect(store.org.data.clients).toEqual([{ id: 'seul' }]); expect(h.result.current.clients).toEqual([{ id: 'seul' }]);
     act(() => h.result.current.setClients([{ id: 'nouveau' }])); await tick();
     expect(store.org.data.clients).toEqual([{ id: 'nouveau' }]);
   });

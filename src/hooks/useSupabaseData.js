@@ -80,9 +80,11 @@ async function ecrireRowUser(userId, rowId, payload, version) {
 
 // ════════════════════════════════════════════════════════════════════════════
 // Coffre organisation (org_storage). Défaut 'user' → comportement historique inchangé.
-// E1 — le mode 'org' emprunte EXACTEMENT le chemin versionné du mode user (chargement,
-// écriture, conflit, copie de secours, temps réel) ; seules la ligne lue et la ligne
-// écrite changent (coffre de l'entreprise au lieu de la ligne du compte).
+// E1 — le mode 'org' emprunte le chemin versionné du mode user (chargement, écriture, conflit,
+// copie de secours, temps réel, déconnexion sûre, import) ; seules la ligne lue et la ligne
+// écrite changent (coffre de l'entreprise au lieu de la ligne du compte). Restent réservées au
+// mode user : la reprise des données locales et ecrireOperation (restauration d'une donnée,
+// effacement de la mémoire IA) — refusées en mode org avec un message, sans perte.
 // ════════════════════════════════════════════════════════════════════════════
 
 /**
@@ -109,7 +111,9 @@ export function resolveMode(isDemo) {
  */
 export function deciderChargementOrg(rowOrg) {
   const d = rowOrg && rowOrg.data;
-  if (d && typeof d === 'object' && Object.keys(d).length > 0) return 'utiliser';
+  // E1 — un coffre sans aucune liste métier (ex. seulement des paramètres) est traité comme vide :
+  // l'anti-effacement y refuserait toute écriture, l'app semblerait enregistrer sans rien envoyer.
+  if (d && typeof d === 'object' && !estPayloadVide(d)) return 'utiliser';
   return 'vide-sans-ecriture';
 }
 
@@ -118,6 +122,7 @@ export function deciderChargementOrg(rowOrg) {
 export class CoffreIndisponibleError extends Error {}
 export const MESSAGE_SANS_ENTREPRISE = "Ce compte n'est rattaché à aucune entreprise. Contactez l'administrateur de l'application.";
 export const MESSAGE_PLUSIEURS_ENTREPRISES = "Ce compte est rattaché à plusieurs entreprises. Contactez l'administrateur de l'application.";
+export const MESSAGE_VIDAGE_REFUSE = "Modification non appliquée : les données de l'entreprise ne peuvent pas être entièrement vidées.";
 export const MESSAGE_COFFRE_VIDE = "Les données de l'entreprise ne sont pas encore disponibles. Rien n'a été modifié. Réessayez plus tard ou contactez l'administrateur.";
 
 /**
@@ -326,6 +331,7 @@ export default function useSupabaseData(userId, isDemo = false) {
   // Lot 4a — mode figé au montage (AppInner remonte via key={userId} si le user change).
   const modeRef     = useRef(resolveMode(isDemo));
   const orgIdRef    = useRef(null);   // org_id du user courant en mode 'org' (sinon null)
+  const abonnerOrgRef = useRef(null); // E1 — ouvre le canal temps réel du coffre (posé par l'effet de chargement)
   const dataRef     = useRef({
     chantiers:  isDemo ? _initChantiers : [],
     devis:      isDemo ? _initDevis : [],
@@ -398,30 +404,6 @@ export default function useSupabaseData(userId, isDemo = false) {
       setLoading(true);
       try {
         await chargerUser(() => cancelled);
-        // E1 — temps réel du coffre de l'entreprise, une fois l'org connue (même règle que le
-        // mode user : seule une version PLUS RÉCENTE est appliquée, jamais par-dessus une
-        // modification locale ; ma propre écriture a la même version → ignorée).
-        if (modeRef.current === 'org' && !cancelled && orgIdRef.current && !channel) {
-          const orgId = orgIdRef.current;
-          try {
-            channel = supabase
-              .channel(`cyna_org_${orgId}`)
-              .on('postgres_changes', {
-                event: '*', schema: 'public', table: ORG_TABLE,
-                filter: `org_id=eq.${orgId}`,
-              }, (payload) => {
-                const r = payload.new || payload.record;
-                if (!r || deciderChargementOrg(r) !== 'utiliser') return;
-                if (chargementOkRef.current && aucuneModificationLocale()) appliquerOpportuniste({ id: r.org_id, data: r.data, version: r.version });
-              })
-              .subscribe((status) => {
-                if (status === 'CHANNEL_ERROR' && channel) {
-                  supabase.removeChannel(channel);
-                  channel = null;
-                }
-              });
-          } catch { /* temps réel indisponible → resynchronisation au retour sur l'app */ }
-        }
       } catch (e) {
         if (process.env.NODE_ENV !== 'production') console.warn('[Sync] Chargement Supabase échoué:', e.message);
       } finally {
@@ -429,8 +411,34 @@ export default function useSupabaseData(userId, isDemo = false) {
       }
     }
 
-    // Canal temps réel (mode user OU org selon la branche empruntée par charger()).
+    // Canal temps réel (mode user OU org).
     let channel = null;
+    // E1 — temps réel du coffre de l'entreprise, ouvert après CHAQUE chargement réussi (premier
+    // chargement ou « Réessayer »), une fois l'org connue. Même règle que le mode user : seule une
+    // version PLUS RÉCENTE est appliquée, jamais par-dessus une modification locale ; ma propre
+    // écriture a la même version → ignorée.
+    abonnerOrgRef.current = () => {
+      if (cancelled || channel || modeRef.current !== 'org' || !orgIdRef.current) return;
+      const orgId = orgIdRef.current;
+      try {
+        channel = supabase
+          .channel(`cyna_org_${orgId}`)
+          .on('postgres_changes', {
+            event: '*', schema: 'public', table: ORG_TABLE,
+            filter: `org_id=eq.${orgId}`,
+          }, (payload) => {
+            const r = payload.new || payload.record;
+            if (!r || deciderChargementOrg(r) !== 'utiliser') return;
+            if (chargementOkRef.current && aucuneModificationLocale()) appliquerOpportuniste({ id: r.org_id, data: r.data, version: r.version });
+          })
+          .subscribe((status) => {
+            if (status === 'CHANNEL_ERROR' && channel) {
+              supabase.removeChannel(channel);
+              channel = null;
+            }
+          });
+      } catch { /* temps réel indisponible → resynchronisation au retour sur l'app */ }
+    };
     charger();
 
     // Re-sync quand l'app revient au premier plan (retour sur l'onglet / déverrouillage téléphone)
@@ -471,6 +479,7 @@ export default function useSupabaseData(userId, isDemo = false) {
 
     return () => {
       cancelled = true;
+      abonnerOrgRef.current = null;
       clearTimeout(syncTimer.current);
       document.removeEventListener('visibilitychange', resyncSiVisible);
       if (channel) supabase.removeChannel(channel);
@@ -501,6 +510,14 @@ export default function useSupabaseData(userId, isDemo = false) {
     syncTimer.current = setTimeout(() => flush(generation), 800);
   }
 
+  // E1 — VERROU anti-effacement côté setters (mode org) : la modification qui viderait toutes les
+  // listes métier n'est PAS appliquée à l'écran (sinon l'écran divergerait du coffre et une
+  // modification suivante renverrait les anciennes listes). Message visible.
+  function vidageInterdit(updates) {
+    if (modeRef.current !== 'org' || !estPayloadVide({ ...(pendingRef.current || dataRef.current), ...updates })) return false;
+    queueMicrotask(() => { if (mountedRef.current) setEtatSync(prev => ({ ...prev, statut: 'information', message: MESSAGE_VIDAGE_REFUSE })); });
+    return true;
+  }
   function aucuneModificationLocale() {
     return !pendingRef.current && !enVolRef.current && !recuperationRef.current
       && attentesLocalesRef.current.size === 0;
@@ -556,6 +573,7 @@ export default function useSupabaseData(userId, isDemo = false) {
         flush(recuperationGenRef.current);
       }
       recuperationRef.current = false;
+      abonnerOrgRef.current?.();
       preparerRepriseLocale();
       // F2 — un « Réessayer » qui termine une récupération de conflit annonce le conflit.
       if (finDeRecuperation) { importEnCoursRef.current = false; suspendreRetention(false); importEcritureRef.current = null; }
@@ -684,6 +702,7 @@ export default function useSupabaseData(userId, isDemo = false) {
       // REV-01 — rien n'a changé (ex. régénération du journal identique) : aucune sauvegarde,
       // sinon deux appareils ouverts se renverraient indéfiniment des sauvegardes inutiles.
       if (Object.is(next, prev)) return prev;
+      if (vidageInterdit({ chantiers: next })) return prev;
       sauvegarderLocal('cyna_chantiers', next);
       scheduleSync({ chantiers: next });
       return next;
@@ -700,6 +719,7 @@ export default function useSupabaseData(userId, isDemo = false) {
       if (ecritureRefusee()) return prev;
       const next = typeof data === 'function' ? data(prev, parametresActuels) : data;
       if (Object.is(next, prev)) return prev;
+      if (vidageInterdit({ devis: next })) return prev;
       sauvegarderLocal('cyna_devis', next);
       scheduleSync({ devis: next });
       return next;
@@ -716,6 +736,7 @@ export default function useSupabaseData(userId, isDemo = false) {
       if (ecritureRefusee()) return prev;
       const next = typeof data === 'function' ? data(prev, parametresActuels) : data;
       if (Object.is(next, prev)) return prev;
+      if (vidageInterdit({ factures: next })) return prev;
       sauvegarderLocal('cyna_factures', next);
       scheduleSync({ factures: next });
       return next;
@@ -732,6 +753,7 @@ export default function useSupabaseData(userId, isDemo = false) {
       if (ecritureRefusee()) return prev;
       const next = typeof data === 'function' ? data(prev, parametresActuels) : data;
       if (Object.is(next, prev)) return prev;
+      if (vidageInterdit({ clients: next })) return prev;
       sauvegarderLocal('cyna_clients', next);
       scheduleSync({ clients: next });
       return next;
@@ -749,6 +771,7 @@ export default function useSupabaseData(userId, isDemo = false) {
       const propose = typeof data === 'function' ? data(prev) : data;
       const next = propose === prev ? prev : { ...propose, idsSupprimes: fusionnerIdsSupprimes(prev.idsSupprimes, propose.idsSupprimes) };
       if (Object.is(next, prev)) return prev;
+      if (vidageInterdit({ parametres: next })) return prev;
       sauvegarderLocal('cyna_parametres', next);
       scheduleSync({ parametres: next });
       return next;
@@ -765,6 +788,7 @@ export default function useSupabaseData(userId, isDemo = false) {
       if (ecritureRefusee()) return prev;
       const next = typeof updater === 'function' ? updater(prev) : updater;
       if (Object.is(next, prev)) return prev;
+      if (vidageInterdit({ pointages: next })) return prev;
       scheduleSync({ pointages: next });
       return next;
     });
@@ -780,6 +804,7 @@ export default function useSupabaseData(userId, isDemo = false) {
       if (ecritureRefusee()) return prev;
       const next = typeof updater === 'function' ? updater(prev) : updater;
       if (Object.is(next, prev)) return prev;
+      if (vidageInterdit({ objectifs: next })) return prev;
       scheduleSync({ objectifs: next });
       return next;
     });
@@ -795,6 +820,7 @@ export default function useSupabaseData(userId, isDemo = false) {
       if (ecritureRefusee()) return prev;
       const next = typeof updater === 'function' ? updater(prev) : updater;
       if (Object.is(next, prev)) return prev;
+      if (vidageInterdit({ evenementsCalendrier: next })) return prev;
       scheduleSync({ evenementsCalendrier: next });
       return next;
     });
@@ -810,6 +836,7 @@ export default function useSupabaseData(userId, isDemo = false) {
       if (ecritureRefusee()) return prev;
       const next = typeof updater === 'function' ? updater(prev) : updater;
       if (Object.is(next, prev)) return prev;
+      if (vidageInterdit({ memoireIA: next })) return prev;
       scheduleSync({ memoireIA: next });
       return next;
     });
@@ -827,7 +854,7 @@ export default function useSupabaseData(userId, isDemo = false) {
       if (propose === prev) return prev;
       const next = avecCompteurs(prev, { ...propose, parametres: { ...propose.parametres,
         idsSupprimes: fusionnerIdsSupprimes(prev.parametres.idsSupprimes, propose.parametres.idsSupprimes) } });
-      if (modeRef.current === 'org' && estPayloadVide(next)) return prev;
+      if (modeRef.current === 'org' && estPayloadVide(next)) { vidageInterdit(next); return prev; }
       for (const cle of CLES_CACHE_LOCAL) sauvegarderLocal('cyna_' + cle, next[cle]);
       scheduleSync(next);
       return next;

@@ -24,6 +24,7 @@ DO $$
 DECLARE
   a1 uuid; a2 uuid; ext uuid;
   org uuid := gen_random_uuid();
+  org2 uuid := gen_random_uuid();
   base jsonb := '{"devis":[{"id":"D1"},{"id":"D2"}],"clients":[{"id":"K1"}],"chantiers":[],"factures":[],"pointages":[],"parametres":{}}'::jsonb;
   n bigint; v bigint; auteur uuid; etat text;
 
@@ -38,6 +39,8 @@ BEGIN
   INSERT INTO public.organisations (id, nom) VALUES (org, 'E1 test (rollback)');
   INSERT INTO public.membres (org_id, user_id, role) VALUES (org, a1, 'admin'), (org, a2, 'membre');
   INSERT INTO public.org_storage (org_id, data) VALUES (org, base);
+  INSERT INTO public.organisations (id, nom) VALUES (org2, 'E1 test bis (rollback)');
+  INSERT INTO public.membres (org_id, user_id, role) VALUES (org2, a1, 'admin');
 
   -- ── Associé 1 ──
   PERFORM set_config('request.jwt.claims', json_build_object('sub', a1, 'role', 'authenticated')::text, true);
@@ -62,10 +65,12 @@ BEGIN
     UPDATE public.org_storage SET data = base, version = 5 WHERE org_id = org;
     RAISE EXCEPTION 'ÉCHEC 5 : saut de version accepté';
   EXCEPTION WHEN SQLSTATE 'P0409' THEN NULL; END;
+  -- Déplacer le coffre vers une AUTRE entreprise dont l'associé est aussi membre (seul le
+  -- trigger protège ce cas : la règle d'accès et la clé étrangère l'autoriseraient).
   BEGIN
-    UPDATE public.org_storage SET org_id = gen_random_uuid(), version = 2 WHERE org_id = org;
+    UPDATE public.org_storage SET org_id = org2, version = 2 WHERE org_id = org;
     RAISE EXCEPTION 'ÉCHEC 6 : changement d''organisation accepté';
-  EXCEPTION WHEN SQLSTATE 'P0409' OR insufficient_privilege OR check_violation OR foreign_key_violation THEN NULL; END;
+  EXCEPTION WHEN SQLSTATE 'P0409' THEN NULL; END;
 
   -- Création et suppression interdites à l'application.
   BEGIN

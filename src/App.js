@@ -87,8 +87,11 @@ function AppInner({ profil, deconnecter, userId, isDemo = false, userEmail }) {
     repriseLocale, deciderRepriseLocale, fermerRepriseLocale,
     loading: dataLoading,
     terminerSauvegardes, debloquerEcritures,
-    syncing, etatSync, reessayerChargement, reessayerSauvegarde, fermerMessageSync,
+    syncing, etatSync, reessayerChargement, reessayerSauvegarde, fermerMessageSync, refusDisponible, telechargerRefus,
   } = useSupabaseData(userId, isDemo);
+  const telechargerRefusAvecAlerte = refusDisponible
+    ? () => { if (!telechargerRefus()) window.alert('Téléchargement impossible. Vos modifications refusées restent gardées tant que cette page reste ouverte : réessayez.'); }
+    : undefined;
 
   const chantiers = useMemo(() => visibles(chantiersBruts), [chantiersBruts]);
   const devis = useMemo(() => visibles(devisBruts), [devisBruts]);
@@ -435,7 +438,7 @@ function AppInner({ profil, deconnecter, userId, isDemo = false, userEmail }) {
   ]);
 
   if (etatSync.erreurChargement) {
-    return <><div data-testid="application" inert={enDeconnexion ? true : undefined}><EcranErreurChargement message={etatSync.erreurChargement} onReessayer={reessayerChargement} onDeconnecter={deconnecterSur} /></div>{transitionDeconnexion}{notification}{confirmState && <ConfirmModal {...confirmState} />}</>;
+    return <><div data-testid="application" inert={enDeconnexion ? true : undefined}><EcranErreurChargement message={etatSync.erreurChargement} onReessayer={reessayerChargement} onDeconnecter={deconnecterSur} onTelechargerRefus={telechargerRefusAvecAlerte} /></div>{transitionDeconnexion}{notification}{confirmState && <ConfirmModal {...confirmState} />}</>;
   }
   if (dataLoading) return <EcranChargement />;
 
@@ -443,7 +446,7 @@ function AppInner({ profil, deconnecter, userId, isDemo = false, userEmail }) {
     <AppProvider value={appValue}>
     <div data-testid="application" inert={enDeconnexion ? true : undefined}>
     {repriseLocale && <RepriseLocale projet={repriseLocale} email={userEmail} decider={deciderRepriseLocale} fermer={fermerRepriseLocale} />}
-    <BandeauSauvegarde statut={etatSync.statut} message={etatSync.message} onReessayer={reessayerSauvegarde} onFermer={fermerMessageSync} />
+    <BandeauSauvegarde statut={etatSync.statut} message={etatSync.message} onReessayer={reessayerSauvegarde} onFermer={fermerMessageSync} onTelechargerRefus={telechargerRefusAvecAlerte} />
     <div data-theme={darkMode ? 'dark' : 'light'} className="app-layout">
       {/* Mobile : liste filtrée (menuMobile, sans Analyse/Calculs/Paramètres). PC : liste complète, inchangée. */}
       <Sidebar

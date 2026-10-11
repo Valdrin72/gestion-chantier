@@ -327,7 +327,8 @@ describe('ChantiersPage — archivage', () => {
     // l'autre chantier reste intact
     expect(arg.find(c => c.id === 2).archive).toBeFalsy();
     // notif "où c'est parti"
-    expect(ctx.afficherNotif).toHaveBeenCalledWith(expect.stringMatching(/archivé.*archivés/i));
+    // La notification part après l'application de l'updater (un tick plus tard sur une CI lente).
+    await waitFor(() => expect(ctx.afficherNotif).toHaveBeenCalledWith(expect.stringMatching(/archivé.*archivés/i)));
   });
 
   it('un chantier archivé disparaît de la liste active', () => {
